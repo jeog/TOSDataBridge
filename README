@@ -1,0 +1,38 @@
+TOSDataBridge v0.1
+
+
+TOSDataBridge (TOSDB) is an open-source collection of resources for 'scraping' real-time
+streaming data off of TDAmeritrade's ThinkOrSwim(TOS) platform, providing C, C++, and 
+Python interfaces. It was initially created as an in-house tool to provide free, extensible, 
+real-time financial data for testing other code.  It was not written as production quality 
+and should not be expected to perform as such - it works but is not stable. Users of the 
+TOS platform - with at least a desire to learn some programming/scripting basics - can use 
+this tool to populate databases of historical financial data; perform specialized, low-level, 
+and effecient analysis on large data-sets in real-time; test and debug other financial apps; 
+or even build extensions on top of it. 
+
+
+...Please refer to the attached README.html for the complete documentation...
+
+
+LICENSING & WARRANTY
+
+TOSDB is released under the GNU General Public License(GPL); a copy (LICENSE.txt) should be 
+included. If not, see http://www.gnu.org/licenses. The author reserves the right to issue 
+current and/or future versions of TOSDB under other licensing agreements. Any party that 
+wishes to use TOSDB, in whole or in part, in any way not explicitly stipulated by the GPL, 
+is thereby required to obtain a seperate license from the author. The author reserves all 
+other rights.
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; 
+without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. 
+See the GNU General Public License for more details. By choosing to use the software - 
+under the broadest interpretation of the term 'use' - you absolve the author 
+of ANY and ALL responsibility, for ANY and ALL damages incurred; including, but not limited 
+to, damages arising from the accuracy and/or timeliness of data the software does, or does 
+not, provide. 
+    
+Furthermore, TOSDB is in no way related to TDAmeritrade or affiliated parties; users of 
+TOSDB must abide by their terms of service and are solely responsible for any violations 
+therein.
+

@@ -1,0 +1,75 @@
+@echo off
+
+NET FILE 1>NUL 2>NUL &
+
+IF %ERRORLEVEL% NEQ 0 (
+	echo tosdb-setup.bat must be run as administrator.
+	EXIT /B 1
+)
+
+set bCRTfiles=false
+
+IF EXIST C:/Windows/System32/msvcr110.dll (
+	IF EXIST C:/Windows/System32/msvcp110.dll (
+		set bCRTfiles=true
+	)
+)
+
+set servCmd=""
+
+IF /I "%2"=="admin" set servCmd=" --admin"
+
+IF "%1"=="x64" (
+	echo + Moving _tos-databridge-shared-x64.dll to %WINDIR% ...
+	MOVE /-Y .\bin\Release\x64\_tos-databridge-shared-x64.dll %WINDIR%
+	echo + Checking for VC++ Redistributable Files ...
+	IF %bCRTfiles%==false (		
+		echo ++ Not Found. Installing VC++ Redistributable ...
+		vcredist_x64.exe 
+		IF /I %ERRORLEVEL% NEQ 0 (
+			echo +++ Installation Failed. Exiting Setup ...
+			EXIT /B 1
+		)
+	)	
+
+	echo + Creating TOSDataBridge Service ...
+	SC delete TOSDataBridge 1>NUL 2>NUL 
+	SC create TOSDataBridge binPath= %cd%\\bin\\Release\\x64\\tos-databridge-serv-x64.exe%servCmd%
+	
+) else ( IF "%1"=="x86" (
+		echo + Moving _tos-databridge-shared-x86.dll to %WINDIR% ...
+		MOVE /-Y .\bin\Release\Win32\_tos-databridge-shared-x86.dll %WINDIR%		
+		echo + Checking for VC++ Redistributable Files ...
+		IF EXIST C:/Windows/SysWOW64 set bCRTfiles=false
+		IF EXIST C:/Windows/SysWOW64/msvcr110.dll (
+			IF EXIST C:/Windows/SysWOW64/msvcp110.dll (
+				set bCRTfiles=true
+			)
+		)
+		IF %bCRTfiles%==false (		
+			echo ++ Not Found. Installing VC++ Redistributable ...
+			vcredist_x86.exe 
+			IF /I %ERRORLEVEL% NEQ 0 (
+				echo +++ Installation Failed. Exiting Setup ...
+				EXIT /B 1
+			)
+		)
+		
+		echo + Creating TOSDataBridge Service ...
+		SC delete TOSDataBridge 1>NUL 2>NUL 		
+		SC create TOSDataBridge binPath= %cd%\bin\Release\Win32\tos-databridge-serv-x86.exe%servCmd%
+	) else (
+		echo Invalid Command Line Argument. Use 'x86' or 'x64' to signify which build to setup.		
+		)
+)
+
+
+
+
+
+
+
+
+
+
+
