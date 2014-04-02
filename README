@@ -1,7 +1,7 @@
 TOSDataBridge v0.1
 
 
-TOSDataBridge (TOSDB) is an open-source collection of resources for 'scraping' real-time streaming data off of TDAmeritrade's ThinkOrSwim(TOS) platform, providing C, C++, and Python interfaces. It was initially created as an in-house tool to provide free, extensible, real-time financial data for testing other code.  It was not written as production quality and should not be expected to perform as such - it works but is not stable. Users of the TOS platform - with at least a desire to learn some programming/scripting basics - can use this tool to populate databases of historical financial data; perform specialized, low-level, and effecient analysis on large data-sets in real-time; test and debug other financial apps; or even build extensions on top of it. 
+TOSDataBridge (TOSDB) is an open-source collection of resources for 'scraping' real-time streaming data off of TDAmeritrade's ThinkOrSwim(TOS) platform, providing C, C++, and Python interfaces. It was initially created as an in-house tool to provide free, extensible, real-time financial data for testing other code.  It was not written as production quality and should not be expected to perform as such - it works but is not stable. Users of the TOS platform - with at least a desire to learn some programming/scripting basics - can use this tool to populate databases of historical financial data; perform specialized, low-level, and efficient analysis on large data-sets in real-time; test and debug other financial apps; or even build extensions on top of it. 
 
 ...Please refer to the attached README.html for the complete documentation...
 
