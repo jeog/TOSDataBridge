@@ -1,6 +1,8 @@
-TOSDatabridge (TOSDB) is an open-source collection of resources for 'scraping' real-time streaming data off of TDAmeritrade's ThinkOrSwim(TOS) platform, providing C, C++, and Python interfaces. Users of the TOS platform - with some basic programming/scripting knowledge - can use these tools to populate their own databases with market data; perform specialized, low-level, and efficient analysis on large data-sets in real-time; test and debug other financial apps; or even build extensions on top of it.
+TOSDataBridge (TOSDB) is an open-source collection of resources for 'scraping' real-time streaming data off of TDAmeritrade's ThinkOrSwim(TOS) platform, providing C, C++, and Python interfaces. Users of the TOS platform - with some basic programming/scripting knowledge - can use these tools to populate their own databases with market data; perform specialized, low-level, and efficient analysis on large data-sets in real-time; test and debug other financial apps; or even build extensions on top of it.
 
 TOSDB uses TOS's antiquated, yet still useful, DDE feature, directly through the Windows API. The C / C++ interfaces are implemented as a shared library(DLL) that communicates with a back-end Windows Service. The Python interface wraps this library in a more object-oriented, user-friendly format, providing an interactive environment for easy access to the low(er)-level calls. 
+
+[Complete Documentation (README.html - you'll need to copy the raw text into a new html file and open in a browser) ](https://raw.githubusercontent.com/jeog/TOSDataBridge/master/README.html)
 
 ###+ Requirements
 - Windows (this has been lightly tested on Windows 7 SP1 and Vista SP2)
@@ -10,23 +12,30 @@ TOSDB uses TOS's antiquated, yet still useful, DDE feature, directly through the
 - Patience (this is v0.1-alpha)
   
 ###+ Installation
-- tosdb-setup.bat will attempt to install the necessary modules/dependencies for you but you should refer to README.html for a more detail explanation.
+- tosdb-setup.bat will attempt to install the necessary modules/dependencies for you but you should refer to README.html for a more detailed explanation.
 - Be sure to know what build you need(x86 vs x64); it should match your system, all the modules you'll need, and your version of Python(if you plan on using the python wrapper).
 
-   ####++ Core C/C++ Libraries
-   `(Admin) C:\[...TOSDataBridge]\tosdb-setup.bat   [x86|x64]   [admin]`
-   - [x86 | x64] : the version to build (required)
-   - [admin] : does your TOS platform require elevation? (leave blank if no)
+ ####++ Core C/C++ Libraries
+ ```
+(Admin) C:\[...TOSDataBridge]\tosdb-setup.bat   [x86|x64]   [admin]
+```
+ - [x86|x64] : the version to build (required)
+ - [admin] : does your TOS platform require elevation? (leave blank if no)
 
-   ####++ Python Wrapper/Front-End (optional)
-   `C:\[...TOSDataBridge]\python\python setup.py install`
-   - C/C++ libs must be installed first.
-   - Building the _tosdb.pyd extension is problematic on some systems - please refer to README.html for troubleshooting information.
+ ####++ Python Wrapper/Front-End (optional)
+ ```
+C:\[...TOSDataBridge]\python\python setup.py install
+```
+ - C/C++ libs must be installed first.
+ - Building the _tosdb.pyd extension is problematic on some systems - please refer to README.html for troubleshooting information.
 
 
 ###+ Start
-1. (You may need to white-list these files in your Anti-Virus software.) Start the service: (admin) C:\> `SC start TOSDataBridge`
-2. Include tos_databridge.h header in your code ( if C++ make sure containers.hpp and generic.hpp can be found by the compiler), add the necessary lib calls, build it.
+1. (You may need to white-list some of these files in your Anti-Virus software before proceeding.) Start the service:  
+```
+(Admin) C:\> SC start TOSDataBridge
+```
+2. Include tos_databridge.h header in your code (if C++ make sure containers.hpp and generic.hpp can be found by the compiler), add the necessary lib calls, build it.
 3. Log on to the TOS platform and start your program or the python wrapper(see the python tutorial in \python\docs for a walk-through).
 
 
