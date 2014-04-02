@@ -365,7 +365,7 @@ class TOS_DateTime( namedtuple("DateTime",[ "micro", "sec", "min", "hour", "day"
 
     @staticmethod
     def micro_to_dtd( micro_seconds ):
-        """ Converts micro_seconds to DateTimeDiff namedtuple """
+        """ Converts micro_seconds to DateTimeDiff  """
         pos = True
         if ( micro_seconds < 0 ):
             pos = False
@@ -384,7 +384,7 @@ class TOS_DateTime( namedtuple("DateTime",[ "micro", "sec", "min", "hour", "day"
         
     @staticmethod
     def dtd_to_micro( dtd ):
-        """ Converts dtd_tuple to micro_seconds """
+        """ Converts DateTimeDiff to micro_seconds """
         tmp = dtd.day * 24 + dtd.hour
         tmp = tmp*60 + dtd.min
         tmp = tmp*60 + dtd.sec
@@ -395,14 +395,14 @@ class TOS_DateTime( namedtuple("DateTime",[ "micro", "sec", "min", "hour", "day"
         elif( dtd.sign == '-'):
             return tmp * -1
         else:
-            raise TOSDB_Error( "invalid 'sign' field in dtd_tuple" )
+            raise TOSDB_Error( "invalid 'sign' field in DateTimeDiff" )
 
 class TOS_DataBlock:
     """ The main object for storing TOS data.    
 
     size: how much historical data to save
     date_time: should block include date-time stamp with each data-point?
-    timeout: how long to wait for responses from TOS-DDE server ( DEF_TIMEOUT recommended )
+    timeout: how long to wait for responses from TOS-DDE server 
 
     Please review the attached README.html for details.
     """    
@@ -531,7 +531,7 @@ class TOS_DataBlock:
         """ Returns the items currently in the block (and not pre-cached).
         
         str_max: the maximum length of item strings returned
-        returns -> list of strings (empty if all attempts fail)
+        returns -> list of strings 
         """
         size = self._item_count()      
         strs = [ _BUF_(str_max + 1) for _ in range(size)] # store char buffers       
@@ -553,7 +553,7 @@ class TOS_DataBlock:
         """ Returns the topics currently in the block (and not pre-cached).
         
         str_max: the maximum length of topic strings returned  
-        returns -> list of strings (empty if all attempts fail)
+        returns -> list of strings 
         """
         size = self._topic_count()
         strs = [ _BUF_(str_max + 1) for _ in range(size)]  # store char buffers
@@ -792,7 +792,7 @@ class TOS_DataBlock:
 
         topic: any topic string in the block
         date_time: (True/False) attempt to retrieve a TOS_DateTime object with the datum         
-        labels: (True/False) pull the item labels with the values ( atomically )
+        labels: (True/False) pull the item labels with the values 
         data_str_max: the maximum length of string data returned
         label_str_max: the maximum length of item label strings returned
 
@@ -882,7 +882,7 @@ class TOS_DataBlock:
   
         item: any item string in the block
         date_time: (True/False) attempt to retrieve a TOS_DateTime object with the datum         
-        labels: (True/False) pull the topic labels with the values ( atomically )
+        labels: (True/False) pull the topic labels with the values 
         data_str_max: the maximum length of string data returned
         label_str_max: the maximum length of topic label strings returned
 
@@ -937,7 +937,7 @@ class TOS_DataBlock:
         """ Return a matrix of the most recent values:  
         
         date_time: (True/False) attempt to retrieve a TOS_DateTime object with the datum         
-        labels: (True/False) pull the item and topic labels with the values ( atomically )
+        labels: (True/False) pull the item and topic labels with the values 
         data_str_max: the maximum length of string data returned
         label_str_max: the maximum length of label strings returned
         
