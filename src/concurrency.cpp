@@ -62,10 +62,10 @@ bool CyclicCountDownLatch::wait_for( size_t timeout, size_t delay )
 		return true;
 	std::unique_lock<std::mutex> lck(_mtx); 	
 	bool res = _cnd.wait_for( 
-					lck,
-					std::chrono::milliseconds(timeout),
-					[&]{ return _ids.empty(); }
-					);
+				lck,
+				std::chrono::milliseconds(timeout),
+				[&]{ return _ids.empty(); }
+				);
 	if( !res )
 		_ids.clear(); 				
 	_inFlag = false;
@@ -133,10 +133,10 @@ bool SignalManager::wait_for( std::string unqID, size_t timeout )
 		if( flgIter == _unqFlags.end() )
 			return false;
 		waitRes = _cnd.wait_for( 
-							lck, 
-							std::chrono::milliseconds(timeout), 
-							[=]{ return flgIter->second.first; } 
-							);
+					lck, 
+					std::chrono::milliseconds(timeout), 
+					[=]{ return flgIter->second.first; } 
+					);
 		waitRes = waitRes && flgIter->second.second;
 		_unqFlags.erase( flgIter );		
 	}	

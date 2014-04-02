@@ -30,18 +30,18 @@ template< typename T,typename T2> class RawDataBlock;
 typedef RawDataBlock< generic_type, DateTimeStamp> TOSDB_RawDataBlock;
 
 typedef struct {
-	TOSDB_RawDataBlock*		block;
-	str_set_type			itemPreCache;
-	topic_set_type			topicPreCache;	
-	unsigned long			timeout;
+	TOSDB_RawDataBlock*  block;
+	str_set_type         itemPreCache;
+	topic_set_type       topicPreCache;	
+	unsigned long        timeout;
 } TOSDBlock; /* don't provide ptr or const typedefs, force code to state explicitly */
 
-bool					ChceckIDLength(LPCSTR id);
-bool					ChceckStringLength(LPCSTR str);
-bool					ChceckStringLength(LPCSTR str, LPCSTR str2 );
-bool					ChceckStringLengths(LPCSTR* str, size_type szItems);
-TOS_Topics::TOPICS		GetTopicEnum( std::string sTopic); 
-const TOSDBlock*		GetBlockPtr( std::string id );
-const TOSDBlock*		GetBlockOrThrow( std::string id );
+bool                ChceckIDLength(LPCSTR id);
+bool                ChceckStringLength(LPCSTR str);
+bool                ChceckStringLength(LPCSTR str, LPCSTR str2 );
+bool                ChceckStringLengths(LPCSTR* str, size_type szItems);
+TOS_Topics::TOPICS  GetTopicEnum( std::string sTopic); 
+const TOSDBlock*    GetBlockPtr( std::string id );
+const TOSDBlock*    GetBlockOrThrow( std::string id );
 
 #endif

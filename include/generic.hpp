@@ -34,26 +34,26 @@ class Generic{
 	unsigned char _typeBSz;
 	
 	template< typename T > void _throw_bad_cast() const;
-	template< typename T > T	_cast_to_val() const;
-	template< typename T > T	_val_switch() const;
+	template< typename T > T    _cast_to_val() const;
+	template< typename T > T    _val_switch() const;
 	void _sub_deep_copy( Generic& dest, const Generic& src);
 
-	static const int VOID_		= 0;
-	static const int LONG_		= 1;
+	static const int VOID_      = 0;
+	static const int LONG_      = 1;
 	static const int LONG_LONG_ = 2;
-	static const int FLOAT_		= 3;
-	static const int DOUBLE_	= 4;
-	static const int STRING_	= 5;
+	static const int FLOAT_     = 3;
+	static const int DOUBLE_    = 4;
+	static const int STRING_    = 5;
 public:	
 
 	template<typename T >
 	struct Type_Check 
 	{
 		static const bool value = ( 
-		std::is_same<T, float>::value	|| 
-		std::is_same<T, long>::value	|| 
-		std::is_same<T, double>::value	|| 
-		std::is_same<T, long long>::value	||
+		std::is_same<T, float>::value || 
+		std::is_same<T, long>::value || 
+		std::is_same<T, double>::value || 
+		std::is_same<T, long long>::value ||
 		std::is_same<T, std::string>::value );
 	};
 
@@ -136,25 +136,25 @@ public:
 		return !this->operator==(gen);
 	}
 
-	inline size_t size() const				{ return _typeBSz; }
-	inline bool	is_float() const			{ return ( _typeVal == FLOAT_ ); }	
-	inline bool	is_double() const			{ return ( _typeVal == DOUBLE_ ); }	
-	inline bool	is_long() const				{ return ( _typeVal == LONG_ ); }
-	inline bool	is_long_long() const		{ return ( _typeVal == LONG_LONG_ ); }	
-	inline bool	is_string() const			{ return ( _typeVal == STRING_ ); }
-	inline bool	is_floating_point() const	{ return ( _typeVal == FLOAT_ || _typeVal == DOUBLE_ ); }
-	inline bool	is_integer() const			{ return ( _typeVal == LONG_ || _typeVal == LONG_LONG_ ); }
+	inline size_t size() const              { return _typeBSz; }
+	inline bool	is_float() const            { return ( _typeVal == FLOAT_ ); }	
+	inline bool	is_double() const           { return ( _typeVal == DOUBLE_ ); }	
+	inline bool	is_long() const             { return ( _typeVal == LONG_ ); }
+	inline bool	is_long_long() const        { return ( _typeVal == LONG_LONG_ ); }	
+	inline bool	is_string() const           { return ( _typeVal == STRING_ ); }
+	inline bool	is_floating_point() const   { return ( _typeVal == FLOAT_ || _typeVal == DOUBLE_ ); }
+	inline bool	is_integer() const          { return ( _typeVal == LONG_ || _typeVal == LONG_LONG_ ); }
 
-	inline long	as_long() const				{ return _val_switch<long>(); }
-	inline long long as_long_long() const	{ return _val_switch<long long>(); }
-	inline float as_float() const			{ return _val_switch<float>(); }
-	inline double as_double() const			{ return _val_switch<double>(); }
+	inline long	as_long() const             { return _val_switch<long>(); }
+	inline long long as_long_long() const   { return _val_switch<long long>(); }
+	inline float as_float() const           { return _val_switch<float>(); }
+	inline double as_double() const         { return _val_switch<double>(); }
 	std::string	as_string() const;
-	inline operator	long() const			{ return as_long(); }
-	inline operator	long long() const		{ return as_long_long(); }
-	inline operator	float() const			{ return as_float(); }
-	inline operator	double() const			{ return as_double(); }			
-	inline operator	std::string() const		{ return as_string();}
+	inline operator	long() const            { return as_long(); }
+	inline operator	long long() const       { return as_long_long(); }
+	inline operator	float() const           { return as_float(); }
+	inline operator	double() const          { return as_double(); }			
+	inline operator	std::string() const    { return as_string();}
 };	
 
 

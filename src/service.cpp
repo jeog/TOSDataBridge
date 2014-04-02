@@ -28,36 +28,36 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 
 namespace {
 		
-	LPCSTR	LOG_NAME		= "service-log.log";
+	LPCSTR	LOG_NAME        = "service-log.log";
 #ifdef _WIN64
-	LPCSTR	CORE_PROC_NAME	= "tos-databridge-engine-x64.exe";
+	LPCSTR	CORE_PROC_NAME  = "tos-databridge-engine-x64.exe";
 #else
-	LPCSTR	CORE_PROC_NAME	= "tos-databridge-engine-x86.exe";
+	LPCSTR	CORE_PROC_NAME  = "tos-databridge-engine-x86.exe";
 #endif
 	std::string coreProcPath;
 	std::string integrityLevel;
 	
-	LPSTR	serviceName		= "TOSDataBridge";	
-	char	coreProcCmd[12];
+	LPSTR serviceName = "TOSDataBridge";	
+	char  coreProcCmd[12];
 
-	PROCESS_INFORMATION		coreProcInfo;
+	PROCESS_INFORMATION coreProcInfo;
 	 	
-	const unsigned int		COMM_BUFFER_SIZE	= 4;
-	const unsigned int		ACL_SIZE			= 96;
-	const unsigned int		UPDATE_PERIOD		= 2000;	
-	const unsigned int		MAX_ARG_SIZE		= 20;
+	const unsigned int COMM_BUFFER_SIZE	= 4;
+	const unsigned int ACL_SIZE         = 96;
+	const unsigned int UPDATE_PERIOD    = 2000;	
+	const unsigned int MAX_ARG_SIZE     = 20;
 		
-	HINSTANCE				hInstance = NULL;
-	SYSTEM_INFO				sysInfo;
+	HINSTANCE hInstance = NULL;
+	SYSTEM_INFO sysInfo;
 		
-	volatile bool			shutdownFlag = false;	
-	volatile bool			pauseFlag = false;
-	volatile bool			isService = true;
+	volatile bool shutdownFlag = false;	
+	volatile bool pauseFlag = false;
+	volatile bool isService = true;
 
-	SERVICE_STATUS			serviceStatus;
-	SERVICE_STATUS_HANDLE	hServiceStatus; 
+	SERVICE_STATUS serviceStatus;
+	SERVICE_STATUS_HANDLE hServiceStatus; 
 
-	std::unique_ptr<DynamicIPCMaster>		globalIPCMaster;
+	std::unique_ptr<DynamicIPCMaster> globalIPCMaster;
 
 void UpdateStatus( int status, int check_point )
 {
@@ -174,14 +174,14 @@ VOID WINAPI	ServiceController( DWORD cntrl )
 
 bool SpawnRestrictedProcess()
 {			
-	STARTUPINFO		stupInfo;			
-	SID_NAME_USE	sidUseDummy;
-	HANDLE			hToken		= NULL; 
-	HANDLE			hChildToken	= NULL;
-	DWORD			sessionID	= 0;
-	bool			retVal		= false;
-	DWORD			sidSz		= SECURITY_MAX_SID_SIZE;
-	DWORD			domSz		= 256;
+	STARTUPINFO  stupInfo;			
+	SID_NAME_USE sidUseDummy;
+	HANDLE       hToken      = NULL; 
+	HANDLE       hChildToken = NULL;
+	DWORD        sessionID   = 0;
+	bool         retVal      = false;
+	DWORD        sidSz       = SECURITY_MAX_SID_SIZE;
+	DWORD        domSz       = 256;
 
 	SmartBuffer<VOID>	sidBuffer(sidSz);
 	SmartBuffer<CHAR>	domBuffer(domSz);			
@@ -251,15 +251,13 @@ bool SpawnRestrictedProcess()
 
 void WINAPI ServiceMain( DWORD argc, LPSTR argv[] )
 {
-	serviceStatus.dwServiceType				= SERVICE_WIN32_OWN_PROCESS;
-	serviceStatus.dwCurrentState			= SERVICE_START_PENDING;
-	serviceStatus.dwControlsAccepted		= SERVICE_ACCEPT_STOP |		
-											  SERVICE_ACCEPT_PAUSE_CONTINUE |
-											  SERVICE_ACCEPT_SHUTDOWN;
-	serviceStatus.dwWin32ExitCode			= NO_ERROR; 
+	serviceStatus.dwServiceType             = SERVICE_WIN32_OWN_PROCESS;
+	serviceStatus.dwCurrentState            = SERVICE_START_PENDING;
+	serviceStatus.dwControlsAccepted        = SERVICE_ACCEPT_STOP | SERVICE_ACCEPT_PAUSE_CONTINUE | SERVICE_ACCEPT_SHUTDOWN;
+	serviceStatus.dwWin32ExitCode           = NO_ERROR; 
 	serviceStatus.dwServiceSpecificExitCode = 0;
-	serviceStatus.dwCheckPoint				= 0;
-	serviceStatus.dwWaitHint				= (DWORD)(2.5 * UPDATE_PERIOD); 
+	serviceStatus.dwCheckPoint              = 0;
+	serviceStatus.dwWaitHint                = (DWORD)(2.5 * UPDATE_PERIOD); 
 
 	hServiceStatus = RegisterServiceCtrlHandler( serviceName, ServiceController ); 
 	if( !hServiceStatus )

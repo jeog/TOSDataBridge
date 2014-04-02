@@ -64,11 +64,11 @@ shem_chunk { 0, 0 } signals the end of a particular set of transmissions.
 
 class ExplicitHeap
 {
-	typedef unsigned long					headTy, sizeTy;
-	typedef unsigned char					*ptrTy;	
-	typedef	std::multimap< sizeTy, ptrTy >	heapTy;
-	typedef std::set< ptrTy >				setTy;
-	typedef std::pair< sizeTy, ptrTy >		heapPairTy;	
+	typedef unsigned long                   headTy, sizeTy;
+	typedef unsigned char                   *ptrTy;	
+	typedef	std::multimap< sizeTy, ptrTy >  heapTy;
+	typedef std::set< ptrTy >               setTy;
+	typedef std::pair< sizeTy, ptrTy >      heapPairTy;	
 
 	static const unsigned short HEADER = sizeof(headTy);
 
@@ -79,9 +79,9 @@ class ExplicitHeap
 	{   
 		 return (_allocated_set.find( (ptrTy)start ) != _allocated_set.cend());
 	}
-	// void _grow();		// TODO
-	// void _shrink();		// TODO
-	// void _coalesce();	// TODO
+	// void _grow();     // TODO
+	// void _shrink();   // TODO
+	// void _coalesce(); // TODO
 public:
 	
 	ExplicitHeap( void* beg_addr, sizeTy sz )
@@ -93,9 +93,9 @@ public:
 		{
 		}
 	
-	void*		allocate( sizeTy size);
-	bool		deallocate( void* start );
-	size_type	size( void* start );
+	void*      allocate( sizeTy size);
+	bool       deallocate( void* start );
+	size_type  size( void* start );
 
 	void clear()
 	{
@@ -117,10 +117,10 @@ public:
 		~shem_chunk(){}
 	};
 private:	
-	bool	_send( const shem_chunk& item ) const;	
-	bool	_recv( shem_chunk& item ) const;	
-	void*	_allocate( size_type sz ) const;
-	bool	_deallocate( void* start ) const;
+	bool  _send( const shem_chunk& item ) const;	
+	bool  _recv( shem_chunk& item ) const;	
+	void* _allocate( size_type sz ) const;
+	bool  _deallocate( void* start ) const;
 
 	template< typename C >
 	shem_chunk _insert( C cont ) const
@@ -136,21 +136,21 @@ private:
 		return shem_chunk((size_type)blk - (size_type)_mMapAddr, bSz);
 	}
 protected:
-	static const int			PAUSE = 1000;	
-	static const int			ACL_SIZE = 144;
-	static const char*			KMUTEX_NAME;
-	static const unsigned int	ALLOC = 1;
-	static const unsigned int	DEALLOC = 2;
-	static const unsigned int	PING = 4;
-	std::string					_shemStr;
-	std::string					_pipeStr;
-	std::string					_intrnlPipeStr;
-	void*						_fMapHndl;	
-	void*						_mMapAddr;
-	void*						_pipeHndl;
-	void*						_intrnlPipeHndl;
-	void*						_mtx;
-	int							_mMapSz;
+	static const int          PAUSE = 1000;	
+	static const int          ACL_SIZE = 144;
+	static const char*        KMUTEX_NAME;
+	static const unsigned int ALLOC = 1;
+	static const unsigned int DEALLOC = 2;
+	static const unsigned int PING = 4;
+	std::string               _shemStr;
+	std::string               _pipeStr;
+	std::string               _intrnlPipeStr;
+	void*                     _fMapHndl;	
+	void*                     _mMapAddr;
+	void*                     _pipeHndl;
+	void*                     _intrnlPipeHndl;
+	void*                     _mtx;
+	int                       _mMapSz;
 
 	DynamicIPCBase( std::string name, int sz = 0 )
 		:
@@ -292,33 +292,29 @@ public:
 		{
 			disconnect();
 		}
-	bool	try_for_slave();
-	void	disconnect( int level = 3 );
-	int		grab_pipe();
-	void	release_pipe();
-	bool	inline pipe_held() const { return _pipeHeld; } 
-	bool	connected() const;
+	bool try_for_slave();
+	void disconnect( int level = 3 );
+	int  grab_pipe();
+	void release_pipe();
+	bool inline pipe_held() const { return _pipeHeld; } 
+	bool connected() const;
 };
 
 class DynamicIPCSlave
 	: public DynamicIPCBase		
 {		
-	volatile bool _allocLoopF;
-	std::unique_ptr<ExplicitHeap>				_pHeap;	
-	std::unordered_map< Securable, 
-						SECURITY_ATTRIBUTES>	_secAttr;
-	std::unordered_map< Securable, 
-						SECURITY_DESCRIPTOR>	_secDesc; 	
-	std::unordered_map< Securable, 
-						SmartBuffer<void>>		_everyoneSIDs; 
-	std::unordered_map< Securable, 
-						SmartBuffer<ACL>>		_everyoneACLs;  
-	int		_set_security();
-	void	_listen_for_alloc();
+	volatile bool                  _allocLoopF;
+	std::unique_ptr<ExplicitHeap>  _pHeap;	
+	std::unordered_map< Securable, SECURITY_ATTRIBUTES> _secAttr;
+	std::unordered_map< Securable, SECURITY_DESCRIPTOR> _secDesc; 	
+	std::unordered_map< Securable, SmartBuffer<void> >  _everyoneSIDs; 
+	std::unordered_map< Securable, SmartBuffer<ACL> >   _everyoneACLs;  
+	int  _set_security();
+	void _listen_for_alloc();
 public:		
 	DynamicIPCSlave( std::string name, int sz );
 	virtual ~DynamicIPCSlave();
-	bool	wait_for_master();
+	bool    wait_for_master();
 	
 };
 

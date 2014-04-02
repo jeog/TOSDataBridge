@@ -30,10 +30,10 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 #include <thread>
 
 class BoundedSemaphore{
-	std::mutex							_mtx; 
-	std::condition_variable				_cnd;
-	std::atomic< unsigned long long >	_count;
-	unsigned long long					_max;
+	std::mutex                        _mtx; 
+	std::condition_variable           _cnd;
+	std::atomic< unsigned long long > _count;
+	unsigned long long                _max;
 public:
 	BoundedSemaphore( size_t count = 1, unsigned long long max = ULLONG_MAX )
 		:
@@ -56,15 +56,15 @@ class CyclicCountDownLatch {
 		count_down should occur
 	3) The ability to reuse the latch (which may cause
 		problems in non-trivial cases )							*/
-	typedef std::multiset< std::string >	_idsTy;
+	typedef std::multiset< std::string >  _idsTy;
 	
-	BoundedSemaphore						_sem;
-	std::mutex								_mtx;
-	std::condition_variable					_cnd;
-	std::atomic< size_t>					_in;
-	size_t									_out;
-	volatile bool							_inFlag;
-	_idsTy									_ids;	
+	BoundedSemaphore         _sem;
+	std::mutex               _mtx;
+	std::condition_variable  _cnd;
+	std::atomic< size_t>     _in;
+	size_t                   _out;
+	volatile bool            _inFlag;
+	_idsTy                   _ids;	
 
 public:
 	CyclicCountDownLatch( const _idsTy& ms = _idsTy() ) 
@@ -83,11 +83,12 @@ public:
 };
 
 class SignalManager {		
-	typedef std::pair< volatile bool, volatile bool >	_flagPairTy;
+	typedef std::pair< volatile bool, volatile bool >  _flagPairTy;
 	
-	std::mutex									_mtx;
-	std::condition_variable						_cnd; 
-	std::multimap< std::string, _flagPairTy >	_unqFlags; 
+	std::mutex                                 _mtx;
+	std::condition_variable                    _cnd; 
+	std::multimap< std::string, _flagPairTy >  _unqFlags; 
+
 	SignalManager( const SignalManager& );
 	SignalManager( SignalManager&& );
 	SignalManager& operator=( const SignalManager& );
@@ -150,8 +151,8 @@ public:
 
 class SignalManager { 
 	std::multimap< std::string, volatile bool > _unqFlags; 
-	LightWeightMutex							_mtx;
-	HANDLE										_event;		
+	LightWeightMutex                            _mtx;
+	HANDLE                                      _event;		
 	SignalManager( const SignalManager& );
 	SignalManager& operator=( const SignalManager& );	
 public:

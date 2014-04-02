@@ -69,11 +69,11 @@ void DeallocStrArray( const char* const* strArray, size_t numStrs )
 }
 
 namespace {
-	const size_type 			logColW[5] = {30, 12, 12, 20, 12};
-	const LPCSTR				sevStr[2] = {"low","high"};
-	std::mutex					fOutMtx; 	
-	std::ofstream				logOut;
-	const system_clock_type		sysClock;
+	const size_type         logColW[5] = {30, 12, 12, 20, 12};
+	const LPCSTR            sevStr[2] = {"low","high"};
+	std::mutex              fOutMtx; 	
+	std::ofstream           logOut;
+	const system_clock_type sysClock;
 };
 
 std::string SysTimeString()
@@ -93,12 +93,12 @@ void TOSDB_StartLogging(LPCSTR fName)
 	logOut.open( fName , std::ios::out | std::ios::app);		
 	if( logOut.seekp(0,std::ios::end).tellp() == std::ios::pos_type(0)){		
 		logOut<<std::setw(logColW[0])<< std::left << "DATE / TIME"
-			  <<std::setw(logColW[1])<< std::left << "Process ID"
-			  <<std::setw(logColW[2])<< std::left << "Thread ID"
-			  <<std::setw(logColW[3])<< std::left << "Log TAG"
-			  <<std::setw(logColW[4])<< std::left << "Severity"
-									 << std::left << "Description"
-									 << std::endl <<std::endl;		
+			<<std::setw(logColW[1])<< std::left << "Process ID"
+			<<std::setw(logColW[2])<< std::left << "Thread ID"
+			<<std::setw(logColW[3])<< std::left << "Log TAG"
+			<<std::setw(logColW[4])<< std::left << "Severity"
+			<< std::left << "Description"
+			<< std::endl <<std::endl;		
 	}
 }
 
@@ -113,21 +113,21 @@ void TOSDB_Log_( DWORD pid, DWORD tid, Severity sevr, LPCSTR tag,  LPCSTR descri
 	if( !logOut.is_open() ){
 		if (sevr > 0)
 			std::cerr<<std::setw(logColW[0])<< std::left<< nowTime.substr(0,30)
-			<<std::setw(logColW[1])<< std::left<< pid
-			<<std::setw(logColW[2])<< std::left<< tid
-			<<std::setw(logColW[3])<< std::left<< std::string(tag).substr(0,19)			
-								   << std::left<< description
-								   << std::endl;		
+				<<std::setw(logColW[1])<< std::left<< pid
+				<<std::setw(logColW[2])<< std::left<< tid
+				<<std::setw(logColW[3])<< std::left<< std::string(tag).substr(0,19)			
+				<< std::left<< description
+				<< std::endl;		
 	}
 	else
 	{
 		logOut<<std::setw(logColW[0])<< std::left<< nowTime.substr(0,30)
-				<<std::setw(logColW[1])<< std::left<< pid
-				<<std::setw(logColW[2])<< std::left<< tid
-				<<std::setw(logColW[3])<< std::left<< std::string(tag).substr(0,19)
-				<<std::setw(logColW[4])<< std::left<< sevStr[sevr]
-									   << std::left<< description
-									   << std::endl;
+			<<std::setw(logColW[1])<< std::left<< pid
+			<<std::setw(logColW[2])<< std::left<< tid
+			<<std::setw(logColW[3])<< std::left<< std::string(tag).substr(0,19)
+			<<std::setw(logColW[4])<< std::left<< sevStr[sevr]
+			<< std::left<< description
+			<< std::endl;
 	}
 }
 

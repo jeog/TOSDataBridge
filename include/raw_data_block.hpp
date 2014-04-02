@@ -25,23 +25,23 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 template< typename GenericTy, typename DateTimeTy >
 class RawDataBlock {	
 		
-	typedef tosdb_data_stream::Interface< DateTimeTy, GenericTy >						_iStreamTy;	
-	typedef std::unique_ptr< _iStreamTy >												_iStreamPtrTy;
-	typedef std::map< const TOS_Topics::TOPICS, _iStreamPtrTy, TOS_Topics::top_less>	_tRowTy;
-	typedef std::pair< const TOS_Topics::TOPICS, _iStreamPtrTy >						_tRowElemTy;
-	typedef	std::unique_ptr< _tRowTy >													_tRowPtrTy;	
-	typedef std::pair< const std::string , _tRowPtrTy >									_rawBlockElemTy;	
-	typedef std::lock_guard< std::recursive_mutex >										_guardTy;
+	typedef tosdb_data_stream::Interface< DateTimeTy, GenericTy >                    _iStreamTy;	
+	typedef std::unique_ptr< _iStreamTy >                                            _iStreamPtrTy;
+	typedef std::map< const TOS_Topics::TOPICS, _iStreamPtrTy, TOS_Topics::top_less> _tRowTy;
+	typedef std::pair< const TOS_Topics::TOPICS, _iStreamPtrTy >                     _tRowElemTy;
+	typedef	std::unique_ptr< _tRowTy >                                               _tRowPtrTy;	
+	typedef std::pair< const std::string , _tRowPtrTy >                              _rawBlockElemTy;	
+	typedef std::lock_guard< std::recursive_mutex >                                  _guardTy;
 
-	std::recursive_mutex* const							_mtxR;
-	std::unordered_map< std::string, _tRowPtrTy >		_rawBlock;
-	size_type											_blockSize;
-	str_set_type										_itemNames;	
-	topic_set_type										_topicEnums;
-	bool												_dtFlag;	
+	std::recursive_mutex* const                   _mtxR;
+	std::unordered_map< std::string, _tRowPtrTy > _rawBlock;
+	size_type                                     _blockSize;
+	str_set_type                                  _itemNames;	
+	topic_set_type                                _topicEnums;
+	bool                                         _dtFlag;	
 		
-	static size_type	_blockCount_;
-	static size_type	_maxBlockCount_;
+	static size_type _blockCount_;
+	static size_type _maxBlockCount_;
 	/* FORCE PUBLIC TO USE FACTORIES */	
 	RawDataBlock( str_set_type sItems, topic_set_type tTopics, const size_type sz, bool datetime ) 
 		:
@@ -106,24 +106,23 @@ class RawDataBlock {
 		}
 	}
 
-	_tRowTy*	insertTopic( _tRowTy*, TOS_Topics::TOPICS topic);
-	_tRowPtrTy	populateTBlock( _tRowPtrTy );
+	_tRowTy*   insertTopic( _tRowTy*, TOS_Topics::TOPICS topic);
+	_tRowPtrTy populateTBlock( _tRowPtrTy );
 
 public:
-	typedef GenericTy			generic_type;
-	typedef DateTimeTy			datetime_type;
-	typedef _iStreamTy			stream_type;
-//	typedef _iStreamPtrTy		stream_smart_ptr_type;
-	typedef const _iStreamTy*	stream_const_ptr_type;
+	typedef GenericTy         generic_type;
+	typedef DateTimeTy        datetime_type;
+	typedef _iStreamTy        stream_type;
+	typedef const _iStreamTy* stream_const_ptr_type;
 	
-	typedef std::vector< generic_type>				vector_type; 
-	typedef std::pair< std::string, generic_type >	pair_type; 
-	typedef std::map< std::string, generic_type >	map_type; 
-	typedef std::map< std::string, map_type >		matrix_type;
+	typedef std::vector< generic_type>             vector_type; 
+	typedef std::pair< std::string, generic_type > pair_type; 
+	typedef std::map< std::string, generic_type >  map_type; 
+	typedef std::map< std::string, map_type >      matrix_type;
 		
-	typedef std::pair< std::vector< generic_type >, std::vector< DateTimeStamp > >	vector_datetime_type;
-	typedef std::map< std::string, std::pair< generic_type, datetime_type > >		map_datetime_type;
-	typedef std::map< std::string, map_datetime_type >								matrix_datetime_type; 
+	typedef std::pair< std::vector< generic_type >, std::vector< DateTimeStamp > >  vector_datetime_type;
+	typedef std::map< std::string, std::pair< generic_type, datetime_type > >       map_datetime_type;
+	typedef std::map< std::string, map_datetime_type >                              matrix_datetime_type; 
 
 	/*----------			FACTORIES				-----------*/
 	static RawDataBlock* const CreateBlock( 
@@ -300,8 +299,8 @@ template< typename TG, typename TD >
 template < typename Val, typename DT > 
 void RawDataBlock<TG,TD>::insertData( TOS_Topics::TOPICS tTopic, std::string sItem, Val val, DT&& datetime ) 
 {
-	_iStreamTy	*dBlck; 
-	_tRowTy		*tBlck;	 
+	_iStreamTy *dBlck; 
+	_tRowTy    *tBlck;	 
 	try {		
 		_guardTy _lock_(*_mtxR);	
 		tBlck = _rawBlock.at(sItem).get(); 

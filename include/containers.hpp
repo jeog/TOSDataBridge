@@ -26,7 +26,7 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 template< typename T, typename Eq = std::less<T> >
 class ILSet : public std::set<T, Eq> { 	
 public: /* no virtual destructor; DO NOT cast away from ILSet */
-	typedef ILSet<T,Eq>		_myTy;
+	typedef ILSet<T,Eq>     _myTy;
 	typedef std::set<T, Eq> _myBaseTy;	
 	ILSet()
 		{
@@ -257,16 +257,16 @@ class TwoWayHashMap {
 	static_assert( !std::is_same<T1,T2>::value, 
 		"TwoWayHashMap requires different types." );	
 public:
-	typedef T1											key_type;
-	typedef T2											value_type;
-	typedef std::unordered_map< T1, T2, Hash1, Key1Eq>	map1_type; 
-	typedef std::unordered_map< T2, T1, Hash2, Key2Eq>	map2_type; 
-	typedef typename map1_type::value_type				pair1_type; 
-	typedef typename map2_type::value_type				pair2_type;
-	typedef typename map1_type::iterator				iterator1_type;
-	typedef typename map2_type::iterator				iterator2_type;
-	typedef typename map1_type::const_iterator			const_iterator1_type;
-	typedef typename map2_type::const_iterator			const_iterator2_type;
+	typedef T1                                          key_type;
+	typedef T2                                          value_type;
+	typedef std::unordered_map< T1, T2, Hash1, Key1Eq>  map1_type; 
+	typedef std::unordered_map< T2, T1, Hash2, Key2Eq>  map2_type; 
+	typedef typename map1_type::value_type              pair1_type; 
+	typedef typename map2_type::value_type              pair2_type;
+	typedef typename map1_type::iterator                iterator1_type;
+	typedef typename map2_type::iterator                iterator2_type;
+	typedef typename map1_type::const_iterator          const_iterator1_type;
+	typedef typename map2_type::const_iterator          const_iterator2_type;
 
 	TwoWayHashMap()
 		{
@@ -411,8 +411,8 @@ template< typename T1, typename T2,
 class TwoWayHashMap< T1, T2, true, Hash1, Hash2, Key1Eq, Key2Eq >  
 	: public TwoWayHashMap< T1, T2, false, Hash1, Hash2, Key1Eq, Key2Eq >{
 
-	typedef TwoWayHashMap< T1, T2, false, Hash1, Hash2, Key1Eq, Key2Eq >	_myBaseTy;
-	typedef std::lock_guard<std::recursive_mutex>							_guardTy;
+	typedef TwoWayHashMap< T1, T2, false, Hash1, Hash2, Key1Eq, Key2Eq > _myBaseTy;
+	typedef std::lock_guard<std::recursive_mutex>                        _guardTy;
 
 	std::recursive_mutex _mtx;
 public:

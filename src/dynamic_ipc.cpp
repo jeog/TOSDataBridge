@@ -29,15 +29,15 @@ void* ExplicitHeap::allocate( sizeTy size)
 	auto free_heap_end = _free_heap.cend();
 	// CHECK FOR SPACE ON THE FREE HEAP
 	auto found = std::find_first_of( 
-						_free_heap.cbegin(), 
-						free_heap_end,
-						snglton,
-						snglton + 1,
-						[&]( heapPairTy elem, sizeTy val)
-							{ 
-								return (elem.first >= val); 
-							}
-						);	
+					_free_heap.cbegin(), 
+					free_heap_end,
+					snglton,
+					snglton + 1,
+					[&]( heapPairTy elem, sizeTy val)
+						{ 
+							return (elem.first >= val); 
+						}
+					);	
 	if( found == free_heap_end ) // try to grow once we define _grow() 
 		throw std::bad_alloc();
 	else 
@@ -172,14 +172,14 @@ int DynamicIPCMaster::grab_pipe()
 		return -1;	
 	}	
 	_pipeHndl = CreateFile( 
-					_pipeStr.c_str(),
-					GENERIC_READ | GENERIC_WRITE,
-					FILE_SHARE_READ | FILE_SHARE_WRITE,
-					NULL,
-					OPEN_EXISTING,
-					FILE_ATTRIBUTE_NORMAL,
-					NULL
-					);	
+				_pipeStr.c_str(),
+				GENERIC_READ | GENERIC_WRITE,
+				FILE_SHARE_READ | FILE_SHARE_WRITE,
+				NULL,
+				OPEN_EXISTING,
+				FILE_ATTRIBUTE_NORMAL,
+				NULL
+				);	
 	if( !_pipeHndl || _pipeHndl == INVALID_HANDLE_VALUE )
 	{
 		TOSDB_LogEx("IPC-Master", "No pipe handle(and/or CreateFile() failed) in grab_pipe()", GetLastError());
@@ -407,11 +407,11 @@ bool DynamicIPCSlave::wait_for_master()
 
 int DynamicIPCSlave::_set_security()
 {	
-	SID_NAME_USE		sidUseDummy;
-	DWORD				domSz = 128;
-	DWORD				sidSz = SECURITY_MAX_SID_SIZE;
-	SmartBuffer<char>	domBuffer(domSz);
-	SmartBuffer<void>	everyoneSID(sidSz);
+	SID_NAME_USE      sidUseDummy;
+	DWORD             domSz = 128;
+	DWORD             sidSz = SECURITY_MAX_SID_SIZE;
+	SmartBuffer<char> domBuffer(domSz);
+	SmartBuffer<void> everyoneSID(sidSz);
 		
 	_secAttr[SHEM1].nLength = _secAttr[PIPE1].nLength = _secAttr[MUTEX1].nLength = sizeof(SECURITY_ATTRIBUTES);
 	_secAttr[SHEM1].bInheritHandle = _secAttr[PIPE1].bInheritHandle = _secAttr[MUTEX1].bInheritHandle = FALSE;

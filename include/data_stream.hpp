@@ -110,11 +110,11 @@ template< typename SecTy, typename GenTy >
 class Interface {
 
 public:
-	typedef GenTy						generic_type;
-	typedef SecTy						secondary_type;
-	typedef std::pair< GenTy, SecTy>	both_type;
-	typedef std::vector< GenTy >		generic_vector_type;
-	typedef std::vector< SecTy >		secondary_vector_type;
+	typedef GenTy                     generic_type;
+	typedef SecTy                     secondary_type;
+	typedef std::pair< GenTy, SecTy>  both_type;
+	typedef std::vector< GenTy >      generic_vector_type;
+	typedef std::vector< SecTy >      secondary_vector_type;
 
 	static const size_t MAX_BOUND_SIZE = INT_MAX;
 
@@ -150,15 +150,15 @@ protected:
 		}
 
 public:
-	virtual size_t					bound_size() const									= 0;
-	virtual size_t					bound_size( size_t )								= 0;
-	virtual size_t					size() const										= 0;
-	virtual bool					empty() const										= 0;	
-	virtual bool					uses_secondary()									= 0;
-	virtual generic_type			operator[]( int ) const								= 0;
-	virtual both_type				both( int ) const									= 0;	
-	virtual generic_vector_type		vector(int end = -1, int beg = 0) const				= 0;
-	virtual secondary_vector_type	secondary_vector(int end = -1, int beg = 0) const	= 0;	
+	virtual size_t                  bound_size() const = 0;
+	virtual size_t                  bound_size( size_t ) = 0;
+	virtual size_t                  size() const = 0;
+	virtual bool                    empty() const = 0;	
+	virtual bool                    uses_secondary() = 0;
+	virtual generic_type            operator[]( int ) const	= 0;
+	virtual both_type               both( int ) const = 0;	
+	virtual generic_vector_type     vector(int end = -1, int beg = 0) const = 0;
+	virtual secondary_vector_type   secondary_vector(int end = -1, int beg = 0) const = 0;	
 	
 	virtual void push( const generic_type& obj, secondary_type&& sec = secondary_type()) = 0;
 
@@ -255,10 +255,10 @@ public:
 
 /*	The container object w/o secondary deque */
 template < typename Ty,
-			typename SecTy,
-			 typename GenTy,			
-			  bool UseSecondary = false,
-			   typename Allocator = std::allocator<Ty> >
+            typename SecTy,
+             typename GenTy,			
+              bool UseSecondary = false,
+               typename Allocator = std::allocator<Ty> >
 class Object
 	: public Interface<SecTy, GenTy>{
 
@@ -269,10 +269,10 @@ class Object
 			Ty failed GenTy's type-check;" ); 
 	}_inst_check_;	
 	
-	typedef Object< Ty, SecTy, GenTy, UseSecondary, Allocator>	_myTy;
-	typedef Interface< SecTy, GenTy >							_myBase;
-	typedef std::deque< Ty, Allocator >							_myImplTy;			
-	typedef typename _myImplTy::const_iterator::difference_type	_myImplDiffTy;	
+	typedef Object< Ty, SecTy, GenTy, UseSecondary, Allocator>  _myTy;
+	typedef Interface< SecTy, GenTy >                           _myBase;
+	typedef std::deque< Ty, Allocator >                         _myImplTy;			
+	typedef typename _myImplTy::const_iterator::difference_type _myImplDiffTy;	
 
 	_myTy& operator=(const _myTy &);
 	
@@ -290,12 +290,12 @@ class Object
 	} 
 
 protected:
-	typedef std::lock_guard<std::recursive_mutex >	_guardTy;
+	typedef std::lock_guard<std::recursive_mutex >  _guardTy;
 	
-	std::recursive_mutex* const	_mtx; 
-	volatile bool				_push_has_priority;	
-	size_t						_qCount, _qBound;	
-	_myImplTy					_myImplObj;
+	std::recursive_mutex* const  _mtx; 
+	volatile bool                _push_has_priority;	
+	size_t                       _qCount, _qBound;	
+	_myImplTy                    _myImplObj;
 
 	void _yld_to_push() const
 	{	
@@ -338,8 +338,8 @@ protected:
 	}
 
 public:
-	typedef _myBase interface_type;
-	typedef Ty		value_type;
+	typedef _myBase  interface_type;
+	typedef Ty       value_type;
 
 	Object(size_t sz )
 		: 
@@ -502,15 +502,15 @@ public:
 
 /*	The container object w/ secondary deque */
 template < typename Ty,			
-			typename SecTy,
-			 typename GenTy,
-			  typename Allocator >
+            typename SecTy,
+             typename GenTy,
+              typename Allocator >
 class Object< Ty, SecTy, GenTy, true, Allocator >
 	: public Object< Ty, SecTy, GenTy, false, Allocator >{
 
-	typedef Object< Ty, SecTy, GenTy, true, Allocator>	_myTy;
+	typedef Object< Ty, SecTy, GenTy, true, Allocator>  _myTy;
 	typedef Object< Ty, SecTy, GenTy, false, Allocator> _myBase;
-	typedef std::deque< SecTy, Allocator >				_myImplSecTy;
+	typedef std::deque< SecTy, Allocator >              _myImplSecTy;
 	
 	_myImplSecTy _myImplSecObj;	
 	

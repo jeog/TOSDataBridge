@@ -33,69 +33,67 @@ namespace {
 
 	unsigned long long COUNTER = 0;
 	
-	LPCSTR					CLASS_NAME			= "DDE_CLIENT_WINDOW";
-	LPCSTR					LOG_NAME			= "engine-log.log";	
+	LPCSTR  CLASS_NAME = "DDE_CLIENT_WINDOW";
+	LPCSTR  LOG_NAME   = "engine-log.log";	
 	
-	const unsigned int		COMM_BUFFER_SIZE	= 5; //opcode + 3 args + {0,0}
-	const unsigned int		ACL_SIZE			= 96;
-	const unsigned int		UPDATE_PERIOD		= 2000;
+	const unsigned int COMM_BUFFER_SIZE   = 5; //opcode + 3 args + {0,0}
+	const unsigned int ACL_SIZE           = 96;
+	const unsigned int UPDATE_PERIOD      = 2000;
 	/* not guaranteed to be unique; need them at compile time */
-	const unsigned int		LINK_DDE_ITEM		= 0x0500;
-	const unsigned int		REQUEST_DDE_ITEM	= 0x0501;
-	const unsigned int		DELINK_DDE_ITEM		= 0x0502;
-	const unsigned int		CLOSE_CONVERSATION	= 0x0503;	
+	const unsigned int LINK_DDE_ITEM      = 0x0500;
+	const unsigned int REQUEST_DDE_ITEM   = 0x0501;
+	const unsigned int DELINK_DDE_ITEM    = 0x0502;
+	const unsigned int CLOSE_CONVERSATION = 0x0503;	
 		
-	HINSTANCE				hInstance			= NULL;
-	SYSTEM_INFO				sysInfo;
+	HINSTANCE    hInstance = NULL;
+	SYSTEM_INFO  sysInfo;
 
-	SECURITY_ATTRIBUTES		secAttr[2];
-	SECURITY_DESCRIPTOR		secDesc[2];
+	SECURITY_ATTRIBUTES secAttr[2];
+	SECURITY_DESCRIPTOR secDesc[2];
 
-	SmartBuffer<void>	everyoneSIDs[2]	= { 
-								SmartBuffer<void>(SECURITY_MAX_SID_SIZE), 
-								SmartBuffer<void>(SECURITY_MAX_SID_SIZE) };
-	SmartBuffer<ACL>	everyoneACLs[2]	= { 
-								SmartBuffer<ACL>(ACL_SIZE), 
-								SmartBuffer<ACL>(ACL_SIZE) }; 	
+	SmartBuffer<void> everyoneSIDs[2]
+		= { SmartBuffer<void>(SECURITY_MAX_SID_SIZE), SmartBuffer<void>(SECURITY_MAX_SID_SIZE) };
+	SmartBuffer<ACL> everyoneACLs[2]	
+		= { SmartBuffer<ACL>(ACL_SIZE), SmartBuffer<ACL>(ACL_SIZE) }; 	
 	
-	GlobalBuffersTy			globalBuffers;	
-	GlobalTopicsTy			globalTopics; 
-	GlobalConvosTy			globalConvos;	
-	LightWeightMutex		globalTopicMutex;
-	LightWeightMutex		globalBufferMutex;
-	SignalManager			globalAckSignals;
+	GlobalBuffersTy  globalBuffers;	
+	GlobalTopicsTy   globalTopics; 
+	GlobalConvosTy   globalConvos;	
+	LightWeightMutex globalTopicMutex;
+	LightWeightMutex globalBufferMutex;
+	SignalManager    globalAckSignals;
 
-	HANDLE					globalInitEvent		= NULL;
-	HANDLE					globalContinueEvent = NULL;
+	HANDLE globalInitEvent = NULL;
+	HANDLE globalContinueEvent = NULL;
 
-	HANDLE					msgThread			= NULL;
-	HWND					msgWindow			= NULL;
-	DWORD					msgThreadID			= 0;
-	LPCSTR					msgWindowName		= "TOSDB_ENGINE_MSG_WNDW";
+	HANDLE msgThread = NULL;
+	HWND   msgWindow = NULL;
+	DWORD  msgThreadID = 0;
+	LPCSTR msgWindowName = "TOSDB_ENGINE_MSG_WNDW";
 
-	volatile bool			shutdownFlag		= false;	
-	volatile bool			pauseFlag			= false;
-	volatile bool			isService			= true;
+	volatile bool shutdownFlag = false;	
+	volatile bool pauseFlag = false;
+	volatile bool isService = true;
 
 	template< typename T > 
-	int		RouteToBuffer( DDE_Data<T>&& data );	
-	int		MainCommLoop();	
-	int		AddStream( TOS_Topics::TOPICS tTopic, std::string sItem, size_type timeout );
-	bool	RemoveStream( TOS_Topics::TOPICS tTopic, std::string sItem, size_type timeout );
-	void	CloseAllStreams( size_type timeout );
-	int		SetSecurityPolicy();
-	bool	PostItem( std::string sItem, TOS_Topics::TOPICS tTopic, size_type timeout );
-	bool	PostCloseItem( std::string sItem, TOS_Topics::TOPICS tTopic, size_type timeout );
-	void	TearDownTopic( TOS_Topics::TOPICS tTopic, size_type timeout );
-	bool	CreateBuffer( TOS_Topics::TOPICS tTopic, std::string sItem, unsigned int bufSz = TOSDB_SHEM_BUF_SZ );
-	bool	DestroyBuffer( TOS_Topics::TOPICS tTopic, std::string sItem );
-	void	HandleData( UINT msg, WPARAM wparam, LPARAM lparam );
-	void	DeAllocKernResources();
-	int		CleanUpMain( int retCode );
-	void	DumpBufferStatus();
+	int   RouteToBuffer( DDE_Data<T>&& data );	
+	int   MainCommLoop();	
+	int   AddStream( TOS_Topics::TOPICS tTopic, std::string sItem, size_type timeout );
+	bool  RemoveStream( TOS_Topics::TOPICS tTopic, std::string sItem, size_type timeout );
+	void  CloseAllStreams( size_type timeout );
+	int   SetSecurityPolicy();
+	bool  PostItem( std::string sItem, TOS_Topics::TOPICS tTopic, size_type timeout );
+	bool  PostCloseItem( std::string sItem, TOS_Topics::TOPICS tTopic, size_type timeout );
+	void  TearDownTopic( TOS_Topics::TOPICS tTopic, size_type timeout );
+	bool  CreateBuffer( TOS_Topics::TOPICS tTopic, std::string sItem, unsigned int bufSz = TOSDB_SHEM_BUF_SZ );
+	bool  DestroyBuffer( TOS_Topics::TOPICS tTopic, std::string sItem );
+	void  HandleData( UINT msg, WPARAM wparam, LPARAM lparam );
+	void  DeAllocKernResources();
+	int   CleanUpMain( int retCode );
+	void  DumpBufferStatus();
 
-	DWORD WINAPI		Threaded_Init( LPVOID lParam );
-	LRESULT CALLBACK	WndProc(HWND, UINT, WPARAM, LPARAM); 	
+	DWORD WINAPI      Threaded_Init( LPVOID lParam );
+	LRESULT CALLBACK  WndProc(HWND, UINT, WPARAM, LPARAM); 	
 };
 
 const TOS_Topics::topic_map_type& TOS_Topics::globalTopicMap = TOS_Topics::_globalTopicMap;
@@ -380,11 +378,11 @@ void CloseAllStreams( unsigned long timeout )
 
 int SetSecurityPolicy() 
 {		
-	SID_NAME_USE		sidUseDummy;
-	DWORD				domSz = 128;
-	DWORD				sidSz = SECURITY_MAX_SID_SIZE;
-	SmartBuffer<char>	domBuffer(domSz);
-	SmartBuffer<void>	everyoneSID(sidSz);	
+	SID_NAME_USE      sidUseDummy;
+	DWORD             domSz = 128;
+	DWORD             sidSz = SECURITY_MAX_SID_SIZE;
+	SmartBuffer<char> domBuffer(domSz);
+	SmartBuffer<void> everyoneSID(sidSz);	
 
 	secAttr[SHEM1].nLength = secAttr[MUTEX1].nLength = sizeof(SECURITY_ATTRIBUTES);
 	secAttr[SHEM1].bInheritHandle = secAttr[MUTEX1].bInheritHandle = FALSE;
@@ -421,15 +419,14 @@ DWORD WINAPI Threaded_Init( LPVOID lParam )
 	if( !hInstance )
 		hInstance = GetModuleHandle(NULL);
 	msgWindow = CreateWindow( 
-					CLASS_NAME, 
-					msgWindowName, 
-					WS_OVERLAPPEDWINDOW,
-					0, 0, 0, 0, 
-					NULL, NULL, 
-					hInstance, 
-					NULL
-					);
-	
+				CLASS_NAME, 
+				msgWindowName, 
+				WS_OVERLAPPEDWINDOW,
+				0, 0, 0, 0, 
+				NULL, NULL, 
+				hInstance, 
+				NULL
+				);	
 	if( !msgWindow ) 
 		return 1; 
 	SetEvent( globalInitEvent );
@@ -481,13 +478,13 @@ bool CreateBuffer( TOS_Topics::TOPICS tTopic, std::string sItem, unsigned int bu
 	sBuf = CreateBufferName( TOS_Topics::globalTopicMap[tTopic], sItem );
 	buf.rawSz = ( bufSz < sysInfo.dwPageSize ) ? sysInfo.dwPageSize : bufSz;
 	buf.hFile = CreateFileMapping( 
-						INVALID_HANDLE_VALUE,
-						&secAttr[SHEM1],
-						PAGE_READWRITE, 
-						0,
-						buf.rawSz,
-						sBuf.c_str()
-						); 
+					INVALID_HANDLE_VALUE,
+					&secAttr[SHEM1],
+					PAGE_READWRITE, 
+					0,
+					buf.rawSz,
+					sBuf.c_str()
+					); 
 	if( !buf.hFile )
 		return false;
 	buf.rawAddr = MapViewOfFile( buf.hFile, FILE_MAP_ALL_ACCESS, 0, 0, 0 ); 		
@@ -805,10 +802,10 @@ void HandleData( UINT msg, WPARAM wparam, LPARAM lparam )
 
 void DumpBufferStatus()
 {	
-	const size_type 		logColW[5] = { 30, 30, 10, 60, 16};	 
-	std::string				nowTime( SysTimeString() );		
-	std::string				fName( "buffer-status-" );
-	std::ofstream			logOut;
+	const size_type logColW[5] = { 30, 30, 10, 60, 16};	 
+	std::string     nowTime( SysTimeString() );		
+	std::string     fName( "buffer-status-" );
+	std::ofstream   logOut;
 		
 	std::replace_if(
 		nowTime.begin(),

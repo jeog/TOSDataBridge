@@ -32,26 +32,28 @@ std::recursive_mutex* const globalMutex =  new std::recursive_mutex;
 
 namespace {		
 
-	typedef std::tuple< unsigned int, unsigned int,	
-						std::set< const TOSDBlock* >, 
-						HANDLE, HANDLE >					BufferInfoTy;
-	typedef std::pair< TOS_Topics::TOPICS, std::string >	BufferIDTy;
-	typedef std::map< BufferIDTy, BufferInfoTy >			InptBuffersTy;
-	typedef std::lock_guard< std::mutex >					GuardTy;
+	typedef std::tuple< 
+		unsigned int, 
+		unsigned int,	
+		std::set< const TOSDBlock* >, 
+		HANDLE, 
+		HANDLE >                                            BufferInfoTy;
+	typedef std::pair< TOS_Topics::TOPICS, std::string >    BufferIDTy;
+	typedef std::map< BufferIDTy, BufferInfoTy >            InptBuffersTy;
+	typedef std::lock_guard< std::mutex >                   GuardTy;
 
 	DynamicIPCMaster rpcMaster( TOSDB_COMM_CHANNEL ); 
 	
-	std::map< std::string, 
-			  TOSDBlock* >	globalDDEBlockMap;
-	InptBuffersTy			globalInputBuffers;
-	HANDLE					bufferThread		= NULL;
-	DWORD					bufferThreadID		= 0;
-	unsigned short			globalLatency		= (unsigned short)TOSDB_DEF_LATENCY;
-	std::mutex				globalBufferMutex;
-	std::atomic<bool>		awareOfConnection(false);	
+	std::map< std::string, TOSDBlock* >  globalDDEBlockMap;
+	InptBuffersTy                        globalInputBuffers;
+	HANDLE                               bufferThread = NULL;
+	DWORD                                bufferThreadID = 0;
+	unsigned short                       globalLatency= (unsigned short)TOSDB_DEF_LATENCY;
+	std::mutex                           globalBufferMutex;
+	std::atomic<bool>                    awareOfConnection(false);	
 
-	TOSDBlock*		_getBlockPtr( std::string id);
-	DWORD WINAPI	BlockCleanup( LPVOID lParam );
+	TOSDBlock*    _getBlockPtr( std::string id);
+	DWORD WINAPI  BlockCleanup( LPVOID lParam );
 	
 	steady_clock_type steadyClock;
 
@@ -365,12 +367,12 @@ int TOSDB_CreateBlock( LPCSTR id, size_type sz, BOOL datetime, size_type timeout
 	all add methods end up here */
 int TOSDB_Add( std::string id, str_set_type sItems, topic_set_type tTopics )
 {
-	topic_set_type	tDiff, oldTopics, totTopics;
-	str_set_type	iDiff, oldItems, iUnion, totItems;
-	bool			isEmpty;
-	TOSDBlock		*db;
-	HWND			hndl	=	NULL;
-	int				errVal	=	0;
+	topic_set_type  tDiff, oldTopics, totTopics;
+	str_set_type    iDiff, oldItems, iUnion, totItems;
+	bool            isEmpty;
+	TOSDBlock       *db;
+	HWND            hndl = NULL;
+	int             errVal = 0;
 	if( !rpcMaster.connected() || !awareOfConnection.load() )
 	{
 		TOSDB_LogH("IPC", "not connected to slave/server");
@@ -379,8 +381,8 @@ int TOSDB_Add( std::string id, str_set_type sItems, topic_set_type tTopics )
 	rGuardTy _lock_(*globalMutex);
 	if( !(db = _getBlockPtr(id) ) )
 		return -3;
-	oldTopics	= db->block->topics();
-	oldItems	= db->block->items(); 
+	oldTopics = db->block->topics();
+	oldItems = db->block->items(); 
 	if( !db->itemPreCache.empty() )
 	{	/* if we have pre-cached items, include them */	
 		std::set_union(
