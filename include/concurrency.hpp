@@ -1,5 +1,5 @@
 /* 
-Copyright (C) 2014 Jonathon Ogden	 < jeog.dev@gmail.com >
+Copyright (C) 2014 Jonathon Ogden     < jeog.dev@gmail.com >
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -30,145 +30,145 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 #include <thread>
 
 class BoundedSemaphore{
-	std::mutex                        _mtx; 
-	std::condition_variable           _cnd;
-	std::atomic< unsigned long long > _count;
-	unsigned long long                _max;
+    std::mutex                        _mtx; 
+    std::condition_variable           _cnd;
+    std::atomic< unsigned long long > _count;
+    unsigned long long                _max;
 public:
-	BoundedSemaphore( size_t count = 1, unsigned long long max = ULLONG_MAX )
-		:
-		_count( count ),
-		_max( max )
-		{ 
-		}
-	void wait();
-	void release( size_t num = 1 );
-	unsigned long long count() const
-	{
-		return this->_count.load();
-	}
+    BoundedSemaphore( size_t count = 1, unsigned long long max = ULLONG_MAX )
+        :
+        _count( count ),
+        _max( max )
+        { 
+        }
+    void wait();
+    void release( size_t num = 1 );
+    unsigned long long count() const
+    {
+        return this->_count.load();
+    }
 };
 
 class CyclicCountDownLatch {
 /* similar concept to a Java CountDownLatch but should provide :
-	1) The ability to increment the latch
-	2) The use of specific strings to check that a 
-		count_down should occur
-	3) The ability to reuse the latch (which may cause
-		problems in non-trivial cases )							*/
-	typedef std::multiset< std::string >  _idsTy;
-	
-	BoundedSemaphore         _sem;
-	std::mutex               _mtx;
-	std::condition_variable  _cnd;
-	std::atomic< size_t>     _in;
-	size_t                   _out;
-	volatile bool            _inFlag;
-	_idsTy                   _ids;	
+    1) The ability to increment the latch
+    2) The use of specific strings to check that a 
+        count_down should occur
+    3) The ability to reuse the latch (which may cause
+        problems in non-trivial cases )                            */
+    typedef std::multiset< std::string >  _idsTy;
+    
+    BoundedSemaphore         _sem;
+    std::mutex               _mtx;
+    std::condition_variable  _cnd;
+    std::atomic< size_t>     _in;
+    size_t                   _out;
+    volatile bool            _inFlag;
+    _idsTy                   _ids;    
 
 public:
-	CyclicCountDownLatch( const _idsTy& ms = _idsTy() ) 
-		: 
-		 _ids( ms ),
-		 _sem( 0 ),
-		 _in( 0 ), 
-		 _out( 0 ),
-		 _inFlag(false)		
-		{
-		}
-	bool wait_for( size_t timeout, size_t delay = 0 );	
-	void wait( size_t delay = 0);
-	void count_down( std::string strID );
-	void increment( std::string strID );
+    CyclicCountDownLatch( const _idsTy& ms = _idsTy() ) 
+        : 
+         _ids( ms ),
+         _sem( 0 ),
+         _in( 0 ), 
+         _out( 0 ),
+         _inFlag(false)        
+        {
+        }
+    bool wait_for( size_t timeout, size_t delay = 0 );    
+    void wait( size_t delay = 0);
+    void count_down( std::string strID );
+    void increment( std::string strID );
 };
 
-class SignalManager {		
-	typedef std::pair< volatile bool, volatile bool >  _flagPairTy;
-	
-	std::mutex                                 _mtx;
-	std::condition_variable                    _cnd; 
-	std::multimap< std::string, _flagPairTy >  _unqFlags; 
+class SignalManager {        
+    typedef std::pair< volatile bool, volatile bool >  _flagPairTy;
+    
+    std::mutex                                 _mtx;
+    std::condition_variable                    _cnd; 
+    std::multimap< std::string, _flagPairTy >  _unqFlags; 
 
-	SignalManager( const SignalManager& );
-	SignalManager( SignalManager&& );
-	SignalManager& operator=( const SignalManager& );
-	SignalManager& operator=( SignalManager&& );
+    SignalManager( const SignalManager& );
+    SignalManager( SignalManager&& );
+    SignalManager& operator=( const SignalManager& );
+    SignalManager& operator=( SignalManager&& );
 public:
-	SignalManager()
-		{
-		}
-	void set_signal_ID( std::string unqID );
-	bool wait( std::string unqID );
-	bool wait_for( std::string unqID, size_t timeout );	
-	bool signal( std::string unqID, bool secondary );
+    SignalManager()
+        {
+        }
+    void set_signal_ID( std::string unqID );
+    bool wait( std::string unqID );
+    bool wait_for( std::string unqID, size_t timeout );    
+    bool signal( std::string unqID, bool secondary );
 };
 #else
 #include <Windows.h>
 
 class LightWeightMutex{
-	CRITICAL_SECTION _cs;
-	LightWeightMutex( const LightWeightMutex& );
-	LightWeightMutex& operator=( const LightWeightMutex& );
+    CRITICAL_SECTION _cs;
+    LightWeightMutex( const LightWeightMutex& );
+    LightWeightMutex& operator=( const LightWeightMutex& );
 public:
-	LightWeightMutex()
-		{
-			InitializeCriticalSection( &_cs );
-		}
-	~LightWeightMutex()
-		{
-			DeleteCriticalSection( &_cs );
-		}
-	void lock()
-	{
-		EnterCriticalSection( &_cs );
-	}
-	bool try_lock()
-	{
-		return TryEnterCriticalSection( &_cs ) ? true : false;
-	}
-	void unlock()
-	{
-		LeaveCriticalSection( &_cs );
-	}	
+    LightWeightMutex()
+        {
+            InitializeCriticalSection( &_cs );
+        }
+    ~LightWeightMutex()
+        {
+            DeleteCriticalSection( &_cs );
+        }
+    void lock()
+    {
+        EnterCriticalSection( &_cs );
+    }
+    bool try_lock()
+    {
+        return TryEnterCriticalSection( &_cs ) ? true : false;
+    }
+    void unlock()
+    {
+        LeaveCriticalSection( &_cs );
+    }    
 };
 
-class WinLockGuard{	
-	LightWeightMutex& _mtx;
-	WinLockGuard( const WinLockGuard& );
-	WinLockGuard& operator=( const WinLockGuard& ); 
+class WinLockGuard{    
+    LightWeightMutex& _mtx;
+    WinLockGuard( const WinLockGuard& );
+    WinLockGuard& operator=( const WinLockGuard& ); 
 public:
-	WinLockGuard( LightWeightMutex& mutex )
-		: 
-		_mtx( mutex )
-		{
-			_mtx.lock();
-		}
-	~WinLockGuard()
-		{
-			_mtx.unlock();
-		}
+    WinLockGuard( LightWeightMutex& mutex )
+        : 
+        _mtx( mutex )
+        {
+            _mtx.lock();
+        }
+    ~WinLockGuard()
+        {
+            _mtx.unlock();
+        }
 };
 
 class SignalManager { 
-	std::multimap< std::string, volatile bool > _unqFlags; 
-	LightWeightMutex                            _mtx;
-	HANDLE                                      _event;		
-	SignalManager( const SignalManager& );
-	SignalManager& operator=( const SignalManager& );	
+    std::multimap< std::string, volatile bool > _unqFlags; 
+    LightWeightMutex                            _mtx;
+    HANDLE                                      _event;        
+    SignalManager( const SignalManager& );
+    SignalManager& operator=( const SignalManager& );    
 public:
-	SignalManager()
-		: 
-		_event( CreateEvent( NULL, FALSE, FALSE, NULL) )
-		{			
-		}
-	~SignalManager()
-		{
-			CloseHandle( _event );		
-		}
-	void set_signal_ID( std::string unqID );
-	bool wait( std::string unqID );		
-	bool wait_for( std::string unqID, size_type timeout );
-	bool signal( std::string unqID, bool secondary );
+    SignalManager()
+        : 
+        _event( CreateEvent( NULL, FALSE, FALSE, NULL) )
+        {            
+        }
+    ~SignalManager()
+        {
+            CloseHandle( _event );        
+        }
+    void set_signal_ID( std::string unqID );
+    bool wait( std::string unqID );        
+    bool wait_for( std::string unqID, size_type timeout );
+    bool signal( std::string unqID, bool secondary );
 };
 
 #endif 

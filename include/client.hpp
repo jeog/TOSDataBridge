@@ -1,5 +1,5 @@
 /* 
-Copyright (C) 2014 Jonathon Ogden	 < jeog.dev@gmail.com >
+Copyright (C) 2014 Jonathon Ogden     < jeog.dev@gmail.com >
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -30,10 +30,10 @@ template< typename T,typename T2> class RawDataBlock;
 typedef RawDataBlock< generic_type, DateTimeStamp> TOSDB_RawDataBlock;
 
 typedef struct {
-	TOSDB_RawDataBlock*  block;
-	str_set_type         itemPreCache;
-	topic_set_type       topicPreCache;	
-	unsigned long        timeout;
+    TOSDB_RawDataBlock*  block;
+    str_set_type         itemPreCache;
+    topic_set_type       topicPreCache;    
+    unsigned long        timeout;
 } TOSDBlock; /* don't provide ptr or const typedefs, force code to state explicitly */
 
 bool                ChceckIDLength(LPCSTR id);

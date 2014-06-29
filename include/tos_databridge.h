@@ -1,5 +1,5 @@
 /* 
-Copyright (C) 2014 Jonathon Ogden	 < jeog.dev@gmail.com >
+Copyright (C) 2014 Jonathon Ogden     < jeog.dev@gmail.com >
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -19,7 +19,7 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 #define JO_TOSDB_DATABRIDGE
 
 /* internal objects of exported impl classes not exported;
-	look here if link errors on change of_tos-databridge... mods */
+    look here if link errors on change of_tos-databridge... mods */
 #pragma warning( once : 4251 )
 /* decorated name length exceeded warning */
 #pragma warning( disable : 4503 )
@@ -39,18 +39,18 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 #if defined(THIS_EXPORTS_INTERFACE)
 #define DLL_SPEC_IFACE_ __declspec (dllexport)
 /*#define TMPL_EXP__( _tmpl, _prot, _body ) \
-	_tmpl DLL_SPEC_IFACE_ _prot ;*/
+    _tmpl DLL_SPEC_IFACE_ _prot ;*/
 #elif defined(THIS_DOESNT_IMPORT_INTERFACE)
 #define DLL_SPEC_IFACE_ 
 //#define TMPL_EXP__
 #else /* default interface directive should be to import */
 #define DLL_SPEC_IFACE_ __declspec (dllimport)
 /*#define TMPL_EXP__( _tmpl, _prot, _body ) \
-	_tmpl \
-	inline _prot \
-	{ \
-	_body \
-	}  */
+    _tmpl \
+    inline _prot \
+    { \
+    _body \
+    }  */
 #endif 
 
 #if defined(THIS_EXPORTS_IMPLEMENTATION)
@@ -75,7 +75,7 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 #endif
 #endif
 /* define to use portable sync objects built on std::condition_variable,
-	(doesn't work properly in VS2012: throws access violation)		*/
+    (doesn't work properly in VS2012: throws access violation)        */
 #ifdef CPP_COND_VAR
 #define CPP_COND_VAR_
 #endif
@@ -104,7 +104,7 @@ class DLL_SPEC_IMPL_ DynamicIPCMaster;
 class DLL_SPEC_IMPL_ DynamicIPCSlave;
 #endif
 /* externally: limiting use of Win typedefs to LPCSTR / LPSTR, when possible 
-   internally: WinAPI facing / relevant code will use all	*/
+   internally: WinAPI facing / relevant code will use all    */
 #include <windows.h> 
 #include <time.h>
 #ifdef __cplusplus
@@ -115,7 +115,7 @@ class DLL_SPEC_IMPL_ DynamicIPCSlave;
 #include <thread>
 #include <memory>
 #include "containers.hpp"/*custom client-facing containers */
-#include "generic.hpp"	/* our 'generic' type */
+#include "generic.hpp"    /* our 'generic' type */
 #endif
 
 /* the core types implemented by the data engine: engine-core.cpp */
@@ -128,7 +128,7 @@ typedef unsigned long size_type;
 typedef unsigned char type_bits_type;
 
 /* need to #define; can't define consts in header because of C,
-	can't define at link-time because of switches / arrays */
+    can't define at link-time because of switches / arrays */
 #define TOSDB_SIG_ADD 1
 #define TOSDB_SIG_REMOVE 2
 #define TOSDB_SIG_PAUSE 3
@@ -151,44 +151,44 @@ typedef unsigned char type_bits_type;
 
 #define TOSDB_MAX_STR_SZ ((unsigned long)0xFF)
 
-extern char	DLL_SPEC_IMPL_  TOSDB_LOG_PATH[ MAX_PATH+20 ]; 
-/* consts NOT exported from tos-databridge-0.1[].dll */	
-extern LPCSTR  TOSDB_APP_NAME;		
+extern char    DLL_SPEC_IMPL_  TOSDB_LOG_PATH[ MAX_PATH+20 ]; 
+/* consts NOT exported from tos-databridge-0.1[].dll */    
+extern LPCSTR  TOSDB_APP_NAME;        
 extern LPCSTR  TOSDB_COMM_CHANNEL;
 /* consts exported from tos-databridge-0.1[].dll, must use /export:[func name] during link */
-extern CDCR_ const size_type DLL_SPEC_IFACE_  TOSDB_DEF_TIMEOUT;	// 2000
-extern CDCR_ const size_type DLL_SPEC_IFACE_  TOSDB_MIN_TIMEOUT;	// 1500
-extern CDCR_ const size_type DLL_SPEC_IFACE_  TOSDB_SHEM_BUF_SZ;	// 4096
-extern CDCR_ const size_type DLL_SPEC_IFACE_  TOSDB_BLOCK_ID_SZ;	// 63
+extern CDCR_ const size_type DLL_SPEC_IFACE_  TOSDB_DEF_TIMEOUT;    // 2000
+extern CDCR_ const size_type DLL_SPEC_IFACE_  TOSDB_MIN_TIMEOUT;    // 1500
+extern CDCR_ const size_type DLL_SPEC_IFACE_  TOSDB_SHEM_BUF_SZ;    // 4096
+extern CDCR_ const size_type DLL_SPEC_IFACE_  TOSDB_BLOCK_ID_SZ;    // 63
 
 typedef const enum{ 
-	SHEM1 = 0, 
-	MUTEX1, 
-	PIPE1 
+    SHEM1 = 0, 
+    MUTEX1, 
+    PIPE1 
 }Securable;
 
 typedef const enum{ /*milliseconds*/
-	Fastest = 0, 
-	VeryFast = 3, 
-	Fast = 30, 
-	Moderate = 300, 
-	Slow = 3000, 
-	Glacial = 30000 /* for debuging, generally useless for real-time apps */
+    Fastest = 0, 
+    VeryFast = 3, 
+    Fast = 30, 
+    Moderate = 300, 
+    Slow = 3000, 
+    Glacial = 30000 /* for debuging, generally useless for real-time apps */
 }UpdateLatency;
 #define TOSDB_DEF_LATENCY Fast
 
 typedef struct {
-	struct tm  ctime_struct;
-	long       micro_second;
+    struct tm  ctime_struct;
+    long       micro_second;
 } DateTimeStamp, *pDateTimeStamp;
 
 /* a header that will be placed at the front(offset 0) of the mem mapping */
 typedef struct{ /* only necessary if you're dealing with the engine.exe buffers directly */
-	volatile unsigned int  loop_seq;	   /* count/sequence of times buffer has looped back to beginning */
-	volatile unsigned int  elem_size;   /* physical / logical size of elements in the buffer */
-	volatile unsigned int  beg_offset;  /* logical location within the buffer (after the header) */
-	volatile unsigned int  end_offset;  /* logical location: beg_offset + ( (raw_size - beg_offset) // elem_size ) */
-	volatile unsigned int  next_offset; /* logical location of the next position to be writen to */
+    volatile unsigned int  loop_seq;       /* count/sequence of times buffer has looped back to beginning */
+    volatile unsigned int  elem_size;   /* physical / logical size of elements in the buffer */
+    volatile unsigned int  beg_offset;  /* logical location within the buffer (after the header) */
+    volatile unsigned int  end_offset;  /* logical location: beg_offset + ( (raw_size - beg_offset) // elem_size ) */
+    volatile unsigned int  next_offset; /* logical location of the next position to be writen to */
 } BufferHead, *pBufferHead; 
 
 #define TOSDB_BIT_SHIFT_LEFT(T,val) (((T)val)<<((sizeof(T)-sizeof(type_bits_type))*8))
@@ -196,7 +196,7 @@ typedef struct{ /* only necessary if you're dealing with the engine.exe buffers 
 
 #ifdef __cplusplus
 /* for C code: create a string of form: "TOSDB_[topic name]_[item name]"  
-	only alpha-numeric characters (except under-score)				*/
+    only alpha-numeric characters (except under-score)                */
 std::string CreateBufferName( std::string sTopic, std::string sItem );
 std::string SysTimeString();
 
@@ -210,175 +210,175 @@ typedef JO::Generic                                                     generic_
 typedef std::pair< generic_type, DateTimeStamp >                        generic_dts_type; 
 typedef std::vector< generic_type >                                     generic_vector_type;
 typedef std::vector< DateTimeStamp >                                    dts_vector_type;
-typedef std::pair< generic_vector_type, dts_vector_type >               generic_dts_vectors_type;	
+typedef std::pair< generic_vector_type, dts_vector_type >               generic_dts_vectors_type;    
 typedef std::map< std::string, generic_type >                           generic_map_type;
-typedef std::map< std::string, generic_map_type >                       generic_matrix_type;	
-typedef std::map< std::string, std::pair<generic_type, DateTimeStamp> >	generic_dts_map_type;
+typedef std::map< std::string, generic_map_type >                       generic_matrix_type;    
+typedef std::map< std::string, std::pair<generic_type, DateTimeStamp> >    generic_dts_map_type;
 typedef std::map< std::string, generic_dts_map_type >                   generic_dts_matrix_type;
 
 template< typename T > 
 class Topic_Enum_Wrapper {
-	static_assert( 
-		std::is_integral<T>::value && !std::is_same<T,bool>::value, 
-		"Invalid Topic_Enum_Wrapper<T> Type"
-		);
-	Topic_Enum_Wrapper()
-	{ 
-	}	
-	static const T ADJ_INTGR_BIT =	TOSDB_BIT_SHIFT_LEFT(T,TOSDB_INTGR_BIT);
-	static const T ADJ_QUAD_BIT =	TOSDB_BIT_SHIFT_LEFT(T,TOSDB_QUAD_BIT);
-	static const T ADJ_STRING_BIT =	TOSDB_BIT_SHIFT_LEFT(T,TOSDB_STRING_BIT);
-	static const T ADJ_FULL_MASK =	TOSDB_BIT_SHIFT_LEFT(T,TOSDB_TOPIC_BITMASK);
-public: /* pack type info into HO nibble of scoped Enum  */	
-	typedef T enum_type;
+    static_assert( 
+        std::is_integral<T>::value && !std::is_same<T,bool>::value, 
+        "Invalid Topic_Enum_Wrapper<T> Type"
+        );
+    Topic_Enum_Wrapper()
+    { 
+    }    
+    static const T ADJ_INTGR_BIT =    TOSDB_BIT_SHIFT_LEFT(T,TOSDB_INTGR_BIT);
+    static const T ADJ_QUAD_BIT =    TOSDB_BIT_SHIFT_LEFT(T,TOSDB_QUAD_BIT);
+    static const T ADJ_STRING_BIT =    TOSDB_BIT_SHIFT_LEFT(T,TOSDB_STRING_BIT);
+    static const T ADJ_FULL_MASK =    TOSDB_BIT_SHIFT_LEFT(T,TOSDB_TOPIC_BITMASK);
+public: /* pack type info into HO nibble of scoped Enum  */    
+    typedef T enum_type;
 
-	enum class TOPICS /* gaps represent the 'reserved' exported TOS/DDE fields*/ 
-		: T {   	  /* [ see topics.cpp ] */
-		NULL_TOPIC = 0x00, 
-		HIGH52 = 0x1,
-		LOW52 = 0x2,
-		//
-		ASK = 0x6 | ADJ_QUAD_BIT,
-		ASKX = 0x7 | ADJ_STRING_BIT,
-		ASK_SIZE = 0x8 | ADJ_INTGR_BIT,
-		//
-		AX = 0xa | ADJ_STRING_BIT,
-		//
-		BACK_EX_MOVE = 0x15 | ADJ_QUAD_BIT,
-		BACK_VOL = 0x16 | ADJ_QUAD_BIT,
-		BA_SIZE = 0x17 | ADJ_STRING_BIT,
-		BETA = 0x18 | ADJ_QUAD_BIT,
-		BID = 0x19 | ADJ_QUAD_BIT,
-		BIDX = 0x1a | ADJ_STRING_BIT,
-		BID_SIZE = 0x1b | ADJ_INTGR_BIT,
-		BX = 0x1c | ADJ_STRING_BIT,
-		//
-		CALL_VOLUME_INDEX = 0x27,
-		//
-		CLOSE = 0x2a | ADJ_QUAD_BIT,
-		//
-		DELTA = 0x46 | ADJ_QUAD_BIT,
-		//
-		DESCRIPTION = 0x48 | ADJ_STRING_BIT,
-		//
-		DIV = 0x4b,
-		DIV_FREQ = 0x4c | ADJ_STRING_BIT,
-		//
-		DT = 0x52 | ADJ_STRING_BIT,
-		//
-		EPS = 0x61,
-		EXCHANGE = 0x62 | ADJ_STRING_BIT,
-		EXPIRATION = 0x63 | ADJ_STRING_BIT,
-		EXTRINSIC = 0x64 | ADJ_QUAD_BIT,
-		EX_DIV_DATE = 0x65 | ADJ_STRING_BIT,
-		EX_MOVE_DIFF = 0x66 | ADJ_QUAD_BIT,
-		//
-		FRONT_EX_MOVE = 0x73 | ADJ_QUAD_BIT,
-		FRONT_VOL = 0x74 | ADJ_QUAD_BIT,
-		//
-		FX_PAIR = 0x78 | ADJ_STRING_BIT,
-		//
-		GAMMA = 0x7d | ADJ_QUAD_BIT,
-		//
-		HIGH = 0x7f | ADJ_QUAD_BIT,
-		HTB_ETB = 0x80 | ADJ_STRING_BIT,
-		//
-		IMPL_VOL = 0x8a | ADJ_QUAD_BIT,
-		INTRINSIC = 0x8b,
-		//
-		LAST = 0x95 | ADJ_QUAD_BIT,
-		LASTX = 0x96 | ADJ_STRING_BIT,
-		LAST_SIZE = 0x97 | ADJ_INTGR_BIT,
-		//
-		LOW = 0x9b | ADJ_QUAD_BIT,
-		LX = 0x9c | ADJ_STRING_BIT,
-		//
-		MARK = 0xa9 | ADJ_QUAD_BIT,
-		MARKET_CAP = 0xaa | ADJ_STRING_BIT,
-		MARK_CHANGE = 0xab | ADJ_QUAD_BIT,
-		MARK_PERCENT_CHANGE = 0xac | ADJ_QUAD_BIT,
-		//
-		MRKT_MKR_MOVE = 0xaf,
-		MT_NEWS = 0xb0 | ADJ_STRING_BIT,
-		//
-		NET_CHANGE = 0xc9 | ADJ_QUAD_BIT,
-		//
-		OPEN = 0xcb | ADJ_QUAD_BIT ,
-		OPEN_INT = 0xcc | ADJ_INTGR_BIT,
-		OPTION_VOLUME_INDEX = 0xcd,
-		//
-		PE = 0xd5,
-		PERCENT_CHANGE = 0xd6 | ADJ_QUAD_BIT,
-		//
-		PUT_CALL_RATIO = 0xda,
-		PUT_VOLUME_INDEX = 0xdb,
-		//
-		RHO = 0xed | ADJ_QUAD_BIT,
-		//
-		SHARES = 0xff | ADJ_INTGR_BIT | ADJ_QUAD_BIT,
-		//
-		STRENGTH_METER = 0x102 | ADJ_STRING_BIT,
-		STRIKE = 0x103,
-		SYMBOL = 0x104 | ADJ_STRING_BIT,
-		//
-		THETA = 0x11f | ADJ_QUAD_BIT,
-		//
-		VEGA = 0x13c | ADJ_QUAD_BIT,
-		VOLUME = 0x13d | ADJ_INTGR_BIT | ADJ_QUAD_BIT,
-		VOL_DIFF = 0x13e | ADJ_QUAD_BIT,
-		VOL_INDEX = 0x13f | ADJ_QUAD_BIT,
-		//
-		WEIGHTED_BACK_VOL = 0x14b | ADJ_QUAD_BIT,
-		//
-		YIELD = 0x152	
-	};
-	template< TOPICS topic >
-	struct Type{ /* get the type at compile-time */
-		typedef  typename std::conditional< 
-					((T)topic & ADJ_STRING_BIT ), 
-					std::string, 
-					typename std::conditional< 
-						(T)topic & ADJ_INTGR_BIT, 					
-						typename std::conditional< 
-							(T)topic & ADJ_QUAD_BIT, 
-							ext_size_type, 
-							def_size_type >::type,
-						typename std::conditional< 
-							(T)topic & ADJ_QUAD_BIT, 
-							ext_price_type, 
-							def_price_type >::type >::type >::type		type;
-	};
-	/* get type bits at run-time */
-	static type_bits_type TypeBits( typename Topic_Enum_Wrapper<T>::TOPICS tTopic )
-	{ 
-		return ((type_bits_type)( TOSDB_BIT_SHIFT_RIGHT(T, (T)tTopic )) & TOSDB_TOPIC_BITMASK) ; 
-	}
-	/* get platform-dependent type strings at run-time */
-	static std::string TypeString( typename Topic_Enum_Wrapper<T>::TOPICS tTopic )
-	{ 
-		switch( TOS_Topics::TypeBits(tTopic) )
-		{
-		case TOSDB_STRING_BIT :                 return typeid(std::string).name();
-		case TOSDB_INTGR_BIT :                  return typeid(def_size_type).name();
-		case TOSDB_QUAD_BIT :                   return typeid(ext_price_type).name();
-		case TOSDB_INTGR_BIT | TOSDB_QUAD_BIT : return typeid(ext_size_type).name();
-		default :                               return typeid(def_price_type).name();
-		}; 
-	}
-	struct top_less 
-	{ 
-		bool operator()( const TOPICS& left, const TOPICS& right)
-		{
-			return ( globalTopicMap[left] < globalTopicMap[right] );			
-		}
-	};
-	typedef TwoWayHashMap< TOPICS, std::string >  topic_map_type;
-	typedef typename topic_map_type::pair1_type   topic_map_entry_type;	
-	/* export ref from imported defs */
-	/* note: need to define the ref in each module */
-	static DLL_SPEC_IFACE_ const topic_map_type&  globalTopicMap;
+    enum class TOPICS /* gaps represent the 'reserved' exported TOS/DDE fields*/ 
+        : T {         /* [ see topics.cpp ] */
+        NULL_TOPIC = 0x00, 
+        HIGH52 = 0x1,
+        LOW52 = 0x2,
+        //
+        ASK = 0x6 | ADJ_QUAD_BIT,
+        ASKX = 0x7 | ADJ_STRING_BIT,
+        ASK_SIZE = 0x8 | ADJ_INTGR_BIT,
+        //
+        AX = 0xa | ADJ_STRING_BIT,
+        //
+        BACK_EX_MOVE = 0x15 | ADJ_QUAD_BIT,
+        BACK_VOL = 0x16 | ADJ_QUAD_BIT,
+        BA_SIZE = 0x17 | ADJ_STRING_BIT,
+        BETA = 0x18 | ADJ_QUAD_BIT,
+        BID = 0x19 | ADJ_QUAD_BIT,
+        BIDX = 0x1a | ADJ_STRING_BIT,
+        BID_SIZE = 0x1b | ADJ_INTGR_BIT,
+        BX = 0x1c | ADJ_STRING_BIT,
+        //
+        CALL_VOLUME_INDEX = 0x27,
+        //
+        CLOSE = 0x2a | ADJ_QUAD_BIT,
+        //
+        DELTA = 0x46 | ADJ_QUAD_BIT,
+        //
+        DESCRIPTION = 0x48 | ADJ_STRING_BIT,
+        //
+        DIV = 0x4b,
+        DIV_FREQ = 0x4c | ADJ_STRING_BIT,
+        //
+        DT = 0x52 | ADJ_STRING_BIT,
+        //
+        EPS = 0x61,
+        EXCHANGE = 0x62 | ADJ_STRING_BIT,
+        EXPIRATION = 0x63 | ADJ_STRING_BIT,
+        EXTRINSIC = 0x64 | ADJ_QUAD_BIT,
+        EX_DIV_DATE = 0x65 | ADJ_STRING_BIT,
+        EX_MOVE_DIFF = 0x66 | ADJ_QUAD_BIT,
+        //
+        FRONT_EX_MOVE = 0x73 | ADJ_QUAD_BIT,
+        FRONT_VOL = 0x74 | ADJ_QUAD_BIT,
+        //
+        FX_PAIR = 0x78 | ADJ_STRING_BIT,
+        //
+        GAMMA = 0x7d | ADJ_QUAD_BIT,
+        //
+        HIGH = 0x7f | ADJ_QUAD_BIT,
+        HTB_ETB = 0x80 | ADJ_STRING_BIT,
+        //
+        IMPL_VOL = 0x8a | ADJ_QUAD_BIT,
+        INTRINSIC = 0x8b,
+        //
+        LAST = 0x95 | ADJ_QUAD_BIT,
+        LASTX = 0x96 | ADJ_STRING_BIT,
+        LAST_SIZE = 0x97 | ADJ_INTGR_BIT,
+        //
+        LOW = 0x9b | ADJ_QUAD_BIT,
+        LX = 0x9c | ADJ_STRING_BIT,
+        //
+        MARK = 0xa9 | ADJ_QUAD_BIT,
+        MARKET_CAP = 0xaa | ADJ_STRING_BIT,
+        MARK_CHANGE = 0xab | ADJ_QUAD_BIT,
+        MARK_PERCENT_CHANGE = 0xac | ADJ_QUAD_BIT,
+        //
+        MRKT_MKR_MOVE = 0xaf,
+        MT_NEWS = 0xb0 | ADJ_STRING_BIT,
+        //
+        NET_CHANGE = 0xc9 | ADJ_QUAD_BIT,
+        //
+        OPEN = 0xcb | ADJ_QUAD_BIT ,
+        OPEN_INT = 0xcc | ADJ_INTGR_BIT,
+        OPTION_VOLUME_INDEX = 0xcd,
+        //
+        PE = 0xd5,
+        PERCENT_CHANGE = 0xd6 | ADJ_QUAD_BIT,
+        //
+        PUT_CALL_RATIO = 0xda,
+        PUT_VOLUME_INDEX = 0xdb,
+        //
+        RHO = 0xed | ADJ_QUAD_BIT,
+        //
+        SHARES = 0xff | ADJ_INTGR_BIT | ADJ_QUAD_BIT,
+        //
+        STRENGTH_METER = 0x102 | ADJ_STRING_BIT,
+        STRIKE = 0x103,
+        SYMBOL = 0x104 | ADJ_STRING_BIT,
+        //
+        THETA = 0x11f | ADJ_QUAD_BIT,
+        //
+        VEGA = 0x13c | ADJ_QUAD_BIT,
+        VOLUME = 0x13d | ADJ_INTGR_BIT | ADJ_QUAD_BIT,
+        VOL_DIFF = 0x13e | ADJ_QUAD_BIT,
+        VOL_INDEX = 0x13f | ADJ_QUAD_BIT,
+        //
+        WEIGHTED_BACK_VOL = 0x14b | ADJ_QUAD_BIT,
+        //
+        YIELD = 0x152    
+    };
+    template< TOPICS topic >
+    struct Type{ /* get the type at compile-time */
+        typedef  typename std::conditional< 
+                    ((T)topic & ADJ_STRING_BIT ), 
+                    std::string, 
+                    typename std::conditional< 
+                        (T)topic & ADJ_INTGR_BIT,                     
+                        typename std::conditional< 
+                            (T)topic & ADJ_QUAD_BIT, 
+                            ext_size_type, 
+                            def_size_type >::type,
+                        typename std::conditional< 
+                            (T)topic & ADJ_QUAD_BIT, 
+                            ext_price_type, 
+                            def_price_type >::type >::type >::type        type;
+    };
+    /* get type bits at run-time */
+    static type_bits_type TypeBits( typename Topic_Enum_Wrapper<T>::TOPICS tTopic )
+    { 
+        return ((type_bits_type)( TOSDB_BIT_SHIFT_RIGHT(T, (T)tTopic )) & TOSDB_TOPIC_BITMASK) ; 
+    }
+    /* get platform-dependent type strings at run-time */
+    static std::string TypeString( typename Topic_Enum_Wrapper<T>::TOPICS tTopic )
+    { 
+        switch( TOS_Topics::TypeBits(tTopic) )
+        {
+        case TOSDB_STRING_BIT :                 return typeid(std::string).name();
+        case TOSDB_INTGR_BIT :                  return typeid(def_size_type).name();
+        case TOSDB_QUAD_BIT :                   return typeid(ext_price_type).name();
+        case TOSDB_INTGR_BIT | TOSDB_QUAD_BIT : return typeid(ext_size_type).name();
+        default :                               return typeid(def_price_type).name();
+        }; 
+    }
+    struct top_less 
+    { 
+        bool operator()( const TOPICS& left, const TOPICS& right)
+        {
+            return ( globalTopicMap[left] < globalTopicMap[right] );            
+        }
+    };
+    typedef TwoWayHashMap< TOPICS, std::string >  topic_map_type;
+    typedef typename topic_map_type::pair1_type   topic_map_entry_type;    
+    /* export ref from imported defs */
+    /* note: need to define the ref in each module */
+    static DLL_SPEC_IFACE_ const topic_map_type&  globalTopicMap;
 private: /* import defs from _tos-databridge.dll */
-	static DLL_SPEC_IMPL_ const topic_map_type   _globalTopicMap; 
+    static DLL_SPEC_IMPL_ const topic_map_type   _globalTopicMap; 
 };
 
 typedef Topic_Enum_Wrapper<unsigned short>  TOS_Topics;
@@ -425,7 +425,7 @@ DLL_SPEC_IFACE_ NO_THROW_ int           TOSDB_Add( std::string id, str_set_type 
 DLL_SPEC_IFACE_ NO_THROW_ int           TOSDB_AddTopic( std::string id, TOS_Topics::TOPICS tTopic );
 DLL_SPEC_IFACE_ NO_THROW_ int           TOSDB_AddTopics( std::string id, topic_set_type tTopics );
 DLL_SPEC_IFACE_ NO_THROW_ int           TOSDB_AddItems( std::string id, str_set_type sItems );
-DLL_SPEC_IFACE_ NO_THROW_ int           TOSDB_RemoveTopic( std::string id, TOS_Topics::TOPICS tTopic );													
+DLL_SPEC_IFACE_ NO_THROW_ int           TOSDB_RemoveTopic( std::string id, TOS_Topics::TOPICS tTopic );                                                    
 DLL_SPEC_IFACE_ str_set_type            TOSDB_GetBlockIDs();
 DLL_SPEC_IFACE_ topic_set_type          TOSDB_GetTopicEnums( std::string id );
 DLL_SPEC_IFACE_ str_set_type            TOSDB_GetTopicNames( std::string id );
@@ -444,24 +444,24 @@ DLL_SPEC_IFACE_ size_type               TOSDB_GetStreamOccupancy( std::string id
 template< typename T, bool b > auto            TOSDB_Get( std::string id, std::string sItem, TOS_Topics::TOPICS tTopic, long indx = 0 ) 
                                                -> typename std::conditional< b, std::pair< T, DateTimeStamp> , T >::type;
                                                // Generic fastest without DateTimeStamp < false >
-template<> DLL_SPEC_IFACE_ generic_type        TOSDB_Get< generic_type, false >( std::string id, std::string sItem, TOS_Topics::TOPICS tTopic, long indx );	
+template<> DLL_SPEC_IFACE_ generic_type        TOSDB_Get< generic_type, false >( std::string id, std::string sItem, TOS_Topics::TOPICS tTopic, long indx );    
 template<> DLL_SPEC_IFACE_ generic_dts_type    TOSDB_Get< generic_type, true >( std::string id, std::string sItem, TOS_Topics::TOPICS tTopic, long indx );
                                                // Templatized Type fastet with DateTimeStamp < true >
 template DLL_SPEC_IFACE_ std::string           TOSDB_Get< std::string, false >( std::string id, std::string sItem, TOS_Topics::TOPICS tTopic, long indx);
 template DLL_SPEC_IFACE_ ext_price_type        TOSDB_Get< ext_price_type, false >( std::string id, std::string sItem, TOS_Topics::TOPICS tTopic, long indx );
 template DLL_SPEC_IFACE_ def_price_type        TOSDB_Get< def_price_type, false >( std::string id, std::string sItem, TOS_Topics::TOPICS tTopic, long indx );
 template DLL_SPEC_IFACE_ ext_size_type         TOSDB_Get< ext_size_type, false >( std::string id, std::string sItem, TOS_Topics::TOPICS tTopic, long indx );
-template DLL_SPEC_IFACE_ def_size_type         TOSDB_Get< def_size_type, false >( std::string id, std::string sItem, TOS_Topics::TOPICS tTopic, long indx );																//
+template DLL_SPEC_IFACE_ def_size_type         TOSDB_Get< def_size_type, false >( std::string id, std::string sItem, TOS_Topics::TOPICS tTopic, long indx );                                                                //
 template DLL_SPEC_IFACE_ 
-	std::pair< std::string, DateTimeStamp >    TOSDB_Get< std::string, true >( std::string id, std::string sItem, TOS_Topics::TOPICS tTopic, long indx);
+    std::pair< std::string, DateTimeStamp >    TOSDB_Get< std::string, true >( std::string id, std::string sItem, TOS_Topics::TOPICS tTopic, long indx);
 template DLL_SPEC_IFACE_ 
-	std::pair< ext_price_type, DateTimeStamp > TOSDB_Get< ext_price_type, true >( std::string id, std::string sItem, TOS_Topics::TOPICS tTopic, long indx );
+    std::pair< ext_price_type, DateTimeStamp > TOSDB_Get< ext_price_type, true >( std::string id, std::string sItem, TOS_Topics::TOPICS tTopic, long indx );
 template DLL_SPEC_IFACE_ 
-	std::pair< def_price_type, DateTimeStamp > TOSDB_Get< def_price_type, true >( std::string id, std::string sItem, TOS_Topics::TOPICS tTopic, long indx );
+    std::pair< def_price_type, DateTimeStamp > TOSDB_Get< def_price_type, true >( std::string id, std::string sItem, TOS_Topics::TOPICS tTopic, long indx );
 template DLL_SPEC_IFACE_ 
-	std::pair< ext_size_type, DateTimeStamp >  TOSDB_Get< ext_size_type, true >( std::string id, std::string sItem, TOS_Topics::TOPICS tTopic, long indx );
+    std::pair< ext_size_type, DateTimeStamp >  TOSDB_Get< ext_size_type, true >( std::string id, std::string sItem, TOS_Topics::TOPICS tTopic, long indx );
 template DLL_SPEC_IFACE_ 
-	std::pair< def_size_type, DateTimeStamp >  TOSDB_Get< def_size_type, true >( std::string id, std::string sItem, TOS_Topics::TOPICS tTopic, long indx );
+    std::pair< def_size_type, DateTimeStamp >  TOSDB_Get< def_size_type, true >( std::string id, std::string sItem, TOS_Topics::TOPICS tTopic, long indx );
 #endif                                         // C calls about 20-30% slower across the board
 EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int        TOSDB_GetDouble( LPCSTR id, LPCSTR sItem, LPCSTR sTopic, long indx, ext_price_type* dest, pDateTimeStamp datetime );
 EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int        TOSDB_GetFloat( LPCSTR id, LPCSTR sItem, LPCSTR sTopic, long indx, def_price_type* dest, pDateTimeStamp datetime );
@@ -472,24 +472,24 @@ EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int        TOSDB_GetString( LPCSTR id, LPCST
 /* Get multiple, contiguous data points in the stream*/
 template< typename T, bool b > auto                             TOSDB_GetStreamSnapshot( std::string id, std::string sItem, TOS_Topics::TOPICS tTopic, long end = -1, long beg = 0 )
                                                                 -> typename std::conditional< b, std::pair< std::vector<T>, dts_vector_type>, std::vector<T> >::type;
-template<> DLL_SPEC_IFACE_ generic_vector_type                  TOSDB_GetStreamSnapshot< generic_type, false  >( std::string id, std::string sItem, TOS_Topics::TOPICS tTopic, long end, long beg );										
-template<> DLL_SPEC_IFACE_ generic_dts_vectors_type             TOSDB_GetStreamSnapshot< generic_type, true >( std::string id, std::string sItem, TOS_Topics::TOPICS tTopic, long end, long beg );	
+template<> DLL_SPEC_IFACE_ generic_vector_type                  TOSDB_GetStreamSnapshot< generic_type, false  >( std::string id, std::string sItem, TOS_Topics::TOPICS tTopic, long end, long beg );                                        
+template<> DLL_SPEC_IFACE_ generic_dts_vectors_type             TOSDB_GetStreamSnapshot< generic_type, true >( std::string id, std::string sItem, TOS_Topics::TOPICS tTopic, long end, long beg );    
                                                                 // these are about 20x faster than generic
-template DLL_SPEC_IFACE_ std::vector< ext_price_type >          TOSDB_GetStreamSnapshot< ext_price_type, false >( std::string id, std::string sItem, TOS_Topics::TOPICS tTopic, long end, long beg );		
-template DLL_SPEC_IFACE_ std::vector< def_price_type >          TOSDB_GetStreamSnapshot< def_price_type, false  >( std::string id, std::string sItem, TOS_Topics::TOPICS tTopic, long end, long beg );	
-template DLL_SPEC_IFACE_ std::vector< ext_size_type >           TOSDB_GetStreamSnapshot< ext_size_type, false  >( std::string id, std::string sItem, TOS_Topics::TOPICS tTopic, long end, long beg );	
-template DLL_SPEC_IFACE_ std::vector< def_size_type >           TOSDB_GetStreamSnapshot< def_size_type, false  >( std::string id, std::string sItem, TOS_Topics::TOPICS tTopic, long end, long beg );	
-template DLL_SPEC_IFACE_ std::vector< std::string >             TOSDB_GetStreamSnapshot< std::string, false  >( std::string id, std::string sItem, TOS_Topics::TOPICS tTopic, long end, long beg );																	
+template DLL_SPEC_IFACE_ std::vector< ext_price_type >          TOSDB_GetStreamSnapshot< ext_price_type, false >( std::string id, std::string sItem, TOS_Topics::TOPICS tTopic, long end, long beg );        
+template DLL_SPEC_IFACE_ std::vector< def_price_type >          TOSDB_GetStreamSnapshot< def_price_type, false  >( std::string id, std::string sItem, TOS_Topics::TOPICS tTopic, long end, long beg );    
+template DLL_SPEC_IFACE_ std::vector< ext_size_type >           TOSDB_GetStreamSnapshot< ext_size_type, false  >( std::string id, std::string sItem, TOS_Topics::TOPICS tTopic, long end, long beg );    
+template DLL_SPEC_IFACE_ std::vector< def_size_type >           TOSDB_GetStreamSnapshot< def_size_type, false  >( std::string id, std::string sItem, TOS_Topics::TOPICS tTopic, long end, long beg );    
+template DLL_SPEC_IFACE_ std::vector< std::string >             TOSDB_GetStreamSnapshot< std::string, false  >( std::string id, std::string sItem, TOS_Topics::TOPICS tTopic, long end, long beg );                                                                    
 template DLL_SPEC_IFACE_ 
-	std::pair< std::vector< ext_price_type >,dts_vector_type >  TOSDB_GetStreamSnapshot< ext_price_type, true >( std::string id, std::string sItem, TOS_Topics::TOPICS tTopic, long end, long beg );	
+    std::pair< std::vector< ext_price_type >,dts_vector_type >  TOSDB_GetStreamSnapshot< ext_price_type, true >( std::string id, std::string sItem, TOS_Topics::TOPICS tTopic, long end, long beg );    
 template DLL_SPEC_IFACE_ 
-	std::pair< std::vector< def_price_type >,dts_vector_type >  TOSDB_GetStreamSnapshot< def_price_type, true >( std::string id, std::string sItem, TOS_Topics::TOPICS tTopic, long end, long beg );
+    std::pair< std::vector< def_price_type >,dts_vector_type >  TOSDB_GetStreamSnapshot< def_price_type, true >( std::string id, std::string sItem, TOS_Topics::TOPICS tTopic, long end, long beg );
 template DLL_SPEC_IFACE_ 
-	std::pair< std::vector< ext_size_type >,dts_vector_type >   TOSDB_GetStreamSnapshot< ext_size_type, true >( std::string id, std::string sItem, TOS_Topics::TOPICS tTopic, long end, long beg );
+    std::pair< std::vector< ext_size_type >,dts_vector_type >   TOSDB_GetStreamSnapshot< ext_size_type, true >( std::string id, std::string sItem, TOS_Topics::TOPICS tTopic, long end, long beg );
 template DLL_SPEC_IFACE_ 
-	std::pair< std::vector< def_size_type >,dts_vector_type >   TOSDB_GetStreamSnapshot< def_size_type, true >( std::string id, std::string sItem, TOS_Topics::TOPICS tTopic, long end, long beg );
+    std::pair< std::vector< def_size_type >,dts_vector_type >   TOSDB_GetStreamSnapshot< def_size_type, true >( std::string id, std::string sItem, TOS_Topics::TOPICS tTopic, long end, long beg );
 template DLL_SPEC_IFACE_ 
-	std::pair< std::vector< std::string >, dts_vector_type >    TOSDB_GetStreamSnapshot< std::string, true >( std::string id, std::string sItem, TOS_Topics::TOPICS tTopic, long end, long beg );
+    std::pair< std::vector< std::string >, dts_vector_type >    TOSDB_GetStreamSnapshot< std::string, true >( std::string id, std::string sItem, TOS_Topics::TOPICS tTopic, long end, long beg );
 #endif                                                          // C calls about 30x faster than generic
 EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int                         TOSDB_GetStreamSnapshotDoubles( LPCSTR id,LPCSTR sItem, LPCSTR sTopic, ext_price_type* dest, size_type arrLen, pDateTimeStamp datetime, long end, long beg); 
 EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int                         TOSDB_GetStreamSnapshotFloats( LPCSTR id, LPCSTR sItem, LPCSTR sTopic, def_price_type* dest, size_type arrLen, pDateTimeStamp datetime, long end, long beg); 
@@ -521,7 +521,7 @@ template<> DLL_SPEC_IFACE_ generic_matrix_type      TOSDB_GetTotalFrame<false>( 
 template<> DLL_SPEC_IFACE_ generic_dts_matrix_type  TOSDB_GetTotalFrame<true>( std::string id );
 #endif 
 /* if logging is not enabled high severity events will be sent to std::cerr */ 
-typedef enum{ low = 0, high }Severity;	
+typedef enum{ low = 0, high }Severity;    
 /* note: these _tos-databridge-static.lib imports must use /export:[func name] during link */ 
 EXT_SPEC_ DLL_SPEC_IFACE_ void         TOSDB_StartLogging( LPCSTR fName );
 EXT_SPEC_ DLL_SPEC_IFACE_ void         TOSDB_StopLogging();
@@ -567,114 +567,114 @@ template DLL_SPEC_IFACE_    std::ostream& operator<<(std::ostream&, const std::p
 template DLL_SPEC_IFACE_    std::ostream& operator<<(std::ostream&, const std::pair<std::vector<std::string>,dts_vector_type>&);
 
 class TOSDB_error : public std::exception{
-	unsigned long _threadID;
-	unsigned long _processID;
-	std::string _tag;
-	std::string _info;
+    unsigned long _threadID;
+    unsigned long _processID;
+    std::string _tag;
+    std::string _info;
 public:
-	TOSDB_error( const char* info, const char* tag )
-		: 
-		std::exception( info ),
-		_tag( tag ),
-		_info( info ),
-		_threadID( GetCurrentThreadId() ),
-		_processID( GetCurrentProcessId() )
-		{				
-		}
-	TOSDB_error( const std::exception& e, const char* tag )
-		: 
-		std::exception( e ),
-		_tag( tag ),		
-		_threadID( GetCurrentThreadId() ),
-		_processID( GetCurrentProcessId() )
-		{				 
-		}
-	TOSDB_error( const std::exception& e, const char* info, const char* tag )
-		: 
-		std::exception( e ),
-		_tag( tag ),
-		_info( info ),
-		_threadID( GetCurrentThreadId() ),
-		_processID( GetCurrentProcessId() )
-		{				
-		}
-	virtual ~TOSDB_error()
-	{
-	}
+    TOSDB_error( const char* info, const char* tag )
+        : 
+        std::exception( info ),
+        _tag( tag ),
+        _info( info ),
+        _threadID( GetCurrentThreadId() ),
+        _processID( GetCurrentProcessId() )
+        {                
+        }
+    TOSDB_error( const std::exception& e, const char* tag )
+        : 
+        std::exception( e ),
+        _tag( tag ),        
+        _threadID( GetCurrentThreadId() ),
+        _processID( GetCurrentProcessId() )
+        {                 
+        }
+    TOSDB_error( const std::exception& e, const char* info, const char* tag )
+        : 
+        std::exception( e ),
+        _tag( tag ),
+        _info( info ),
+        _threadID( GetCurrentThreadId() ),
+        _processID( GetCurrentProcessId() )
+        {                
+        }
+    virtual ~TOSDB_error()
+    {
+    }
 public:
-	unsigned long	threadID() const { return _threadID; }
-	unsigned long	processID() const { return _processID; }
-	std::string		tag() const { return _tag; }
-	std::string		info() const { return _info; }
+    unsigned long    threadID() const { return _threadID; }
+    unsigned long    processID() const { return _processID; }
+    std::string        tag() const { return _tag; }
+    std::string        info() const { return _info; }
 };
-	class TOSDB_IPC_error : public TOSDB_error{
-	public:
-		TOSDB_IPC_error( const char* info, const char* tag = "IPC" )
-			: 
-			TOSDB_error( info, tag )
-			{
-			}
-	};
-		class TOSDB_buffer_error : public TOSDB_IPC_error{
-		public:
-			TOSDB_buffer_error( const char* info, const char* tag = "DATA-BUFFER" )
-				: 
-				TOSDB_IPC_error( info, tag )
-				{
-				}
-		};
+    class TOSDB_IPC_error : public TOSDB_error{
+    public:
+        TOSDB_IPC_error( const char* info, const char* tag = "IPC" )
+            : 
+            TOSDB_error( info, tag )
+            {
+            }
+    };
+        class TOSDB_buffer_error : public TOSDB_IPC_error{
+        public:
+            TOSDB_buffer_error( const char* info, const char* tag = "DATA-BUFFER" )
+                : 
+                TOSDB_IPC_error( info, tag )
+                {
+                }
+        };
 
-	class TOSDB_dde_error : public TOSDB_error{
-	public:
-		TOSDB_dde_error( const char* info, const char* tag = "DDE" )
-			: 
-			TOSDB_error( info, tag )
-			{
-			}
-		TOSDB_dde_error( const std::exception& e, const char* info, const char* tag = "DDE" )
-			: TOSDB_error( e, info, tag )
-			{
-			}
-	};		
-	class TOSDB_data_block_error : public TOSDB_error{
-	public:
-		TOSDB_data_block_error( const char* info, const char* tag = "DataBlock" )
-			: 
-			TOSDB_error( info, tag )
-			{
-			}
-		TOSDB_data_block_error( const std::exception& e, const char* info, const char* tag = "DataBlock" ) 
-			: TOSDB_error( e, info, tag )
-			{
-			}
-	};		
-		class TOSDB_data_block_limit_error :
-			public TOSDB_data_block_error, public std::length_error {
-		public:
-			const size_t limit;	
-			TOSDB_data_block_limit_error( const size_t limit )
-				: 
-				TOSDB_data_block_error( "Attempt to create TOSDB_RawDataBlock would exceed limit."),
-				std::length_error( "Attempt to create TOSDB_RawDataBlock would exceed limit." ),
-				limit( limit )
-				{
-				}
-			virtual const char* what() const 
-			{
-				return TOSDB_data_block_error::what();
-			}	
-		};						
-		class TOSDB_data_stream_error : public TOSDB_data_block_error{
-		public:
-			TOSDB_data_stream_error( const char* info, const char* tag = "DataStream" )
-				: TOSDB_data_block_error( info, tag )		
-				{
-				}
-			TOSDB_data_stream_error( const std::exception& e, const char* info, const char* tag = "DataStream" )
-				: TOSDB_data_block_error(e, info, tag )		
-				{
-				}
-		};
+    class TOSDB_dde_error : public TOSDB_error{
+    public:
+        TOSDB_dde_error( const char* info, const char* tag = "DDE" )
+            : 
+            TOSDB_error( info, tag )
+            {
+            }
+        TOSDB_dde_error( const std::exception& e, const char* info, const char* tag = "DDE" )
+            : TOSDB_error( e, info, tag )
+            {
+            }
+    };        
+    class TOSDB_data_block_error : public TOSDB_error{
+    public:
+        TOSDB_data_block_error( const char* info, const char* tag = "DataBlock" )
+            : 
+            TOSDB_error( info, tag )
+            {
+            }
+        TOSDB_data_block_error( const std::exception& e, const char* info, const char* tag = "DataBlock" ) 
+            : TOSDB_error( e, info, tag )
+            {
+            }
+    };        
+        class TOSDB_data_block_limit_error :
+            public TOSDB_data_block_error, public std::length_error {
+        public:
+            const size_t limit;    
+            TOSDB_data_block_limit_error( const size_t limit )
+                : 
+                TOSDB_data_block_error( "Attempt to create TOSDB_RawDataBlock would exceed limit."),
+                std::length_error( "Attempt to create TOSDB_RawDataBlock would exceed limit." ),
+                limit( limit )
+                {
+                }
+            virtual const char* what() const 
+            {
+                return TOSDB_data_block_error::what();
+            }    
+        };                        
+        class TOSDB_data_stream_error : public TOSDB_data_block_error{
+        public:
+            TOSDB_data_stream_error( const char* info, const char* tag = "DataStream" )
+                : TOSDB_data_block_error( info, tag )        
+                {
+                }
+            TOSDB_data_stream_error( const std::exception& e, const char* info, const char* tag = "DataStream" )
+                : TOSDB_data_block_error(e, info, tag )        
+                {
+                }
+        };
 
 #endif
 #endif

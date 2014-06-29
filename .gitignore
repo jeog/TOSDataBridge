@@ -189,6 +189,9 @@ $RECYCLE.BIN/
 
 *.py[co]
 
+# C Ext
+*.pyd
+
 # Packages
 *.egg
 *.egg-info
