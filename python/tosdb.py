@@ -199,9 +199,6 @@ def _str_clean( *strings ):
         fin.append(tmpS)
     return fin
 
-def _ascii(s):
-    return s.encode("ascii")
-
 def get_block_limit():
     """ Returns the block limit of C/C++ RawDataBlock factory """
     return _lib_call( "TOSDB_GetBlockLimit", ret_type =_ulong_ )
@@ -222,7 +219,8 @@ def type_bits( topic ):
     ( ex. QUAD_BIT )
     """
     tyBits = _uchar_()
-    err = _lib_call( "TOSDB_GetTypeBits", _ascii( topic ),  pointer(tyBits) )
+    err = _lib_call( "TOSDB_GetTypeBits", topic.encode("ascii"), 
+                     pointer(tyBits) )
     if(err):
        raise TOSDB_Error( "error value [ " + str(err) +
                           " ] returned from library call", "TOSDB_GetTypeBits")
@@ -234,7 +232,7 @@ def type_string( topic ):
     topic: string representing a TOS data field('LAST','ASK', etc)
     """
     tyStr = _BUF_( MAX_STR_SZ + 1 )
-    err = _lib_call( "TOSDB_GetTypeString", _ascii( topic ), tyStr, 
+    err = _lib_call( "TOSDB_GetTypeString", topic.encode("ascii"), tyStr, 
                      (MAX_STR_SZ + 1) )
     if(err):
         raise TOSDB_Error( "error value [ " + str(err) +
@@ -423,7 +421,7 @@ class TOS_DataBlock:
     Please review the attached README.html for details.
     """    
     def __init__( self, size = 1000, date_time = False, timeout = DEF_TIMEOUT ):        
-        self._name = _ascii( uuid4().hex )
+        self._name = (uuid4().hex).encode("ascii")
         self._valid = False
         err = _lib_call( "TOSDB_CreateBlock", self._name , size, date_time, 
                          timeout )        
@@ -546,8 +544,8 @@ class TOS_DataBlock:
         occ = _ulong_()
         err = _lib_call( "TOSDB_GetStreamOccupancy",
                          self._name,
-                         _ascii(item),
-                         _ascii(topic),
+                         item.encode("ascii"),
+                         topic.encode("ascii"),
                          pointer(occ),
                          arg_list = [ _string_, _string_, _string_, 
                                       _PTR_(_ulong_) ] )
@@ -613,8 +611,8 @@ class TOS_DataBlock:
         be pre-cached and appear not to exist, until a valid topic is added.
 
         *items: any numer of item strings
-        """       
-        mTup = tuple( s.upper() for s in map( _ascii,items ) )
+        """               
+        mTup = tuple( s.encode("ascii").upper() for s in items )
         itemsTy = _string_ * len( mTup )
         cItems = itemsTy( *mTup )
         err = _lib_call( "TOSDB_AddItems", self._name, cItems, len( mTup ) )
@@ -634,8 +632,8 @@ class TOS_DataBlock:
         be pre-cached and appear not to exist, until a valid item is added.
 
         *topics: any numer of topic strings
-        """        
-        mTup = tuple( s.upper() for s in map( _ascii,topics ) )
+        """               
+        mTup = tuple( s.encode("ascii").upper() for s in topics )
         topicsTy = _string_ * len( mTup )
         cTopics = topicsTy( *mTup )
         err = _lib_call( "TOSDB_AddTopics", self._name, cTopics, len( mTup ) )
@@ -657,8 +655,8 @@ class TOS_DataBlock:
         *items: any numer of item strings
         """
         for item in items:
-            err = _lib_call( "TOSDB_RemoveItem",
-                             self._name, _ascii(item).upper() )
+            err = _lib_call( "TOSDB_RemoveItem", self._name, 
+                             item.encode("ascii").upper() )
             if ( err ):
                 raise TOSDB_Error( "error value [ " + str(err) + 
                                    " ] returned from library call", 
@@ -675,8 +673,8 @@ class TOS_DataBlock:
         *topics: any numer of topic strings
         """
         for topic in topics:
-            err = _lib_call( "TOSDB_RemoveTopic",
-                             self._name,_ascii(topic).upper() )
+            err = _lib_call( "TOSDB_RemoveTopic", self._name, 
+                             topic.encode("ascii").upper() )
             if ( err ):
                 raise TOSDB_Error( "error value [ " + str(err) + 
                                    " ] returned from library call", 
@@ -714,8 +712,8 @@ class TOS_DataBlock:
             ret_str = _BUF_( data_str_max + 1 )
             err =_lib_call( "TOSDB_GetString", 
                             self._name,
-                            _ascii( item ),
-                            _ascii( topic ),
+                            item.encode("ascii"),
+                            topic.encode("ascii"),
                             indx,
                             ret_str,
                             data_str_max + 1,
@@ -736,8 +734,8 @@ class TOS_DataBlock:
             val = typeTup[1]()
             err = _lib_call( "TOSDB_Get"+typeTup[0], 
                              self._name,
-                             _ascii( item ),
-                             _ascii( topic ),
+                             item.encode("ascii"),
+                             topic.encode("ascii"),
                              indx,
                              pointer(val),
                              ( pointer(dts) if date_time 
@@ -799,8 +797,8 @@ class TOS_DataBlock:
             strs_array = ( _pchar_ * size)( *[ cast(s, _pchar_) for s in strs] ) 
             err = _lib_call( "TOSDB_GetStreamSnapshotStrings", 
                              self._name,
-                             _ascii(item),
-                             _ascii(topic),
+                             item.encode("ascii"),
+                             topic.encode("ascii"),
                              strs_array,
                              size,
                              data_str_max + 1,                        
@@ -829,8 +827,8 @@ class TOS_DataBlock:
             num_array =  (typeTup[1] * size)()   
             err = _lib_call( "TOSDB_GetStreamSnapshot"+typeTup[0]+"s", 
                              self._name,
-                             _ascii(item),
-                             _ascii(topic),
+                             item.encode("ascii"),
+                             topic.encode("ascii"),
                              num_array,
                              size,
                              ( dtss if date_time 
@@ -885,7 +883,7 @@ class TOS_DataBlock:
             # cast char buffers int (char*)[ ]                
             err = _lib_call( "TOSDB_GetItemFrameStrings", 
                              self._name,
-                             _ascii(topic),
+                             topic.encode("ascii"),
                              strs_array,
                              size,
                              data_str_max + 1,                       
@@ -923,7 +921,7 @@ class TOS_DataBlock:
             num_array =  (typeTup[1] * size)()   
             err = _lib_call( "TOSDB_GetItemFrame"+typeTup[0]+"s", 
                              self._name,
-                             _ascii(topic),
+                             topic.encode("ascii"),
                              num_array,
                              size,
                              ( labs_array if labels 
@@ -985,7 +983,7 @@ class TOS_DataBlock:
         strs_array = ( _pchar_ * size)( *[ cast(s, _pchar_) for s in strs] )  
         err = _lib_call( "TOSDB_GetTopicFrameStrings", 
                          self._name,
-                         _ascii(item),
+                         item.encode("ascii"),
                          strs_array,
                          size,
                          data_str_max + 1,                                            
