@@ -155,7 +155,8 @@ extern char    DLL_SPEC_IMPL_  TOSDB_LOG_PATH[ MAX_PATH+20 ];
 /* consts NOT exported from tos-databridge-0.1[].dll */    
 extern LPCSTR  TOSDB_APP_NAME;        
 extern LPCSTR  TOSDB_COMM_CHANNEL;
-/* consts exported from tos-databridge-0.1[].dll, must use /export:[func name] during link */
+/* consts exported from tos-databridge-0.1[].dll, 
+   must use /export:[func name] during link */
 extern CDCR_ const size_type DLL_SPEC_IFACE_  TOSDB_DEF_TIMEOUT;    // 2000
 extern CDCR_ const size_type DLL_SPEC_IFACE_  TOSDB_MIN_TIMEOUT;    // 1500
 extern CDCR_ const size_type DLL_SPEC_IFACE_  TOSDB_SHEM_BUF_SZ;    // 4096
@@ -183,12 +184,15 @@ typedef struct {
 } DateTimeStamp, *pDateTimeStamp;
 
 /* a header that will be placed at the front(offset 0) of the mem mapping */
-typedef struct{ /* only necessary if you're dealing with the engine.exe buffers directly */
-    volatile unsigned int  loop_seq;       /* count/sequence of times buffer has looped back to beginning */
-    volatile unsigned int  elem_size;   /* physical / logical size of elements in the buffer */
-    volatile unsigned int  beg_offset;  /* logical location within the buffer (after the header) */
-    volatile unsigned int  end_offset;  /* logical location: beg_offset + ( (raw_size - beg_offset) // elem_size ) */
-    volatile unsigned int  next_offset; /* logical location of the next position to be writen to */
+typedef struct{ 
+    volatile unsigned int loop_seq;   /* # of times buffer has looped around */
+    volatile unsigned int elem_size;  /* size of elements in the buffer */
+    volatile unsigned int beg_offset; /* logical location (after header) */
+    /* 
+        logical location: beg_offset + ( (raw_size - beg_offset) // elem_size ) 
+    */
+    volatile unsigned int end_offset; 
+    volatile unsigned int  next_offset; /* logical location of next write */
 } BufferHead, *pBufferHead; 
 
 #define TOSDB_BIT_SHIFT_LEFT(T,val) (((T)val)<<((sizeof(T)-sizeof(type_bits_type))*8))
@@ -206,15 +210,19 @@ typedef std::chrono::microseconds                  micro_sec_type;
 typedef std::chrono::duration< long, std::milli >  milli_sec_type;
 
 /* Generic STL Types returned by the interface(below) */ 
-typedef JO::Generic                                                     generic_type;
-typedef std::pair< generic_type, DateTimeStamp >                        generic_dts_type; 
-typedef std::vector< generic_type >                                     generic_vector_type;
-typedef std::vector< DateTimeStamp >                                    dts_vector_type;
-typedef std::pair< generic_vector_type, dts_vector_type >               generic_dts_vectors_type;    
-typedef std::map< std::string, generic_type >                           generic_map_type;
-typedef std::map< std::string, generic_map_type >                       generic_matrix_type;    
-typedef std::map< std::string, std::pair<generic_type, DateTimeStamp> >    generic_dts_map_type;
-typedef std::map< std::string, generic_dts_map_type >                   generic_dts_matrix_type;
+typedef JO::Generic                                 generic_type;
+typedef std::pair< generic_type, DateTimeStamp >    generic_dts_type; 
+typedef std::vector< generic_type >                 generic_vector_type;
+typedef std::vector< DateTimeStamp >                dts_vector_type;
+typedef std::pair< generic_vector_type, 
+                   dts_vector_type >                generic_dts_vectors_type;    
+typedef std::map< std::string, generic_type >       generic_map_type;
+typedef std::map< std::string, generic_map_type >   generic_matrix_type;    
+typedef std::map< std::string, 
+                  std::pair< generic_type, 
+                             DateTimeStamp> >       generic_dts_map_type;
+typedef std::map< std::string, 
+                  generic_dts_map_type >            generic_dts_matrix_type;
 
 template< typename T > 
 class Topic_Enum_Wrapper {
@@ -225,10 +233,10 @@ class Topic_Enum_Wrapper {
     Topic_Enum_Wrapper()
     { 
     }    
-    static const T ADJ_INTGR_BIT =    TOSDB_BIT_SHIFT_LEFT(T,TOSDB_INTGR_BIT);
-    static const T ADJ_QUAD_BIT =    TOSDB_BIT_SHIFT_LEFT(T,TOSDB_QUAD_BIT);
-    static const T ADJ_STRING_BIT =    TOSDB_BIT_SHIFT_LEFT(T,TOSDB_STRING_BIT);
-    static const T ADJ_FULL_MASK =    TOSDB_BIT_SHIFT_LEFT(T,TOSDB_TOPIC_BITMASK);
+    static const T ADJ_INTGR_BIT  = TOSDB_BIT_SHIFT_LEFT(T,TOSDB_INTGR_BIT);
+    static const T ADJ_QUAD_BIT   = TOSDB_BIT_SHIFT_LEFT(T,TOSDB_QUAD_BIT);
+    static const T ADJ_STRING_BIT = TOSDB_BIT_SHIFT_LEFT(T,TOSDB_STRING_BIT);
+    static const T ADJ_FULL_MASK  = TOSDB_BIT_SHIFT_LEFT(T,TOSDB_TOPIC_BITMASK);
 public: /* pack type info into HO nibble of scoped Enum  */    
     typedef T enum_type;
 
@@ -334,35 +342,43 @@ public: /* pack type info into HO nibble of scoped Enum  */
     };
     template< TOPICS topic >
     struct Type{ /* get the type at compile-time */
-        typedef  typename std::conditional< 
-                    ((T)topic & ADJ_STRING_BIT ), 
-                    std::string, 
-                    typename std::conditional< 
-                        (T)topic & ADJ_INTGR_BIT,                     
-                        typename std::conditional< 
-                            (T)topic & ADJ_QUAD_BIT, 
-                            ext_size_type, 
-                            def_size_type >::type,
-                        typename std::conditional< 
-                            (T)topic & ADJ_QUAD_BIT, 
-                            ext_price_type, 
-                            def_price_type >::type >::type >::type        type;
+        typedef typename std::conditional< 
+            ((T)topic & ADJ_STRING_BIT ), 
+            std::string, 
+            typename std::conditional< 
+                (T)topic & ADJ_INTGR_BIT,                     
+                typename std::conditional< 
+                    (T)topic & ADJ_QUAD_BIT, 
+                    ext_size_type, 
+                    def_size_type >::type,
+                typename std::conditional< 
+                    (T)topic & ADJ_QUAD_BIT, 
+                    ext_price_type, 
+                    def_price_type >::type >::type >::type  type;
     };
-    /* get type bits at run-time */
-    static type_bits_type TypeBits( typename Topic_Enum_Wrapper<T>::TOPICS tTopic )
+    
+    static type_bits_type  /* type bits at run-time */
+    TypeBits( typename Topic_Enum_Wrapper<T>::TOPICS tTopic )
     { 
-        return ((type_bits_type)( TOSDB_BIT_SHIFT_RIGHT(T, (T)tTopic )) & TOSDB_TOPIC_BITMASK) ; 
+        return ( (type_bits_type)( TOSDB_BIT_SHIFT_RIGHT(T, (T)tTopic )) 
+                 & TOSDB_TOPIC_BITMASK ); 
     }
-    /* get platform-dependent type strings at run-time */
-    static std::string TypeString( typename Topic_Enum_Wrapper<T>::TOPICS tTopic )
+    
+    static std::string  /* platform-dependent type strings at run-time */
+    TypeString( typename Topic_Enum_Wrapper<T>::TOPICS tTopic )
     { 
         switch( TOS_Topics::TypeBits(tTopic) )
         {
-        case TOSDB_STRING_BIT :                 return typeid(std::string).name();
-        case TOSDB_INTGR_BIT :                  return typeid(def_size_type).name();
-        case TOSDB_QUAD_BIT :                   return typeid(ext_price_type).name();
-        case TOSDB_INTGR_BIT | TOSDB_QUAD_BIT : return typeid(ext_size_type).name();
-        default :                               return typeid(def_price_type).name();
+        case TOSDB_STRING_BIT :                 
+            return typeid(std::string).name();
+        case TOSDB_INTGR_BIT :                  
+            return typeid(def_size_type).name();
+        case TOSDB_QUAD_BIT :                   
+            return typeid(ext_price_type).name();
+        case TOSDB_INTGR_BIT | TOSDB_QUAD_BIT : 
+            return typeid(ext_size_type).name();
+        default :                               
+            return typeid(def_price_type).name();
         }; 
     }
     struct top_less 
@@ -383,8 +399,9 @@ private: /* import defs from _tos-databridge.dll */
 
 typedef Topic_Enum_Wrapper<unsigned short>  TOS_Topics;
 
-typedef ILSet< std::string >                                     str_set_type;
-typedef ILSet< const TOS_Topics::TOPICS, TOS_Topics::top_less >  topic_set_type;
+typedef ILSet< std::string >               str_set_type;
+typedef ILSet< const TOS_Topics::TOPICS, 
+               TOS_Topics::top_less >     topic_set_type;
 
 #endif
 /* NOTE int return types indicate an error value is returned */
@@ -617,7 +634,8 @@ public:
     };
         class TOSDB_buffer_error : public TOSDB_IPC_error{
         public:
-            TOSDB_buffer_error( const char* info, const char* tag = "DATA-BUFFER" )
+            TOSDB_buffer_error( const char* info, 
+                                const char* tag = "DATA-BUFFER" )
                 : 
                 TOSDB_IPC_error( info, tag )
                 {
@@ -631,19 +649,24 @@ public:
             TOSDB_error( info, tag )
             {
             }
-        TOSDB_dde_error( const std::exception& e, const char* info, const char* tag = "DDE" )
+        TOSDB_dde_error( const std::exception& e, 
+                         const char* info, 
+                         const char* tag = "DDE" )
             : TOSDB_error( e, info, tag )
             {
             }
     };        
     class TOSDB_data_block_error : public TOSDB_error{
     public:
-        TOSDB_data_block_error( const char* info, const char* tag = "DataBlock" )
+        TOSDB_data_block_error( const char* info, 
+                                const char* tag = "DataBlock" )
             : 
             TOSDB_error( info, tag )
             {
             }
-        TOSDB_data_block_error( const std::exception& e, const char* info, const char* tag = "DataBlock" ) 
+        TOSDB_data_block_error( const std::exception& e, 
+                                const char* info, 
+                                const char* tag = "DataBlock" ) 
             : TOSDB_error( e, info, tag )
             {
             }
@@ -654,8 +677,10 @@ public:
             const size_t limit;    
             TOSDB_data_block_limit_error( const size_t limit )
                 : 
-                TOSDB_data_block_error( "Attempt to create TOSDB_RawDataBlock would exceed limit."),
-                std::length_error( "Attempt to create TOSDB_RawDataBlock would exceed limit." ),
+                TOSDB_data_block_error( "Attempt to create TOSDB_RawDataBlock "
+                                        "would exceed limit." ),
+                std::length_error( "Attempt to create TOSDB_RawDataBlock "
+                                   "would exceed limit." ),
                 limit( limit )
                 {
                 }
@@ -666,11 +691,14 @@ public:
         };                        
         class TOSDB_data_stream_error : public TOSDB_data_block_error{
         public:
-            TOSDB_data_stream_error( const char* info, const char* tag = "DataStream" )
+            TOSDB_data_stream_error( const char* info, 
+                                     const char* tag = "DataStream" )
                 : TOSDB_data_block_error( info, tag )        
                 {
                 }
-            TOSDB_data_stream_error( const std::exception& e, const char* info, const char* tag = "DataStream" )
+            TOSDB_data_stream_error( const std::exception& e, 
+                                     const char* info, 
+                                     const char* tag = "DataStream" )
                 : TOSDB_data_block_error(e, info, tag )        
                 {
                 }

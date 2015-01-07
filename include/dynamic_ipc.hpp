@@ -27,48 +27,49 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 #include <future>
 #include <windows.h>
 
-/* DynamicIPCMaster / Slave are objects that provide a flexible
-means of IPC.  They combine a shared mem mapping and a duplexed
-named-pipe for external use. On construction the Slave creates a 
-shared memory segment, managed by an ExplicitHeap, accepting allocation 
-requests through an internal named-pipe on its own thread. It waits on 
-the master through a call to wait_for_master(). 
+/* 
+   DynamicIPCMaster / Slave are objects that provide a flexible
+   means of IPC.  They combine a shared mem mapping and a duplexed
+   named-pipe for external use. On construction the Slave creates a 
+   shared memory segment, managed by an ExplicitHeap, accepting allocation 
+   requests through an internal named-pipe on its own thread. It waits on 
+   the master through a call to wait_for_master(). 
 
-To support multiple Masters(clients) from different processes and to 
-preempt blocking by the slave the pipe instances are acquired and then 
-released manually via grab_pipe() and release_pipe(), respecitively.
-(The concept is similar to the CallNamedPipe() system call.)  
+   To support multiple Masters(clients) from different processes and to 
+   preempt blocking by the slave the pipe instances are acquired and then 
+   released manually via grab_pipe() and release_pipe(), respecitively.
+   (The concept is similar to the CallNamedPipe() system call.)  
 
-shem_chunks are structs that have an offset and byte-size used between
-different address spaces to convey the beginning and end of data inserted 
-into the shared memory segment.
+   shem_chunks are structs that have an offset and byte-size used between
+   different address spaces to convey the beginning and end of data inserted 
+   into the shared memory segment.
 
-The sequence of calls by the master are:
-1) grab_pipe()
-2) insert()    : pass raw buffers, sets or vectors of data
-3) send()    : pass the shem_chunks returned by insert or a scallar
-4) recv()    : populate a shem_chunk or scalar with what's passed to send
-5) remove() : 'deallocate' the shem_chunks created by insert
-6) release_pipe()
+   The sequence of calls by the master are:
+   1) grab_pipe()
+   2) insert()    : pass raw buffers, sets or vectors of data
+   3) send()    : pass the shem_chunks returned by insert or a scallar
+   4) recv()    : populate a shem_chunk or scalar with what's passed to send
+   5) remove() : 'deallocate' the shem_chunks created by insert
+   6) release_pipe()
 
-The memory management is handled internally after calls to insert and 
-remove but its important that anything passed to insert also be removed 
-AFTER the slave sends back its cofirmation.  If it's not eventually 
-the heap managed by the slave will become full resulting in undefined
-behvarior. (Currently there isn't a means for dealing with this because
-the objects are only being used for trivial RPC.)
+   The memory management is handled internally after calls to insert and 
+   remove but its important that anything passed to insert also be removed 
+   AFTER the slave sends back its cofirmation.  If it's not eventually 
+   the heap managed by the slave will become full resulting in undefined
+   behvarior. (Currently there isn't a means for dealing with this because
+   the objects are only being used for trivial RPC.)
 
-shem_chunk { x, 0 } is reserved for special signals, opcodes etc.
-shem_chunk { 0, 0 } signals the end of a particular set of transmissions.
+   shem_chunk { x, 0 } is reserved for special signals, opcodes etc.
+   shem_chunk { 0, 0 } signals the end of a particular set of transmissions.
 */
 
-class ExplicitHeap
-{
-    typedef unsigned long                   headTy, sizeTy;
-    typedef unsigned char                   *ptrTy;    
-    typedef    std::multimap< sizeTy, ptrTy >  heapTy;
-    typedef std::set< ptrTy >               setTy;
-    typedef std::pair< sizeTy, ptrTy >      heapPairTy;    
+class ExplicitHeap{
+
+    typedef unsigned long                    headTy, sizeTy;
+    typedef unsigned char                    *ptrTy;    
+    typedef std::multimap< sizeTy, ptrTy >   heapTy;
+    typedef std::set< ptrTy >                setTy;
+    typedef std::pair< sizeTy, ptrTy >       heapPairTy;    
 
     static const unsigned short HEADER = sizeof(headTy);
 
@@ -77,13 +78,12 @@ class ExplicitHeap
 
     bool _valid_start( void* start )
     {   
-         return (_allocated_set.find( (ptrTy)start ) != _allocated_set.cend());
+        return (_allocated_set.find( (ptrTy)start ) != _allocated_set.cend());
     }
     // void _grow();     // TODO
     // void _shrink();   // TODO
     // void _coalesce(); // TODO
-public:
-    
+public:    
     ExplicitHeap( void* beg_addr, sizeTy sz )
         {
             this->_free_heap.insert(  heapPairTy( sz, (ptrTy)beg_addr ) ); 
@@ -104,10 +104,10 @@ public:
     }
 };
 
-class DynamicIPCBase
-{ 
+class DynamicIPCBase{ 
 public:
-    struct shem_chunk{
+    struct shem_chunk
+    {
         size_type offset;
         int bSize;
         shem_chunk() 
@@ -136,36 +136,37 @@ private:
         return shem_chunk((size_type)blk - (size_type)_mMapAddr, bSz);
     }
 protected:
-    static const int          PAUSE = 1000;    
-    static const int          ACL_SIZE = 144;
-    static const char*        KMUTEX_NAME;
-    static const unsigned int ALLOC = 1;
-    static const unsigned int DEALLOC = 2;
-    static const unsigned int PING = 4;
-    std::string               _shemStr;
-    std::string               _pipeStr;
-    std::string               _intrnlPipeStr;
-    void*                     _fMapHndl;    
-    void*                     _mMapAddr;
-    void*                     _pipeHndl;
-    void*                     _intrnlPipeHndl;
-    void*                     _mtx;
-    int                       _mMapSz;
+    static const int           PAUSE = 1000;    
+    static const int           ACL_SIZE = 144;
+    static const char*         KMUTEX_NAME;
+    static const unsigned int  ALLOC = 1;
+    static const unsigned int  DEALLOC = 2;
+    static const unsigned int  PING = 4;
+    std::string                _shemStr;
+    std::string                _pipeStr;
+    std::string                _intrnlPipeStr;
+    void*                      _fMapHndl;    
+    void*                      _mMapAddr;
+    void*                      _pipeHndl;
+    void*                      _intrnlPipeHndl;
+    void*                      _mtx;
+    int                        _mMapSz;
 
     DynamicIPCBase( std::string name, int sz = 0 )
         :
 #ifdef KGBLNS_
-        _shemStr( std::move( 
-            std::string("Global\\").append( std::string(name).append("_shem") )) ),
+        _shemStr( std::move( std::string("Global\\")
+                                 .append( std::string(name)
+                                              .append("_shem") )) ),
 #else
         _shemStr( std::move( std::string(name).append("_shem")) ),
 #endif
-        _pipeStr( std::move( 
-            std::string("\\\\.\\pipe\\").append( std::string(name).append("_pipe") ) 
-            )),
-        _intrnlPipeStr( std::move( 
-            std::string("\\\\.\\pipe\\").append( std::string(name).append("pipe_intrnl") ) 
-            )), 
+        _pipeStr( std::move( std::string("\\\\.\\pipe\\")
+                                 .append( std::string(name)
+                                              .append("_pipe") )) ),
+        _intrnlPipeStr( std::move( std::string("\\\\.\\pipe\\")
+                                       .append( std::string(name)
+                                                    .append("pipe_intrnl") )) ), 
         _fMapHndl( NULL ),
         _mMapAddr( NULL ),
         _pipeHndl( INVALID_HANDLE_VALUE ),
@@ -219,11 +220,16 @@ public:
         _deallocate( start );
         return *this;
     }
-    /* we check for overflow but can't guarantee shem_chunk will point at valid data */
+
+    /* we check for overflow but NO GUARANTEE shem_chunk will point at 
+       valid data */
     void* shem_ptr( shem_chunk& chunk ) const
-    { /* if blck is 'abnormal', we don't have mem-map, or a read will overflow it */        
-        if( chunk.bSize <= 0 || !_mMapAddr || !((chunk.offset + chunk.bSize) <= (size_type)_mMapSz ) )
-            return nullptr;        
+    { /* if blck is 'abnormal', we don't have mem-map, 
+         or a read will overflow it */        
+        if( chunk.bSize <= 0 
+            || !_mMapAddr 
+            || !((chunk.offset + chunk.bSize) <= (size_type)_mMapSz ) )
+                return nullptr;        
         return (void*)((size_type)_mMapAddr + chunk.offset);
     }
 
@@ -236,8 +242,9 @@ public:
 
     size_type offset( void* start ) const    
     {
-        if((start < _mMapAddr) || ((size_type)start >= ((size_type)_mMapAddr + (size_type)_mMapSz)))
-            return 0;
+        if( start < _mMapAddr 
+            || (size_type)start >= ((size_type)_mMapAddr + (size_type)_mMapSz) )
+                return 0;
         return ( (size_type)start - (size_type)_mMapAddr ); 
     }
 
@@ -303,12 +310,12 @@ public:
 class DynamicIPCSlave
     : public DynamicIPCBase        
 {        
-    volatile bool                  _allocLoopF;
-    std::unique_ptr<ExplicitHeap>  _pHeap;    
-    std::unordered_map< Securable, SECURITY_ATTRIBUTES> _secAttr;
-    std::unordered_map< Securable, SECURITY_DESCRIPTOR> _secDesc;     
-    std::unordered_map< Securable, SmartBuffer<void> >  _everyoneSIDs; 
-    std::unordered_map< Securable, SmartBuffer<ACL> >   _everyoneACLs;  
+    volatile bool                                        _allocLoopF;
+    std::unique_ptr<ExplicitHeap>                        _pHeap;    
+    std::unordered_map< Securable, SECURITY_ATTRIBUTES>  _secAttr;
+    std::unordered_map< Securable, SECURITY_DESCRIPTOR>  _secDesc;     
+    std::unordered_map< Securable, SmartBuffer<void> >   _everyoneSIDs; 
+    std::unordered_map< Securable, SmartBuffer<ACL> >    _everyoneACLs;  
     int  _set_security();
     void _listen_for_alloc();
 public:        

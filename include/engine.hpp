@@ -24,40 +24,42 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 #include <condition_variable>
 #include "tos_databridge.h"
 
-const steady_clock_type    steadyClock;
-const system_clock_type systemClock;
+const steady_clock_type  steadyClock;
+const system_clock_type  systemClock;
 
 typedef struct{
-    void*        hFile;        /* handle to mapping */
-    void*        rawAddr;    /* physical location in our process space */
-    unsigned int rawSz;        /* physical size of the buffer */
-    void*        hMutex;  
+    void*         hFile;   /* handle to mapping */
+    void*         rawAddr; /* physical location in our process space */
+    unsigned int  rawSz;   /* physical size of the buffer */
+    void*         hMutex;  
 } StreamBuffer, *pStreamBuffer;
 
-typedef std::map< std::string, size_t>                  ItemsRefCountTy;
-typedef std::pair< std::string , TOS_Topics::TOPICS>    IdTy;
-typedef std::map< TOS_Topics::TOPICS, ItemsRefCountTy>  GlobalTopicsTy;
-typedef std::map< IdTy, StreamBuffer>                   GlobalBuffersTy;
-typedef TwoWayHashMap< 
-        TOS_Topics::TOPICS, 
-        HWND,true,
-        std::hash<TOS_Topics::TOPICS>,
-        std::hash<HWND>,
-        std::equal_to<TOS_Topics::TOPICS>,
-        std::equal_to<HWND> >                           GlobalConvosTy;
+typedef std::map< std::string, size_t >                      ItemsRefCountTy;
+typedef std::pair< std::string , TOS_Topics::TOPICS >        IdTy;
+typedef std::map< TOS_Topics::TOPICS, ItemsRefCountTy >      GlobalTopicsTy;
+typedef std::map< IdTy, StreamBuffer >                       GlobalBuffersTy;
+typedef TwoWayHashMap< TOS_Topics::TOPICS, 
+                       HWND,
+                       true,
+                       std::hash<TOS_Topics::TOPICS>,
+                       std::hash<HWND>,
+                       std::equal_to<TOS_Topics::TOPICS>,
+                       std::equal_to<HWND> >                 GlobalConvosTy;
 
 template < typename T >
 class DDE_Data  {
+    static const system_clock_type::time_point  epochTP;
+    
     DDE_Data( const DDE_Data<T>& );
     DDE_Data& operator=( const DDE_Data<T>& );
-    static const system_clock_type::time_point  epochTP;
-    void _init_datetime();
+
+    void _init_datetime();        
 public:
-    std::string        item;
-    TOS_Topics::TOPICS topic;
-    T                  data;
-    pDateTimeStamp     time;
-    bool               validDateTime;
+    std::string         item;
+    TOS_Topics::TOPICS  topic;
+    T                   data;
+    pDateTimeStamp      time;
+    bool                validDateTime;
 
     typedef struct{
         T             data;
@@ -70,7 +72,10 @@ public:
         return d;
     }
         
-    DDE_Data( const TOS_Topics::TOPICS topic, std::string item, const T datum, bool datetime) 
+    DDE_Data( const TOS_Topics::TOPICS topic, 
+              std::string item, 
+              const T datum, 
+              bool datetime ) 
         :
         topic( topic ),
         item( item ),

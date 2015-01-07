@@ -216,7 +216,8 @@ public:
         if( *this != right )
         {
             _bytes = right._bytes;
-            _myBaseTy::reset( (T*)new char[_bytes], [](T* p){ delete[] (char*)p; } );
+            _myBaseTy::reset( (T*)new char[_bytes], 
+                              [](T* p){ delete[] (char*)p; } );
             memcpy( get(), right.get(), _bytes);
         }
         return *this;
@@ -411,8 +412,8 @@ template< typename T1, typename T2,
 class TwoWayHashMap< T1, T2, true, Hash1, Hash2, Key1Eq, Key2Eq >  
     : public TwoWayHashMap< T1, T2, false, Hash1, Hash2, Key1Eq, Key2Eq >{
 
-    typedef TwoWayHashMap< T1, T2, false, Hash1, Hash2, Key1Eq, Key2Eq > _myBaseTy;
-    typedef std::lock_guard<std::recursive_mutex>                        _guardTy;
+    typedef TwoWayHashMap< T1,T2,false,Hash1,Hash2,Key1Eq,Key2Eq >  _myBaseTy;
+    typedef std::lock_guard< std::recursive_mutex >                 _guardTy;
 
     std::recursive_mutex _mtx;
 public:

@@ -28,15 +28,17 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 #include <mutex>
 
 /*    
-    tosdb_data_stream is interfaced differently than the typical templatized cotainer.
-    Since it provides its own java-style interface, and exceptions, it should also 
-    provide a non-templatized namespace for access to generic, static 'stuff'
-    while making it clear that an interface is being used/expected.
+    tosdb_data_stream is interfaced differently than the typical templatized 
+    cotainer. Since it provides its own java-style interface, and exceptions, 
+    it should also provide a non-templatized namespace for access to generic, 
+    static 'stuff' while making it clear that an interface is being 
+    used / expected.
     
-    The interface is of type ::Interface<type,type>
-    The container is of type ::Object<type,type,type,bool,type> 
+    The interface is of type ::Interface< type, type >
+    The container is of type ::Object< type, type, type, bool, type > 
 
-    We've hard-coded a max bound size as INT_MAX to avoid some of the corner cases.
+    We've hard-coded a max bound size as INT_MAX to avoid some of the corner 
+    cases.
 */
 
 namespace tosdb_data_stream {
@@ -131,10 +133,14 @@ private:
     }
 
     template < typename _inTy, typename _outTy >
-    void _copy( _outTy* dest, size_t sz, int end, int beg, secondary_type* sec ) const
+    void _copy( _outTy* dest, 
+                size_t sz, 
+                int end, 
+                int beg, 
+                secondary_type* sec ) const
     {    
         if( !dest )
-            throw invalid_argument( " ->copy(): *dest argument can not be null ");         
+            throw invalid_argument( "->copy(): *dest argument can not be null");         
         std::unique_ptr< _inTy, void(*)(_inTy*)> 
             tmp( new _inTy[sz], [](_inTy* _ptr){ delete[] _ptr; } );
         copy( tmp.get(), sz, end, beg, sec );
@@ -157,40 +163,45 @@ public:
     virtual bool                    uses_secondary() = 0;
     virtual generic_type            operator[]( int ) const    = 0;
     virtual both_type               both( int ) const = 0;    
-    virtual generic_vector_type     vector(int end = -1, int beg = 0) const = 0;
-    virtual secondary_vector_type   secondary_vector(int end = -1, int beg = 0) const = 0;    
+    virtual generic_vector_type     vector( int end = -1, 
+                                            int beg = 0 ) const = 0;
+    virtual secondary_vector_type   secondary_vector( int end = -1, 
+                                                      int beg = 0 ) const = 0;    
     
-    virtual void push( const generic_type& obj, secondary_type&& sec = secondary_type()) = 0;
+    virtual void push( const generic_type& obj, 
+                       secondary_type&& sec = secondary_type() ) = 0;
 
     virtual void secondary( secondary_type* dest, int indx ) const 
     { 
         dest = nullptr; /* SHOULD WE THROW? */        
     }
     
-    /* Avoid constructing GenTy if possible: the following mess provides
-       something of a recursive / drop-thru, safe, type-finding mechanism to do that.    
-       Throws if it can't reconcile the passed type at runtime( obviously 
-       this is not ideal, but seems to be necessary for what's trying to be accomplished ) */
+    /* 
+       Avoid constructing GenTy if possible: the following mess provides
+       something of a recursive / drop-thru, safe, type-finding mechanism 
+       to do that. Throws if it can't reconcile the passed type at runtime( 
+       obviously this is not ideal, but seems to be necessary for what's 
+       trying to be accomplished) 
+    */
 #define virtual_void_push_2arg_DROP( _inTy, _outTy ) \
-    virtual void push( const _inTy val, secondary_type&& sec = secondary_type()) \
-    { \
-        push( (_outTy)val, std::move(sec) ); \
-    } 
+virtual void push( const _inTy val, secondary_type&& sec = secondary_type()) \
+{ \
+    push( (_outTy)val, std::move(sec) ); \
+} 
 #define virtual_void_push_2arg_BREAK( _inTy ) \
-    virtual void push( const _inTy val, secondary_type&& sec = secondary_type()) \
-    { \
-        push( std::to_string(val) , std::move(sec) ); \
-    } 
+virtual void push( const _inTy val, secondary_type&& sec = secondary_type()) \
+{ \
+    push( std::to_string(val) , std::move(sec) ); \
+} 
 #define virtual_void_push_2arg_LOOP( _inTy, _loopOnC1 ) \
-    virtual void push( const _inTy str, secondary_type&& sec = secondary_type()) \
-    { \
-        if( _count1++ ) \
-        { \
-            _count1 = 0; \
-            _throw_type_error< const _inTy >( "->push()", true ); \
-        } \
-        push( _loopOnC1, std::move(sec) ); \
-    } 
+virtual void push( const _inTy str, secondary_type&& sec = secondary_type()) \
+{ \
+    if( _count1++ ){ \
+        _count1 = 0; \
+        _throw_type_error< const _inTy >( "->push()", true ); \
+    } \
+    push( _loopOnC1, std::move(sec) ); \
+} 
     virtual_void_push_2arg_DROP( float, double )
     virtual_void_push_2arg_BREAK( double )
     virtual_void_push_2arg_DROP( unsigned char, unsigned short )
@@ -207,15 +218,17 @@ public:
     virtual_void_push_2arg_LOOP( char*, std::string( str ) )
 
 #define virtual_void_copy_2arg_DROP( _inTy, _outTy ) \
-    virtual void copy( _inTy* dest, size_t sz, int end = -1, int beg = 0, secondary_type* sec = nullptr) const \
-    { \
-        _copy< _outTy >( dest, sz, end, beg, sec ); \
-    } 
+virtual void copy( _inTy* dest, size_t sz, int end = -1, int beg = 0, \
+                   secondary_type* sec = nullptr) const \
+{ \
+    _copy< _outTy >( dest, sz, end, beg, sec ); \
+} 
 #define virtual_void_copy_2arg_BREAK( _inTy, _dropBool ) \
-    virtual void copy( _inTy* dest, size_t sz, int end = -1, int beg = 0, secondary_type* sec = nullptr) const \
-    { \
-        _throw_type_error< _inTy* >( "->copy()", _dropBool ); \
-    }
+virtual void copy( _inTy* dest, size_t sz, int end = -1, int beg = 0, \
+                   secondary_type* sec = nullptr) const \
+{ \
+    _throw_type_error< _inTy* >( "->copy()", _dropBool ); \
+}
 
     virtual_void_copy_2arg_DROP( long long, long )
     virtual_void_copy_2arg_DROP( long, int )
@@ -230,17 +243,24 @@ public:
     virtual_void_copy_2arg_DROP( double, float )
     virtual_void_copy_2arg_BREAK( float, false ) 
 
-    virtual void 
-    copy( char** dest, size_t destSz, size_t strSz, int end = -1, int beg = 0 , secondary_type* sec = nullptr ) const 
+    virtual void copy( char** dest, 
+                       size_t destSz, 
+                       size_t strSz, 
+                       int end = -1, 
+                       int beg = 0 , 
+                       secondary_type* sec = nullptr ) const 
     { 
         _throw_type_error< std::string* >( "->copy()", false );         
     }
 
-    virtual void 
-    copy( std::string* dest, size_t sz, int end = -1, int beg = 0, secondary_type* sec = nullptr ) const
+    virtual void copy( std::string* dest, 
+                       size_t sz, 
+                       int end = -1, 
+                       int beg = 0, 
+                       secondary_type* sec = nullptr ) const
     {
         if( !dest )
-            throw invalid_argument( " ->copy(): *dest argument can not be null ");
+            throw invalid_argument( "->copy(): *dest argument can not be null");
         auto dstr = [sz]( char** _pptr){ DeallocStrArray( _pptr, sz); };
         std::unique_ptr< char*, decltype( dstr ) >
             strMat( AllocStrArray( sz, STR_DATA_SZ ), dstr );
@@ -255,10 +275,10 @@ public:
 
 /*    The container object w/o secondary deque */
 template < typename Ty,
-            typename SecTy,
-             typename GenTy,            
-              bool UseSecondary = false,
-               typename Allocator = std::allocator<Ty> >
+           typename SecTy,
+           typename GenTy,            
+           bool UseSecondary = false,
+           typename Allocator = std::allocator<Ty> >
 class Object
     : public Interface<SecTy, GenTy>{
 
@@ -269,10 +289,10 @@ class Object
             Ty failed GenTy's type-check;" ); 
     }_inst_check_;    
     
-    typedef Object< Ty, SecTy, GenTy, UseSecondary, Allocator>  _myTy;
-    typedef Interface< SecTy, GenTy >                           _myBase;
-    typedef std::deque< Ty, Allocator >                         _myImplTy;            
-    typedef typename _myImplTy::const_iterator::difference_type _myImplDiffTy;    
+    typedef Object< Ty, SecTy, GenTy, UseSecondary, Allocator>   _myTy;
+    typedef Interface< SecTy, GenTy >                            _myBase;
+    typedef std::deque< Ty, Allocator >                          _myImplTy;            
+    typedef typename _myImplTy::const_iterator::difference_type  _myImplDiffTy;    
 
     _myTy& operator=(const _myTy &);
     
@@ -304,8 +324,10 @@ protected:
         std::this_thread::yield();
     }
 
-    template< typename T > bool 
-    _check_adj( int& end, int& beg, const std::deque< T, Allocator>& impl ) const
+    template< typename T > 
+    bool _check_adj( int& end, 
+                     int& beg, 
+                     const std::deque< T, Allocator >& impl ) const
     {  /* since sz can't be > INT_MAX this won't be a problem */
         int sz = (int)impl.size();
         if ( _qBound != sz )    
@@ -317,22 +339,27 @@ protected:
         if ( beg < 0 ) beg += sz;
         if ( beg >= sz || end >= sz || beg < 0 || end < 0 )    
             throw out_of_range(
-                "adjusted index value out of range in tosdb_data_stream",
+                "adj index value out of range in tosdb_data_stream",
                 sz, beg, end
                 );
         else if ( beg > end )     
             throw invalid_argument( 
-                "adjusted beginning index value > ending index value in tosdb_data_stream"                 
+                "adj beg index value > end index value in tosdb_data_stream"                 
                 );
         return true;
     }
 
-    template< typename ImplTy, typename DestTy > void 
-    _copy_to_ptr( ImplTy& impl, DestTy* dest, size_t sz, unsigned int end, unsigned int beg) const
+    template< typename ImplTy, typename DestTy > 
+    void _copy_to_ptr( ImplTy& impl, 
+                       DestTy* dest, 
+                       size_t sz, 
+                       unsigned int end, 
+                       unsigned int beg) const
     {    
         ImplTy::const_iterator bIter = impl.cbegin() + beg;
-        ImplTy::const_iterator eIter 
-            = impl.cbegin() + std::min< size_t >( sz + beg, std::min< size_t >( ++end , _qCount ) );
+        ImplTy::const_iterator eIter = impl.cbegin() + 
+            std::min< size_t >( sz + beg, 
+                                std::min< size_t >( ++end , _qCount ) );
         if( bIter < eIter )
             std::copy( bIter, eIter, dest );     
     }
@@ -411,21 +438,25 @@ public:
         _push( val);        
     }
 
-    void push(const generic_type& gen, secondary_type&& sec = secondary_type() )
+    void push( const generic_type& gen, 
+               secondary_type&& sec = secondary_type() )
     {
         _count1 = 0;
         _push( (Ty)gen );        
     }
         
-    void
-    copy( Ty* dest, size_t sz, int end = -1, int beg = 0, secondary_type* sec = nullptr) const 
+    void copy( Ty* dest, 
+               size_t sz, 
+               int end = -1, 
+               int beg = 0, 
+               secondary_type* sec = nullptr) const 
     {    
         static_assert( 
             !std::is_same<Ty,char>::value, 
             "->copy() accepts char**, not char*" 
             );
         if( !dest )
-            throw invalid_argument( " ->copy(): *dest argument can not be null ");
+            throw invalid_argument( "->copy(): *dest argument can not be null");
         _yld_to_push();
         _guardTy _lock_( *_mtx );
         _check_adj( end, beg, _myImplObj );                     
@@ -437,12 +468,16 @@ public:
     
     /* slow(er), has to go thru generic_type to get strings */
     /* note: if sz <= genS.length() the string is truncated */
-    void
-    copy( char** dest, size_t destSz, size_t strSz, int end = -1, int beg = 0, secondary_type* sec = nullptr) const 
+    void copy( char** dest, 
+               size_t destSz, 
+               size_t strSz, 
+               int end = -1, 
+               int beg = 0, 
+               secondary_type* sec = nullptr) const 
     {
         _myImplTy::const_iterator bIter, eIter;        
         if( !dest )
-            throw invalid_argument( " ->copy(): *dest argument can not be null ");
+            throw invalid_argument( "->copy(): *dest argument can not be null");
         _yld_to_push();        
         _guardTy _lock_( *_mtx );                    
         _check_adj(end,beg, _myImplObj);                        
@@ -451,7 +486,8 @@ public:
         for( size_t i = 0; (i < destSz) && (bIter < eIter); ++bIter, ++i )
         {             
             std::string genS = generic_type( *bIter ).as_string();                
-            strncpy_s( dest[i], strSz, genS.c_str(), std::min<size_t>(strSz-1,genS.length()));                                  
+            strncpy_s( dest[i], strSz, genS.c_str(), 
+                       std::min<size_t>( strSz-1, genS.length() ) );                                  
         }            
     }
 
@@ -481,13 +517,12 @@ public:
         _check_adj(end, beg, _myImplObj);                
         bIter = _myImplObj.cbegin() + beg;
         eIter = _myImplObj.cbegin() + std::min< size_t >(++end, _qCount);        
-        if( bIter < eIter )        
-            std::transform(  /* have to use slower insert_iterator approach */
-                    bIter,   /* generic_type doesn't allow default construction */                            
-                    eIter, 
-                    std::insert_iterator< generic_vector_type >(tmp,tmp.begin()), 
-                    []( Ty x ){ return generic_type(x); } 
-                    );            
+        if( bIter < eIter )                   
+            std::transform( bIter, eIter, 
+                /* have to use slower insert_iterator approach, 
+                   generic_type doesn't allow default construction */
+                std::insert_iterator< generic_vector_type >( tmp, tmp.begin() ), 
+                []( Ty x ){ return generic_type(x); } );            
         return tmp;    
     }
 
@@ -495,22 +530,22 @@ public:
     secondary_vector( int end = -1, int beg = 0 ) const
     {                
         _check_adj(end, beg, _myImplObj);                                            
-        return secondary_vector_type(  std::min< size_t >(++end - beg, _qCount) );
+        return secondary_vector_type( std::min< size_t >(++end - beg, _qCount));
     }
 
 };
 
-/*    The container object w/ secondary deque */
+/*   The container object w/ secondary deque   */
 template < typename Ty,            
-            typename SecTy,
-             typename GenTy,
-              typename Allocator >
+           typename SecTy,
+           typename GenTy,
+           typename Allocator >
 class Object< Ty, SecTy, GenTy, true, Allocator >
     : public Object< Ty, SecTy, GenTy, false, Allocator >{
 
-    typedef Object< Ty, SecTy, GenTy, true, Allocator>  _myTy;
-    typedef Object< Ty, SecTy, GenTy, false, Allocator> _myBase;
-    typedef std::deque< SecTy, Allocator >              _myImplSecTy;
+    typedef Object< Ty, SecTy, GenTy, true, Allocator>   _myTy;
+    typedef Object< Ty, SecTy, GenTy, false, Allocator>  _myBase;
+    typedef std::deque< SecTy, Allocator >               _myImplSecTy;
     
     _myImplSecTy _myImplSecObj;    
     
@@ -571,38 +606,48 @@ public:
     
     }
 
-    void push( const generic_type& gen, secondary_type&& sec = secondary_type() )
+    void push( const generic_type& gen, 
+               secondary_type&& sec = secondary_type() )
     {
         _count1 = 0;
         _push( (Ty)gen, std::move(sec) );
     }
     
-    void
-    copy( Ty* dest, size_t sz, int end = -1, int beg = 0, secondary_type* sec = nullptr) const 
+    void copy( Ty* dest, 
+               size_t sz, 
+               int end = -1, 
+               int beg = 0, 
+               secondary_type* sec = nullptr) const 
     {        
         if( !dest )
-            throw invalid_argument( " ->copy(): *dest argument can not be null ");
+            throw invalid_argument( "->copy(): *dest argument can not be null");
         _guardTy _lock_( *_mtx );            
         _myBase::copy(dest, sz, end, beg);            
         if( !sec )
             return;
-        _check_adj( end, beg, _myImplSecObj ); /*repeat the check to update index vals */        
+        /*repeat the check to update index vals */ 
+        _check_adj( end, beg, _myImplSecObj );        
         if( end == beg )    
             *sec = beg ? _myImplSecObj.at(beg) : _myImplSecObj.front();
         else    
             _copy_to_ptr( _myImplSecObj, sec, sz, end, beg);    
     }
 
-    void
-    copy( char** dest, size_t destSz, size_t strSz, int end = -1, int beg = 0, secondary_type* sec = nullptr) const 
+    void copy( char** dest, 
+               size_t destSz, 
+               size_t strSz, 
+               int end = -1, 
+               int beg = 0, 
+               secondary_type* sec = nullptr) const 
     {            
         if( !dest  )
-            throw invalid_argument( " ->copy(): *dest argument can not be null ");
+            throw invalid_argument( "->copy(): *dest argument can not be null");
         _guardTy _lock_( *_mtx );
         _myBase::copy(dest, destSz, strSz, end, beg);
         if( !sec )
             return;
-        _check_adj( end, beg, _myImplSecObj ); /*repeat the check to update index vals*/
+        /*repeat the check to update index vals*/
+        _check_adj( end, beg, _myImplSecObj ); 
         if( end == beg )
             *sec = beg ? _myImplSecObj.at(beg) : _myImplSecObj.front();
         else

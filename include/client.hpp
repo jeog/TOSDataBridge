@@ -34,7 +34,7 @@ typedef struct {
     str_set_type         itemPreCache;
     topic_set_type       topicPreCache;    
     unsigned long        timeout;
-} TOSDBlock; /* don't provide ptr or const typedefs, force code to state explicitly */
+} TOSDBlock; /* no ptr or const typedefs; force code to state explicitly */
 
 bool                ChceckIDLength(LPCSTR id);
 bool                ChceckStringLength(LPCSTR str);

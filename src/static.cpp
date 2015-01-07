@@ -22,8 +22,8 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 #include <string>
 #include <algorithm>
 
-LPCSTR    TOSDB_APP_NAME    =  "TOS";
-LPCSTR    TOSDB_COMM_CHANNEL = "TOSDB_channel_1";
+LPCSTR TOSDB_APP_NAME     =  "TOS";
+LPCSTR TOSDB_COMM_CHANNEL = "TOSDB_channel_1";
 
 const size_type TOSDB_DEF_TIMEOUT = 2000;
 const size_type TOSDB_MIN_TIMEOUT = 1500;
@@ -31,18 +31,16 @@ const size_type TOSDB_SHEM_BUF_SZ = 4096;
 const size_type TOSDB_BLOCK_ID_SZ = 63;
 
 std::string CreateBufferName( std::string sTopic, std::string sItem )
-{      /* name of mapping is of form: "TOSDB_[topic name]_[item_name]"  
-        only alpha-numeric characters (except under-score)                */
+{ /* name of mapping is of form: "TOSDB_[topic name]_[item_name]"  
+     only alpha-numeric characters (except under-score) */
     std::string str("TOSDB_");
     str.append( sTopic.append("_"+sItem) );     
-    str.erase( 
-        std::remove_if( 
-                str.begin(), 
-                str.end(), 
-                [](char x){ return !isalnum( x ) && x != '_'; } 
-                ), 
-        str.end() 
-        );
+    str.erase( std::remove_if( str.begin(), 
+                               str.end(), 
+                               [](char x){ 
+                                  return !isalnum( x ) && x != '_'; 
+                               } ), 
+               str.end() );
 #ifdef KGBLNS_
     return std::string("Global\\").append(str);
 #else
@@ -79,10 +77,13 @@ namespace {
 std::string SysTimeString()
 {
     std::unique_ptr<char> tmpBuf(new char[logColW[0]]);
+
     time_t now = sysClock.to_time_t( sysClock.now() );        
     ctime_s( tmpBuf.get(), logColW[0], &now);
+
     std::string tmpStr(tmpBuf.get());
     tmpStr.pop_back();
+
     return tmpStr;
 }
 
@@ -102,22 +103,34 @@ void TOSDB_StartLogging(LPCSTR fName)
     }
 }
 
-inline void TOSDB_StopLogging(){ logOut.close(); }
+inline void TOSDB_StopLogging()
+{ 
+    logOut.close(); 
+}
 
-inline void TOSDB_ClearLog(){ logOut.clear(); }
+inline void TOSDB_ClearLog()
+{ 
+    logOut.clear(); 
+}
 
-void TOSDB_Log_( DWORD pid, DWORD tid, Severity sevr, LPCSTR tag,  LPCSTR description) 
+void TOSDB_Log_( DWORD pid, 
+                 DWORD tid, 
+                 Severity sevr, 
+                 LPCSTR tag,  
+                 LPCSTR description) 
 {    
     std::lock_guard<std::mutex> _lck(fOutMtx);
     std::string nowTime = SysTimeString();
+
     if( !logOut.is_open() ){
         if (sevr > 0)
-            std::cerr<<std::setw(logColW[0])<< std::left<< nowTime.substr(0,30)
-                <<std::setw(logColW[1])<< std::left<< pid
-                <<std::setw(logColW[2])<< std::left<< tid
-                <<std::setw(logColW[3])<< std::left<< std::string(tag).substr(0,19)            
-                << std::left<< description
-                << std::endl;        
+            std::cerr<< std::setw(logColW[0])<< std::left
+                     << nowTime.substr(0,30)
+                     <<std::setw(logColW[1])<< std::left<< pid
+                     <<std::setw(logColW[2])<< std::left<< tid
+                     <<std::setw(logColW[3])<< std::left
+                     << std::string(tag).substr(0,19)            
+                     << std::left<< description << std::endl;        
     }
     else
     {
@@ -131,9 +144,19 @@ void TOSDB_Log_( DWORD pid, DWORD tid, Severity sevr, LPCSTR tag,  LPCSTR descri
     }
 }
 
-void TOSDB_LogEx_( DWORD pid, DWORD tid, Severity sevr, LPCSTR tag,  LPCSTR description, DWORD error) 
+void TOSDB_LogEx_( DWORD pid, 
+                   DWORD tid, 
+                   Severity sevr, 
+                   LPCSTR tag,  
+                   LPCSTR description, 
+                   DWORD error) 
 {    
-    TOSDB_Log_( pid, tid, sevr, tag, std::string(description).append(" ERROR# ").append(std::to_string(error)).c_str());
+    TOSDB_Log_( pid, 
+                tid, 
+                sevr, 
+                tag, 
+                std::string(description).append(" ERROR# ")
+                                        .append(std::to_string(error)).c_str());
 }
 
 void TOSDB_Log_Raw_( LPCSTR description ) 

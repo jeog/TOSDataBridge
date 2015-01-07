@@ -23,9 +23,9 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 #include <math.h>
 
 namespace JO{
-/*  this is just a crass hack to allow tosdb_data_stream to 
-    overload by return type, allowing for a simpler generic 
-    C++ interface
+/*  
+    this is just a crass hack to allow tosdb_data_stream to overload by 
+    return type, allowing for a simpler generic C++ interface
 */
 class Generic{
 
@@ -33,9 +33,10 @@ class Generic{
     unsigned char _typeVal;
     unsigned char _typeBSz;
     
-    template< typename T > void _throw_bad_cast() const;
-    template< typename T > T    _cast_to_val() const;
-    template< typename T > T    _val_switch() const;
+    template< typename T > void  _throw_bad_cast() const;
+    template< typename T > T     _cast_to_val() const;
+    template< typename T > T     _val_switch() const;
+
     void _sub_deep_copy( Generic& dest, const Generic& src);
 
     static const int VOID_      = 0;
@@ -136,25 +137,29 @@ public:
         return !this->operator==(gen);
     }
 
-    inline size_t size() const              { return _typeBSz; }
-    inline bool    is_float() const            { return ( _typeVal == FLOAT_ ); }    
-    inline bool    is_double() const           { return ( _typeVal == DOUBLE_ ); }    
-    inline bool    is_long() const             { return ( _typeVal == LONG_ ); }
-    inline bool    is_long_long() const        { return ( _typeVal == LONG_LONG_ ); }    
-    inline bool    is_string() const           { return ( _typeVal == STRING_ ); }
-    inline bool    is_floating_point() const   { return ( _typeVal == FLOAT_ || _typeVal == DOUBLE_ ); }
-    inline bool    is_integer() const          { return ( _typeVal == LONG_ || _typeVal == LONG_LONG_ ); }
+    inline size_t size() const            { return _typeBSz; }
 
-    inline long    as_long() const             { return _val_switch<long>(); }
-    inline long long as_long_long() const   { return _val_switch<long long>(); }
-    inline float as_float() const           { return _val_switch<float>(); }
-    inline double as_double() const         { return _val_switch<double>(); }
-    std::string    as_string() const;
-    inline operator    long() const            { return as_long(); }
-    inline operator    long long() const       { return as_long_long(); }
-    inline operator    float() const           { return as_float(); }
-    inline operator    double() const          { return as_double(); }            
-    inline operator    std::string() const    { return as_string();}
+    inline bool is_float() const          { return ( _typeVal == FLOAT_ ); }    
+    inline bool is_double() const         { return ( _typeVal == DOUBLE_ ); }    
+    inline bool is_long() const           { return ( _typeVal == LONG_ ); }
+    inline bool is_long_long() const      { return ( _typeVal == LONG_LONG_ ); }    
+    inline bool is_string() const         { return ( _typeVal == STRING_ ); }
+    inline bool is_floating_point() const { return ( _typeVal == FLOAT_ || 
+                                                     _typeVal == DOUBLE_ ); }
+    inline bool is_integer() const        { return ( _typeVal == LONG_ || 
+                                                     _typeVal == LONG_LONG_ ); }
+
+    inline long      as_long() const      { return _val_switch<long>(); }
+    inline long long as_long_long() const { return _val_switch<long long>(); }
+    inline float     as_float() const     { return _val_switch<float>(); }
+    inline double    as_double() const    { return _val_switch<double>(); }
+    std::string      as_string() const;
+
+    inline operator long() const          { return as_long(); }
+    inline operator long long() const     { return as_long_long(); }
+    inline operator float() const         { return as_float(); }
+    inline operator double() const        { return as_double(); }            
+    inline operator std::string() const   { return as_string();}
 };    
 
 
@@ -178,7 +183,7 @@ T Generic::_val_switch() const
             return (T)(*(double*)(_sub));
             break;
         case STRING_:
-            return  (T)(std::is_floating_point<T>::value 
+            return (T)(std::is_floating_point<T>::value 
                         ? std::stod( *(std::string*)(_sub) ) 
                         : std::stoll( *(std::string*)(_sub) ));
         default:

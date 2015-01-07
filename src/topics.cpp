@@ -45,7 +45,8 @@ const TOS_Topics::topic_map_entry_type gtmArr[] = {
     //TOS_Topics::topic_map_entry_type(
     //    TOS_Topics::TOPICS::AccelerationBands, "AccelerationBands"),
     //TOS_Topics::topic_map_entry_type(
-    //    TOS_Topics::TOPICS::AccelerationDecelerationOsc, "AccelerationDecelerationOsc"),
+    //    TOS_Topics::TOPICS::AccelerationDecelerationOsc, 
+    //    "AccelerationDecelerationOsc"),
     //TOS_Topics::topic_map_entry_type(
     //    TOS_Topics::TOPICS::AdvanceBlock, "AdvanceBlock"),
     //TOS_Topics::topic_map_entry_type(
@@ -85,7 +86,8 @@ const TOS_Topics::topic_map_entry_type gtmArr[] = {
     //TOS_Topics::topic_map_entry_type(
     //    TOS_Topics::TOPICS::Beta2, "Beta2"),
     //TOS_Topics::topic_map_entry_type(
-    //    TOS_Topics::TOPICS::BollingerBandsCrossover, "BollingerBandsCrossover"),
+    //    TOS_Topics::TOPICS::BollingerBandsCrossover, 
+    //    "BollingerBandsCrossover"),
     //TOS_Topics::topic_map_entry_type(
     //    TOS_Topics::TOPICS::BollingerBandsEMA, "BollingerBandsEMA"),
     //TOS_Topics::topic_map_entry_type(
@@ -151,7 +153,8 @@ const TOS_Topics::topic_map_entry_type gtmArr[] = {
     //TOS_Topics::topic_map_entry_type(
     //    TOS_Topics::TOPICS::ChaikinVolatility, "ChaikinVolatility"),
     //TOS_Topics::topic_map_entry_type(
-    //    TOS_Topics::TOPICS::ChandeMomentumOscillator, "ChandeMomentumOscillator"),
+    //    TOS_Topics::TOPICS::ChandeMomentumOscillator, 
+    //    "ChandeMomentumOscillator"),
     //TOS_Topics::topic_map_entry_type(
     //    TOS_Topics::TOPICS::CloseLocationValue, "CloseLocationValue"),
     //TOS_Topics::topic_map_entry_type(
@@ -205,9 +208,11 @@ const TOS_Topics::topic_map_entry_type gtmArr[] = {
     //TOS_Topics::topic_map_entry_type(
     //    TOS_Topics::TOPICS::Doji, "Doji"),
     //TOS_Topics::topic_map_entry_type(
-    //    TOS_Topics::TOPICS::DoubleSmoothedStochastics, "DoubleSmoothedStochastics"),
+    //    TOS_Topics::TOPICS::DoubleSmoothedStochastics, 
+    //    "DoubleSmoothedStochastics"),
     //TOS_Topics::topic_map_entry_type(
-    //    TOS_Topics::TOPICS::DownsideGapThreeMethods, "DownsideGapThreeMethods"),
+    //    TOS_Topics::TOPICS::DownsideGapThreeMethods, 
+    //    "DownsideGapThreeMethods"),
     //TOS_Topics::topic_map_entry_type(
     //    TOS_Topics::TOPICS::DownsideTasukiGap, "DownsideTasukiGap"),
     //TOS_Topics::topic_map_entry_type(
@@ -227,7 +232,8 @@ const TOS_Topics::topic_map_entry_type gtmArr[] = {
     //TOS_Topics::topic_map_entry_type(
     //    TOS_Topics::TOPICS::EaseOfMovement, "EaseOfMovement"),
     //TOS_Topics::topic_map_entry_type(
-    //    TOS_Topics::TOPICS::EhlersDistantCoefficientFilter, "EhlersDistantCoefficientFilter"),
+    //    TOS_Topics::TOPICS::EhlersDistantCoefficientFilter, 
+    //    "EhlersDistantCoefficientFilter"),
     //TOS_Topics::topic_map_entry_type(
     //    TOS_Topics::TOPICS::ElderImpulse, "ElderImpulse"),
     //TOS_Topics::topic_map_entry_type(
@@ -247,7 +253,8 @@ const TOS_Topics::topic_map_entry_type gtmArr[] = {
     //TOS_Topics::topic_map_entry_type(
     //    TOS_Topics::TOPICS::EveningStar, "EveningStar"),
     //TOS_Topics::topic_map_entry_type(
-    //    TOS_Topics::TOPICS::FAKE_THINKSCRIPT_COLUMN, "FAKE_THINKSCRIPT_COLUMN"),
+    //    TOS_Topics::TOPICS::FAKE_THINKSCRIPT_COLUMN, 
+    //    "FAKE_THINKSCRIPT_COLUMN"),
     TOS_Topics::topic_map_entry_type(
         TOS_Topics::TOPICS::FRONT_EX_MOVE, "FRONT_EX_MOVE"),
     TOS_Topics::topic_map_entry_type(
@@ -403,7 +410,8 @@ const TOS_Topics::topic_map_entry_type gtmArr[] = {
     //TOS_Topics::topic_map_entry_type(
     //    TOS_Topics::TOPICS::MoneyFlowIndex, "MoneyFlowIndex"),
     //TOS_Topics::topic_map_entry_type(
-    //    TOS_Topics::TOPICS::MoneyFlowIndexCrossover, "MoneyFlowIndexCrossover"),
+    //    TOS_Topics::TOPICS::MoneyFlowIndexCrossover, 
+    //    "MoneyFlowIndexCrossover"),
     //TOS_Topics::topic_map_entry_type(
     //    TOS_Topics::TOPICS::MorningDojiStar, "MorningDojiStar"),
     //TOS_Topics::topic_map_entry_type(
@@ -471,7 +479,8 @@ const TOS_Topics::topic_map_entry_type gtmArr[] = {
     //TOS_Topics::topic_map_entry_type(
     //    TOS_Topics::TOPICS::PiercingLine, "PiercingLine"),
     //TOS_Topics::topic_map_entry_type(
-    //    TOS_Topics::TOPICS::PolarizedFractalEfficiency, "PolarizedFractalEfficiency"),
+    //    TOS_Topics::TOPICS::PolarizedFractalEfficiency, 
+    //    "PolarizedFractalEfficiency"),
     //TOS_Topics::topic_map_entry_type(
     //    TOS_Topics::TOPICS::PolychromMtm, "PolychromMtm"),
     //TOS_Topics::topic_map_entry_type(
@@ -543,7 +552,8 @@ const TOS_Topics::topic_map_entry_type gtmArr[] = {
     //TOS_Topics::topic_map_entry_type(
     //    TOS_Topics::TOPICS::SectorRotationModel, "SectorRotationModel"),
     //TOS_Topics::topic_map_entry_type(
-    //    TOS_Topics::TOPICS::SentimentZoneOscillator, "SentimentZoneOscillator"),
+    //    TOS_Topics::TOPICS::SentimentZoneOscillator, 
+    //    "SentimentZoneOscillator"),
     //TOS_Topics::topic_map_entry_type(
     //    TOS_Topics::TOPICS::SeparatingLines, "SeparatingLines"),
     //TOS_Topics::topic_map_entry_type(
@@ -575,13 +585,15 @@ const TOS_Topics::topic_map_entry_type gtmArr[] = {
     //TOS_Topics::topic_map_entry_type(
     //    TOS_Topics::TOPICS::StochasticFull, "StochasticFull"),
     //TOS_Topics::topic_map_entry_type(
-    //    TOS_Topics::TOPICS::StochasticMomentumIndex, "StochasticMomentumIndex"),
+    //    TOS_Topics::TOPICS::StochasticMomentumIndex, 
+    //    "StochasticMomentumIndex"),
     //TOS_Topics::topic_map_entry_type(
     //    TOS_Topics::TOPICS::StochasticSlow, "StochasticSlow"),
     //TOS_Topics::topic_map_entry_type(
     //    TOS_Topics::TOPICS::SwamiIntradayImpulse, "SwamiIntradayImpulse"),
     //TOS_Topics::topic_map_entry_type(
-    //    TOS_Topics::TOPICS::SwamiRelativePerformance, "SwamiRelativePerformance"),
+    //    TOS_Topics::TOPICS::SwamiRelativePerformance, 
+    //    "SwamiRelativePerformance"),
     //TOS_Topics::topic_map_entry_type(
     //    TOS_Topics::TOPICS::SwingIndex, "SwingIndex"),
     //TOS_Topics::topic_map_entry_type(
@@ -631,7 +643,8 @@ const TOS_Topics::topic_map_entry_type gtmArr[] = {
     //TOS_Topics::topic_map_entry_type(
     //    TOS_Topics::TOPICS::TrueRangeIndicator, "TrueRangeIndicator"),
     //TOS_Topics::topic_map_entry_type(
-    //    TOS_Topics::TOPICS::TrueRangeSpecifiedVolume, "TrueRangeSpecifiedVolume"),
+    //    TOS_Topics::TOPICS::TrueRangeSpecifiedVolume, 
+    //    "TrueRangeSpecifiedVolume"),
     //TOS_Topics::topic_map_entry_type(
     //    TOS_Topics::TOPICS::TrueStrengthIndex, "TrueStrengthIndex"),
     //TOS_Topics::topic_map_entry_type(
@@ -659,7 +672,8 @@ const TOS_Topics::topic_map_entry_type gtmArr[] = {
     TOS_Topics::topic_map_entry_type(
         TOS_Topics::TOPICS::VOL_INDEX, "VOL_INDEX"),
     //TOS_Topics::topic_map_entry_type(
-    //    TOS_Topics::TOPICS::VerticalHorizontalFilter, "VerticalHorizontalFilter"),
+    //    TOS_Topics::TOPICS::VerticalHorizontalFilter, 
+    //    "VerticalHorizontalFilter"),
     //TOS_Topics::topic_map_entry_type(
     //    TOS_Topics::TOPICS::VolatilityStdDev, "VolatilityStdDev"),
     //TOS_Topics::topic_map_entry_type(
@@ -697,5 +711,10 @@ const TOS_Topics::topic_map_entry_type gtmArr[] = {
     TOS_Topics::topic_map_entry_type(
         TOS_Topics::TOPICS::YIELD, "YIELD")
         };
-const TOS_Topics::topic_map_type TOS_Topics::_globalTopicMap = gtmArr;
-const TOS_Topics::topic_map_type& TOS_Topics::globalTopicMap = TOS_Topics::_globalTopicMap;
+const TOS_Topics::topic_map_type 
+TOS_Topics::_globalTopicMap = gtmArr;
+
+const TOS_Topics::topic_map_type& 
+TOS_Topics::globalTopicMap = TOS_Topics::_globalTopicMap;
+
+
