@@ -21,7 +21,6 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 #include <mutex>
 #include <condition_variable>
 #include <atomic>
-#include <condition_variable>
 #include "tos_databridge.h"
 
 const steady_clock_type  steadyClock;

@@ -12,28 +12,26 @@ _sysArch = "x64" if ( log( sys.maxsize * 2, 2) > 33 ) else "x86"
 _sysArchD = "Win32" if _sysArch == "x86" else "x64"
 _sysMinorV = sys.version_info.minor
 
-setup_dict = {
-"name":'tosdb',
-"version":'0.1',
-"description": "Python Front-End / Wrapper for TOS-DataBridge (C/C++)",
-"author":"Jonathon Ogden",
-"author_email":"jeog.dev@gmail.com",
-"py_modules":['tosdb'] } 
+setup_dict = 
+    { "name":'tosdb',
+      "version":'0.1',
+      "description": "Python Front-End / Wrapper for TOS-DataBridge (C/C++)",
+      "author":"Jonathon Ogden",
+      "author_email":"jeog.dev@gmail.com",
+      "py_modules":['tosdb'] } 
               
-_tosdbExt = Extension(
-     "_tosdb",
-     sources=["_tosdb.cpp"],
-     include_dirs=["..\\include"],
-     library_dirs=[ "..\\bin\\Release\\"+_sysArchD ],
-     libraries=["_tos-databridge-shared-"+_sysArch,"_tos-databridge-static-"+_sysArch],
-     define_macros=[
-         ("THIS_IMPORTS_IMPLEMENTATION",None),
-         ("THIS_DOESNT_IMPORT_INTERFACE",None)
-         ],
-     extra_compile_args=["/EHsc"],
-     extra_link_args=["/LTCG"],
-     optional=True
-     )
+_tosdbExt = 
+    Extension( "_tosdb",
+               sources=["_tosdb.cpp"],
+               include_dirs=["..\\include"],
+               library_dirs=[ "..\\bin\\Release\\"+_sysArchD ],
+               libraries=["_tos-databridge-shared-"+_sysArch,
+                          "_tos-databridge-static-"+_sysArch],
+               define_macros=[ ("THIS_IMPORTS_IMPLEMENTATION",None),
+                               ("THIS_DOESNT_IMPORT_INTERFACE",None) ],
+               extra_compile_args=["/EHsc"],
+               extra_link_args=["/LTCG"],
+               optional=True )
 
 def try_precompiled():    
     print("+ Would you like to try again with a pre-compiled _tosdb.pyd?")
@@ -69,7 +67,8 @@ try:
             import _tosdb as t
             print( "+ _tosdb.pyd exists (possibly an older version?) ")
         except:        
-            raise Exception("- error: _tosdb.pyd does not exist (can not be imported)  ")
+            raise Exception("- error: _tosdb.pyd does not exist" + 
+                            " (can not be imported) ")
         finally:
             if t:
                 del t
