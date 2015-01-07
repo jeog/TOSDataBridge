@@ -22,9 +22,11 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 #include <iostream>
 #include <iomanip>
 
-/* there is alot of redundancy here in order to support 
-both C and C++ interfaces and string versions; this should 
-be significantly cleaned-up / refractored at some point*/
+/* 
+    there is alot of redundancy here in order to support 
+    both C and C++ interfaces and string versions; this should 
+    be significantly cleaned-up / refractored at some point
+*/
 
 size_type TOSDB_GetBlockLimit()
 {
@@ -366,7 +368,7 @@ type_bits_type TOSDB_GetTypeBits( TOS_Topics::TOPICS tTopic )
     return TOS_Topics::TypeBits( tTopic );                    
 }
 
-std::string    TOSDB_GetTypeString( TOS_Topics::TOPICS tTopic )
+std::string TOSDB_GetTypeString( TOS_Topics::TOPICS tTopic )
 {
     if( tTopic == TOS_Topics::TOPICS::NULL_TOPIC )
         throw std::invalid_argument( "can not accept NULL_TOPIC" );

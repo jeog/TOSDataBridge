@@ -851,7 +851,7 @@ int TOSDB_GetBlockIDs( LPSTR* dest, size_type arrLen, size_type strLen )
     int i, errVal;
     i = errVal = 0;
     for( auto & name : globalDDEBlockMap )
-        if(    errVal = strcpy_s( dest[i++], strLen, name.first.c_str() ) ) 
+        if( errVal = strcpy_s( dest[i++], strLen, name.first.c_str() ) ) 
             return errVal;             
     return errVal; 
 }
