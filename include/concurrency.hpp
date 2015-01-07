@@ -50,12 +50,14 @@ public:
 };
 
 class CyclicCountDownLatch {
-/* similar concept to a Java CountDownLatch but should provide :
-    1) The ability to increment the latch
-    2) The use of specific strings to check that a 
-        count_down should occur
-    3) The ability to reuse the latch (which may cause
-        problems in non-trivial cases )                            */
+/* 
+    similar concept to a Java CountDownLatch but should provide :
+      1) The ability to increment the latch
+      2) The use of specific strings to check that a 
+          count_down should occur
+      3) The ability to reuse the latch (which may cause
+          problems in non-trivial cases )                            
+*/
     typedef std::multiset< std::string >  _idsTy;
     
     BoundedSemaphore         _sem;
