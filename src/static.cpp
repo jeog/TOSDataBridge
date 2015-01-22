@@ -34,13 +34,12 @@ std::string CreateBufferName( std::string sTopic, std::string sItem )
 { /* name of mapping is of form: "TOSDB_[topic name]_[item_name]"  
      only alpha-numeric characters (except under-score) */
     std::string str("TOSDB_");
-    str.append( sTopic.append("_"+sItem) );     
-    str.erase( std::remove_if( str.begin(), 
-                               str.end(), 
-                               [](char x){ 
-                                  return !isalnum( x ) && x != '_'; 
-                               } ), 
-               str.end() );
+    str.append( sTopic.append("_"+sItem) );  
+   
+    str.erase( std::remove_if( str.begin(), str.end(), 
+                               [](char x){ return !isalnum( x ) && x != '_'; }), 
+                               str.end() );
+
 #ifdef KGBLNS_
     return std::string("Global\\").append(str);
 #else
@@ -51,8 +50,10 @@ std::string CreateBufferName( std::string sTopic, std::string sItem )
 char** AllocStrArray( size_t numStrs, size_t szStrs )
 {
     char** strMat = new char*[numStrs];
+
     for(size_t i = 0; i < numStrs; ++i)
         strMat[i] = new char[ szStrs + 1 ];
+
     return strMat;
 }
 
@@ -60,23 +61,29 @@ void DeallocStrArray( const char* const* strArray, size_t numStrs )
 {
     if( !strArray )
         return;
+
     while( numStrs--)    
         if( strArray[numStrs] )
             delete[] (char*)(strArray[numStrs]);        
+
     delete[] (char**)strArray;
 }
 
 namespace {
-    const size_type         logColW[5] = {30, 12, 12, 20, 12};
-    const LPCSTR            sevStr[2] = {"low","high"};
-    std::mutex              fOutMtx;     
-    std::ofstream           logOut;
+
+    const size_type logColW[5] = {30, 12, 12, 20, 12};
+    const LPCSTR    sevStr[2] = {"low","high"};
+
+    std::mutex    fOutMtx;     
+    std::ofstream logOut;
+
     const system_clock_type sysClock;
+
 };
 
 std::string SysTimeString()
 {
-    std::unique_ptr<char> tmpBuf(new char[logColW[0]]);
+    std::unique_ptr<char> tmpBuf( new char[logColW[0]] );
 
     time_t now = sysClock.to_time_t( sysClock.now() );        
     ctime_s( tmpBuf.get(), logColW[0], &now);
@@ -87,19 +94,22 @@ std::string SysTimeString()
     return tmpStr;
 }
 
-void TOSDB_StartLogging(LPCSTR fName)
+void TOSDB_StartLogging( LPCSTR fName )
 {
     if( logOut.is_open() )
         return;
+
     logOut.open( fName , std::ios::out | std::ios::app);        
-    if( logOut.seekp(0,std::ios::end).tellp() == std::ios::pos_type(0)){        
-        logOut<<std::setw(logColW[0])<< std::left << "DATE / TIME"
-            <<std::setw(logColW[1])<< std::left << "Process ID"
-            <<std::setw(logColW[2])<< std::left << "Thread ID"
-            <<std::setw(logColW[3])<< std::left << "Log TAG"
-            <<std::setw(logColW[4])<< std::left << "Severity"
-            << std::left << "Description"
-            << std::endl <<std::endl;        
+
+    if( logOut.seekp(0,std::ios::end).tellp() == std::ios::pos_type(0)){ 
+       
+        logOut<< std::setw(logColW[0])<< std::left << "DATE / TIME"
+              << std::setw(logColW[1])<< std::left << "Process ID"
+              << std::setw(logColW[2])<< std::left << "Thread ID"
+              << std::setw(logColW[3])<< std::left << "Log TAG"
+              << std::setw(logColW[4])<< std::left << "Severity"
+                                      << std::left << "Description"
+                                      << std::endl <<std::endl;        
     }
 }
 
@@ -120,27 +130,28 @@ void TOSDB_Log_( DWORD pid,
                  LPCSTR description) 
 {    
     std::lock_guard<std::mutex> _lck(fOutMtx);
+
     std::string nowTime = SysTimeString();
 
     if( !logOut.is_open() ){
+
         if (sevr > 0)
             std::cerr<< std::setw(logColW[0])<< std::left
                      << nowTime.substr(0,30)
-                     <<std::setw(logColW[1])<< std::left<< pid
-                     <<std::setw(logColW[2])<< std::left<< tid
-                     <<std::setw(logColW[3])<< std::left
+                     << std::setw(logColW[1])<< std::left<< pid
+                     << std::setw(logColW[2])<< std::left<< tid
+                     << std::setw(logColW[3])<< std::left
                      << std::string(tag).substr(0,19)            
                      << std::left<< description << std::endl;        
-    }
-    else
-    {
-        logOut<<std::setw(logColW[0])<< std::left<< nowTime.substr(0,30)
-            <<std::setw(logColW[1])<< std::left<< pid
-            <<std::setw(logColW[2])<< std::left<< tid
-            <<std::setw(logColW[3])<< std::left<< std::string(tag).substr(0,19)
-            <<std::setw(logColW[4])<< std::left<< sevStr[sevr]
-            << std::left<< description
-            << std::endl;
+    }else{
+
+        logOut<< std::setw(logColW[0])<< std::left<< nowTime.substr(0,30)
+              << std::setw(logColW[1])<< std::left<< pid
+              << std::setw(logColW[2])<< std::left<< tid
+              << std::setw(logColW[3])<< std::left
+              << std::string(tag).substr(0,19)
+              << std::setw(logColW[4])<< std::left<< sevStr[sevr]
+                                      << std::left<< description << std::endl;
     }
 }
 
@@ -151,12 +162,9 @@ void TOSDB_LogEx_( DWORD pid,
                    LPCSTR description, 
                    DWORD error) 
 {    
-    TOSDB_Log_( pid, 
-                tid, 
-                sevr, 
-                tag, 
-                std::string(description).append(" ERROR# ")
-                                        .append(std::to_string(error)).c_str());
+    TOSDB_Log_( pid, tid, sevr, tag, std::string(description)
+                                     .append(" ERROR# ")
+                                     .append(std::to_string(error)).c_str() );
 }
 
 void TOSDB_Log_Raw_( LPCSTR description ) 
@@ -165,5 +173,7 @@ void TOSDB_Log_Raw_( LPCSTR description )
         std::cerr<<SysTimeString()<<'\t'<<description<<std::endl;
         return;
     }        
+
     logOut<< std::left<<SysTimeString()<<'\t'<< description << std::endl;
 }
+

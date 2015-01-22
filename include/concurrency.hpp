@@ -29,18 +29,22 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 #include <chrono>
 #include <thread>
 
-class BoundedSemaphore{
+class BoundedSemaphore {
+
     std::mutex                        _mtx; 
     std::condition_variable           _cnd;
     std::atomic< unsigned long long > _count;
     unsigned long long                _max;
+
 public:
+
     BoundedSemaphore( size_t count = 1, unsigned long long max = ULLONG_MAX )
         :
         _count( count ),
         _max( max )
         { 
         }
+
     void wait();
     void release( size_t num = 1 );
     unsigned long long count() const
@@ -69,6 +73,7 @@ class CyclicCountDownLatch {
     _idsTy                   _ids;    
 
 public:
+
     CyclicCountDownLatch( const _idsTy& ms = _idsTy() ) 
         : 
          _ids( ms ),
@@ -78,13 +83,15 @@ public:
          _inFlag(false)        
         {
         }
+
     bool wait_for( size_t timeout, size_t delay = 0 );    
     void wait( size_t delay = 0);
     void count_down( std::string strID );
     void increment( std::string strID );
 };
 
-class SignalManager {        
+class SignalManager {  
+      
     typedef std::pair< volatile bool, volatile bool >  _flagPairTy;
     
     std::mutex                                 _mtx;
@@ -95,10 +102,13 @@ class SignalManager {
     SignalManager( SignalManager&& );
     SignalManager& operator=( const SignalManager& );
     SignalManager& operator=( SignalManager&& );
+
 public:
+
     SignalManager()
         {
         }
+
     void set_signal_ID( std::string unqID );
     bool wait( std::string unqID );
     bool wait_for( std::string unqID, size_t timeout );    
@@ -108,43 +118,54 @@ public:
 #include <Windows.h>
 
 class LightWeightMutex{
+
     CRITICAL_SECTION _cs;
     LightWeightMutex( const LightWeightMutex& );
     LightWeightMutex& operator=( const LightWeightMutex& );
+
 public:
+
     LightWeightMutex()
         {
             InitializeCriticalSection( &_cs );
         }
+
     ~LightWeightMutex()
         {
             DeleteCriticalSection( &_cs );
         }
+
     void lock()
     {
         EnterCriticalSection( &_cs );
     }
+
     bool try_lock()
     {
         return TryEnterCriticalSection( &_cs ) ? true : false;
     }
+
     void unlock()
     {
         LeaveCriticalSection( &_cs );
     }    
 };
 
-class WinLockGuard{    
+class WinLockGuard {    
+
     LightWeightMutex& _mtx;
     WinLockGuard( const WinLockGuard& );
     WinLockGuard& operator=( const WinLockGuard& ); 
+
 public:
+
     WinLockGuard( LightWeightMutex& mutex )
         : 
         _mtx( mutex )
         {
             _mtx.lock();
         }
+
     ~WinLockGuard()
         {
             _mtx.unlock();
@@ -152,21 +173,27 @@ public:
 };
 
 class SignalManager { 
+
     std::multimap< std::string, volatile bool > _unqFlags; 
     LightWeightMutex                            _mtx;
     HANDLE                                      _event;        
+
     SignalManager( const SignalManager& );
     SignalManager& operator=( const SignalManager& );    
+
 public:
+
     SignalManager()
         : 
         _event( CreateEvent( NULL, FALSE, FALSE, NULL) )
         {            
         }
+
     ~SignalManager()
         {
             CloseHandle( _event );        
         }
+
     void set_signal_ID( std::string unqID );
     bool wait( std::string unqID );        
     bool wait_for( std::string unqID, size_type timeout );

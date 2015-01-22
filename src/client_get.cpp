@@ -24,8 +24,7 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 
 /* 
     there is alot of redundancy here in order to support 
-    both C and C++ interfaces and string versions; this should 
-    be significantly cleaned-up / refractored at some point
+    both C and C++ interfaces, and string versions
 */
 
 size_type TOSDB_GetBlockLimit()
@@ -48,36 +47,34 @@ size_type TOSDB_GetBlockCount()
 
 int TOSDB_GetBlockSize( LPCSTR id, size_type* pSize )
 {
-    try
-    {
-        if( !ChceckIDLength( id ) )
+    try{    
+   
+        if( !CheckIDLength( id ) )
             return -1;
 
         rGuardTy _lock_(*globalMutex);
         *pSize = GetBlockOrThrow(id)->block->block_size();
 
         return 0;
-    }
-    catch( ... )
-    {
+
+    }catch( ... ){
         return -2;
     }
 }
 
 int TOSDB_SetBlockSize( LPCSTR id, size_type sz )
 {
-    try
-    {
-        if( !ChceckIDLength( id ) )
+    try{
+
+        if( !CheckIDLength( id ) )
             return -1;
 
         rGuardTy _lock_(*globalMutex);
         GetBlockOrThrow(id)->block->block_size(sz);
 
         return 0;
-    }
-    catch( ... )
-    { 
+
+    }catch( ... ){ 
         return -2;
     }
 }
@@ -86,36 +83,34 @@ int TOSDB_SetBlockSize( LPCSTR id, size_type sz )
 
 int TOSDB_GetItemCount( LPCSTR id, size_type* pCount )
 {
-    try
-    {
-        if( !ChceckIDLength( id ) )
+    try{
+
+        if( !CheckIDLength( id ) )
             return -1;
 
         rGuardTy _lock_(*globalMutex);
         *pCount = GetBlockOrThrow(id)->block->item_count();
 
         return 0;
-    }
-    catch( ... )
-    {
+
+    }catch( ... ){
         return -2;
     }
 }
 
 int TOSDB_GetTopicCount( LPCSTR id, size_type* pCount )
 {
-    try
-    {
-        if( !ChceckIDLength( id ) )
+    try{
+
+        if( !CheckIDLength( id ) )
             return -1;
 
         rGuardTy _lock_(*globalMutex);
         *pCount = GetBlockOrThrow(id)->block->topic_count();
 
         return 0;
-    }
-    catch( ... )
-    {
+
+    }catch( ... ){
         return -2;
     }
 }
@@ -129,9 +124,10 @@ int TOSDB_GetPreCachedTopicNames( LPCSTR id,
     const TOSDBlock *db;
     topic_set_type topS;
     int i, errVal;
+
     i = errVal = 0;
 
-    if( !ChceckIDLength(id) )
+    if( !CheckIDLength(id) )
         return -1;
 
     db = GetBlockPtr(id);
@@ -142,14 +138,11 @@ int TOSDB_GetPreCachedTopicNames( LPCSTR id,
     if ( arrLen < topS.size() ) 
         return -1;    
 
-    for( auto & topic : topS )
-    {
-        if(    errVal = strcpy_s(
-                        dest[i++],
-                        strLen,
-                        TOS_Topics::globalTopicMap[topic].c_str()
-                        )
-            ) return errVal;         
+    for( auto & topic : topS ){
+        if( errVal = strcpy_s( dest[i++], strLen,
+                               TOS_Topics::globalTopicMap[topic].c_str() )){
+           return errVal;         
+        }
     }
 
     return errVal;
@@ -163,9 +156,10 @@ int TOSDB_GetPreCachedItemNames( LPCSTR id,
     const TOSDBlock *db;
     str_set_type itemS;
     int i, errVal;
+
     i = errVal = 0;
 
-    if( !ChceckIDLength( id ) )
+    if( !CheckIDLength( id ) )
         return -1;
 
     db = GetBlockPtr(id);
@@ -177,18 +171,13 @@ int TOSDB_GetPreCachedItemNames( LPCSTR id,
         return -1;    
 
     for( auto & item : itemS )
-    {
-        if(    errVal = strcpy_s(
-                        dest[i++],
-                        strLen,
-                        item.c_str()                        
-                        )
-                ) return errVal;
-    }
-
+        if( errVal = strcpy_s( dest[i++], strLen, item.c_str() )) 
+            return errVal;
+    
     return errVal;
 }
 */
+
 int TOSDB_GetTopicNames( LPCSTR id, 
                          LPSTR* dest, 
                          size_type arrLen, 
@@ -198,7 +187,7 @@ int TOSDB_GetTopicNames( LPCSTR id,
     topic_set_type topS;
     int i, errVal;
 
-    if( !ChceckIDLength(id) )
+    if( !CheckIDLength(id) )
         return -1;
 
     rGuardTy _lock_(*globalMutex);
@@ -212,11 +201,10 @@ int TOSDB_GetTopicNames( LPCSTR id,
         return -3;    
 
     i = errVal = 0;
-    for( auto & topic : topS )
-    {
-        errVal = strcpy_s( dest[i++],
-                           strLen,
-                           TOS_Topics::globalTopicMap[topic].c_str() )
+
+    for( auto & topic : topS ){
+        errVal = strcpy_s( dest[i++], strLen,
+                           TOS_Topics::globalTopicMap[topic].c_str() );
         if( errVal )
             return errVal;         
     }
@@ -233,7 +221,7 @@ int TOSDB_GetItemNames( LPCSTR id,
     str_set_type itemS;
     int i, errVal;
 
-    if( !ChceckIDLength( id ) )
+    if( !CheckIDLength( id ) )
         return -1;
 
     rGuardTy _lock_(*globalMutex);
@@ -246,12 +234,13 @@ int TOSDB_GetItemNames( LPCSTR id,
         return -3;   
  
     i = errVal = 0;
-    for( auto & item : itemS )
-    {
+
+    for( auto & item : itemS ){
         errVal = strcpy_s( dest[i++], strLen, item.c_str() );
         if( errVal )
             return errVal;
     }
+
     return errVal;
 }
 
@@ -259,18 +248,16 @@ int TOSDB_GetTypeBits( LPCSTR sTopic, type_bits_type* pTypeBits )
 {
     TOS_Topics::TOPICS t;
 
-    if( !ChceckStringLength( sTopic ) )
+    if( !CheckStringLength( sTopic ) )
         return -1;
+
     if( (t = GetTopicEnum(sTopic)) == TOS_Topics::TOPICS::NULL_TOPIC )
         return -2;
 
-    try
-    {
+    try{
         *pTypeBits = TOSDB_GetTypeBits( t );
         return 0;
-    }
-    catch( ... )
-    {
+    }catch( ... ){
         return -3;
     }
 }
@@ -280,8 +267,9 @@ int TOSDB_GetTypeString( LPCSTR sTopic, LPSTR dest, size_type strLen )
     TOS_Topics::TOPICS t;
     std::string str;
 
-    if( !ChceckStringLength( sTopic ) )
+    if( !CheckStringLength( sTopic ) )
         return -1;
+
     if( (t = GetTopicEnum(sTopic)) == TOS_Topics::TOPICS::NULL_TOPIC )
         return -1;
 
@@ -292,17 +280,17 @@ int TOSDB_GetTypeString( LPCSTR sTopic, LPSTR dest, size_type strLen )
 
 int TOSDB_IsUsingDateTime( LPCSTR id, unsigned int* pBoolInt )
 {    
-    try
-    {
-        if( !ChceckIDLength( id ) )
+    try{
+
+        if( !CheckIDLength( id ) )
             return -1;
 
         rGuardTy _lock_(*globalMutex);
         *pBoolInt = GetBlockOrThrow(id)->block->uses_dtstamp();
+
         return 0;
-    }
-    catch( ... )
-    {
+
+    }catch( ... ){
         return -2;
     }
 }
@@ -310,54 +298,70 @@ int TOSDB_IsUsingDateTime( LPCSTR id, unsigned int* pBoolInt )
 topic_set_type TOSDB_GetTopicEnums( std::string id )
 {
     const TOSDBlock *db;
+
     rGuardTy _lock_(*globalMutex);
     db = GetBlockOrThrow(id);
+
     return db->block->topics();
 }
 
 str_set_type TOSDB_GetTopicNames( std::string id )
 {
     const TOSDBlock *db;    
+
     rGuardTy _lock_(*globalMutex);
     db = GetBlockOrThrow(id);
+
     return str_set_type( db->block->topics(), 
-                         [&]( TOS_Topics::TOPICS t ){
+                         [&]( TOS_Topics::TOPICS t )
+                           {
                              return TOS_Topics::globalTopicMap[ t ]; 
-                         } );
+                           } 
+                        );
 }
 
 str_set_type TOSDB_GetItemNames( std::string id )
 {
     const TOSDBlock* db;    
+
     rGuardTy _lock_(*globalMutex);
     db = GetBlockOrThrow(id);
+
     return db->block->items();
 }
 
 topic_set_type TOSDB_GetPreCachedTopicEnums( std::string id )
 {
     const TOSDBlock *db;
+
     rGuardTy _lock_(*globalMutex);
     db = GetBlockOrThrow(id);
+
     return db->topicPreCache;
 }
 
 str_set_type TOSDB_GetPreCachedTopicNames( std::string id )
 {
     const TOSDBlock *db;    
+
     rGuardTy _lock_(*globalMutex);
     db = GetBlockOrThrow(id);
+
     return str_set_type( db->topicPreCache,
-                         [=](TOS_Topics::TOPICS top){ 
-                          return TOS_Topics::globalTopicMap[top]; 
-                         } );
+                         [=](TOS_Topics::TOPICS top)
+                           { 
+                             return TOS_Topics::globalTopicMap[top]; 
+                           } 
+                        );
 }
 
 str_set_type TOSDB_GetPreCachedItemNames( std::string id )
 {
     const TOSDBlock *db;    
+
     rGuardTy _lock_(*globalMutex);
     db = GetBlockOrThrow(id);
+
     return db->itemPreCache;
 }
 
@@ -365,6 +369,7 @@ type_bits_type TOSDB_GetTypeBits( TOS_Topics::TOPICS tTopic )
 {
     if( tTopic == TOS_Topics::TOPICS::NULL_TOPIC )
         throw std::invalid_argument( "can not accept NULL_TOPIC" );
+
     return TOS_Topics::TypeBits( tTopic );                    
 }
 
@@ -372,6 +377,7 @@ std::string TOSDB_GetTypeString( TOS_Topics::TOPICS tTopic )
 {
     if( tTopic == TOS_Topics::TOPICS::NULL_TOPIC )
         throw std::invalid_argument( "can not accept NULL_TOPIC" );
+
     return TOS_Topics::TypeString( tTopic );
 }
 
@@ -414,25 +420,26 @@ int TOSDB_GetStreamOccupancy( LPCSTR id,
     TOSDB_RawDataBlock::stream_const_ptr_type dat;
     TOS_Topics::TOPICS t;
 
-    if( !ChceckIDLength( id ) || !ChceckStringLength( sItem, sTopic ) )
+    if( !CheckIDLength( id ) || !CheckStringLength( sItem, sTopic ) )
         return -1;    
 
     t = GetTopicEnum(sTopic);
-    try
-    {
+
+    try{
+
         rGuardTy _lock_(*globalMutex);
+
         db = GetBlockOrThrow( id );
         dat = db->block->raw_stream_ptr(sItem, t);
         *sz = (size_type)(dat->size());
         return 0;
-    } 
-    catch( const std::exception& e )
-    {
+
+    }catch( const std::exception& e ){
+
         TOSDB_LogH( "TOSDB_GetStreamOccupancy()", e.what() );
         return -2;
-    }
-    catch( ... )
-    {
+
+    }catch( ... ){
         return -2;    
     }    
 }
@@ -445,21 +452,21 @@ size_type TOSDB_GetStreamOccupancy( std::string id,
     TOSDB_RawDataBlock::stream_const_ptr_type dat;
 
     rGuardTy _lock_(*globalMutex);
+
     db = GetBlockOrThrow(id);
-    dat = db->block->raw_stream_ptr( sItem, tTopic );    
-    try
-    {
+    dat = db->block->raw_stream_ptr( sItem, tTopic );   
+ 
+    try{
+
         return (size_type)(dat->size());
-    }
-    catch( const tosdb_data_stream::error& e )
-    {
+
+    }catch( const tosdb_data_stream::error& e ){
+
         throw TOSDB_data_stream_error( e, 
                                        "tosdb_data_stream error caught and "
                                        "encapsulated in "
                                        "TOSDB_GetStreamOccupancy()" );
-    }
-    catch( ... )
-    {
+    }catch( ... ){
         throw;
     }
 }
@@ -474,21 +481,21 @@ generic_type TOSDB_Get< generic_type, false >( std::string id,
     TOSDB_RawDataBlock::stream_const_ptr_type dat;
 
     rGuardTy _lock_(*globalMutex);
+
     db = GetBlockOrThrow(id);
     dat = db->block->raw_stream_ptr( sItem, tTopic );    
-    try
-    {
+
+    try{
+
         return dat->operator[](indx);
-    }
-    catch( const tosdb_data_stream::error& e )
-    {
+
+    }catch( const tosdb_data_stream::error& e ){
+
         throw TOSDB_data_stream_error( e, 
                                        "tosdb_data_stream error caught and "
                                        "encapsulated in "
                                        "TOSDB_Get<generic_type,false>()" );
-    }
-    catch( ... )
-    {
+    }catch( ... ){
         throw;
     }
 }
@@ -503,21 +510,21 @@ generic_dts_type TOSDB_Get< generic_type, true >( std::string id,
     TOSDB_RawDataBlock::stream_const_ptr_type dat;
 
     rGuardTy _lock_(*globalMutex);
+
     db = GetBlockOrThrow(id);
     dat = db->block->raw_stream_ptr( sItem, tTopic );
-    try
-    {
+
+    try{
+
         return dat->both(indx);
-    }
-    catch( const tosdb_data_stream::error& e )
-    {
+
+    }catch( const tosdb_data_stream::error& e ){
+
         throw TOSDB_data_stream_error( e, 
                                        "tosdb_data_stream error caught and "
                                        "encapsulated in "
                                        "TOSDB_Get<generic_type,true>()" );
-    }
-    catch( ... )
-    {
+    }catch( ... ){
         throw;
     }
 }
@@ -531,6 +538,7 @@ struct GRetType< T, true>{
         return std::pair< T, DateTimeStamp>( val, std::move(dts) );
     }
 };
+
 template< typename T >
 struct GRetType< T, false>{
     T operator()( T val, DateTimeStamp&& dts )
@@ -564,22 +572,24 @@ int TOSDB_Get_( std::string id,
                 pDateTimeStamp datetime )
 {     
     const TOSDBlock *db;
-    TOSDB_RawDataBlock::stream_const_ptr_type dat;    
-    try
-    {
+    TOSDB_RawDataBlock::stream_const_ptr_type dat; 
+   
+    try{
+
         rGuardTy _lock_(*globalMutex);
+
         db = GetBlockOrThrow( id );
         dat = db->block->raw_stream_ptr(sItem, tTopic);        
+
         dat->copy(dest, 1,indx, indx, datetime);
         return 0;
-    } 
-    catch( const std::exception& e )
-    {
+
+    }catch( const std::exception& e ){
+
         TOSDB_LogH( "TOSDB_Get<T>", e.what() );
         return -1;
-    }
-    catch( ... )
-    {
+
+    }catch( ... ){
         return -1;    
     }
 }
@@ -592,7 +602,7 @@ int TOSDB_Get_( LPCSTR id,
                 T* dest, 
                 pDateTimeStamp datetime )
 { 
-    if( !ChceckIDLength( id ) || !ChceckStringLength( sTopic, sTopic ) )
+    if( !CheckIDLength( id ) || !CheckStringLength( sTopic, sTopic ) )
         return -1;  
   
     return TOSDB_Get_(id, sItem, GetTopicEnum( sTopic ), indx, dest, datetime);
@@ -650,24 +660,27 @@ int TOSDB_GetString( LPCSTR id,
     TOSDB_RawDataBlock::stream_const_ptr_type dat;
     TOS_Topics::TOPICS t;
 
-    if( !ChceckIDLength( id ) || !ChceckStringLength( sItem, sTopic ) )
+    if( !CheckIDLength( id ) || !CheckStringLength( sItem, sTopic ) )
         return -1;    
+
     t = GetTopicEnum(sTopic);
-    try
-    {
+
+    try{
+
         rGuardTy _lock_(*globalMutex);
+
         db = GetBlockOrThrow( id );
         dat = db->block->raw_stream_ptr(sItem, t);
+
         dat->copy(&dest, 1, strLen, indx,indx,datetime);
         return 0;
-    } 
-    catch( const std::exception& e )
-    {
+
+    }catch( const std::exception& e ){
+
         TOSDB_LogH( "TOSDB_GetString()", e.what() );
         return -2;
-    }
-    catch( ... )
-    {
+
+    }catch( ... ){
         return -2;    
     }    
 }
@@ -684,21 +697,21 @@ TOSDB_GetStreamSnapshot< generic_type, false >( std::string id,
     TOSDB_RawDataBlock::stream_const_ptr_type dat;
 
     rGuardTy _lock_(*globalMutex);
+
     db = GetBlockOrThrow( id );    
     dat = db->block->raw_stream_ptr( sItem, tTopic);    
-    try
-    {
+
+    try{
+
         return dat->vector(end, beg); 
-    }
-    catch( const tosdb_data_stream::error& e )
-    {
+
+    }catch( const tosdb_data_stream::error& e ){
+
         throw TOSDB_data_stream_error( e, 
                                        "tosdb_data_stream error caught and "
                                        "encapsulated in TOSDB_GetStreamSnapshot"
                                        "<generic_type,false>()" );
-    }
-    catch( ... )
-    {
+    }catch( ... ){
         throw;
     }
 }
@@ -716,52 +729,56 @@ TOSDB_GetStreamSnapshot< generic_type, true >( std::string id,
     TOSDB_RawDataBlock::stream_const_ptr_type dat;
 
     rGuardTy _lock_(*globalMutex);
+
     db = GetBlockOrThrow( id );    
     dat = db->block->raw_stream_ptr( sItem, tTopic);
-    try
-    {
-        return std::pair<std::vector<generic_type>, 
-                         std::vector<DateTimeStamp>>(
+
+    try{
+
+        return std::pair< std::vector<generic_type>, 
+                          std::vector<DateTimeStamp>>(
                              dat->vector(end, beg), 
-                             dat->secondary_vector(end,beg));
-    }
-    catch( const tosdb_data_stream::error& e )
-    {
+                             dat->secondary_vector(end,beg) );
+
+    }catch( const tosdb_data_stream::error& e ){
+
         throw TOSDB_data_stream_error( e, 
                                        "tosdb_data_stream error caught and "
                                        "encapsulated in TOSDB_GetStreamSnapshot"
                                        "<generic_type,true>()" );
-    }
-    catch( ... )
-    {
+    }catch( ... ){
         throw;
     }
 }
 
-/* use functors of partially specialized object to overload by explicit call
-note: data_stream takes raw pointers so we need to pass the addr of the 
-dereferenced first element of the vector */
+/* 
+   use functors of partially specialized object to overload by explicit call
+   note: data_stream takes raw pointers so we need to pass the addr of the 
+   dereferenced first element of the vector 
+*/
 template< typename T, bool b> struct GSSRetType;
 template< typename T >
 struct GSSRetType< T, true>{
+
     std::pair< std::vector<T>, std::vector<DateTimeStamp> > 
     operator()( TOSDB_RawDataBlock::stream_const_ptr_type dat, 
                 long end, 
                 long beg, 
                 size_t diff )
     {                
-        std::vector<T> tmpV(diff); //adjust for [ ) -> [ ] 
-        std::vector< DateTimeStamp > tmpDTSV(diff); //adjust for [ ) -> [ ]     
+        std::vector<T> tmpV(diff); /* adjust for [ ) -> [ ] */
+        std::vector< DateTimeStamp > tmpDTSV(diff); /* adjust for [ ) -> [ ] */
+    
         if( diff > 0 )
-            dat->copy( &(*(tmpV.begin())), 
-                       diff, 
-                       end, 
-                       beg, 
+            dat->copy( &(*(tmpV.begin())), diff, end, beg, 
                        &(*(tmpDTSV.begin())) );            
+
         return std::pair< std::vector<T>, 
                           std::vector<DateTimeStamp> >( tmpV, tmpDTSV );
     }
+
 };
+
 template< typename T >
 struct GSSRetType< T, false>{
     std::vector<T> operator()( TOSDB_RawDataBlock::stream_const_ptr_type dat, 
@@ -769,11 +786,14 @@ struct GSSRetType< T, false>{
                                long beg, 
                                size_t diff )
     {    
-        std::vector<T> tmpV(diff); //adjust for [ ) -> [ ] 
+        std::vector<T> tmpV(diff); /* adjust for [ ) -> [ ] */
+
         if( diff > 0 )
             dat->copy( &(*(tmpV.begin())), diff, end, beg, nullptr );            
+
         return tmpV;
     }
+
 };
 
 template< typename T, bool b > 
@@ -787,7 +807,8 @@ auto TOSDB_GetStreamSnapshot( std::string id,
                                              std::vector< DateTimeStamp> >, 
                                              std::vector< T > >::type
 { /* this should be cleaned up; 
-     bound to be a type/cast issue in here somewhere */
+     bound to be a type/cast issue in here somewhere 
+   */
     size_type bSize;
     long diff;    
     long long minDiff;
@@ -795,6 +816,7 @@ auto TOSDB_GetStreamSnapshot( std::string id,
     TOSDB_RawDataBlock::stream_const_ptr_type dat;
 
     rGuardTy _lock_(*globalMutex);
+
     db = GetBlockOrThrow( id );    
     dat = db->block->raw_stream_ptr(sItem, tTopic); /* get stream size */
 
@@ -806,27 +828,24 @@ auto TOSDB_GetStreamSnapshot( std::string id,
 
     diff = end - beg;
     if( diff < 0 )
-        throw std::invalid_argument(" TOSDB_GetStreamSnapshot(...): "
-                                    "invalid indexes( end < beg ) ");
+        throw std::invalid_argument( " TOSDB_GetStreamSnapshot(...): "
+                                     "invalid indexes( end < beg ) ");
 
-    minDiff = 
-        (long long)std::min< size_t >( (size_t)end + 1, dat->size() ) - beg;
+    minDiff = (long long)std::min< size_t >((size_t)end + 1, dat->size()) - beg;
     if( minDiff < 0 )
         minDiff = 0;
 
-    try
-    {        
+    try{        
+
         return GSSRetType<T,b>()( dat, end, beg, (size_t)minDiff );
-    }
-    catch( const tosdb_data_stream::error& e )
-    {
+
+    }catch( const tosdb_data_stream::error& e ){
+
         throw TOSDB_data_stream_error( e, 
                                       "tosdb_data_stream error caught and "
                                       "encapsulated in "
                                       "TOSDB_GetStreamSnapshot<T,b>()" );
-    }
-    catch( ... )
-    {
+    }catch( ... ){
         throw; 
     }    
 }
@@ -844,23 +863,25 @@ int TOSDB_GetStreamSnapshot_( LPCSTR id,
     const TOSDBlock *db;
     TOSDB_RawDataBlock::stream_const_ptr_type dat;
 
-    if( !ChceckIDLength( id ) || !ChceckStringLength( sItem ))
+    if( !CheckIDLength( id ) || !CheckStringLength( sItem ))
         return -1;
-    try
-    {
+
+    try{
+
         rGuardTy _lock_(*globalMutex);
+
         db = GetBlockOrThrow( id );
         dat = db->block->raw_stream_ptr(sItem, tTopic);
+
         dat->copy(dest,arrLen,end,beg,datetime);
         return 0;
-    } 
-    catch( const std::exception& e )
-    {
+
+    }catch( const std::exception& e ){
+
         TOSDB_LogH( "GetStreamSnapshot<T>", e.what() );
         return -2;
-    }
-    catch( ... )
-    {
+
+    }catch( ... ){
         return -2;    
     }
 }
@@ -875,11 +896,11 @@ int TOSDB_GetStreamSnapshot_( LPCSTR id,
                               long end, 
                               long beg )
 {    
-    if( !ChceckStringLength( sTopic ) ) /* let this go thru std::string ? */
+    if( !CheckStringLength( sTopic ) ) /* let this go thru std::string ? */
         return -1;     
    
-    return TOSDB_GetStreamSnapshot_( 
-          id, sItem, GetTopicEnum( sTopic ), dest, arrLen, datetime, end, beg );
+    return TOSDB_GetStreamSnapshot_( id, sItem, GetTopicEnum( sTopic ), dest, 
+                                     arrLen, datetime, end, beg );
 }
 
 int TOSDB_GetStreamSnapshotDoubles( LPCSTR id,
@@ -891,8 +912,8 @@ int TOSDB_GetStreamSnapshotDoubles( LPCSTR id,
                                     long end, 
                                     long beg)
 {
-    return TOSDB_GetStreamSnapshot_( 
-              id, sItem, sTopic, dest, arrLen, datetime, end, beg );
+    return TOSDB_GetStreamSnapshot_( id, sItem, sTopic, dest, arrLen, 
+                                     datetime, end, beg );
 }
 
 int TOSDB_GetStreamSnapshotFloats( LPCSTR id, 
@@ -904,8 +925,8 @@ int TOSDB_GetStreamSnapshotFloats( LPCSTR id,
                                    long end, 
                                    long beg )
 {
-    return TOSDB_GetStreamSnapshot_( 
-              id, sItem, sTopic, dest, arrLen, datetime, end, beg);
+    return TOSDB_GetStreamSnapshot_( id, sItem, sTopic, dest, arrLen, 
+                                     datetime, end, beg);
 }
 
 int TOSDB_GetStreamSnapshotLongLongs( LPCSTR id, 
@@ -917,8 +938,8 @@ int TOSDB_GetStreamSnapshotLongLongs( LPCSTR id,
                                       long end, 
                                       long beg )
 {
-    return TOSDB_GetStreamSnapshot_( 
-              id, sItem, sTopic, dest, arrLen, datetime, end, beg);    
+    return TOSDB_GetStreamSnapshot_( id, sItem, sTopic, dest, arrLen, 
+                                     datetime, end, beg);    
 }
 
 int TOSDB_GetStreamSnapshotLongs( LPCSTR id, 
@@ -930,8 +951,8 @@ int TOSDB_GetStreamSnapshotLongs( LPCSTR id,
                                   long end, 
                                   long beg)
 {
-    return TOSDB_GetStreamSnapshot_( 
-              id, sItem, sTopic, dest, arrLen, datetime, end, beg);    
+    return TOSDB_GetStreamSnapshot_( id, sItem, sTopic, dest, arrLen, 
+                                     datetime, end, beg);    
 }
 
 int TOSDB_GetStreamSnapshotStrings( LPCSTR id, 
@@ -948,25 +969,27 @@ int TOSDB_GetStreamSnapshotStrings( LPCSTR id,
     TOSDB_RawDataBlock::stream_const_ptr_type dat;
     TOS_Topics::TOPICS tTopic;
 
-    if( !ChceckIDLength(id) || !ChceckStringLength( sItem, sTopic ) )
+    if( !CheckIDLength(id) || !CheckStringLength( sItem, sTopic ) )
         return -1;
 
-    tTopic = GetTopicEnum( sTopic );        
-    try
-    {
+    tTopic = GetTopicEnum( sTopic );    
+    
+    try{
+
         rGuardTy _lock_(*globalMutex);
+
         db = GetBlockOrThrow( id );
         dat = db->block->raw_stream_ptr(sItem, tTopic);
+
         dat->copy(dest,arrLen,strLen,end,beg,datetime);
         return 0;
-    } 
-    catch( const std::exception& e )
-    {
+
+    }catch( const std::exception& e ){
+
         TOSDB_LogH( "TOSDB_GetStreamSnapshotStrings()", e.what() );
         return -2;
-    }
-    catch( ... )
-    {
+
+    }catch( ... ){
         return -2;    
     }
 }
@@ -979,6 +1002,7 @@ generic_map_type TOSDB_GetItemFrame< false >( std::string id,
 
     rGuardTy _lock_(*globalMutex);
     db = GetBlockOrThrow( id );
+
     return db->block->map_of_frame_items( tTopic );
 }
 
@@ -990,6 +1014,7 @@ generic_dts_map_type TOSDB_GetItemFrame< true >( std::string id,
 
     rGuardTy _lock_(*globalMutex);
     db = GetBlockOrThrow( id );
+
     return db->block->pair_map_of_frame_items( tTopic );
 }
 
@@ -1005,21 +1030,26 @@ int TOSDB_GetItemFrame_( LPCSTR id,
     const TOSDBlock *db;
     int errVal = 0;
 
-    if( !ChceckIDLength(id) )
+    if( !CheckIDLength(id) )
         return -1;
-    try
-    {
+
+    try{
+
         rGuardTy _lock_(*globalMutex);
+
         db = GetBlockOrThrow( id );
-        if( datetime )
-        {
+        if( datetime ){
+
             generic_dts_map_type::const_iterator bIter, eIter;
+
             generic_dts_map_type tmpMDT = 
                 db->block->pair_map_of_frame_items(tTopic);
+
             bIter = tmpMDT.cbegin();
             eIter = tmpMDT.cend();
-            if( !dest2 )
-            {            
+
+            if( !dest2 ){    
+        
                 for( size_type i = 0; 
                      (i < arrLen) && (bIter != eIter); 
                      ++bIter, ++i )
@@ -1027,63 +1057,65 @@ int TOSDB_GetItemFrame_( LPCSTR id,
                         dest[i] = (T)bIter->second.first;
                         datetime[i] = bIter->second.second;
                     }
-            }
-            else
-            {                
+
+            }else{    
+            
                 for( size_type i = 0; 
                      ( i < arrLen ) && (bIter != eIter); 
                      ++bIter, ++i )
                     {
                         dest[i] = (T)bIter->second.first;
                         datetime[i] = bIter->second.second;
-                        errVal = strcpy_s( dest2[i], 
-                                           strLen2, 
+
+                        errVal = strcpy_s( dest2[i], strLen2, 
                                            (bIter->first).c_str() );
-                       if( errVal ) 
-                           return errVal; 
+                        if( errVal ) 
+                            return errVal; 
                     }
             }
-        }
-        else
-        {
-            generic_map_type::const_iterator bIter, eIter;                
+
+        }else{
+
+            generic_map_type::const_iterator bIter, eIter;   
+             
             generic_map_type tmpM = db->block->map_of_frame_items(tTopic);
             bIter = tmpM.cbegin();
             eIter = tmpM.cend();
-            if( !dest2 )
-            {                
+
+            if( !dest2 ){   
+             
                 for( size_type i = 0; 
                      (i < arrLen) && (bIter != eIter); 
                      ++bIter, ++i )    
                     {            
                          dest[i] = (T)bIter->second;                
                     }
-            }
-            else
-            {                
+
+            }else{                
+
                 for( size_type i = 0; 
                      ( i < arrLen ) && (bIter != eIter); 
                      ++bIter, ++i )
                     {
                         dest[i] = (T)bIter->second;
-                        errVal = strcpy_s( dest2[i],
-                                           strLen2, 
+
+                        errVal = strcpy_s( dest2[i], strLen2, 
                                            (bIter->first).c_str() );
                         if( errVal ) 
                             return errVal;
-                     }                    
+                    }                    
             }
         };
-    }
-    catch( const std::exception& e )
-    {
+
+    }catch( const std::exception& e ){
+
         TOSDB_LogH( "GetItemFrame<T>", e.what() );
         return -2;
-    }
-    catch( ... )
-    {
+
+    }catch( ... ){
         return -2;    
     }
+
     return 0;
 }
 
@@ -1096,11 +1128,11 @@ int TOSDB_GetItemFrame_( LPCSTR id,
                          size_type strLen2, 
                          pDateTimeStamp datetime )
 {    
-    if( !ChceckStringLength( sTopic ) )
+    if( !CheckStringLength( sTopic ) )
         return -1;   
      
-    return TOSDB_GetItemFrame_( 
-            id, GetTopicEnum( sTopic ), dest, arrLen, dest2, strLen2, datetime);    
+    return TOSDB_GetItemFrame_( id, GetTopicEnum( sTopic ), dest, arrLen, 
+                                dest2, strLen2, datetime);    
 }
 
 int TOSDB_GetItemFrameDoubles( LPCSTR id, 
@@ -1111,8 +1143,8 @@ int TOSDB_GetItemFrameDoubles( LPCSTR id,
                                size_type labelStrLen, 
                                pDateTimeStamp datetime )
 {
-    return TOSDB_GetItemFrame_( 
-              id, sTopic, dest, arrLen, labelDest, labelStrLen, datetime);        
+    return TOSDB_GetItemFrame_( id, sTopic, dest, arrLen, labelDest, 
+                                labelStrLen, datetime);        
 }
 
 int TOSDB_GetItemFrameFloats( LPCSTR id, 
@@ -1123,8 +1155,8 @@ int TOSDB_GetItemFrameFloats( LPCSTR id,
                               size_type labelStrLen, 
                               pDateTimeStamp datetime )
 {
-    return TOSDB_GetItemFrame_( 
-              id, sTopic, dest, arrLen, labelDest, labelStrLen, datetime);            
+    return TOSDB_GetItemFrame_( id, sTopic, dest, arrLen, labelDest, 
+                                labelStrLen, datetime);            
 }
 
 int TOSDB_GetItemFrameLongLongs( LPCSTR id, 
@@ -1135,8 +1167,8 @@ int TOSDB_GetItemFrameLongLongs( LPCSTR id,
                                  size_type labelStrLen, 
                                  pDateTimeStamp datetime )
 {
-    return TOSDB_GetItemFrame_( 
-               id, sTopic, dest, arrLen, labelDest, labelStrLen, datetime);            
+    return TOSDB_GetItemFrame_( id, sTopic, dest, arrLen, labelDest, 
+                                labelStrLen, datetime);            
 }
 
 int TOSDB_GetItemFrameLongs( LPCSTR id, 
@@ -1147,8 +1179,8 @@ int TOSDB_GetItemFrameLongs( LPCSTR id,
                              size_type labelStrLen, 
                              pDateTimeStamp datetime )
 {
-    return TOSDB_GetItemFrame_( 
-               id, sTopic, dest, arrLen, labelDest, labelStrLen, datetime);            
+    return TOSDB_GetItemFrame_( id, sTopic, dest, arrLen, labelDest, 
+                                labelStrLen, datetime);            
 }
 
 int TOSDB_GetItemFrameStrings( LPCSTR id, 
@@ -1162,107 +1194,110 @@ int TOSDB_GetItemFrameStrings( LPCSTR id,
 {    
     const TOSDBlock *db;
     TOS_Topics::TOPICS tTopic;
+
     int errVal = 0;
 
-    if( !ChceckIDLength( id ) || !ChceckStringLength( sTopic ) )
+    if( !CheckIDLength( id ) || !CheckStringLength( sTopic ) )
         return -1;
 
-    tTopic = GetTopicEnum( sTopic );        
-    try
-    {
+    tTopic = GetTopicEnum( sTopic );    
+    
+    try{
+
         rGuardTy _lock_(*globalMutex);
+
         db = GetBlockOrThrow( id );
-        if( datetime )
-        {
+        if( datetime ){
+
             generic_dts_map_type::const_iterator bIter, eIter;                
+
             generic_dts_map_type tmpMDT = 
                 db->block->pair_map_of_frame_items(tTopic);
+
             bIter = tmpMDT.cbegin();
             eIter = tmpMDT.cend();
-            if( !labelDest )
-            {                
+
+            if( !labelDest ){                
+
                 for( size_type i = 0; 
                      (i < arrLen) && (bIter != eIter); 
                      ++bIter, ++i )
                     {
                         datetime[i] = bIter->second.second;
-                        errVal = strcpy_s( dest[i],
-                                           strLen, 
+
+                        errVal = strcpy_s( dest[i], strLen, 
                                           (bIter->second.first ).as_string()
                                                                 .c_str() );
                         if( errVal) 
                             return errVal;                    
                     }
-            }
-            else
-            {                
+
+            }else{                
+
                 for( size_type i = 0; 
                      ( i < arrLen ) && (bIter != eIter); 
                      ++bIter, ++i )
-                {
-                    datetime[i] = bIter->second.second;
-                    if( (errVal = strcpy_s( dest[i],
-                                            strLen, 
-                                            ( bIter->second.first ).as_string()
-                                                                   .c_str() ) )
-                        || ( errVal = strcpy_s( labelDest[i],
-                                                labelStrLen, 
-                                                (bIter->first).c_str() ) ) )
-                       {
-                           return errVal;
-                       }
-                }
+                    {
+                        datetime[i] = bIter->second.second;
+                        if((errVal = strcpy_s( dest[i], strLen, 
+                                               (bIter->second.first).as_string()
+                                                                    .c_str() ))
+                           || (errVal = strcpy_s( labelDest[i], labelStrLen, 
+                                                  (bIter->first).c_str() )))
+                           {
+                               return errVal;
+                           }
+                    }
             }
-        }
-        else
-        {
-            generic_map_type::const_iterator bIter, eIter;                
+
+        }else{
+
+            generic_map_type::const_iterator bIter, eIter;     
+           
             generic_map_type tmpM = db->block->map_of_frame_items(tTopic);
             bIter = tmpM.cbegin();
             eIter = tmpM.cend();
-            if( !labelDest )
-            {                
+
+            if( !labelDest ){                
+
                 for( size_type i = 0; 
                      (i < arrLen) && (bIter != eIter); 
                      ++bIter, ++i )
                     {
-                        errVal = strcpy_s( dest[i],
-                                           strLen, 
-                                           ( bIter->second ).as_string()
-                                                            .c_str() );
+                        errVal = strcpy_s( dest[i], strLen, 
+                                           (bIter->second).as_string().c_str());
                         if( errVal )
                              return errVal;
                     }
-            }
-            else
-            {                
+
+            }else{                
+
                 for( size_type i = 0; 
                      ( i < arrLen ) && (bIter != eIter); 
                      ++bIter, ++i )
                     {
-                        if( (errVal = strcpy_s( dest[i],
-                                                strLen, 
-                                                ( bIter->second ).as_string()
-                                                                 .c_str() ) )
-                            || ( errVal = strcpy_s( labelDest[i],
-                                                    labelStrLen, 
-                                                    (bIter->first).c_str() ) ) ) 
-                          { 
-                              return errVal; 
-                          }
-                }                    
+                        if((errVal = strcpy_s( dest[i], strLen, 
+                                               (bIter->second).as_string()
+                                                              .c_str() ))
+                           || (errVal = strcpy_s( labelDest[i], labelStrLen, 
+                                                  (bIter->first).c_str() ))) 
+                           { 
+                               return errVal; 
+                           }
+                    }     
+               
             }
         };
-    } 
-    catch( const std::exception& e )
-    {
+
+    }catch( const std::exception& e ){
+
         TOSDB_LogH( "TOSDB_GetItemFrameStrings()", e.what() );
         return -2;
-    }
-    catch( ... )
-    {
+
+    }catch( ... ){
         return -2;    
     }
+
     return 0;        
 } 
 
@@ -1273,6 +1308,7 @@ generic_map_type TOSDB_GetTopicFrame<false>( std::string id, std::string sItem)
 
     rGuardTy _lock_(*globalMutex);
     db = GetBlockOrThrow( id );
+
     return db->block->map_of_frame_topics( sItem );
 }
 
@@ -1284,6 +1320,7 @@ generic_dts_map_type TOSDB_GetTopicFrame<true>( std::string id,
 
     rGuardTy _lock_(*globalMutex);
     db = GetBlockOrThrow( id );
+
     return db->block->pair_map_of_frame_topics( sItem );
 }
 
@@ -1299,104 +1336,107 @@ int TOSDB_GetTopicFrameStrings( LPCSTR id,
     const TOSDBlock *db;
     int errVal = 0;
 
-    if( !ChceckIDLength( id ) || !ChceckStringLength(sItem) )
+    if( !CheckIDLength( id ) || !CheckStringLength(sItem) )
         return -1;    
-    try
-    {
+
+    try{
+
         rGuardTy _lock_(*globalMutex);
+
         db = GetBlockOrThrow( id );
-        if( datetime )
-        {
+        if( datetime ){
+
             generic_dts_map_type::const_iterator bIter, eIter;                
+
             generic_dts_map_type tmpMDT = 
                 db->block->pair_map_of_frame_topics(sItem);
+
             bIter = tmpMDT.cbegin();
             eIter = tmpMDT.cend();
-            if( !labelDest )
-            {                
+
+            if( !labelDest ){                
+
                 for( size_type i = 0; 
                      (i < arrLen) && (bIter != eIter); 
                      ++bIter, ++i )
                     {
                         datetime[i] = bIter->second.second;
-                        errVal = strcpy_s( dest[i],
-                                           strLen, 
-                                           ( bIter->second.first ).as_string()
-                                                                  .c_str() );
+
+                        errVal = strcpy_s( dest[i], strLen, 
+                                           (bIter->second.first).as_string()
+                                                                .c_str() );
                         if( errVal) 
                             return errVal;                    
                     }
-            }
-            else
-            {                
+
+            }else{                
+
                 for( size_type i = 0; 
                      ( i < arrLen ) && (bIter != eIter); 
                      ++bIter, ++i )
                     {
                         datetime[i] = bIter->second.second;
-                        if( (errVal = strcpy_s( dest[i],
-                                                strLen, 
+                        if((errVal = strcpy_s( dest[i], strLen, 
                                                (bIter->second.first).as_string()
-                                                                    .c_str() ) )
-                            || ( errVal = strcpy_s( labelDest[i],
-                                                    labelStrLen, 
-                                                    (bIter->first).c_str() ) ) ) 
+                                                                    .c_str() ))
+                           || (errVal = strcpy_s( labelDest[i], labelStrLen, 
+                                                  (bIter->first).c_str() ))) 
                            {
                               return errVal;
                            }
-                }
+                    }
+
             }
-        }
-        else
-        {
+
+        }else{
+
             generic_map_type::const_iterator bIter, eIter;                
+
             generic_map_type tmpM = db->block->map_of_frame_topics(sItem);
             bIter = tmpM.cbegin();
             eIter = tmpM.cend();
-            if( !labelDest )
-            {
+
+            if( !labelDest ){
+
                 for( size_type i = 0; 
                      (i < arrLen) && (bIter != eIter); 
                      ++bIter, ++i )
                     {
-                        errVal = strcpy_s( dest[i],
-                                           strLen, 
-                                           ( bIter->second ).as_string()
-                                                            .c_str() );
+                        errVal = strcpy_s( dest[i], strLen, 
+                                           (bIter->second).as_string()
+                                                          .c_str() );
                         if( errVal ) 
                             return errVal;
-                     }
-            }
-            else
-            {
+                    }
+
+            }else{
+
                 for( size_type i = 0; 
                      ( i < arrLen ) && (bIter != eIter); 
                      ++bIter, ++i )
                     {
-                        if( ( errVal = strcpy_s( dest[i],
-                                                 strLen, 
-                                                ( bIter->second ).as_string()
-                                                                 .c_str() ) )
-                            || ( errVal = strcpy_s( labelDest[i],
-                                                    labelStrLen, 
-                                                    (bIter->first).c_str() ) ) )
-                            {
-                               return errVal; 
-                            }
-                     }                    
+                        if(( errVal = strcpy_s( dest[i], strLen, 
+                                                (bIter->second).as_string()
+                                                               .c_str() ))
+                           || (errVal = strcpy_s( labelDest[i], labelStrLen, 
+                                                  (bIter->first).c_str() )))
+                           {
+                              return errVal; 
+                           }
+                    }                    
             }
 
         };
-    } 
-    catch( const std::exception& e )
-    {
+
+    }catch( const std::exception& e ){
+
         TOSDB_LogH( "TOSDB_GetTopicFrameStrings()", e.what() );
         return -2;
-    }
-    catch( ... )
-    {
+
+    }catch( ... ){
         return -2;    
     }
+
     return 0;
 }
 
@@ -1407,6 +1447,7 @@ generic_matrix_type TOSDB_GetTotalFrame<false>( std::string id )
 
     rGuardTy _lock_(*globalMutex);
     db = GetBlockOrThrow( id );
+
     return db->block->matrix_of_frame();
 }
 
@@ -1417,6 +1458,7 @@ generic_dts_matrix_type TOSDB_GetTotalFrame<true>( std::string id )
 
     rGuardTy _lock_(*globalMutex);
     db = GetBlockOrThrow( id );
+
     return db->block->pair_matrix_of_frame();
 }
 
@@ -1424,7 +1466,6 @@ std::ostream& operator<<(std::ostream& out, const generic_type& gen)
 {
     out<< gen.as_string();
     return out;
-
 }
 
 std::ostream& operator<<(std::ostream& out, const DateTimeStamp& dts)
@@ -1436,34 +1477,35 @@ std::ostream& operator<<(std::ostream& out, const DateTimeStamp& dts)
         << dts.ctime_struct.tm_min<<':'
         << dts.ctime_struct.tm_sec<<':'
         << dts.micro_second;
+
     return out;
 }
 
 std::ostream & operator<<(std::ostream& out, const generic_matrix_type & mat)
 {    
-    for( auto & item : mat ) 
-    {
+    for( auto & item : mat ){
+
         std::cout<<item.first<<"::: ";
-        for( auto & topic : item.second )
-        {
+        for( auto & topic : item.second )        
             std::cout<<topic.first<<"[ "<<topic.second<<" ] ";
-        }         
+                 
         out<<std::endl; 
     }
+
     return out;
 }
 
 std::ostream & operator<<(std::ostream& out, const generic_dts_matrix_type & mat)
 {    
-    for( auto & item : mat ) 
-    {
+    for( auto & item : mat ){
+
         std::cout<<item.first<<"::: ";
-        for( auto & topic : item.second )
-        {
+        for( auto & topic : item.second )        
             std::cout<<topic.first<<"[ "<<topic.second<<" ] ";
-        }         
+        
         out<<std::endl; 
     }
+
     return out;
 }
 
@@ -1499,10 +1541,14 @@ std::ostream & operator<<( std::ostream& out,
 {
     auto iterF = vecs.first.cbegin();
     auto iterS = vecs.second.cbegin();
+
     for( ; 
          iterF != vecs.first.cend() && iterS != vecs.second.cend(); 
          iterF++, iterS++ )
-             out<< *iterF <<' '<< *iterS <<std::endl;
+        {
+           out<< *iterF <<' '<< *iterS <<std::endl;
+        }
+
     return out;
 }
 
@@ -1543,10 +1589,14 @@ std::ostream& operator<<( std::ostream& out,
 {
     auto iterF = vecs.first.cbegin();
     auto iterS = vecs.second.cbegin();
+
     for( ; 
          iterF != vecs.first.cend() && iterS != vecs.second.cend(); 
          iterF++, iterS++ )
+        {
             out<< generic_type(*iterF) <<' '<< *iterS << std::endl;
+        }
+
     return out;
 }
 

@@ -710,7 +710,8 @@ const TOS_Topics::topic_map_entry_type gtmArr[] = {
     //    TOS_Topics::TOPICS::WoodiesPivots, "WoodiesPivots"),
     TOS_Topics::topic_map_entry_type(
         TOS_Topics::TOPICS::YIELD, "YIELD")
-        };
+};
+
 const TOS_Topics::topic_map_type 
 TOS_Topics::_globalTopicMap = gtmArr;
 

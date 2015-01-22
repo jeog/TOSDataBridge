@@ -178,7 +178,7 @@ typedef const enum{ /*milliseconds*/
 }UpdateLatency;
 #define TOSDB_DEF_LATENCY Fast
 
-typedef struct {
+typedef struct{
     struct tm  ctime_struct;
     long       micro_second;
 } DateTimeStamp, *pDateTimeStamp;
@@ -226,18 +226,23 @@ typedef std::map< std::string,
 
 template< typename T > 
 class Topic_Enum_Wrapper {
+
     static_assert( 
         std::is_integral<T>::value && !std::is_same<T,bool>::value, 
         "Invalid Topic_Enum_Wrapper<T> Type"
         );
+
     Topic_Enum_Wrapper()
     { 
     }    
+
     static const T ADJ_INTGR_BIT  = TOSDB_BIT_SHIFT_LEFT(T,TOSDB_INTGR_BIT);
     static const T ADJ_QUAD_BIT   = TOSDB_BIT_SHIFT_LEFT(T,TOSDB_QUAD_BIT);
     static const T ADJ_STRING_BIT = TOSDB_BIT_SHIFT_LEFT(T,TOSDB_STRING_BIT);
     static const T ADJ_FULL_MASK  = TOSDB_BIT_SHIFT_LEFT(T,TOSDB_TOPIC_BITMASK);
-public: /* pack type info into HO nibble of scoped Enum  */    
+
+public: /* pack type info into HO nibble of scoped Enum  */   
+ 
     typedef T enum_type;
 
     enum class TOPICS /* gaps represent the 'reserved' exported TOS/DDE fields*/ 
@@ -340,6 +345,7 @@ public: /* pack type info into HO nibble of scoped Enum  */
         //
         YIELD = 0x152    
     };
+
     template< TOPICS topic >
     struct Type{ /* get the type at compile-time */
         typedef typename std::conditional< 
@@ -381,6 +387,7 @@ public: /* pack type info into HO nibble of scoped Enum  */
             return typeid(def_price_type).name();
         }; 
     }
+
     struct top_less 
     { 
         bool operator()( const TOPICS& left, const TOPICS& right)
@@ -388,12 +395,16 @@ public: /* pack type info into HO nibble of scoped Enum  */
             return ( globalTopicMap[left] < globalTopicMap[right] );            
         }
     };
+
     typedef TwoWayHashMap< TOPICS, std::string >  topic_map_type;
-    typedef typename topic_map_type::pair1_type   topic_map_entry_type;    
+    typedef typename topic_map_type::pair1_type   topic_map_entry_type;  
+  
     /* export ref from imported defs */
     /* note: need to define the ref in each module */
     static DLL_SPEC_IFACE_ const topic_map_type&  globalTopicMap;
-private: /* import defs from _tos-databridge.dll */
+
+private: 
+    /* import defs from _tos-databridge.dll */
     static DLL_SPEC_IMPL_ const topic_map_type   _globalTopicMap; 
 };
 
@@ -583,12 +594,15 @@ template DLL_SPEC_IFACE_    std::ostream& operator<<(std::ostream&, const std::p
 template DLL_SPEC_IFACE_    std::ostream& operator<<(std::ostream&, const std::pair<std::vector<def_size_type>,dts_vector_type>&);
 template DLL_SPEC_IFACE_    std::ostream& operator<<(std::ostream&, const std::pair<std::vector<std::string>,dts_vector_type>&);
 
-class TOSDB_error : public std::exception{
+class TOSDB_error : public std::exception {
+
     unsigned long _threadID;
     unsigned long _processID;
     std::string _tag;
     std::string _info;
+
 public:
+
     TOSDB_error( const char* info, const char* tag )
         : 
         std::exception( info ),
@@ -598,6 +612,7 @@ public:
         _processID( GetCurrentProcessId() )
         {                
         }
+
     TOSDB_error( const std::exception& e, const char* tag )
         : 
         std::exception( e ),
@@ -606,6 +621,7 @@ public:
         _processID( GetCurrentProcessId() )
         {                 
         }
+
     TOSDB_error( const std::exception& e, const char* info, const char* tag )
         : 
         std::exception( e ),
@@ -615,94 +631,119 @@ public:
         _processID( GetCurrentProcessId() )
         {                
         }
-    virtual ~TOSDB_error()
-    {
-    }
-public:
-    unsigned long    threadID() const { return _threadID; }
-    unsigned long    processID() const { return _processID; }
-    std::string        tag() const { return _tag; }
-    std::string        info() const { return _info; }
-};
-    class TOSDB_IPC_error : public TOSDB_error{
-    public:
-        TOSDB_IPC_error( const char* info, const char* tag = "IPC" )
-            : 
-            TOSDB_error( info, tag )
-            {
-            }
-    };
-        class TOSDB_buffer_error : public TOSDB_IPC_error{
-        public:
-            TOSDB_buffer_error( const char* info, 
-                                const char* tag = "DATA-BUFFER" )
-                : 
-                TOSDB_IPC_error( info, tag )
-                {
-                }
-        };
 
-    class TOSDB_dde_error : public TOSDB_error{
-    public:
-        TOSDB_dde_error( const char* info, const char* tag = "DDE" )
-            : 
-            TOSDB_error( info, tag )
-            {
-            }
-        TOSDB_dde_error( const std::exception& e, 
-                         const char* info, 
-                         const char* tag = "DDE" )
-            : TOSDB_error( e, info, tag )
-            {
-            }
-    };        
-    class TOSDB_data_block_error : public TOSDB_error{
-    public:
-        TOSDB_data_block_error( const char* info, 
-                                const char* tag = "DataBlock" )
-            : 
-            TOSDB_error( info, tag )
-            {
-            }
-        TOSDB_data_block_error( const std::exception& e, 
-                                const char* info, 
-                                const char* tag = "DataBlock" ) 
-            : TOSDB_error( e, info, tag )
-            {
-            }
-    };        
-        class TOSDB_data_block_limit_error :
-            public TOSDB_data_block_error, public std::length_error {
-        public:
-            const size_t limit;    
-            TOSDB_data_block_limit_error( const size_t limit )
-                : 
-                TOSDB_data_block_error( "Attempt to create TOSDB_RawDataBlock "
-                                        "would exceed limit." ),
-                std::length_error( "Attempt to create TOSDB_RawDataBlock "
-                                   "would exceed limit." ),
-                limit( limit )
-                {
-                }
-            virtual const char* what() const 
-            {
-                return TOSDB_data_block_error::what();
-            }    
-        };                        
-        class TOSDB_data_stream_error : public TOSDB_data_block_error{
-        public:
-            TOSDB_data_stream_error( const char* info, 
-                                     const char* tag = "DataStream" )
-                : TOSDB_data_block_error( info, tag )        
-                {
-                }
-            TOSDB_data_stream_error( const std::exception& e, 
-                                     const char* info, 
-                                     const char* tag = "DataStream" )
-                : TOSDB_data_block_error(e, info, tag )        
-                {
-                }
-        };
+    virtual ~TOSDB_error()
+        {
+        }
+
+    unsigned long threadID() const 
+    { 
+        return _threadID; 
+    }
+
+    unsigned long processID() const 
+    {
+        return _processID; 
+    }
+
+    std::string tag() const 
+    { 
+        return _tag; 
+    }
+
+    std::string info() const 
+    { 
+        return _info; 
+    }
+};
+  
+class TOSDB_IPC_error : public TOSDB_error {
+public:
+
+    TOSDB_IPC_error( const char* info, const char* tag = "IPC" )
+        : 
+        TOSDB_error( info, tag )
+        {
+        }
+};
+
+class TOSDB_buffer_error : public TOSDB_IPC_error {
+public:
+    TOSDB_buffer_error( const char* info, const char* tag = "DATA-BUFFER" )
+        : 
+        TOSDB_IPC_error( info, tag )
+        {
+        }
+};
+
+class TOSDB_dde_error : public TOSDB_error {
+public:
+
+    TOSDB_dde_error( const char* info, const char* tag = "DDE" )
+        : 
+        TOSDB_error( info, tag )
+        {
+        }
+    TOSDB_dde_error( const std::exception& e, 
+                     const char* info, 
+                     const char* tag = "DDE" )
+        : TOSDB_error( e, info, tag )
+        {
+        }
+};        
+
+class TOSDB_data_block_error : public TOSDB_error {
+public:
+
+    TOSDB_data_block_error( const char* info, const char* tag = "DataBlock" )
+        : 
+        TOSDB_error( info, tag )
+        {
+        }
+    TOSDB_data_block_error( const std::exception& e, 
+                            const char* info, 
+                            const char* tag = "DataBlock" ) 
+        : TOSDB_error( e, info, tag )
+        {
+        }
+};        
+
+class TOSDB_data_block_limit_error :
+    public TOSDB_data_block_error, public std::length_error {
+public:
+
+    const size_t limit;    
+
+    TOSDB_data_block_limit_error( const size_t limit )
+        : 
+        TOSDB_data_block_error( "Attempt to create TOSDB_RawDataBlock "
+                                "would exceed limit." ),
+        std::length_error( "Attempt to create TOSDB_RawDataBlock "
+                           "would exceed limit." ),
+        limit( limit )
+        {
+        }
+
+    virtual const char* what() const 
+        {
+            return TOSDB_data_block_error::what();
+        }    
+};                        
+
+class TOSDB_data_stream_error : public TOSDB_data_block_error {
+public:
+
+    TOSDB_data_stream_error( const char* info, const char* tag = "DataStream" )
+        : TOSDB_data_block_error( info, tag )        
+        {
+        }
+    TOSDB_data_stream_error( const std::exception& e, 
+                             const char* info, 
+                             const char* tag = "DataStream" )
+        : TOSDB_data_block_error(e, info, tag )        
+        {
+        }
+};
 
 #endif
 #endif

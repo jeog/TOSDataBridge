@@ -140,10 +140,14 @@ private:
                 secondary_type* sec ) const
     {    
         if( !dest )
-            throw invalid_argument( "->copy(): *dest argument can not be null");         
-        std::unique_ptr< _inTy, void(*)(_inTy*)> 
-            tmp( new _inTy[sz], [](_inTy* _ptr){ delete[] _ptr; } );
+            throw invalid_argument( "->copy(): *dest argument can not be null");     
+    
+        std::unique_ptr< _inTy, void(*)(_inTy*)> tmp( new _inTy[sz], 
+                                                      [](_inTy* _ptr){ 
+                                                          delete[] _ptr; 
+                                                      } );
         copy( tmp.get(), sz, end, beg, sec );
+
         for( size_t i = 0; i < sz; ++i )            
             dest[i] = (_outTy)tmp.get()[i];                                
     }    
@@ -261,9 +265,13 @@ virtual void copy( _inTy* dest, size_t sz, int end = -1, int beg = 0, \
     {
         if( !dest )
             throw invalid_argument( "->copy(): *dest argument can not be null");
+
         auto dstr = [sz]( char** _pptr){ DeallocStrArray( _pptr, sz); };
-        std::unique_ptr< char*, decltype( dstr ) >
-            strMat( AllocStrArray( sz, STR_DATA_SZ ), dstr );
+
+        std::unique_ptr< char*, decltype( dstr ) > strMat( AllocStrArray( 
+                                                              sz, STR_DATA_SZ ), 
+                                                           dstr );
+
         this->copy( strMat.get(), sz, STR_DATA_SZ , end, beg, sec);                
         std::copy_n( strMat.get(), sz, dest );            
     }
@@ -302,10 +310,13 @@ class Object
         _push_has_priority = _mtx->try_lock();
         if( !_push_has_priority )
             _mtx->lock(); /* block regardless */                 
+
         _myImplObj.push_front(_item); 
         _myImplObj.pop_back();        
+
         if( _qCount < _qBound )
             ++_qCount;
+
         _mtx->unlock();
     } 
 
@@ -330,11 +341,13 @@ protected:
                      const std::deque< T, Allocator >& impl ) const
     {  /* since sz can't be > INT_MAX this won't be a problem */
         int sz = (int)impl.size();
+
         if ( _qBound != sz )    
             throw size_violation( 
                 "Internal size/bounds violation in tosdb_data_stream",
                 _qBound, sz 
-                );            
+                );          
+  
         if ( end < 0 ) end += sz; 
         if ( beg < 0 ) beg += sz;
         if ( beg >= sz || end >= sz || beg < 0 || end < 0 )    
@@ -346,6 +359,7 @@ protected:
             throw invalid_argument( 
                 "adj beg index value > end index value in tosdb_data_stream"                 
                 );
+
         return true;
     }
 
@@ -357,9 +371,10 @@ protected:
                        unsigned int beg) const
     {    
         ImplTy::const_iterator bIter = impl.cbegin() + beg;
-        ImplTy::const_iterator eIter = impl.cbegin() + 
-            std::min< size_t >( sz + beg, 
-                                std::min< size_t >( ++end , _qCount ) );
+        ImplTy::const_iterator eIter = 
+            impl.cbegin() + 
+            std::min< size_t >( sz + beg, std::min< size_t >( ++end, _qCount ));
+
         if( bIter < eIter )
             std::copy( bIter, eIter, dest );     
     }
@@ -421,7 +436,9 @@ public:
     size_t bound_size( size_t sz )
     {
         sz = std::min<size_t>(sz,MAX_BOUND_SIZE);
+
         _guardTy _lock_( *_mtx );
+
         _myImplObj.resize(sz);
         if (sz < _qBound)
             _myImplObj.shrink_to_fit();    
@@ -455,11 +472,16 @@ public:
             !std::is_same<Ty,char>::value, 
             "->copy() accepts char**, not char*" 
             );
+
         if( !dest )
             throw invalid_argument( "->copy(): *dest argument can not be null");
+
         _yld_to_push();
+
         _guardTy _lock_( *_mtx );
+
         _check_adj( end, beg, _myImplObj );                     
+
         if( end == beg )
             *dest = beg ? _myImplObj.at(beg) : _myImplObj.front();
         else 
@@ -475,12 +497,17 @@ public:
                int beg = 0, 
                secondary_type* sec = nullptr) const 
     {
-        _myImplTy::const_iterator bIter, eIter;        
+        _myImplTy::const_iterator bIter, eIter;       
+ 
         if( !dest )
             throw invalid_argument( "->copy(): *dest argument can not be null");
-        _yld_to_push();        
+
+        _yld_to_push();   
+     
         _guardTy _lock_( *_mtx );                    
+
         _check_adj(end,beg, _myImplObj);                        
+
         bIter = _myImplObj.cbegin() + beg; 
         eIter = _myImplObj.cbegin() + std::min< size_t >(++end, _qCount);
         for( size_t i = 0; (i < destSz) && (bIter < eIter); ++bIter, ++i )
@@ -494,6 +521,7 @@ public:
     generic_type operator[]( int indx) const
     {
         int dummy = 0;
+
         _guardTy _lock_( *_mtx );
         if ( !indx ) /* optimize for indx == 0 */
             return generic_type( _myImplObj.front() ); 
@@ -511,10 +539,14 @@ public:
     vector(int end = -1, int beg = 0) const 
     {
         _myImplTy::const_iterator bIter, eIter;        
-        generic_vector_type tmp;        
-        _yld_to_push();        
+        generic_vector_type tmp;  
+      
+        _yld_to_push();
+        
         _guardTy _lock_( *_mtx );
-        _check_adj(end, beg, _myImplObj);                
+
+        _check_adj(end, beg, _myImplObj);
+                
         bIter = _myImplObj.cbegin() + beg;
         eIter = _myImplObj.cbegin() + std::min< size_t >(++end, _qCount);        
         if( bIter < eIter )                   
@@ -552,14 +584,18 @@ class Object< Ty, SecTy, GenTy, true, Allocator >
     void _push(const Ty _item, const secondary_type&& sec) 
     {    
         _push_has_priority = _mtx->try_lock();
+
         if( !_push_has_priority )
             _mtx->lock();
+
         _myBase::_myImplObj.push_front(_item); 
         _myBase::_myImplObj.pop_back();
         _myImplSecObj.push_front( std::move(sec) );
         _myImplSecObj.pop_back();
+
         if( _qCount < _qBound )
             ++_qCount;
+
         _mtx->unlock();
     } 
 
@@ -590,19 +626,25 @@ public:
     size_t bound_size(size_t sz)
     {
         sz = std::min<size_t>(sz, MAX_BOUND_SIZE);
+
         _guardTy _lock_( *_mtx );        
         _myImplSecObj.resize(sz);
+
         if (sz < _qCount)
-            _myImplSecObj.shrink_to_fit();    
+            _myImplSecObj.shrink_to_fit();  
+  
         return _myBase::bound_size(sz);        
     }
 
-    bool inline uses_secondary() { return true; }
+    bool inline uses_secondary() 
+    { 
+        return true; 
+    }
 
     void push( const Ty val, secondary_type&& sec = secondary_type() ) 
     {        
         _count1 = 0;
-        _push( val, std::move(sec) );    
+        _push( val, std::move(sec) );   
     
     }
 
@@ -621,12 +663,15 @@ public:
     {        
         if( !dest )
             throw invalid_argument( "->copy(): *dest argument can not be null");
+
         _guardTy _lock_( *_mtx );            
-        _myBase::copy(dest, sz, end, beg);            
+        _myBase::copy(dest, sz, end, beg);  
+          
         if( !sec )
             return;
         /*repeat the check to update index vals */ 
-        _check_adj( end, beg, _myImplSecObj );        
+        _check_adj( end, beg, _myImplSecObj );       
+ 
         if( end == beg )    
             *sec = beg ? _myImplSecObj.at(beg) : _myImplSecObj.front();
         else    
@@ -642,12 +687,15 @@ public:
     {            
         if( !dest  )
             throw invalid_argument( "->copy(): *dest argument can not be null");
+
         _guardTy _lock_( *_mtx );
         _myBase::copy(dest, destSz, strSz, end, beg);
+
         if( !sec )
             return;
         /*repeat the check to update index vals*/
         _check_adj( end, beg, _myImplSecObj ); 
+
         if( end == beg )
             *sec = beg ? _myImplSecObj.at(beg) : _myImplSecObj.front();
         else
@@ -656,7 +704,8 @@ public:
     
     both_type both( int indx ) const                        
     {        
-        int dummy = 0;        
+        int dummy = 0;   
+     
         _guardTy _lock_( *_mtx );        
         generic_type gen = operator[](indx);
         if( !indx )
@@ -668,6 +717,7 @@ public:
     void secondary( secondary_type* dest, int indx ) const
     {
         int dummy = 0;
+
         _guardTy _lock_( *_mtx );
         _check_adj(indx, dummy, _myImplSecObj );
         if( !indx )
@@ -681,10 +731,14 @@ public:
     {
         _myImplSecTy::const_iterator bIter, eIter;
         _myImplSecTy::const_iterator::difference_type iterDiff;
-        secondary_vector_type tmp;        
-        _yld_to_push();        
+        secondary_vector_type tmp; 
+       
+        _yld_to_push();   
+     
         _guardTy _lock_( *_mtx );
-        _check_adj(end, beg, _myImplSecObj);                
+
+        _check_adj(end, beg, _myImplSecObj);  
+              
         bIter = _myImplSecObj.cbegin() + beg;
         eIter = _myImplSecObj.cbegin() + std::min< size_t >(++end, _qCount);    
         iterDiff = eIter - bIter;

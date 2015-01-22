@@ -36,11 +36,11 @@ typedef struct {
     unsigned long        timeout;
 } TOSDBlock; /* no ptr or const typedefs; force code to state explicitly */
 
-bool                ChceckIDLength(LPCSTR id);
-bool                ChceckStringLength(LPCSTR str);
-bool                ChceckStringLength(LPCSTR str, LPCSTR str2 );
-bool                ChceckStringLengths(LPCSTR* str, size_type szItems);
-TOS_Topics::TOPICS  GetTopicEnum( std::string sTopic); 
+bool                CheckIDLength( LPCSTR id );
+bool                CheckStringLength( LPCSTR str );
+bool                CheckStringLength( LPCSTR str, LPCSTR str2 );
+bool                CheckStringLengths( LPCSTR* str, size_type szItems );
+TOS_Topics::TOPICS  GetTopicEnum( std::string sTopic ); 
 const TOSDBlock*    GetBlockPtr( std::string id );
 const TOSDBlock*    GetBlockOrThrow( std::string id );
 

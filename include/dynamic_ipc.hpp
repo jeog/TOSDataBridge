@@ -80,10 +80,13 @@ class ExplicitHeap{
     {   
         return (_allocated_set.find( (ptrTy)start ) != _allocated_set.cend());
     }
+
     // void _grow();     // TODO
     // void _shrink();   // TODO
     // void _coalesce(); // TODO
+
 public:    
+
     ExplicitHeap( void* beg_addr, sizeTy sz )
         {
             this->_free_heap.insert(  heapPairTy( sz, (ptrTy)beg_addr ) ); 
@@ -106,17 +109,28 @@ public:
 
 class DynamicIPCBase{ 
 public:
+
     struct shem_chunk
     {
         size_type offset;
         int bSize;
         shem_chunk() 
-            : offset(0), bSize(0){}
+            : 
+            offset(0), 
+            bSize(0)
+            {
+            }
         shem_chunk(size_type offset, size_type bSize)
-            : offset(offset), bSize(bSize){}
+            : 
+            offset(offset), 
+            bSize(bSize)
+            {
+            }
         ~shem_chunk(){}
     };
+
 private:    
+
     bool  _send( const shem_chunk& item ) const;    
     bool  _recv( shem_chunk& item ) const;    
     void* _allocate( size_type sz ) const;
@@ -128,14 +142,19 @@ private:
         void* blk = nullptr;        
         C::const_iterator bIter = cont.cbegin();
         C::const_iterator eIter = cont.cend();         
-        size_type bSz = sizeof(C::value_type) * cont.size();        
+        size_type bSz = sizeof(C::value_type) * cont.size();  
+      
         if( !(blk = _allocate( bSz )) )
             return shem_chunk(0,0);
+
         for( int i = 0; bIter != eIter; ++i, bIter++ )
             ((C::value_type*)blk)[i] = *bIter; 
+
         return shem_chunk((size_type)blk - (size_type)_mMapAddr, bSz);
     }
+
 protected:
+
     static const int           PAUSE = 1000;    
     static const int           ACL_SIZE = 144;
     static const char*         KMUTEX_NAME;
@@ -162,11 +181,11 @@ protected:
         _shemStr( std::move( std::string(name).append("_shem")) ),
 #endif
         _pipeStr( std::move( std::string("\\\\.\\pipe\\")
-                                 .append( std::string(name)
-                                              .append("_pipe") )) ),
+                             .append( std::string(name)
+                                      .append("_pipe") )) ),
         _intrnlPipeStr( std::move( std::string("\\\\.\\pipe\\")
-                                       .append( std::string(name)
-                                                    .append("pipe_intrnl") )) ), 
+                                   .append( std::string(name)
+                                            .append("pipe_intrnl") )) ), 
         _fMapHndl( NULL ),
         _mMapAddr( NULL ),
         _pipeHndl( INVALID_HANDLE_VALUE ),
@@ -175,20 +194,23 @@ protected:
         _mtx( NULL )
         {            
         }
+
     virtual ~DynamicIPCBase()
         {            
         }
+
 public:
 
     template< typename T>
     void extract( shem_chunk& chunk, T* dest, size_type bufSz ) const
     {
         void* ptr;
-        if( !(ptr = shem_ptr( chunk )) )
-        {
+
+        if( !(ptr = shem_ptr( chunk )) ){
             dest = nullptr;
             return; 
         }    
+
         memcpy_s( dest, sizeof(T) * bufSz, ptr, chunk.bSize );        
     }
     
@@ -197,8 +219,10 @@ public:
     {        
         size_type bSz = sizeof(T) * dataSz;
         void* blk = _allocate( bSz ); 
+
         if( !blk || memcpy_s(blk, bSz, pData, bSz ) )
             return shem_chunk(0,0);
+
         return shem_chunk((size_type)blk - (size_type)_mMapAddr, bSz);        
     }
 
@@ -229,7 +253,8 @@ public:
         if( chunk.bSize <= 0 
             || !_mMapAddr 
             || !((chunk.offset + chunk.bSize) <= (size_type)_mMapSz ) )
-                return nullptr;        
+                return nullptr;      
+  
         return (void*)((size_type)_mMapAddr + chunk.offset);
     }
 
@@ -237,6 +262,7 @@ public:
     {
         if(offset > (size_type)_mMapSz || !_mMapAddr )
             return nullptr;
+
         return (void*)((size_type)_mMapAddr + offset);
     }
 
@@ -245,6 +271,7 @@ public:
         if( start < _mMapAddr 
             || (size_type)start >= ((size_type)_mMapAddr + (size_type)_mMapSz) )
                 return 0;
+
         return ( (size_type)start - (size_type)_mMapAddr ); 
     }
 
@@ -256,8 +283,10 @@ public:
     bool recv( int& val ) const
     {
         shem_chunk tmpBlck;
+
         bool res = _recv( tmpBlck );
         val = tmpBlck.offset;
+
         return res;
     }
 
@@ -285,40 +314,53 @@ public:
 };
 
 class DynamicIPCMaster
-    : public DynamicIPCBase
-{    
+    : public DynamicIPCBase {    
+
     volatile bool _pipeHeld;
+
 public:    
+
     DynamicIPCMaster( std::string name )
         : 
         DynamicIPCBase( name ),
         _pipeHeld( false )
         {    
         }
+
     virtual ~DynamicIPCMaster()
         {
             disconnect();
         }
+
     bool try_for_slave();
     void disconnect( int level = 3 );
     int  grab_pipe();
     void release_pipe();
-    bool inline pipe_held() const { return _pipeHeld; } 
     bool connected() const;
+    bool inline pipe_held() const 
+    {
+        return _pipeHeld; 
+    } 
+    
 };
 
 class DynamicIPCSlave
-    : public DynamicIPCBase        
-{        
-    volatile bool                                        _allocLoopF;
-    std::unique_ptr<ExplicitHeap>                        _pHeap;    
+    : public DynamicIPCBase { 
+       
+    volatile bool _allocLoopF;
+
+    std::unique_ptr<ExplicitHeap> _pHeap;    
+
     std::unordered_map< Securable, SECURITY_ATTRIBUTES>  _secAttr;
     std::unordered_map< Securable, SECURITY_DESCRIPTOR>  _secDesc;     
     std::unordered_map< Securable, SmartBuffer<void> >   _everyoneSIDs; 
-    std::unordered_map< Securable, SmartBuffer<ACL> >    _everyoneACLs;  
+    std::unordered_map< Securable, SmartBuffer<ACL> >    _everyoneACLs; 
+ 
     int  _set_security();
     void _listen_for_alloc();
-public:        
+
+public:  
+      
     DynamicIPCSlave( std::string name, int sz );
     virtual ~DynamicIPCSlave();
     bool    wait_for_master();

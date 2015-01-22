@@ -35,11 +35,13 @@ const char* MAX_STR_SZ_NAME  =  "MAX_STR_SZ";
 const char* STR_DATA_SZ_NAME =  "STR_DATA_SZ";
 const char* DEF_TIMEOUT_NAME =  "DEF_TIMEOUT";
 
-static struct PyModuleDef _tosdb = { PyModuleDef_HEAD_INIT, 
-                                     "_tosdb", 
-                                     NULL, 
-                                     -1, 
-                                     NULL };
+static struct PyModuleDef _tosdb = { 
+    PyModuleDef_HEAD_INIT, 
+    "_tosdb", 
+    NULL, 
+    -1, 
+    NULL 
+};
 
 PyMODINIT_FUNC PyInit__tosdb(void)
 {	
@@ -64,9 +66,10 @@ PyMODINIT_FUNC PyInit__tosdb(void)
 
     int count = 0;
     do
-        PyTuple_SET_ITEM( topicObj, 
-                          count++, 
-                          PyUnicode_FromString(cbIter->second.c_str()) );	
+
+        PyTuple_SET_ITEM( topicObj, count++, 
+                          PyUnicode_FromString( cbIter->second.c_str() ) );
+	
     while( ++cbIter != TOS_Topics::globalTopicMap.cend() );	
 
     PyObject_SetAttrString( pyMod, TOPICS_NAME, topicObj);

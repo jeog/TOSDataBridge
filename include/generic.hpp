@@ -22,12 +22,21 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 #include <string>
 #include <math.h>
 
-namespace JO{
+namespace JO {
+
 /*  
     this is just a crass hack to allow tosdb_data_stream to overload by 
     return type, allowing for a simpler generic C++ interface
 */
-class Generic{
+
+class Generic {
+
+    static const int VOID_      = 0;
+    static const int LONG_      = 1;
+    static const int LONG_LONG_ = 2;
+    static const int FLOAT_     = 3;
+    static const int DOUBLE_    = 4;
+    static const int STRING_    = 5;
 
     void* _sub;
     unsigned char _typeVal;
@@ -39,23 +48,15 @@ class Generic{
 
     void _sub_deep_copy( Generic& dest, const Generic& src);
 
-    static const int VOID_      = 0;
-    static const int LONG_      = 1;
-    static const int LONG_LONG_ = 2;
-    static const int FLOAT_     = 3;
-    static const int DOUBLE_    = 4;
-    static const int STRING_    = 5;
 public:    
 
     template<typename T >
-    struct Type_Check 
-    {
-        static const bool value = ( 
-        std::is_same<T, float>::value || 
-        std::is_same<T, long>::value || 
-        std::is_same<T, double>::value || 
-        std::is_same<T, long long>::value ||
-        std::is_same<T, std::string>::value );
+    struct Type_Check {
+        static const bool value = ( std::is_same<T, float>::value 
+                                    || std::is_same<T, long>::value 
+                                    || std::is_same<T, double>::value 
+                                    || std::is_same<T, long long>::value 
+                                    || std::is_same<T, std::string>::value );
     };
 
     explicit Generic( long val )
@@ -166,10 +167,8 @@ public:
 template< typename T >
 T Generic::_val_switch() const
 {
-    try
-    {
-        switch( _typeVal )
-        {
+    try{
+        switch( _typeVal ){
         case LONG_:
             return (T)(*(long*)_sub);
             break;
@@ -189,9 +188,7 @@ T Generic::_val_switch() const
         default:
             throw;
         }
-    }
-    catch( ... )
-    {
+    }catch( ... ){
         std::ostringstream msgStrm;
         msgStrm << "error casting generic to < " << typeid(T).name() << " >";
         throw std::bad_cast( msgStrm.str().c_str() );
