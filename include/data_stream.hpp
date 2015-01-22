@@ -45,73 +45,84 @@ namespace tosdb_data_stream {
 
 class error : public std::exception{
 public:
+
     error( const char* info ) 
         : 
         std::exception( info ) 
         {
         }
 };
-    class type_error : public error{
-    public:
-        type_error( const char* info ) 
-            : 
-            error( info ) 
-            { 
-            }
-    };
-    class size_violation : public error{
-    public:
-        const size_t boundSize, dequeSize;            
-        size_violation( const char* msg, size_t bSz, size_t dSz )
-            : 
-            error( msg ),
-            boundSize( bSz ),
-            dequeSize( dSz )                
-            {                
-            }
-    };
-    /* can't make std::exception a virtual base from the 
-        stdexcept path so double construction of std::exception */
-    class out_of_range : 
-        public error, 
-        public std::out_of_range {            
-    public:
-        const int size, beg, end;
-        out_of_range( const char* msg, int sz, int beg, int end )
-            : 
-            std::out_of_range( msg ), 
-            error( msg ),                            
-            size( sz ), 
-            beg( beg ), 
-            end( end )
-            {                
-            }
-        virtual const char* what() const 
+
+class type_error : public error{
+public:
+
+    type_error( const char* info ) 
+        : 
+        error( info ) 
         { 
-            return error::what(); 
-        }        
-    };
-    class invalid_argument : 
-        public error, 
-        public std::invalid_argument {
-    public:    
-        invalid_argument( const char* msg )
-            : 
-            std::invalid_argument( msg ), 
-            error( msg )
-            {                
-            }
-        virtual const char* what() const 
-        {
-            return error::what();
         }
-    };
+};
+
+class size_violation : public error{
+public:
+
+    const size_t boundSize, dequeSize;   
+         
+    size_violation( const char* msg, size_t bSz, size_t dSz )
+        : 
+        error( msg ),
+        boundSize( bSz ),
+        dequeSize( dSz )                
+        {                
+        }
+};
+
+/* 
+    can't make std::exception a virtual base from the 
+    stdexcept path so double construction of std::exception 
+*/
+class out_of_range : public error, public std::out_of_range {            
+public:
+
+    const int size, beg, end;
+
+    out_of_range( const char* msg, int sz, int beg, int end )
+        : 
+        std::out_of_range( msg ), 
+        error( msg ),                            
+        size( sz ), 
+        beg( beg ), 
+        end( end )
+        {                
+        }
+
+    virtual const char* what() const 
+    { 
+        return error::what(); 
+    }        
+};
+
+class invalid_argument : public error, public std::invalid_argument {
+public:    
+
+    invalid_argument( const char* msg )
+        : 
+        std::invalid_argument( msg ), 
+        error( msg )
+        {                
+        }
+
+    virtual const char* what() const 
+    {
+        return error::what();
+    }
+};
     
 /*    The interface to tosdb_data_stream     */
 template< typename SecTy, typename GenTy >
 class Interface {
-
 public:
+
     typedef GenTy                     generic_type;
     typedef SecTy                     secondary_type;
     typedef std::pair< GenTy, SecTy>  both_type;
@@ -121,6 +132,7 @@ public:
     static const size_t MAX_BOUND_SIZE = INT_MAX;
 
 private:
+
     template < typename _inTy >
     void _throw_type_error( const char* method, bool fThru = false ) const
     {         
@@ -147,19 +159,21 @@ private:
                                                           delete[] _ptr; 
                                                       } );
         copy( tmp.get(), sz, end, beg, sec );
-
         for( size_t i = 0; i < sz; ++i )            
             dest[i] = (_outTy)tmp.get()[i];                                
     }    
 
 protected:
+
     unsigned short _count1;
+
     Interface()
         : _count1( 0 )
         { 
         }
 
 public:
+
     virtual size_t                  bound_size() const = 0;
     virtual size_t                  bound_size( size_t ) = 0;
     virtual size_t                  size() const = 0;
@@ -271,7 +285,6 @@ virtual void copy( _inTy* dest, size_t sz, int end = -1, int beg = 0, \
         std::unique_ptr< char*, decltype( dstr ) > strMat( AllocStrArray( 
                                                               sz, STR_DATA_SZ ), 
                                                            dstr );
-
         this->copy( strMat.get(), sz, STR_DATA_SZ , end, beg, sec);                
         std::copy_n( strMat.get(), sz, dest );            
     }
@@ -321,6 +334,7 @@ class Object
     } 
 
 protected:
+
     typedef std::lock_guard<std::recursive_mutex >  _guardTy;
     
     std::recursive_mutex* const  _mtx; 
@@ -380,6 +394,7 @@ protected:
     }
 
 public:
+
     typedef _myBase  interface_type;
     typedef Ty       value_type;
 
@@ -444,6 +459,7 @@ public:
             _myImplObj.shrink_to_fit();    
         if( sz < _qCount )
             _qCount = sz;
+
         return (_qBound = sz);
     }
 
@@ -477,9 +493,7 @@ public:
             throw invalid_argument( "->copy(): *dest argument can not be null");
 
         _yld_to_push();
-
         _guardTy _lock_( *_mtx );
-
         _check_adj( end, beg, _myImplObj );                     
 
         if( end == beg )
@@ -502,16 +516,14 @@ public:
         if( !dest )
             throw invalid_argument( "->copy(): *dest argument can not be null");
 
-        _yld_to_push();   
-     
+        _yld_to_push();        
         _guardTy _lock_( *_mtx );                    
-
         _check_adj(end,beg, _myImplObj);                        
 
         bIter = _myImplObj.cbegin() + beg; 
         eIter = _myImplObj.cbegin() + std::min< size_t >(++end, _qCount);
-        for( size_t i = 0; (i < destSz) && (bIter < eIter); ++bIter, ++i )
-        {             
+
+        for( size_t i = 0; (i < destSz) && (bIter < eIter); ++bIter, ++i ){             
             std::string genS = generic_type( *bIter ).as_string();                
             strncpy_s( dest[i], strSz, genS.c_str(), 
                        std::min<size_t>( strSz-1, genS.length() ) );                                  
@@ -523,8 +535,10 @@ public:
         int dummy = 0;
 
         _guardTy _lock_( *_mtx );
+
         if ( !indx ) /* optimize for indx == 0 */
             return generic_type( _myImplObj.front() ); 
+
         _check_adj( indx, dummy, _myImplObj );             
         return generic_type( _myImplObj.at(indx) );         
     }
@@ -541,20 +555,20 @@ public:
         _myImplTy::const_iterator bIter, eIter;        
         generic_vector_type tmp;  
       
-        _yld_to_push();
-        
+        _yld_to_push();        
         _guardTy _lock_( *_mtx );
-
         _check_adj(end, beg, _myImplObj);
                 
         bIter = _myImplObj.cbegin() + beg;
-        eIter = _myImplObj.cbegin() + std::min< size_t >(++end, _qCount);        
+        eIter = _myImplObj.cbegin() + std::min< size_t >(++end, _qCount);  
+      
         if( bIter < eIter )                   
             std::transform( bIter, eIter, 
                 /* have to use slower insert_iterator approach, 
                    generic_type doesn't allow default construction */
                 std::insert_iterator< generic_vector_type >( tmp, tmp.begin() ), 
-                []( Ty x ){ return generic_type(x); } );            
+                []( Ty x ){ return generic_type(x); } );   
+         
         return tmp;    
     }
 
@@ -600,6 +614,7 @@ class Object< Ty, SecTy, GenTy, true, Allocator >
     } 
 
 public:
+
     typedef Ty    value_type;
 
     Object(size_t sz )
@@ -627,9 +642,9 @@ public:
     {
         sz = std::min<size_t>(sz, MAX_BOUND_SIZE);
 
-        _guardTy _lock_( *_mtx );        
+        _guardTy _lock_( *_mtx );   
+     
         _myImplSecObj.resize(sz);
-
         if (sz < _qCount)
             _myImplSecObj.shrink_to_fit();  
   
@@ -664,7 +679,8 @@ public:
         if( !dest )
             throw invalid_argument( "->copy(): *dest argument can not be null");
 
-        _guardTy _lock_( *_mtx );            
+        _guardTy _lock_( *_mtx );    
+        
         _myBase::copy(dest, sz, end, beg);  
           
         if( !sec )
@@ -689,6 +705,7 @@ public:
             throw invalid_argument( "->copy(): *dest argument can not be null");
 
         _guardTy _lock_( *_mtx );
+
         _myBase::copy(dest, destSz, strSz, end, beg);
 
         if( !sec )
@@ -706,10 +723,12 @@ public:
     {        
         int dummy = 0;   
      
-        _guardTy _lock_( *_mtx );        
+        _guardTy _lock_( *_mtx );  
+      
         generic_type gen = operator[](indx);
         if( !indx )
             return both_type( gen, _myImplSecObj.front() );
+
         _check_adj(indx, dummy, _myImplSecObj );            
         return both_type( gen, _myImplSecObj.at(indx) );
     }
@@ -719,6 +738,7 @@ public:
         int dummy = 0;
 
         _guardTy _lock_( *_mtx );
+
         _check_adj(indx, dummy, _myImplSecObj );
         if( !indx )
             *dest = _myImplSecObj.front();
@@ -733,17 +753,16 @@ public:
         _myImplSecTy::const_iterator::difference_type iterDiff;
         secondary_vector_type tmp; 
        
-        _yld_to_push();   
-     
+        _yld_to_push();        
         _guardTy _lock_( *_mtx );
-
         _check_adj(end, beg, _myImplSecObj);  
               
         bIter = _myImplSecObj.cbegin() + beg;
         eIter = _myImplSecObj.cbegin() + std::min< size_t >(++end, _qCount);    
         iterDiff = eIter - bIter;
-        if( iterDiff > 0 )
-        { /* do this manually; insert iterators too slow */
+
+        if( iterDiff > 0 ){ 
+        /* do this manually; insert iterators too slow */
             tmp.resize(iterDiff); 
             std::copy( bIter, eIter, tmp.begin() );
         }

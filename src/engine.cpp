@@ -81,9 +81,16 @@ namespace {
     volatile bool isService     =  true;
 
     template< typename T > 
-    int   RouteToBuffer( DDE_Data<T>&& data );  
-  
+    int   RouteToBuffer( DDE_Data<T>&& data );    
     int   MainCommLoop(); 
+    void  TearDownTopic( TOS_Topics::TOPICS tTopic, size_type timeout );
+    bool  DestroyBuffer( TOS_Topics::TOPICS tTopic, std::string sItem );
+    void  HandleData( UINT msg, WPARAM wparam, LPARAM lparam );
+    void  DeAllocKernResources();
+    int   CleanUpMain( int retCode );
+    void  DumpBufferStatus();
+    void  CloseAllStreams( size_type timeout );
+    int   SetSecurityPolicy();
    
     int   AddStream( TOS_Topics::TOPICS tTopic, 
                      std::string sItem, 
@@ -93,10 +100,6 @@ namespace {
                         std::string sItem, 
                         size_type timeout );
 
-    void  CloseAllStreams( size_type timeout );
-
-    int   SetSecurityPolicy();
-
     bool  PostItem( std::string sItem, 
                     TOS_Topics::TOPICS tTopic, 
                     size_type timeout );
@@ -104,20 +107,12 @@ namespace {
     bool  PostCloseItem( std::string sItem, 
                          TOS_Topics::TOPICS tTopic, 
                          size_type timeout );
-
-    void  TearDownTopic( TOS_Topics::TOPICS tTopic, size_type timeout );
-
+   
     bool  CreateBuffer( TOS_Topics::TOPICS tTopic, 
                         std::string sItem, 
                         unsigned int bufSz = TOSDB_SHEM_BUF_SZ );
 
-    bool  DestroyBuffer( TOS_Topics::TOPICS tTopic, std::string sItem );
 
-    void  HandleData( UINT msg, WPARAM wparam, LPARAM lparam );
-
-    void  DeAllocKernResources();
-    int   CleanUpMain( int retCode );
-    void  DumpBufferStatus();
 
     DWORD WINAPI      Threaded_Init( LPVOID lParam );
     LRESULT CALLBACK  WndProc(HWND, UINT, WPARAM, LPARAM);     
@@ -138,13 +133,11 @@ int WINAPI WinMain( HINSTANCE hInst,
     bool res; 
    
     int errVal     = 0;
-    size_t bufIndx = 0;    
-
-    void *pArg1 = nullptr;
-    void *pArg2 = nullptr;
-    void *pArg3 = nullptr;
-
-    WNDCLASS clss = {};
+    size_t bufIndx = 0;  
+    void *pArg1    = nullptr;
+    void *pArg2    = nullptr;
+    void *pArg3    = nullptr;
+    WNDCLASS clss  = {};
 
     DynamicIPCSlave rpcSlave( TOSDB_COMM_CHANNEL, TOSDB_SHEM_BUF_SZ );
     DynamicIPCSlave::shem_chunk shem_buf[COMM_BUFFER_SIZE];
@@ -171,10 +164,8 @@ int WINAPI WinMain( HINSTANCE hInst,
     }
 
     if( WaitForSingleObject(globalInitEvent,TOSDB_DEF_TIMEOUT) == WAIT_TIMEOUT){
-
         TOSDB_LogH( "STARTUP", "engine's core thread did not receive signal " 
                                "from msg thread");
-
         return CleanUpMain(-1);
     }        
     
@@ -189,93 +180,88 @@ int WINAPI WinMain( HINSTANCE hInst,
 
         while( !shutdownFlag && (res = rpcSlave.recv( shem_buf[bufIndx] ) ) ){            
 
-            if( shem_buf[bufIndx].bSize == 0 
-                && shem_buf[bufIndx].offset == 0 ){   
-     
+            if( shem_buf[bufIndx].bSize == 0 && shem_buf[bufIndx].offset == 0 ){        
                 int i;
 
                 switch( shem_buf[0].offset ){
                 case TOSDB_SIG_ADD:
-                    {
 
+                    {
                     if( !(pArg1 = rpcSlave.shem_ptr( shem_buf[1] )) 
                         || !(pArg2 = rpcSlave.shem_ptr( shem_buf[2] )) 
-                        || !(pArg3 = rpcSlave.shem_ptr( shem_buf[3] )) ){
-
-                        TOSDB_LogH("IPC", "invalid shem_chunk passed to slave");
-                        break;
-                    }     
+                        || !(pArg3 = rpcSlave.shem_ptr( shem_buf[3] )) )
+                       {
+                          TOSDB_LogH("IPC","invalid shem_chunk passed to slave");
+                          break;
+                       }     
               
                     i = AddStream( *(TOS_Topics::TOPICS*)pArg1, 
                                    std::string((char*)pArg2),
                                    *(size_type*)pArg3 );                     
-                    rpcSlave.send( i );                  
-      
+                    rpcSlave.send( i );          
                     }
+
                     break;
                 case TOSDB_SIG_REMOVE:
-                    {
 
+                    {
                     if( !(pArg1 = rpcSlave.shem_ptr( shem_buf[1] )) 
                         || !(pArg2 = rpcSlave.shem_ptr( shem_buf[2] )) 
-                        || !(pArg3 = rpcSlave.shem_ptr( shem_buf[3] )) ){
-
-                        TOSDB_LogH("IPC", "invalid shem_chunk passed to slave");
-                        break;
-                    }
+                        || !(pArg3 = rpcSlave.shem_ptr( shem_buf[3] )) )
+                       {
+                          TOSDB_LogH("IPC","invalid shem_chunk passed to slave");
+                          break;
+                       }
 
                     i = RemoveStream( *(TOS_Topics::TOPICS*)pArg1, 
                                       std::string((char*)pArg2), 
                                       *(size_type*)pArg3 ) ? 0 : 1;
-                    rpcSlave.send( i ); 
-                       
+                    rpcSlave.send( i );                        
                     }    
+
                     break;
                 case TOSDB_SIG_PAUSE:
+
                     {
-
                     TOSDB_Log( "IPC", "TOSDB_SIG_PAUSE message received" );
-
                     if( isService ){            
                         pauseFlag = true;
                         rpcSlave.send( TOSDB_SIG_GOOD );                            
-                    }   
-                     
+                    }                        
                     }
+
                     break;
                 case TOSDB_SIG_CONTINUE:
-                    {
-                     
-                    TOSDB_Log("IPC", "TOSDB_SIG_CONTINUE message received");
-                    
+
+                    {                     
+                    TOSDB_Log("IPC", "TOSDB_SIG_CONTINUE message received");                    
                     if( isService ){
                         pauseFlag = false;                            
                        rpcSlave.send( TOSDB_SIG_GOOD );                        
                     }
-
                     }
+
                     break;
                 case TOSDB_SIG_STOP:
-                    {
-                     
-                    TOSDB_Log( "IPC", "TOSDB_SIG_STOP message received" );
-                 
+
+                    {                     
+                    TOSDB_Log( "IPC", "TOSDB_SIG_STOP message received" );                 
                     if( isService ){
                         shutdownFlag = true;
                         TOSDB_Log( "IPC", "shutdown flag set" );
                         rpcSlave.send( TOSDB_SIG_GOOD );
                     }
-
                     }
+
                     break;
                 case TOSDB_SIG_DUMP:
-                    {
 
+                    {
                     TOSDB_Log( "IPC", "TOSDB_SIG_DUMP message received" );
                     DumpBufferStatus();
                     rpcSlave.send( 0 );
-
                     }
+
                     break;
                 default:
                     TOSDB_LogH("IPC","invalid opCode");
@@ -285,16 +271,12 @@ int WINAPI WinMain( HINSTANCE hInst,
                 pArg1 = pArg2 = pArg3 = nullptr;
 
             }else if( ++bufIndx >= COMM_BUFFER_SIZE ){
-
                 TOSDB_LogH("IPC","shem_chunk buffer full, reseting msg loop");
                 bufIndx = 0;                
-            } 
-           
+            }            
         }    
     }    
-
     CloseAllStreams( TOSDB_DEF_TIMEOUT );
-
     return CleanUpMain(0);            
 }
 
@@ -313,7 +295,6 @@ int CleanUpMain( int retCode )
         hInstance = GetModuleHandle(NULL);
 
     UnregisterClass( CLASS_NAME, hInstance );
-
     return retCode;
 }
     
@@ -328,8 +309,7 @@ int AddStream( TOS_Topics::TOPICS tTopic,
 
     GlobalTopicsTy::iterator topicIter = globalTopics.find( tTopic );    
     if( topicIter == globalTopics.end() ){ 
-    /* if topic isn't in our global mapping */      
-  
+    /* if topic isn't in our global mapping */     
         ATOM aTopic;
         ATOM aApplication;
         std::string sTopic;
@@ -359,10 +339,8 @@ int AddStream( TOS_Topics::TOPICS tTopic,
         }
          
         if( !errVal ){
-
             globalTopics[tTopic] = ItemsRefCountTy();
             if( PostItem( sItem, tTopic, timeout ) ){
-
                 globalTopics[tTopic][sItem] = 1;
                 if( !CreateBuffer( tTopic, sItem ) )
                     errVal = -4;         
@@ -373,13 +351,10 @@ int AddStream( TOS_Topics::TOPICS tTopic,
 
     }else{ 
     /* if topic IS already in our global mapping */ 
-
         ItemsRefCountTy::iterator itemIter = topicIter->second.find(sItem); 
         if( itemIter == topicIter->second.end() ){ 
         /* and it doesn't have that item yet */
-
             if( PostItem( sItem, tTopic, timeout ) ){
-
                 topicIter->second[sItem] = 1;
                 if( !CreateBuffer( tTopic, sItem ) )
                     errVal = -4;          
@@ -446,11 +421,9 @@ void CloseAllStreams( unsigned long timeout )
                std::insert_iterator<GlobalTopicsTy>( gtCopy, gtCopy.begin() ) );
 
     for( const auto& topic: gtCopy ){
-
         std::copy( topic.second.begin(), topic.second.end(),
                    std::insert_iterator<ItemsRefCountTy >( ircCopy, 
                                                            ircCopy.begin() ) );
-
         for( const auto& item : ircCopy )
             RemoveStream( topic.first, item.first, timeout );
 
@@ -561,7 +534,6 @@ bool PostItem( std::string sItem,
     std::string sigID = std::to_string( (size_t)convo ) + sItem;
 
     globalAckSignals.set_signal_ID( sigID );
-
     PostMessage( msgWindow, REQUEST_DDE_ITEM, (WPARAM)convo, 
                  (LPARAM)(sItem.c_str()) ); 
     /* 
@@ -583,7 +555,6 @@ bool PostCloseItem( std::string sItem,
     std::string sigID = std::to_string( (size_t)convo ) + sItem;
 
     globalAckSignals.set_signal_ID( sigID );
-
     PostMessage( msgWindow, DELINK_DDE_ITEM, (WPARAM)convo, 
                  (LPARAM)(sItem.c_str()) );    
 
@@ -594,8 +565,7 @@ void TearDownTopic( TOS_Topics::TOPICS tTopic, unsigned long timeout )
 {    
 
     PostMessage( msgWindow, CLOSE_CONVERSATION, (WPARAM)globalConvos[tTopic], 
-                 NULL );   
-             
+                 NULL );                
     globalTopics.erase( tTopic ); 
     globalConvos.remove( tTopic );    
 }
@@ -613,9 +583,7 @@ bool CreateBuffer( TOS_Topics::TOPICS tTopic,
         return false;
 
     sBuf = CreateBufferName( TOS_Topics::globalTopicMap[tTopic], sItem );
-
     buf.rawSz = ( bufSz < sysInfo.dwPageSize ) ? sysInfo.dwPageSize : bufSz;
-
     buf.hFile = CreateFileMapping( INVALID_HANDLE_VALUE, &secAttr[SHEM1],
                                    PAGE_READWRITE, 0, buf.rawSz, sBuf.c_str() ); 
     if( !buf.hFile )
@@ -652,7 +620,6 @@ bool CreateBuffer( TOS_Topics::TOPICS tTopic,
                        * pTmp->elem_size ;
 
     globalBuffers.insert( GlobalBuffersTy::value_type( id, buf ) );
-
     return true;
 }
 
@@ -663,14 +630,10 @@ bool DestroyBuffer( TOS_Topics::TOPICS tTopic, std::string sItem )
 
     GlobalBuffersTy::iterator bufIter = globalBuffers.find( IdTy( sItem, 
                                                                   tTopic ) );
-
     if( bufIter != globalBuffers.end() ){ 
-
         UnmapViewOfFile( bufIter->second.rawAddr );
-
         CloseHandle( bufIter->second.hFile );
         CloseHandle( bufIter->second.hMutex );
-
         globalBuffers.erase( bufIter );
         return true;
     }
@@ -711,7 +674,7 @@ int RouteToBuffer( DDE_Data< T >&& data )
 
     /* BEGIN - INTRA-PROCESS CRITICAL SECTION */
     WinLockGuard _lock_( globalBufferMutex );
-
+    /******************************************/
     GlobalBuffersTy::iterator bufIter = globalBuffers.find( IdTy( data.item, 
                                                                   data.topic) );
     if( bufIter == globalBuffers.end() )    
@@ -721,6 +684,7 @@ int RouteToBuffer( DDE_Data< T >&& data )
 
     /* BEGIN - INTER-PROCESS CRITICAL SECTION */
     WaitForSingleObject( bufIter->second.hMutex, INFINITE );
+    /*-----------------------------------------------------*/
 
     ValToBuf( (void*)((char*)pHead + pHead->next_offset), data.data );
 
@@ -729,15 +693,15 @@ int RouteToBuffer( DDE_Data< T >&& data )
                       + (pHead->elem_size - sizeof(DateTimeStamp))) = *data.time; 
 
     if( (pHead->next_offset +  pHead->elem_size) >= pHead->end_offset ){
-
         pHead->next_offset = pHead->beg_offset; 
         ++(pHead->loop_seq);
     }else
         pHead->next_offset += pHead->elem_size;
 
+    /*--------------------------------------*/
     ReleaseMutex( bufIter->second.hMutex);
-    /* END - INTER-PROCESS CRITICAL SECTION */  
-  
+    /* END - INTER-PROCESS CRITICAL SECTION */   
+    /****************************************/ 
     return errVal;    
     /* END - INTRA-PROCESS CRITICAL SECTION */
 }
@@ -746,24 +710,24 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {    
     switch (message){
     case WM_DDE_DATA: 
+
         { /*
               ideally we should de-link it all and store state, then re-init 
               on continue for now lets just not handle the data from the server 
           */
         if( !pauseFlag ) 
             HandleData( message, wParam, lParam );
-
-        break; 
         }
+
+        break;         
     case LINK_DDE_ITEM:
-        {      
-      
+
+        {            
         DDEADVISE FAR* lpOptions;
         LPARAM lP;            
         ATOM item;             
 
-        HGLOBAL hOptions = GlobalAlloc( GMEM_MOVEABLE, sizeof(DDEADVISE) );
-           
+        HGLOBAL hOptions = GlobalAlloc( GMEM_MOVEABLE, sizeof(DDEADVISE) );           
         if (!hOptions)
                 break;
 
@@ -788,13 +752,13 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             GlobalDeleteAtom(item);
             GlobalFree(hOptions);
             FreeDDElParam(WM_DDE_ADVISE, lP);
-        }                
-
-        }     
+        }
+        }
+     
         break;
     case REQUEST_DDE_ITEM:
-        {    
-        
+
+        {          
         ATOM item = GlobalAddAtom( (LPCSTR)lParam );                    
         if( !item) 
             break;
@@ -803,12 +767,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                           PackDDElParam(WM_DDE_REQUEST, CF_TEXT, item) ) ){
             GlobalDeleteAtom(item); 
         }
-
         }
+
         break; 
     case DELINK_DDE_ITEM:
-        {   
-         
+
+        {            
         ATOM item = GlobalAddAtom( (LPCSTR)lParam );            
         LPARAM lP = PackDDElParam( WM_DDE_UNADVISE,    0, item );
             
@@ -819,27 +783,27 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                           (WPARAM)(msgWindow), lP ) ){
             GlobalDeleteAtom(item);            
             FreeDDElParam(WM_DDE_UNADVISE, lP);
-        }                
-
+        }        
         }
+
         break;
     case CLOSE_CONVERSATION:
-        {
-           
-        PostMessage( (HWND)wParam, WM_DDE_TERMINATE, (WPARAM)msgWindow, NULL );     
-               
+
+        {           
+        PostMessage( (HWND)wParam, WM_DDE_TERMINATE, (WPARAM)msgWindow, NULL );                    
         }
+
         break;    
     case WM_DESTROY:
-        {     
-       
-        PostQuitMessage(0);
 
+        {            
+        PostQuitMessage(0);
         }
+
         break;
     case WM_DDE_ACK:  
-        {      
-      
+
+        {            
         char aTopic[TOSDB_MAX_STR_SZ + 1];
         char aApp[TOSDB_MAX_STR_SZ + 1];
         char lowApp[TOSDB_MAX_STR_SZ + 1];
@@ -848,14 +812,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         UINT_PTR hiP = 0; 
         UINT_PTR lowP = 0;     
         
-        if (lParam <= 0){         
-        
+        if (lParam <= 0){            
             hiP = HIWORD(lParam); /*topic*/
             lowP = LOWORD(lParam); /*app*/
 
             GlobalGetAtomName( (ATOM)(hiP), aTopic, (TOSDB_MAX_STR_SZ + 1)); 
-            GlobalGetAtomName( (ATOM)(lowP), aApp, (TOSDB_MAX_STR_SZ + 1));  
-                              
+            GlobalGetAtomName( (ATOM)(lowP), aApp, (TOSDB_MAX_STR_SZ + 1));                                
             strcpy_s(lowApp, TOSDB_APP_NAME);            
             _strlwr_s( aApp, TOSDB_MAX_STR_SZ ); 
             _strlwr_s( lowApp, TOSDB_MAX_STR_SZ );           
@@ -866,10 +828,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             globalConvos.insert( 
                 GlobalConvosTy::pair1_type( TOS_Topics::globalTopicMap[aTopic], 
                                             (HWND)wParam) );
-
             globalAckSignals.signal( aTopic, true );
-
-        }else{                     
+        }else{    
+                 
             UnpackDDElParam( message,lParam, (PUINT_PTR)&lowP, (PUINT_PTR)&hiP); 
             GlobalGetAtomName( (ATOM)(hiP), aItem, (TOSDB_MAX_STR_SZ + 1) );        
 
@@ -877,7 +838,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 globalAckSignals.signal( 
                     std::to_string( (size_t)(HWND)wParam )+ std::string(aItem), 
                     false );
-
                 TOSDB_LogH( "DDE", std::string("NEG ACK from server for item: ")
                                    .append(aItem).c_str() );
 
@@ -902,10 +862,8 @@ void HandleData( UINT msg, WPARAM wparam, LPARAM lparam )
     BOOL clntRel;
     PVOID data;    
     UINT_PTR atom;
-
     char copdData[TOSDB_STR_DATA_SZ+1]; /* include CR LF, excluded added \0 */
     char aItem[TOSDB_MAX_STR_SZ + 1];
-
     LPARAM lParamNeg;
 
     UnpackDDElParam( msg, lparam, (PUINT_PTR)&data, &atom );   
@@ -913,19 +871,15 @@ void HandleData( UINT msg, WPARAM wparam, LPARAM lparam )
     if( !(ddeData = (DDEDATA FAR*) GlobalLock(data)) 
         || (ddeData->cfFormat != CF_TEXT)){ 
         /* if we can't lock the data or its not expected frmt */
-
         lParamNeg = PackDDElParam(WM_DDE_ACK, 0, (UINT_PTR)atom); 
         /* SEND NEG ACK TO SERVER *//* convo already destroyed if NULL */
         PostMessage( (HWND)wparam, WM_DDE_ACK, (WPARAM)msgWindow, lParamNeg );
-
         GlobalDeleteAtom((WORD)atom);
         FreeDDElParam(WM_DDE_ACK, lParamNeg);
-
         return; 
     }  
 
     if( strncpy_s(copdData,(LPCSTR)(ddeData->Value),TOSDB_STR_DATA_SZ) ){
-
         TOSDB_LogH( "DDE", "error copying data->value[] string" );
     }
 
@@ -938,17 +892,14 @@ void HandleData( UINT msg, WPARAM wparam, LPARAM lparam )
     GlobalGetAtomName( (WORD)atom, aItem, TOSDB_MAX_STR_SZ + 1 );
     clntRel = ddeData->fRelease;
 
-    GlobalUnlock(data);
-     
+    GlobalUnlock(data);     
     if( clntRel )
         GlobalFree(data);
-
     GlobalDeleteAtom((WORD)atom); 
     /* need to free lParam, as well, or we leak */    
     FreeDDElParam( WM_DDE_DATA, lparam);
 
     TOS_Topics::TOPICS tTopic = globalConvos[(HWND)(wparam)];
-
     try{
         std::string str(copdData); 
         switch( TOS_Topics::TypeBits( tTopic ) ){
@@ -998,15 +949,12 @@ void HandleData( UINT msg, WPARAM wparam, LPARAM lparam )
      
     }catch( const std::out_of_range& e ){            
         TOSDB_LogH( "DDE", e.what() );
-    }catch( const std::invalid_argument& e ){
-        
+    }catch( const std::invalid_argument& e ){        
         TOSDB_LogH( "DDE", std::string( e.what() ).append(" Value:: ")
                                                   .append( copdData ).c_str() );
-
     }catch( ... ){        
         throw TOSDB_dde_error("unexpected error handling dde data");
     }    
-
     return /* 0 */; 
 }
 

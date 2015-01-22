@@ -66,7 +66,6 @@ PyMODINIT_FUNC PyInit__tosdb(void)
 
     int count = 0;
     do
-
         PyTuple_SET_ITEM( topicObj, count++, 
                           PyUnicode_FromString( cbIter->second.c_str() ) );
 	

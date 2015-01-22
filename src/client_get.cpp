@@ -47,16 +47,13 @@ size_type TOSDB_GetBlockCount()
 
 int TOSDB_GetBlockSize( LPCSTR id, size_type* pSize )
 {
-    try{    
-   
+    try{     
         if( !CheckIDLength( id ) )
             return -1;
 
         rGuardTy _lock_(*globalMutex);
         *pSize = GetBlockOrThrow(id)->block->block_size();
-
         return 0;
-
     }catch( ... ){
         return -2;
     }
@@ -65,15 +62,12 @@ int TOSDB_GetBlockSize( LPCSTR id, size_type* pSize )
 int TOSDB_SetBlockSize( LPCSTR id, size_type sz )
 {
     try{
-
         if( !CheckIDLength( id ) )
             return -1;
 
         rGuardTy _lock_(*globalMutex);
         GetBlockOrThrow(id)->block->block_size(sz);
-
         return 0;
-
     }catch( ... ){ 
         return -2;
     }
@@ -84,15 +78,12 @@ int TOSDB_SetBlockSize( LPCSTR id, size_type sz )
 int TOSDB_GetItemCount( LPCSTR id, size_type* pCount )
 {
     try{
-
         if( !CheckIDLength( id ) )
             return -1;
 
         rGuardTy _lock_(*globalMutex);
         *pCount = GetBlockOrThrow(id)->block->item_count();
-
         return 0;
-
     }catch( ... ){
         return -2;
     }
@@ -101,15 +92,12 @@ int TOSDB_GetItemCount( LPCSTR id, size_type* pCount )
 int TOSDB_GetTopicCount( LPCSTR id, size_type* pCount )
 {
     try{
-
         if( !CheckIDLength( id ) )
             return -1;
 
         rGuardTy _lock_(*globalMutex);
         *pCount = GetBlockOrThrow(id)->block->topic_count();
-
         return 0;
-
     }catch( ... ){
         return -2;
     }
@@ -274,22 +262,18 @@ int TOSDB_GetTypeString( LPCSTR sTopic, LPSTR dest, size_type strLen )
         return -1;
 
     str = TOS_Topics::TypeString( t );
-
     return strcpy_s( dest, strLen, str.c_str() );
 }
 
 int TOSDB_IsUsingDateTime( LPCSTR id, unsigned int* pBoolInt )
 {    
     try{
-
         if( !CheckIDLength( id ) )
             return -1;
 
         rGuardTy _lock_(*globalMutex);
         *pBoolInt = GetBlockOrThrow(id)->block->uses_dtstamp();
-
         return 0;
-
     }catch( ... ){
         return -2;
     }
@@ -361,7 +345,6 @@ str_set_type TOSDB_GetPreCachedItemNames( std::string id )
 
     rGuardTy _lock_(*globalMutex);
     db = GetBlockOrThrow(id);
-
     return db->itemPreCache;
 }
 
@@ -426,19 +409,15 @@ int TOSDB_GetStreamOccupancy( LPCSTR id,
     t = GetTopicEnum(sTopic);
 
     try{
-
         rGuardTy _lock_(*globalMutex);
 
         db = GetBlockOrThrow( id );
         dat = db->block->raw_stream_ptr(sItem, t);
         *sz = (size_type)(dat->size());
         return 0;
-
     }catch( const std::exception& e ){
-
         TOSDB_LogH( "TOSDB_GetStreamOccupancy()", e.what() );
         return -2;
-
     }catch( ... ){
         return -2;    
     }    
@@ -457,11 +436,8 @@ size_type TOSDB_GetStreamOccupancy( std::string id,
     dat = db->block->raw_stream_ptr( sItem, tTopic );   
  
     try{
-
         return (size_type)(dat->size());
-
     }catch( const tosdb_data_stream::error& e ){
-
         throw TOSDB_data_stream_error( e, 
                                        "tosdb_data_stream error caught and "
                                        "encapsulated in "
@@ -486,11 +462,8 @@ generic_type TOSDB_Get< generic_type, false >( std::string id,
     dat = db->block->raw_stream_ptr( sItem, tTopic );    
 
     try{
-
         return dat->operator[](indx);
-
     }catch( const tosdb_data_stream::error& e ){
-
         throw TOSDB_data_stream_error( e, 
                                        "tosdb_data_stream error caught and "
                                        "encapsulated in "
@@ -515,11 +488,8 @@ generic_dts_type TOSDB_Get< generic_type, true >( std::string id,
     dat = db->block->raw_stream_ptr( sItem, tTopic );
 
     try{
-
         return dat->both(indx);
-
     }catch( const tosdb_data_stream::error& e ){
-
         throw TOSDB_data_stream_error( e, 
                                        "tosdb_data_stream error caught and "
                                        "encapsulated in "
@@ -575,20 +545,17 @@ int TOSDB_Get_( std::string id,
     TOSDB_RawDataBlock::stream_const_ptr_type dat; 
    
     try{
-
         rGuardTy _lock_(*globalMutex);
 
         db = GetBlockOrThrow( id );
-        dat = db->block->raw_stream_ptr(sItem, tTopic);        
+        dat = db->block->raw_stream_ptr(sItem, tTopic);     
 
         dat->copy(dest, 1,indx, indx, datetime);
+
         return 0;
-
     }catch( const std::exception& e ){
-
         TOSDB_LogH( "TOSDB_Get<T>", e.what() );
         return -1;
-
     }catch( ... ){
         return -1;    
     }
@@ -666,20 +633,17 @@ int TOSDB_GetString( LPCSTR id,
     t = GetTopicEnum(sTopic);
 
     try{
-
         rGuardTy _lock_(*globalMutex);
 
         db = GetBlockOrThrow( id );
         dat = db->block->raw_stream_ptr(sItem, t);
 
         dat->copy(&dest, 1, strLen, indx,indx,datetime);
+
         return 0;
-
     }catch( const std::exception& e ){
-
         TOSDB_LogH( "TOSDB_GetString()", e.what() );
         return -2;
-
     }catch( ... ){
         return -2;    
     }    
@@ -702,11 +666,8 @@ TOSDB_GetStreamSnapshot< generic_type, false >( std::string id,
     dat = db->block->raw_stream_ptr( sItem, tTopic);    
 
     try{
-
         return dat->vector(end, beg); 
-
     }catch( const tosdb_data_stream::error& e ){
-
         throw TOSDB_data_stream_error( e, 
                                        "tosdb_data_stream error caught and "
                                        "encapsulated in TOSDB_GetStreamSnapshot"
@@ -734,14 +695,11 @@ TOSDB_GetStreamSnapshot< generic_type, true >( std::string id,
     dat = db->block->raw_stream_ptr( sItem, tTopic);
 
     try{
-
         return std::pair< std::vector<generic_type>, 
                           std::vector<DateTimeStamp>>(
                              dat->vector(end, beg), 
                              dat->secondary_vector(end,beg) );
-
     }catch( const tosdb_data_stream::error& e ){
-
         throw TOSDB_data_stream_error( e, 
                                        "tosdb_data_stream error caught and "
                                        "encapsulated in TOSDB_GetStreamSnapshot"
@@ -835,12 +793,9 @@ auto TOSDB_GetStreamSnapshot( std::string id,
     if( minDiff < 0 )
         minDiff = 0;
 
-    try{        
-
+    try{ 
         return GSSRetType<T,b>()( dat, end, beg, (size_t)minDiff );
-
     }catch( const tosdb_data_stream::error& e ){
-
         throw TOSDB_data_stream_error( e, 
                                       "tosdb_data_stream error caught and "
                                       "encapsulated in "
@@ -867,20 +822,17 @@ int TOSDB_GetStreamSnapshot_( LPCSTR id,
         return -1;
 
     try{
-
         rGuardTy _lock_(*globalMutex);
 
         db = GetBlockOrThrow( id );
         dat = db->block->raw_stream_ptr(sItem, tTopic);
 
         dat->copy(dest,arrLen,end,beg,datetime);
+
         return 0;
-
     }catch( const std::exception& e ){
-
         TOSDB_LogH( "GetStreamSnapshot<T>", e.what() );
         return -2;
-
     }catch( ... ){
         return -2;    
     }
@@ -975,20 +927,17 @@ int TOSDB_GetStreamSnapshotStrings( LPCSTR id,
     tTopic = GetTopicEnum( sTopic );    
     
     try{
-
         rGuardTy _lock_(*globalMutex);
 
         db = GetBlockOrThrow( id );
         dat = db->block->raw_stream_ptr(sItem, tTopic);
 
         dat->copy(dest,arrLen,strLen,end,beg,datetime);
+
         return 0;
-
     }catch( const std::exception& e ){
-
         TOSDB_LogH( "TOSDB_GetStreamSnapshotStrings()", e.what() );
         return -2;
-
     }catch( ... ){
         return -2;    
     }
@@ -1002,7 +951,6 @@ generic_map_type TOSDB_GetItemFrame< false >( std::string id,
 
     rGuardTy _lock_(*globalMutex);
     db = GetBlockOrThrow( id );
-
     return db->block->map_of_frame_items( tTopic );
 }
 
@@ -1014,7 +962,6 @@ generic_dts_map_type TOSDB_GetItemFrame< true >( std::string id,
 
     rGuardTy _lock_(*globalMutex);
     db = GetBlockOrThrow( id );
-
     return db->block->pair_map_of_frame_items( tTopic );
 }
 
@@ -1034,17 +981,14 @@ int TOSDB_GetItemFrame_( LPCSTR id,
         return -1;
 
     try{
-
         rGuardTy _lock_(*globalMutex);
 
         db = GetBlockOrThrow( id );
         if( datetime ){
 
             generic_dts_map_type::const_iterator bIter, eIter;
-
             generic_dts_map_type tmpMDT = 
                 db->block->pair_map_of_frame_items(tTopic);
-
             bIter = tmpMDT.cbegin();
             eIter = tmpMDT.cend();
 
@@ -1076,8 +1020,7 @@ int TOSDB_GetItemFrame_( LPCSTR id,
 
         }else{
 
-            generic_map_type::const_iterator bIter, eIter;   
-             
+            generic_map_type::const_iterator bIter, eIter;             
             generic_map_type tmpM = db->block->map_of_frame_items(tTopic);
             bIter = tmpM.cbegin();
             eIter = tmpM.cend();
@@ -1106,12 +1049,9 @@ int TOSDB_GetItemFrame_( LPCSTR id,
                     }                    
             }
         };
-
     }catch( const std::exception& e ){
-
         TOSDB_LogH( "GetItemFrame<T>", e.what() );
         return -2;
-
     }catch( ... ){
         return -2;    
     }
@@ -1203,17 +1143,14 @@ int TOSDB_GetItemFrameStrings( LPCSTR id,
     tTopic = GetTopicEnum( sTopic );    
     
     try{
-
         rGuardTy _lock_(*globalMutex);
 
         db = GetBlockOrThrow( id );
         if( datetime ){
 
-            generic_dts_map_type::const_iterator bIter, eIter;                
-
+            generic_dts_map_type::const_iterator bIter, eIter; 
             generic_dts_map_type tmpMDT = 
                 db->block->pair_map_of_frame_items(tTopic);
-
             bIter = tmpMDT.cbegin();
             eIter = tmpMDT.cend();
 
@@ -1252,8 +1189,7 @@ int TOSDB_GetItemFrameStrings( LPCSTR id,
 
         }else{
 
-            generic_map_type::const_iterator bIter, eIter;     
-           
+            generic_map_type::const_iterator bIter, eIter;           
             generic_map_type tmpM = db->block->map_of_frame_items(tTopic);
             bIter = tmpM.cbegin();
             eIter = tmpM.cend();
@@ -1290,10 +1226,8 @@ int TOSDB_GetItemFrameStrings( LPCSTR id,
         };
 
     }catch( const std::exception& e ){
-
         TOSDB_LogH( "TOSDB_GetItemFrameStrings()", e.what() );
         return -2;
-
     }catch( ... ){
         return -2;    
     }
@@ -1308,7 +1242,6 @@ generic_map_type TOSDB_GetTopicFrame<false>( std::string id, std::string sItem)
 
     rGuardTy _lock_(*globalMutex);
     db = GetBlockOrThrow( id );
-
     return db->block->map_of_frame_topics( sItem );
 }
 
@@ -1320,7 +1253,6 @@ generic_dts_map_type TOSDB_GetTopicFrame<true>( std::string id,
 
     rGuardTy _lock_(*globalMutex);
     db = GetBlockOrThrow( id );
-
     return db->block->pair_map_of_frame_topics( sItem );
 }
 
@@ -1340,21 +1272,18 @@ int TOSDB_GetTopicFrameStrings( LPCSTR id,
         return -1;    
 
     try{
-
         rGuardTy _lock_(*globalMutex);
 
         db = GetBlockOrThrow( id );
         if( datetime ){
 
-            generic_dts_map_type::const_iterator bIter, eIter;                
-
+            generic_dts_map_type::const_iterator bIter, eIter;      
             generic_dts_map_type tmpMDT = 
                 db->block->pair_map_of_frame_topics(sItem);
-
             bIter = tmpMDT.cbegin();
             eIter = tmpMDT.cend();
 
-            if( !labelDest ){                
+            if( !labelDest ){ 
 
                 for( size_type i = 0; 
                      (i < arrLen) && (bIter != eIter); 
@@ -1390,8 +1319,7 @@ int TOSDB_GetTopicFrameStrings( LPCSTR id,
 
         }else{
 
-            generic_map_type::const_iterator bIter, eIter;                
-
+            generic_map_type::const_iterator bIter, eIter;
             generic_map_type tmpM = db->block->map_of_frame_topics(sItem);
             bIter = tmpM.cbegin();
             eIter = tmpM.cend();
@@ -1429,10 +1357,8 @@ int TOSDB_GetTopicFrameStrings( LPCSTR id,
         };
 
     }catch( const std::exception& e ){
-
         TOSDB_LogH( "TOSDB_GetTopicFrameStrings()", e.what() );
         return -2;
-
     }catch( ... ){
         return -2;    
     }
@@ -1447,7 +1373,6 @@ generic_matrix_type TOSDB_GetTotalFrame<false>( std::string id )
 
     rGuardTy _lock_(*globalMutex);
     db = GetBlockOrThrow( id );
-
     return db->block->matrix_of_frame();
 }
 
@@ -1458,7 +1383,6 @@ generic_dts_matrix_type TOSDB_GetTotalFrame<true>( std::string id )
 
     rGuardTy _lock_(*globalMutex);
     db = GetBlockOrThrow( id );
-
     return db->block->pair_matrix_of_frame();
 }
 

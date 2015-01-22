@@ -253,7 +253,6 @@ public:
 
             memcpy( get(), right.get(), _bytes);
         }
-
         return *this;
     }
 
@@ -271,7 +270,6 @@ public:
             _bytes = right._bytes;
             _myBaseTy::operator=(std::move(right));        
         }
-
         return *this; 
     }
 

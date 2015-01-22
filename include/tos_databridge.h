@@ -373,8 +373,7 @@ public: /* pack type info into HO nibble of scoped Enum  */
     static std::string  /* platform-dependent type strings at run-time */
     TypeString( typename Topic_Enum_Wrapper<T>::TOPICS tTopic )
     { 
-        switch( TOS_Topics::TypeBits(tTopic) )
-        {
+        switch( TOS_Topics::TypeBits(tTopic) ){
         case TOSDB_STRING_BIT :                 
             return typeid(std::string).name();
         case TOSDB_INTGR_BIT :                  
@@ -669,6 +668,7 @@ public:
 
 class TOSDB_buffer_error : public TOSDB_IPC_error {
 public:
+
     TOSDB_buffer_error( const char* info, const char* tag = "DATA-BUFFER" )
         : 
         TOSDB_IPC_error( info, tag )
@@ -684,6 +684,7 @@ public:
         TOSDB_error( info, tag )
         {
         }
+
     TOSDB_dde_error( const std::exception& e, 
                      const char* info, 
                      const char* tag = "DDE" )
@@ -700,6 +701,7 @@ public:
         TOSDB_error( info, tag )
         {
         }
+
     TOSDB_data_block_error( const std::exception& e, 
                             const char* info, 
                             const char* tag = "DataBlock" ) 
@@ -737,6 +739,7 @@ public:
         : TOSDB_data_block_error( info, tag )        
         {
         }
+
     TOSDB_data_stream_error( const std::exception& e, 
                              const char* info, 
                              const char* tag = "DataStream" )

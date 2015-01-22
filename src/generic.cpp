@@ -23,7 +23,6 @@ namespace JO{
 Generic& Generic::operator=(const Generic& gen)
 {
     if ((*this) != gen){  
-
         _typeVal = gen._typeVal;
         _typeBSz = gen._typeBSz;
 
@@ -32,7 +31,6 @@ Generic& Generic::operator=(const Generic& gen)
 
         _sub_deep_copy(*this, gen);
     }
-
     return *this;        
 }
 
@@ -41,10 +39,8 @@ Generic& Generic::operator=( Generic&& gen )
     delete _sub;
 
     _sub = gen._sub;
-
     _typeVal = gen._typeVal;
     _typeBSz = gen._typeBSz;
-
     gen._sub = nullptr;
     gen._typeVal = VOID_;
     gen._typeBSz = 0;

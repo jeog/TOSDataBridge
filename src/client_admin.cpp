@@ -76,6 +76,7 @@ namespace {
             return -1;     
        
         while( rpcMaster.grab_pipe() <= 0 ){
+
             Sleep(TOSDB_DEF_TIMEOUT/10);    
             if( (lCount+=(TOSDB_DEF_TIMEOUT/10)) > TOSDB_DEF_TIMEOUT ){
                 TOSDB_LogH( "IPC",
@@ -245,7 +246,6 @@ namespace {
                      : (dataLen / pHead->elem_size);
 
             do{  /* go through each elem, last first */
-
                 daSpot = (char*)pHead + 
                          (( (pHead->next_offset - (newElems * pHead->elem_size)) 
                              + dataLen ) 
@@ -263,7 +263,6 @@ namespace {
                 }
             } while( --newElems );
         } 
-
         /* adjust our buffer info to the present values */
         std::get<0>(bufInfo) = pHead->next_offset - pHead->beg_offset;
         std::get<1>(bufInfo) = pHead->loop_seq; 
@@ -548,13 +547,11 @@ int TOSDB_Add( std::string id, str_set_type sItems, topic_set_type tTopics )
 
             for(auto & item : iUnion){            
                 if( !RequestStreamOP(topic, item, db->timeout, TOSDB_SIG_ADD)){
-
                     db->block->add_topic( topic );
                     db->block->add_item( item );
                     db->itemPreCache.clear();
                     db->topicPreCache.clear();
-                    CaptureBuffer( topic, item, db );  
-  
+                    CaptureBuffer( topic, item, db );    
                 }else{
                     ++errVal;
                 }
@@ -563,7 +560,6 @@ int TOSDB_Add( std::string id, str_set_type sItems, topic_set_type tTopics )
         }            
 
     }else if( oldTopics.empty() ){ /* don't ignore items if no topics yet.. */
-
         for( auto & i : sItems)
             db->itemPreCache.insert( i ); /* ...pre-cache them */       
     }
@@ -571,10 +567,8 @@ int TOSDB_Add( std::string id, str_set_type sItems, topic_set_type tTopics )
     for(auto & topic : oldTopics) /* add new items to the old topics */
         for( auto & item : iDiff){ 
             if( !RequestStreamOP( topic, item, db->timeout, TOSDB_SIG_ADD ) ){
-
                 db->block->add_item( item );                    
-                CaptureBuffer( topic, item, db );    
-
+                CaptureBuffer( topic, item, db );   
             }
             else{
                 ++errVal;
@@ -694,23 +688,19 @@ int TOSDB_RemoveTopic( std::string id, TOS_Topics::TOPICS tTopic )
                 TOSDB_LogH( "IPC", "RequestStreamOP(TOSDB_SIG_REMOVE) failed, " 
                                    "stream leaked" );
             }
-
         }
-
         db->block->remove_topic( tTopic );
 
         if( db->block->topics().empty() )        
             for( const std::string & item : db->block->items() ){
                 db->itemPreCache.insert( item );
                 db->block->remove_item( item ); 
-            }        
-
+            }  
     }else{
         errVal = -4;
     }
 
     db->topicPreCache.erase( tTopic );
-
     return errVal;
 }
 
@@ -743,7 +733,6 @@ int TOSDB_RemoveItem( LPCSTR id, LPCSTR sItem )
                                    "stream leaked" );
             }
         }
-
         db->block->remove_item( sItem );
 
         if( db->block->items().empty() ){
@@ -752,7 +741,6 @@ int TOSDB_RemoveItem( LPCSTR id, LPCSTR sItem )
                 db->block->remove_topic( topic );
             }
         }
-
     }else{
         errVal = -4;
     }
@@ -804,7 +792,6 @@ int TOSDB_CloseBlock( LPCSTR id )
     }
 
     delete db;
-
     return errVal;
 }
 
@@ -823,6 +810,7 @@ int TOSDB_CloseBlocks()
         for ( const auto& block: gbCopy )        
             if( TOSDB_CloseBlock( block.first.c_str() ) )
                 ++errVal;
+
     }catch( ... ){
         return -1;
     }
@@ -838,6 +826,7 @@ int TOSDB_DumpSharedBufferStatus()
     rGuardTy _lock_(*globalMutex);
 
     while( rpcMaster.grab_pipe() <= 0 ){
+
         Sleep(TOSDB_DEF_TIMEOUT/10);           
         if( (lCount+=(TOSDB_DEF_TIMEOUT/10)) > TOSDB_DEF_TIMEOUT ){
             TOSDB_LogH( "IPC", "TOSDB_DumpSharedBufferStatus timed out "

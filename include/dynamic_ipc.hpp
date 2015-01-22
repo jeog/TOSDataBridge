@@ -209,7 +209,7 @@ public:
         if( !(ptr = shem_ptr( chunk )) ){
             dest = nullptr;
             return; 
-        }    
+        }  
 
         memcpy_s( dest, sizeof(T) * bufSz, ptr, chunk.bSize );        
     }
@@ -253,7 +253,9 @@ public:
         if( chunk.bSize <= 0 
             || !_mMapAddr 
             || !((chunk.offset + chunk.bSize) <= (size_type)_mMapSz ) )
-                return nullptr;      
+           {
+               return nullptr;      
+           }
   
         return (void*)((size_type)_mMapAddr + chunk.offset);
     }
@@ -269,8 +271,10 @@ public:
     size_type offset( void* start ) const    
     {
         if( start < _mMapAddr 
-            || (size_type)start >= ((size_type)_mMapAddr + (size_type)_mMapSz) )
-                return 0;
+            || (size_type)start >= ((size_type)_mMapAddr + (size_type)_mMapSz))
+           {
+               return 0;
+           }
 
         return ( (size_type)start - (size_type)_mMapAddr ); 
     }

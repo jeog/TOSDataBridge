@@ -34,8 +34,7 @@ std::string CreateBufferName( std::string sTopic, std::string sItem )
 { /* name of mapping is of form: "TOSDB_[topic name]_[item_name]"  
      only alpha-numeric characters (except under-score) */
     std::string str("TOSDB_");
-    str.append( sTopic.append("_"+sItem) );  
-   
+    str.append( sTopic.append("_"+sItem) );     
     str.erase( std::remove_if( str.begin(), str.end(), 
                                [](char x){ return !isalnum( x ) && x != '_'; }), 
                                str.end() );
@@ -76,9 +75,7 @@ namespace {
 
     std::mutex    fOutMtx;     
     std::ofstream logOut;
-
     const system_clock_type sysClock;
-
 };
 
 std::string SysTimeString()
@@ -134,7 +131,6 @@ void TOSDB_Log_( DWORD pid,
     std::string nowTime = SysTimeString();
 
     if( !logOut.is_open() ){
-
         if (sevr > 0)
             std::cerr<< std::setw(logColW[0])<< std::left
                      << nowTime.substr(0,30)
@@ -144,7 +140,6 @@ void TOSDB_Log_( DWORD pid,
                      << std::string(tag).substr(0,19)            
                      << std::left<< description << std::endl;        
     }else{
-
         logOut<< std::setw(logColW[0])<< std::left<< nowTime.substr(0,30)
               << std::setw(logColW[1])<< std::left<< pid
               << std::setw(logColW[2])<< std::left<< tid

@@ -72,7 +72,6 @@ void UpdateStatus( int status, int check_point )
         serviceStatus.dwCurrentState = status; 
 
     if( !SetServiceStatus( hServiceStatus, &serviceStatus ) ){
-
         TOSDB_LogH("SERVICE-UPDATE","error setting status");
 
         serviceStatus.dwCurrentState = SERVICE_STOPPED;
@@ -80,12 +79,9 @@ void UpdateStatus( int status, int check_point )
         serviceStatus.dwServiceSpecificExitCode = 2;
 
         ++serviceStatus.dwCheckPoint;
-
         if( !SetServiceStatus( hServiceStatus, &serviceStatus) ){
-
             TOSDB_LogH( "SERVICE-UPDATE", "fatal error handling service error,"
                                           " terminating process" );
-
             TerminateProcess( coreProcInfo.hProcess, EXIT_FAILURE );            
             ExitProcess( EXIT_FAILURE );
         }
@@ -98,30 +94,24 @@ int SendMsgWaitForResponse( const unsigned int msg )
     unsigned int lCount = 0;
 
     if( !globalIPCMaster ){
-
         globalIPCMaster = 
             std::unique_ptr<DynamicIPCMaster>( 
                 std::move( new DynamicIPCMaster( TOSDB_COMM_CHANNEL )));
-
         globalIPCMaster->try_for_slave();
 
         while( globalIPCMaster->grab_pipe() <= 0 ){
 
             Sleep(TOSDB_DEF_TIMEOUT/10);            
-
             if( (lCount+=(TOSDB_DEF_TIMEOUT/10)) > TOSDB_DEF_TIMEOUT ){
-
                 TOSDB_LogH( "IPC", "SendMsgWaitForResponse timed out "
                                    "trying to grab pipe" );
                 return -1;
             }
         }
-    }    
- 
+    }     
     globalIPCMaster->send(msg);
     globalIPCMaster->send(0); 
     globalIPCMaster->recv(i);
-
     return i;
 }
 
@@ -130,11 +120,11 @@ VOID WINAPI ServiceController( DWORD cntrl )
     switch( cntrl ){ 
     case SERVICE_CONTROL_SHUTDOWN:
     case SERVICE_CONTROL_STOP :
+
         {            
             shutdownFlag = true;
 
             TOSDB_Log("SERVICE-CNTRL","SERVICE_STOP_PENDING");
-
             UpdateStatus( SERVICE_STOP_PENDING, -1); 
 
             if( pauseFlag ){ /* if we're paused */
@@ -144,11 +134,12 @@ VOID WINAPI ServiceController( DWORD cntrl )
                                                 "thread to stop it" );                
                 
             if( SendMsgWaitForResponse( TOSDB_SIG_STOP ) != TOSDB_SIG_GOOD)
-                TOSDB_Log("SERVICE-ADMIN","BAD_SIG returned from core process");            
-
+                TOSDB_Log("SERVICE-ADMIN","BAD_SIG returned from core process");   
         }
+
         break;
     case SERVICE_CONTROL_PAUSE:
+
         {        
             if( pauseFlag )
                 break;
@@ -163,17 +154,17 @@ VOID WINAPI ServiceController( DWORD cntrl )
                 UpdateStatus( SERVICE_PAUSED, -1);
             }else            
                 TOSDB_LogH( "SERVICE-ADMIN",
-                            "core process failed to confirm pause request" ); 
-                       
+                            "core process failed to confirm pause request" );                        
         }
+
         break;
     case SERVICE_CONTROL_CONTINUE:
+
         {
             if( !pauseFlag )
                 break;    
         
             TOSDB_Log("SERVICE-CNTRL","SERVICE_CONTINUE_PENDING");
-
             UpdateStatus( SERVICE_CONTINUE_PENDING, -1);
 
             if( !globalIPCMaster ){
@@ -190,8 +181,8 @@ VOID WINAPI ServiceController( DWORD cntrl )
 
             globalIPCMaster->release_pipe();
             globalIPCMaster.reset();
-
         }
+
         break;
     default:
         break;
@@ -222,7 +213,7 @@ bool SpawnRestrictedProcess()
                            TokenPrimary, &hChildToken ) ){        
         if( hToken ) 
              CloseHandle(hToken);  
-         
+        
         TOSDB_LogEx( "SpawnRestrictedProcess", "(2) failed to duplicate token", 
                      GetLastError() );
         return false; 
@@ -236,7 +227,6 @@ bool SpawnRestrictedProcess()
 
         tl.Label.Attributes = SE_GROUP_INTEGRITY;
         tl.Label.Sid = sidBuffer.get();
-
         DWORD sz = sizeof(TOKEN_MANDATORY_LABEL) 
                    + GetLengthSid( sidBuffer.get() );
 
@@ -255,7 +245,6 @@ bool SpawnRestrictedProcess()
     if( isService && 
         !SetTokenInformation( hChildToken, TokenSessionId, &sessionID,  
                               sizeof(DWORD) ) ){
-
         TOSDB_LogEx( "SpawnRestrictedProcess", "(4) failed to set session ID", 
                      GetLastError() );    
     }else{
@@ -264,8 +253,7 @@ bool SpawnRestrictedProcess()
         PTOKEN_PRIVILEGES pTpriv;         
         LUID cgID;        /*  THE PRIVILEGE(S) WE NEED TO RETAIN  */
 
-        LookupPrivilegeValue( NULL, SE_CREATE_GLOBAL_NAME, &cgID );
-                       
+        LookupPrivilegeValue( NULL, SE_CREATE_GLOBAL_NAME, &cgID );                       
         GetTokenInformation( hChildToken, TokenPrivileges, NULL, 0, &retLen);
 
         SmartBuffer<TOKEN_PRIVILEGES> privBuf(retLen);    
@@ -284,7 +272,6 @@ bool SpawnRestrictedProcess()
         
         if( !AdjustTokenPrivileges( hChildToken, FALSE, privBuf.get(), 0, 
                                     NULL, NULL ) ){
-
             TOSDB_LogEx( "SpawnRestrictedProcess", 
                          "(5) failed to adjust token privileges", 
                          GetLastError() );    
@@ -296,7 +283,6 @@ bool SpawnRestrictedProcess()
         if( !CreateProcessAsUser( hChildToken, coreProcPath.c_str(), 
                                   coreProcCmd, NULL, NULL, FALSE, 0, NULL, NULL, 
                                   &stupInfo, &coreProcInfo) ){
-
             TOSDB_LogEx( "SpawnRestrictedProcess", 
                          "(6) failed to create core process",  GetLastError() );
         }else 
@@ -318,11 +304,9 @@ void WINAPI ServiceMain( DWORD argc, LPSTR argv[] )
 {
     serviceStatus.dwServiceType             = SERVICE_WIN32_OWN_PROCESS;
     serviceStatus.dwCurrentState            = SERVICE_START_PENDING;
-
     serviceStatus.dwControlsAccepted        = SERVICE_ACCEPT_STOP 
                                               | SERVICE_ACCEPT_PAUSE_CONTINUE 
                                               | SERVICE_ACCEPT_SHUTDOWN;
-
     serviceStatus.dwWin32ExitCode           = NO_ERROR; 
     serviceStatus.dwServiceSpecificExitCode = 0;
     serviceStatus.dwCheckPoint              = 0;
@@ -331,7 +315,6 @@ void WINAPI ServiceMain( DWORD argc, LPSTR argv[] )
     hServiceStatus = RegisterServiceCtrlHandler( serviceName, 
                                                  ServiceController ); 
     if( !hServiceStatus ){
-
         TOSDB_LogH( "SERVICE-ADMIN",
                     "failed to register control handler, exiting" );
 
@@ -340,7 +323,6 @@ void WINAPI ServiceMain( DWORD argc, LPSTR argv[] )
         serviceStatus.dwServiceSpecificExitCode = 1;
 
         UpdateStatus( SERVICE_STOPPED, -1);
-
         return;
     }
 
@@ -362,23 +344,17 @@ void WINAPI ServiceMain( DWORD argc, LPSTR argv[] )
 
     /* create new process that can communicate with our interface */
     if( !SpawnRestrictedProcess() ){
-
         TOSDB_LogH( "SERVICE-ADMIN", std::string("failed to fork ")
-                                     .append(CORE_PROC_NAME).c_str() );   
-    
+                                     .append(CORE_PROC_NAME).c_str() );       
     }else{
         UpdateStatus( SERVICE_RUNNING, -1 );
-
         TOSDB_Log("SERVICE-CNTRL","SERVICE_RUNNING");
-
         WaitForSingleObject( coreProcInfo.hProcess, INFINITE);
     }
 
     /* if we get here we are shutting down*/
     UpdateStatus( SERVICE_STOPPED, 0 );
-
-    TOSDB_Log("SERVICE-CNTRL","SERVICE_STOPPED");   
- 
+    TOSDB_Log("SERVICE-CNTRL","SERVICE_STOPPED");  
 }
 
 int WINAPI WinMain( HINSTANCE hInst, 
@@ -388,7 +364,6 @@ int WINAPI WinMain( HINSTANCE hInst,
 {     
     std::string cmdLnStr(lpCmdLn);
     std::string arg1, arg2;
-
     SmartBuffer<CHAR> modBuf(MAX_PATH);
 
     GetModuleFileName(NULL,modBuf.get(),MAX_PATH);
@@ -404,6 +379,7 @@ int WINAPI WinMain( HINSTANCE hInst,
     GetSystemInfo( &sysInfo );  
   
     size_t sIndx = cmdLnStr.find_first_of(' ');
+
     if( sIndx < cmdLnStr.size() ){
         arg1 = cmdLnStr.substr(0, sIndx);
         arg2 = cmdLnStr.substr(++sIndx, cmdLnStr.size());
@@ -416,29 +392,26 @@ int WINAPI WinMain( HINSTANCE hInst,
         integrityLevel = "High Mandatory Level";
     else
         integrityLevel = "Medium Mandatory Level";
-
     
     if( arg1 == "--noservice" || arg2 == "--noservice" ){
         strcpy_s(coreProcCmd,"--noservice");
         isService = false;
-
         TOSDB_Log( "STARTUP", 
                    "tos-databridge-engine.exe starting - NOT A WINDOWS SERVICE");
-
         SpawnRestrictedProcess(); 
     }else{
         strcpy_s(coreProcCmd,"--service");
-        SERVICE_TABLE_ENTRY dTable[] = {{serviceName,ServiceMain},{NULL,NULL}};
-
+        SERVICE_TABLE_ENTRY dTable[] = {
+            {serviceName,ServiceMain},
+            {NULL,NULL}
+        };
         TOSDB_Log( "STARTUP", 
                    "tos-databridge-engine.exe starting - WINDOWS SERVICE");
-
         if( !StartServiceCtrlDispatcher( dTable ) )
             TOSDB_LogH("STARTUP", "StartServiceCtrlDispatcher() failed");
     }
 
     TOSDB_StopLogging();
-
     return 0;
 }
     

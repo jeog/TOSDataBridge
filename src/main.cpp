@@ -24,22 +24,20 @@ BOOL WINAPI DllMain(HANDLE mod, DWORD why, LPVOID res)
 {        
     switch(why){
     case DLL_PROCESS_ATTACH:
-        {       
- 
+
+        {        
         LPCSTR appFolder = "\\tos-databridge";
 
         GetEnvironmentVariable( "APPDATA", TOSDB_LOG_PATH, MAX_PATH+20 ); 
-
         strcat_s( TOSDB_LOG_PATH, appFolder );
         CreateDirectory( TOSDB_LOG_PATH, NULL );    
-
         strcat_s( TOSDB_LOG_PATH, "\\" );
+
         TOSDB_StartLogging( std::string(TOSDB_LOG_PATH)
                             .append("tos-databridge-shared.log").c_str() );
-
-        break; 
-
         }
+
+        break;
     case DLL_THREAD_ATTACH:  break;
     case DLL_THREAD_DETACH:  break;
     case DLL_PROCESS_DETACH: break;        
