@@ -577,7 +577,7 @@ class TOS_DataBlock:
                                " ] returned from library call", 
                                "TOSDB_GetItemNames" )
         else:
-            return [ cast(ptr, _string_).value.decode() for ptr in strs_array ]            
+            return [cast(ptr, _string_).value.decode() for ptr in strs_array]            
               
     def topics( self,  str_max = MAX_STR_SZ ):
         """ Returns the topics currently in the block (and not pre-cached).
@@ -601,7 +601,7 @@ class TOS_DataBlock:
                                " ] returned from library call", 
                                "TOSDB_GetTopicNames" )            
         else:
-            return  [ cast(ptr, _string_).value.decode() for ptr in strs_array ] 
+            return [cast(ptr, _string_).value.decode() for ptr in strs_array] 
       
     
     def add_items( self, *items ):
@@ -727,7 +727,7 @@ class TOS_DataBlock:
                                    " ] returned from library call", 
                                    "TOSDB_GetString" ) 
             if ( date_time ):
-                return ( ret_str.value.decode(), TOS_DateTime( dts ) )
+                return (ret_str.value.decode(), TOS_DateTime( dts ))
             else:
                 return ret_str.value.decode()
         else:
@@ -748,7 +748,7 @@ class TOS_DataBlock:
                                    " ] returned from library call",
                                    "TOSDB_Get"+typeTup[0] )  
             if( date_time ):
-                return ( val.value, TOS_DateTime( dts ) )
+                return (val.value, TOS_DateTime( dts ))
             else:
                 return val.value
 
@@ -815,14 +815,13 @@ class TOS_DataBlock:
                                    " ] returned from library call",
                                    "TOSDB_GetStreamSnapshotStrings" ) 
             if ( date_time ):
-                adj_dts =  [ TOS_DateTime( x ) for x in dtss ]
-                return [ _ for _ in 
-                         zip( map( lambda x : cast(x, _string_).value.decode(), 
-                                    strs_array), 
-                              adj_dts) ]        
+                adj_dts =  [TOS_DateTime( x ) for x in dtss]
+                return [_ for _ in zip( 
+                            map( lambda x : cast(x, _string_).value.decode(), 
+                                 strs_array ), 
+                            adj_dts ) ]        
             else:
-                return [ cast(ptr, _string_).value.decode() 
-                         for ptr in strs_array ]
+                return [cast(ptr,_string_).value.decode() for ptr in strs_array]
         else:
             num_array =  (typeTup[1] * size)()   
             err = _lib_call( "TOSDB_GetStreamSnapshot"+typeTup[0]+"s", 
@@ -844,10 +843,10 @@ class TOS_DataBlock:
                                    " ] returned from library call",
                                    "TOSDB_GetStreamSnapshot"+typeTup[0]+"s" ) 
             if( date_time ):
-                adj_dts =  [ TOS_DateTime( x ) for x in dtss ]
-                return [ _ for _ in zip( num_array, adj_dts ) ]       
+                adj_dts =  [TOS_DateTime( x ) for x in dtss]
+                return [_ for _ in zip( num_array, adj_dts )]       
             else:
-                return [ _ for _ in num_array]
+                return [_ for _ in num_array]
 
     def item_frame( self, topic, date_time = False, labels = True, 
                     data_str_max = STR_DATA_SZ, label_str_max = MAX_STR_SZ ):
@@ -903,20 +902,20 @@ class TOS_DataBlock:
                          strs_array )           
             if( labels):
                 l_map = map( lambda x : cast(x, _string_).value.decode(), 
-                             labs_array)
+                             labs_array )
                 _ntuple_ = namedtuple( _str_clean(topic)[0], 
                                        _str_clean( *l_map ) )
                 if( date_time ):
-                    adj_dts = [ TOS_DateTime( x ) for x in dtss ]
+                    adj_dts = [TOS_DateTime( x ) for x in dtss]
                     return _ntuple_( *zip( s_map, adj_dts ) )                        
                 else:
                     return _ntuple_( * s_map )             
             else:
                 if( date_time ):
-                    adj_dts = [ TOS_DateTime( x ) for x in dtss ]
+                    adj_dts = [TOS_DateTime( x ) for x in dtss]
                     return list( zip( s_map, adj_dts ) )
                 else:
-                    return  list( s_map )                  
+                    return list( s_map )                  
         else: 
             num_array =  (typeTup[1] * size)()   
             err = _lib_call( "TOSDB_GetItemFrame"+typeTup[0]+"s", 
@@ -943,16 +942,16 @@ class TOS_DataBlock:
                 _ntuple_ = namedtuple( _str_clean(topic)[0], 
                                        _str_clean( *l_map ) )
                 if( date_time ):
-                    adj_dts = [ TOS_DateTime( x ) for x in dtss ]
+                    adj_dts = [TOS_DateTime( x ) for x in dtss]
                     return _ntuple_( *zip( num_array, adj_dts ) )                        
                 else:
                     return _ntuple_( *num_array )                            
             else:
                 if( date_time ):
-                    adj_dts = [ TOS_DateTime( x ) for x in dtss ]
+                    adj_dts = [TOS_DateTime( x ) for x in dtss]
                     return list( zip( num_array, adj_dts ) )
                 else:
-                    return [ _ for _ in num_array ]    
+                    return [_ for _ in num_array]    
 
     def topic_frame( self, item, date_time = False, labels = True, 
                      data_str_max = STR_DATA_SZ, label_str_max = MAX_STR_SZ ):
@@ -1006,13 +1005,13 @@ class TOS_DataBlock:
             _ntuple_ = namedtuple( _str_clean(item)[0], 
                                    _str_clean( *l_map ) )
             if( date_time ):
-                adj_dts = [ TOS_DateTime( x ) for x in dtss ]
+                adj_dts = [TOS_DateTime( x ) for x in dtss]
                 return _ntuple_( *zip( s_map, adj_dts ) )                        
             else:
                 return _ntuple_( *s_map )                
         else:
             if( date_time ):
-                adj_dts = [ TOS_DateTime( x ) for x in dtss ]
+                adj_dts = [TOS_DateTime( x ) for x in dtss]
                 return list( zip(s_map, adj_dts) )             
             else:
                 return list( s_map )

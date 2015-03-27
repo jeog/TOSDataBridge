@@ -132,7 +132,7 @@ VOID WINAPI ServiceController( DWORD cntrl )
                 if(SendMsgWaitForResponse(TOSDB_SIG_CONTINUE) != TOSDB_SIG_GOOD)
                     TOSDB_Log( "SERVICE-ADMIN", "error trying to resume paused "
                                                 "thread to stop it" );                
-                
+            }
             if( SendMsgWaitForResponse( TOSDB_SIG_STOP ) != TOSDB_SIG_GOOD)
                 TOSDB_Log("SERVICE-ADMIN","BAD_SIG returned from core process");   
         }
