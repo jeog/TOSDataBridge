@@ -2,14 +2,13 @@ TOSDataBridge (TOSDB) is an open-source collection of resources for 'scraping' r
 
 TOSDB uses TOS's antiquated, yet still useful, DDE feature, directly through the Windows API. The C / C++ interfaces are implemented as a shared library(DLL) that communicates with a back-end Windows Service. The Python interface wraps this library in a more object-oriented, user-friendly format, providing an interactive environment for easy access to the low(er)-level calls. 
 
-[Complete Documentation (README.html - you'll need to copy the raw text into a new html file and open in a browser) ](https://raw.githubusercontent.com/jeog/TOSDataBridge/master/README.html)
+[Complete Documentation ( docs/README.html ) ](https://raw.githubusercontent.com/jeog/TOSDataBridge/master/docs/README.html)
 
 ###+ Requirements
 - Windows (this has been lightly tested on Windows 7 SP1 and Vista SP2)
 - TDAmeritrade's ThinkOrSwim(TOS) platform that exposes DDE functionality (it should)
 - VC++ 2012 Redistributable (included)
 - Some basic Windows knowledge; some basic C, C++, or Python programming knowledge
-- Patience (this is v0.1-alpha)
   
 ###+ Installation
 - tosdb-setup.bat will attempt to install the necessary modules/dependencies for you but you should refer to README.html for a more detailed explanation.
@@ -36,7 +35,7 @@ C:\[...TOSDataBridge]\python\python setup.py install
 (Admin) C:\> SC start TOSDataBridge
 ```
 2. Include tos_databridge.h header in your code (if C++ make sure containers.hpp and generic.hpp can be found by the compiler), add the necessary lib calls, build it.
-3. Log on to the TOS platform and start your program or the python wrapper(see the python tutorial in \python\docs for a walk-through).
+3. Log on to the TOS platform and start your program or the python wrapper(see the python tutorial in \docs for a walk-through).
 
 
 ###LICENSING & WARRANTY
