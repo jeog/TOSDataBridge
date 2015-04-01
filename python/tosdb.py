@@ -143,14 +143,14 @@ def init(dllpath = None, root = "C:\\"):
 virtual_blocks = dict()
 virtual_data_server = None
 
-def virtualize_over_udp( address, enable=True)
+def virtualize_over_udp( address, enable=True):
     global virtual_data_server
     
-    def _virtual_create_callback():
+    def _virtual_create_callback( *args ):
         global virtual_blocks
         print("DEBUG", "in virtual_create_callback")
         try:
-            blk = TOS_DataBlock() # add args
+            blk = TOS_DataBlock( *args ) 
             virtual_blocks[blk._name] = blk
             return blk._name                                       
         except:
@@ -177,7 +177,7 @@ def virtualize_over_udp( address, enable=True)
             meth = blk.getattr(blk, meth )
             ret = meth( *args )
             return ret if ret else True
-        except except:
+        except:
             return False 
 
     try:
@@ -187,10 +187,11 @@ def virtualize_over_udp( address, enable=True)
                                                    _virtual_destroy_callback,
                                                    _virtual_call_callback )
             virtual_data_server.start()
-        elif virtual_data_server not None:
+        elif virtual_data_server is not None:
             virtual_data_server.stop()
+            virtual_data_serve = None
     except Exception as e:
-        raise TOSDB_Error("virtualization error", e.args[0] )
+        raise TOSDB_Error("virtualization error", str(e) )
         
 
 def connect():

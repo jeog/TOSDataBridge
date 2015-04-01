@@ -34,6 +34,8 @@ walk-through.
 
 """
 
+### deal with global consts better, so we can import directly to here
+
 from tosdb_datetime import TOS_DateTime
 from threading import Thread
 import socket
@@ -48,6 +50,11 @@ virtual_FAIL = '5'
 virtual_MAX_REQ_SIZE = 1000 # arbitrary for now
 virtual_TYPE_ATTR = {'i':int,'s':str,'b':bool}
 
+DUMMY_DEF_TIMEOUT = 2000
+DUMMY_MAX_STR_SZ = 0xFF
+DUMMY_STR_DATA_SZ = 0xFF
+
+
 class TOSDB_Error(Exception):
     """ Base exception for tosdb.py """    
     def __init__(self,  *messages ):        
@@ -55,34 +62,32 @@ class TOSDB_Error(Exception):
 
 class VTOS_DataServer( Thread ):
 
-    def __init__(self):
-        self._rflag = False
-
-    def start(self, address, create_callback, destroy_callback, call_callback):
+    def __init__(self, address, create_callback, destroy_callback, call_callback):
+        super().__init__()
         self._my_addr = address
         self._create_callback = create_callback
         self._destroy_callback = destroy_callback
         self._call_callback = call_callback
+        self._rflag = False
         self._my_sock = socket.socket( socket.AF_INET, socket.SOCK_DGRAM )
         self._my_sock.bind( address )
-        self._rflag = True
-        try:
-            self._my_server_loop()
-        except Exception as e:
-            raise TOSDB_Error("error in _my_server_loop(): " + e.args[0] )
 
     def stop(self):
         self._rflag = False
         self._my_sock.close()
-        
-    def _my_server_loop(self):   
-        while virtual_rflag:           
-            dat, addr = virtual_socket.recvfrom( virtual_MAX_REQ_SIZE )        
+
+    def run(self):
+        self._rflag = True
+        # need a more active way to break out, poll more often !
+        while self._rflag:           
+            dat, addr = self._my_sock.recvfrom( virtual_MAX_REQ_SIZE )        
             if dat:            
                 args = dat.decode().strip().split(' ')
                 ret_b = virtual_FAIL.encode()
-                if args[0] == virtual_CREATE:                    
-                    ret = self._create_callback()
+                if args[0] == virtual_CREATE:
+                    upargs = pickle.loads(args[1])
+                    cargs = [ virtual_TYPE_ATTR[t](v) for t,v in upargs ]
+                    ret = self._create_callback( *cargs )
                     if ret:
                         ret_b = (virtual_SUCCESS + ' ' + ret).encode()                                                                      
                 elif args[0] == virtual_CALL:
@@ -120,10 +125,11 @@ class VTOS_DataBlock:
     """
 
     def __init__( self, address, size = 1000, date_time = False,
-                  timeout = DEF_TIMEOUT ):
+                  timeout = DUMMY_DEF_TIMEOUT ):
         self._my_addr = address
         self._my_sock = socket.socket( socket.AF_INET, socket.SOCK_DGRAM )
-        self._call( virtual_CREATE )
+        self._call( virtual_CREATE, '__init__', ( ('i',size), ('b',date_time),
+                                                  ('i',timeout) ) )
         
     def __del__( self ):
         try:
@@ -172,7 +178,7 @@ class VTOS_DataBlock:
         return self._call( virtual_CALL, 'stream_occupancy', ('s',item),
                            ('s',topic) )
     
-    def items( self, str_max = MAX_STR_SZ ):
+    def items( self, str_max = DUMMY_MAX_STR_SZ ):
         """ Returns the items currently in the block (and not pre-cached).
         
         str_max: the maximum length of item strings returned
@@ -180,7 +186,7 @@ class VTOS_DataBlock:
         """
         return self._call( virtual_CALL, 'items', ('i',str_max) )          
               
-    def topics( self,  str_max = MAX_STR_SZ ):
+    def topics( self,  str_max = DUMMY_MAX_STR_SZ ):
         """ Returns the topics currently in the block (and not pre-cached).
         
         str_max: the maximum length of topic strings returned  
@@ -233,7 +239,7 @@ class VTOS_DataBlock:
         self._call( virtual_CALL, 'remove_topics', *zip('s'*len(topics), topics) )
         
     def get( self, item, topic, date_time = False, indx = 0, 
-             check_indx = True, data_str_max = STR_DATA_SZ ):
+             check_indx = True, data_str_max = DUMMY_STR_DATA_SZ ):
         """ Return a single data-point from the data-stream
         
         item: any item string in the block
@@ -249,7 +255,7 @@ class VTOS_DataBlock:
 
     def stream_snapshot( self, item, topic, date_time = False, 
                          end = -1, beg = 0, smart_size = True, 
-                         data_str_max = STR_DATA_SZ ):
+                         data_str_max = DUMMY_STR_DATA_SZ ):
         """ Return multiple data-points(a snapshot) from the data-stream
         
         item: any item string in the block
@@ -268,7 +274,8 @@ class VTOS_DataBlock:
                            ('b',smart_size), ('i', data_str_max) )
 
     def item_frame( self, topic, date_time = False, labels = True, 
-                    data_str_max = STR_DATA_SZ, label_str_max = MAX_STR_SZ ):
+                    data_str_max = DUMMY_STR_DATA_SZ,
+                    label_str_max = DUMMY_MAX_STR_SZ ):
         """ Return all the most recent item values for a particular topic.
 
         topic: any topic string in the block
@@ -287,7 +294,8 @@ class VTOS_DataBlock:
                            ('i', label_str_max) )   
 
     def topic_frame( self, item, date_time = False, labels = True, 
-                     data_str_max = STR_DATA_SZ, label_str_max = MAX_STR_SZ ):
+                     data_str_max = DUMMY_STR_DATA_SZ,
+                     label_str_max = DUMMY_MAX_STR_SZ ):
         """ Return all the most recent topic values for a particular item:
   
         item: any item string in the block
@@ -306,7 +314,8 @@ class VTOS_DataBlock:
                            ('i', label_str_max) )
 
     def total_frame( self, date_time = False, labels = True, 
-                     data_str_max = STR_DATA_SZ, label_str_max = MAX_STR_SZ ):
+                     data_str_max = DUMMY_STR_DATA_SZ,
+                     label_str_max = DUMMY_MAX_STR_SZ ):
         """ Return a matrix of the most recent values:  
         
         date_time: (True/False) attempt to retrieve a TOS_DateTime object        
@@ -329,7 +338,7 @@ class VTOS_DataBlock:
     def _call( self, virt_type, method='', *arg_buffer ):
         req_b = b''
         if virt_type == virtual_CREATE:
-            req_b = virtual_CREATE.encode()
+            req_b = virtual_CREATE.encode() + (b' ' + pickle.dumps(arg_buffer))
         elif virt_type == virtual_CALL:
             req_b = (virtual_CALL + ' ' + self._name + ' ' + method).encode()
             if arg_buffer:
