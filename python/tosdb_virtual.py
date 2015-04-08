@@ -38,12 +38,8 @@ walk-through.
 
 
 from threading import Thread
-import tosdbX
+from tosdbX import *
 import socket
-
-DEF_TIMEOUT = 2000
-MAX_STR_SZ = 0xFF
-STR_DATA_SZ = 0xFF
 
 class VTOS_DataServer( Thread ):
 
@@ -90,7 +86,7 @@ class VTOS_DataServer( Thread ):
                     ret_b = virtual_SUCCESS.encode()
                     if type(ret) != bool:
                         if ret[1]: #namedtuple special case
-                            ret_b = virtual_SUCCESS_NT.encode()
+                            ret_b = virtual_SUCCESS_NT.encode() \
                                     + b' ' + dumpnamedtuple(ret[0])
                         else:
                             ret_b += b' ' + pickle.dumps(ret)                        

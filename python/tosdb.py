@@ -37,7 +37,10 @@ certain cases we can't, so its not guaranteed to happen.  Therefore it's HIGHLY
 RECOMMENDED YOU CALL THIS FUNCTION before you exit.
 """
 
-import tosdbX # cross platform lib
+from tosdbX import *# cross platform lib
+from tosdb_datetime import TOS_DateTime, _DateTimeStamp, asctime, localtime
+from tosdb_virtual import VTOS_DataServer
+from collections import namedtuple
 from os import walk, stat, curdir, listdir, sep
 from io import StringIO
 from re import compile,search, match, split
@@ -46,8 +49,6 @@ from itertools import takewhile
 from math import log 
 from sys import maxsize 
 from uuid import uuid4
-from tosdb_datetime import TOS_DateTime
-from tosdb_virtual import VTOS_DataServer
 # types and type 'modifiers' use _[ name ]_ format
 from ctypes import WinDLL, cast, pointer, Structure, \
     create_string_buffer as _BUF_, \
