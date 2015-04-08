@@ -89,7 +89,7 @@ class VTOS_DataServer( Thread ):
                             ret_b = virtual_SUCCESS_NT.encode() \
                                     + b' ' + dumpnamedtuple(ret[0])
                         else:
-                            ret_b += b' ' + pickle.dumps(ret)                        
+                            ret_b += b' ' + pickle.dumps(ret[0])                        
             elif msg_t == virtual_DESTROY:
                 if self._virtual_destroy_callback( args[1].decode() ):
                     ret_b = virtual_SUCCESS.encode()                           
@@ -109,12 +109,13 @@ class VTOS_DataBlock:
     Please review the attached README.html for details.
     """
 
+    # check that address is 2-tuple
     def __init__( self, address, size = 1000, date_time = False,
                   timeout = DEF_TIMEOUT ):
         self._my_addr = address
         self._my_sock = socket.socket( socket.AF_INET, socket.SOCK_DGRAM )
-        self._call( virtual_CREATE, '__init__', ( ('i',size), ('b',date_time),
-                                                  ('i',timeout) ) )
+        self._name = self._call( virtual_CREATE, '__init__',
+                                 ('i',size), ('b',date_time), ('i',timeout) )
         
     def __del__( self ):
         try:
@@ -337,8 +338,9 @@ class VTOS_DataBlock:
             raise TOSDB_Error("_call -> sendto() failed")
         else:
             ret_b = self._my_sock.recv( 1000 )
+            print(ret_b)
             # hold off on decode til we un-pickle 
-            args = ret_b.strip().split(' ')
+            args = ret_b.strip().split(b' ')
             status = args[0].decode()
             if status == virtual_FAIL:
                 raise TOSDB_Error( "underlying block returned failure status: " +

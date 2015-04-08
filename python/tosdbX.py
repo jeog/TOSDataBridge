@@ -2,6 +2,7 @@
 # back-end libs, and '#define' compile-time consts necessary for C compatibility
 from _tosdb import*  # also allows us to migrate away from ctypes when necessary
 from tosdb_datetime import TOS_DateTime
+from collections import namedtuple
 from abc import ABCMeta
 import pickle
 
