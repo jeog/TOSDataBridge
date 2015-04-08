@@ -124,7 +124,7 @@ def init(dllpath = None, root = "C:\\"):
 ###
 ###
 
-virtual_blocks = dict()
+virtual_blocks = dict() # add remote address #
 virtual_data_server = None
 _namedtuple_flag = False
 
@@ -134,7 +134,9 @@ def virtualize_over_udp( address, enable=True):
     def _virtual_create_callback( *args ):
         global virtual_blocks
         print("DEBUG", "in virtual_create_callback")
+        blk = None
         try:
+            print( *args )
             blk = TOS_DataBlock( *args ) 
             virtual_blocks[blk._name] = blk
             return blk._name                                       
@@ -154,15 +156,20 @@ def virtualize_over_udp( address, enable=True):
         except:
             return False
 
+    # clean up encoding/decoding ops
+    # output exception somewhere
     def _virtual_call_callback( name, meth, *args):
         global virtual_blocks, _namedtuple_flag
         print("DEBUG", "in virtual_call_callback")
         try:
-            blk = virtual_blocks[ name ]
-            meth = blk.getattr(blk, meth )
-            ret = meth( *args )
+            name = name.encode('ascii')
+            print( name, meth, *args)
+            blk = virtual_blocks[ name ]         
+            meth = getattr(blk, meth )          
+            ret = meth( *args )          
             return (ret,_namedtuple_flag) if ret else True
-        except:
+        except Exception as e:
+            print( str(e) )
             return False
         finally:
             _namedtuple_flag = False
@@ -736,6 +743,7 @@ class TOS_DataBlock:
         if date_time is True: returns -> list of 2tuple
         else returns-> list
         """
+        global _namedtuple_flag
         topic = topic.upper()
         if( date_time and not self._date_time ):
             raise TOSDB_Error( " date_time is not available for this block " )
@@ -778,6 +786,7 @@ class TOS_DataBlock:
                              labs_array )
                 _ntuple_ = namedtuple( _str_clean(topic)[0], 
                                        _str_clean( *l_map ) )
+                _namedtuple_flag = True
                 if( date_time ):
                     adj_dts = [TOS_DateTime( x ) for x in dtss]
                     return _ntuple_( *zip( s_map, adj_dts ) )                        
@@ -814,6 +823,7 @@ class TOS_DataBlock:
                              labs_array )
                 _ntuple_ = namedtuple( _str_clean(topic)[0], 
                                        _str_clean( *l_map ) )
+                _namedtuple_flag = True
                 if( date_time ):
                     adj_dts = [TOS_DateTime( x ) for x in dtss]
                     return _ntuple_( *zip( num_array, adj_dts ) )                        
@@ -841,6 +851,7 @@ class TOS_DataBlock:
         if date_time is True: returns -> list of 2tuple
         else returns-> list
         """
+        global _namedtuple_flag
         item = item.upper()
         if( date_time and not self._date_time ):
             raise TOSDB_Error( " date_time is not available for this block " )
@@ -877,6 +888,7 @@ class TOS_DataBlock:
                          labs_array )
             _ntuple_ = namedtuple( _str_clean(item)[0], 
                                    _str_clean( *l_map ) )
+            _namedtuple_flag = True
             if( date_time ):
                 adj_dts = [TOS_DateTime( x ) for x in dtss]
                 return _ntuple_( *zip( s_map, adj_dts ) )                        
