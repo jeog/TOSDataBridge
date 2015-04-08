@@ -41,9 +41,9 @@ from threading import Thread
 import tosdbX
 import socket
 
-DUMMY_DEF_TIMEOUT = 2000
-DUMMY_MAX_STR_SZ = 0xFF
-DUMMY_STR_DATA_SZ = 0xFF
+DEF_TIMEOUT = 2000
+MAX_STR_SZ = 0xFF
+STR_DATA_SZ = 0xFF
 
 class VTOS_DataServer( Thread ):
 
@@ -114,7 +114,7 @@ class VTOS_DataBlock:
     """
 
     def __init__( self, address, size = 1000, date_time = False,
-                  timeout = DUMMY_DEF_TIMEOUT ):
+                  timeout = DEF_TIMEOUT ):
         self._my_addr = address
         self._my_sock = socket.socket( socket.AF_INET, socket.SOCK_DGRAM )
         self._call( virtual_CREATE, '__init__', ( ('i',size), ('b',date_time),
@@ -167,7 +167,7 @@ class VTOS_DataBlock:
         return self._call( virtual_CALL, 'stream_occupancy', ('s',item),
                            ('s',topic) )
     
-    def items( self, str_max = DUMMY_MAX_STR_SZ ):
+    def items( self, str_max = MAX_STR_SZ ):
         """ Returns the items currently in the block (and not pre-cached).
         
         str_max: the maximum length of item strings returned
@@ -175,7 +175,7 @@ class VTOS_DataBlock:
         """
         return self._call( virtual_CALL, 'items', ('i',str_max) )          
               
-    def topics( self,  str_max = DUMMY_MAX_STR_SZ ):
+    def topics( self,  str_max = MAX_STR_SZ ):
         """ Returns the topics currently in the block (and not pre-cached).
         
         str_max: the maximum length of topic strings returned  
@@ -228,7 +228,7 @@ class VTOS_DataBlock:
         self._call( virtual_CALL, 'remove_topics', *zip('s'*len(topics), topics) )
         
     def get( self, item, topic, date_time = False, indx = 0, 
-             check_indx = True, data_str_max = DUMMY_STR_DATA_SZ ):
+             check_indx = True, data_str_max = STR_DATA_SZ ):
         """ Return a single data-point from the data-stream
         
         item: any item string in the block
@@ -244,7 +244,7 @@ class VTOS_DataBlock:
 
     def stream_snapshot( self, item, topic, date_time = False, 
                          end = -1, beg = 0, smart_size = True, 
-                         data_str_max = DUMMY_STR_DATA_SZ ):
+                         data_str_max = STR_DATA_SZ ):
         """ Return multiple data-points(a snapshot) from the data-stream
         
         item: any item string in the block
@@ -263,8 +263,8 @@ class VTOS_DataBlock:
                            ('b',smart_size), ('i', data_str_max) )
 
     def item_frame( self, topic, date_time = False, labels = True, 
-                    data_str_max = DUMMY_STR_DATA_SZ,
-                    label_str_max = DUMMY_MAX_STR_SZ ):
+                    data_str_max = STR_DATA_SZ,
+                    label_str_max = MAX_STR_SZ ):
         """ Return all the most recent item values for a particular topic.
 
         topic: any topic string in the block
@@ -283,8 +283,8 @@ class VTOS_DataBlock:
                            ('i', label_str_max) )   
 
     def topic_frame( self, item, date_time = False, labels = True, 
-                     data_str_max = DUMMY_STR_DATA_SZ,
-                     label_str_max = DUMMY_MAX_STR_SZ ):
+                     data_str_max = STR_DATA_SZ,
+                     label_str_max = MAX_STR_SZ ):
         """ Return all the most recent topic values for a particular item:
   
         item: any item string in the block
@@ -303,8 +303,8 @@ class VTOS_DataBlock:
                            ('i', label_str_max) )
 
     def total_frame( self, date_time = False, labels = True, 
-                     data_str_max = DUMMY_STR_DATA_SZ,
-                     label_str_max = DUMMY_MAX_STR_SZ ):
+                     data_str_max = STR_DATA_SZ,
+                     label_str_max = MAX_STR_SZ ):
         """ Return a matrix of the most recent values:  
         
         date_time: (True/False) attempt to retrieve a TOS_DateTime object        

@@ -37,9 +37,6 @@ certain cases we can't, so its not guaranteed to happen.  Therefore it's HIGHLY
 RECOMMENDED YOU CALL THIS FUNCTION before you exit.
 """
 
-# _tosdb is how we deal with C++ header defined consts, those exported from the
-# back-end libs, and '#define' compile-time consts necessary for C compatibility
-from _tosdb import*  # also allows us to migrate away from ctypes when necessary
 import tosdbX # cross platform lib
 from os import walk, stat, curdir, listdir, sep
 from io import StringIO

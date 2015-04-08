@@ -1,4 +1,8 @@
+# _tosdb is how we deal with C++ header defined consts, those exported from the
+# back-end libs, and '#define' compile-time consts necessary for C compatibility
+from _tosdb import*  # also allows us to migrate away from ctypes when necessary
 from tosdb_datetime import TOS_DateTime
+from abc import ABCMeta
 import pickle
 
 virtual_CREATE = '1'
@@ -15,6 +19,8 @@ class TOSDB_Error(Exception):
     """ Base exception for tosdb.py """    
     def __init__(self,  *messages ):        
         Exception( *messages )
+
+
 
 def dumpnamedtuple( nt ):
     n = type(nt).__name__
