@@ -63,20 +63,23 @@ class VTOS_DataServer( Thread ):
         while self._rflag:           
             dat, addr = self._my_sock.recvfrom( virtual_MAX_REQ_SIZE )
             if not dat:
-                continue                        
+                continue
+            print(dat) #DEBUG#
             args = dat.strip().split(b' ')
             msg_t = args[0].decode()
             ret_b = virtual_FAIL.encode()
             if msg_t == virtual_CREATE:
-                upargs = pickle.loads(args[1])
+                upargs = pickle.loads(args[1])                
                 cargs = [ virtual_TYPE_ATTR[t](v) for t,v in upargs ]
+                print('create upargs', upargs)
                 ret = self._create_callback( *cargs )
                 if ret:
-                    ret_b = (virtual_SUCCESS + ' ' + ret).encode()                                                                      
+                    ret_b = (virtual_SUCCESS + ' ').encode() + ret                                                                   
             elif msg_t == virtual_CALL:
                 if len(args) > 3:              
                     upargs = pickle.loads(args[3])
-                    cargs = [ virtual_TYPE_ATTR[t](v) for t,v in upargs ]                    
+                    cargs = [ virtual_TYPE_ATTR[t](v) for t,v in upargs ]
+                    print('call upargs', upargs)
                     ret = self._call_callback( args[1].decode(),
                                                args[2].decode(), *cargs)
                 else:
@@ -94,7 +97,7 @@ class VTOS_DataServer( Thread ):
                 if self._virtual_destroy_callback( args[1].decode() ):
                     ret_b = virtual_SUCCESS.encode()                           
             
-            virtual_sock.sendto( ret_b, addr ) 
+            self._my_sock.sendto( ret_b, addr ) 
             
                  
        
@@ -116,6 +119,7 @@ class VTOS_DataBlock:
         self._my_sock = socket.socket( socket.AF_INET, socket.SOCK_DGRAM )
         self._name = self._call( virtual_CREATE, '__init__',
                                  ('i',size), ('b',date_time), ('i',timeout) )
+
         
     def __del__( self ):
         try:

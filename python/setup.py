@@ -56,7 +56,8 @@ try: # capture setup errors but allow setup to complete (optional=True)
     if sio.getvalue(): 
         print( '\n', "+ Operation 'completed' with errors:\n")
         print( sio.getvalue() )
-        print( "+ Checking on the status of the build...")        
+        print( "+ Checking on the status of the build...")
+        t = None
         try:
             import _tosdb as t
             print( "+ _tosdb.pyd exists (possibly an older version?) ")
