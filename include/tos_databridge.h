@@ -18,6 +18,12 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 #ifndef JO_TOSDB_DATABRIDGE
 #define JO_TOSDB_DATABRIDGE
 
+/* if not windows only provide a handful of necessary 
+    consts to get _tosdb.cpp to compile */
+#ifndef _WIN32
+#define XPLATFORM_PYTHON_CONSTS_ONLY
+#endif
+
 #ifndef XPLATFORM_PYTHON_CONSTS_ONLY
 
 /* internal objects of exported impl classes not exported;
@@ -109,8 +115,6 @@ class DLL_SPEC_IMPL_ DynamicIPCSlave;
    internally: WinAPI facing / relevant code will use all    */
 #include <windows.h> 
 
-#endif /* XPLATFROM_PYTHON_CONSTS_ONLY */
-
 #include <time.h>
 #ifdef __cplusplus
 #include <map>
@@ -123,15 +127,6 @@ class DLL_SPEC_IMPL_ DynamicIPCSlave;
 #include "generic.hpp"    /* our 'generic' type */
 #endif
 
-/* the core types implemented by the data engine: engine-core.cpp */
-typedef long          def_size_type; 
-typedef long long     ext_size_type;
-typedef float         def_price_type;
-typedef double        ext_price_type; 
-/* arch independent guarantees for the Python wrapper */
-typedef unsigned long size_type;
-typedef unsigned char type_bits_type;
-
 /* need to #define; can't define consts in header because of C,
     can't define at link-time because of switches / arrays */
 #define TOSDB_SIG_ADD 1
@@ -143,12 +138,24 @@ typedef unsigned char type_bits_type;
 #define TOSDB_SIG_GOOD ((int)INT_MAX)
 #define TOSDB_SIG_BAD ((int)(INT_MAX-1))
 
+/* the core types implemented by the data engine: engine-core.cpp */
+typedef long          def_size_type; 
+typedef long long     ext_size_type;
+typedef float         def_price_type;
+typedef double        ext_price_type;
+
+#endif /* XPLATFROM_PYTHON_CONSTS_ONLY */
+ 
+/* arch independent guarantees for the Python wrapper */
+typedef unsigned long size_type;
+typedef unsigned char type_bits_type;
+
 #define TOSDB_INTGR_BIT ((type_bits_type)0x80)
 #define TOSDB_QUAD_BIT ((type_bits_type)0x40)
 #define TOSDB_STRING_BIT ((type_bits_type)0x20)
 #define TOSDB_TOPIC_BITMASK ((type_bits_type)0xE0)
 
-#ifdef STR_DATA_SZ /* defined in data-stream.hpp */
+#ifdef STR_DATA_SZ /* defined in data-stream.hpp, dependency issue??? */
 #define TOSDB_STR_DATA_SZ STR_DATA_SZ
 #else
 #define TOSDB_STR_DATA_SZ ((size_type)40)

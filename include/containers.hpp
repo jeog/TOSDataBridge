@@ -299,7 +299,7 @@ public:
     typedef T2                                          value_type;
     typedef std::unordered_map< T1, T2, Hash1, Key1Eq>  map1_type; 
     typedef std::unordered_map< T2, T1, Hash2, Key2Eq>  map2_type; 
-    typedef typename map1_type::value_type              pair1_type; 
+    typedef map1_type::value_type              pair1_type; 
     typedef typename map2_type::value_type              pair2_type;
     typedef typename map1_type::iterator                iterator1_type;
     typedef typename map2_type::iterator                iterator2_type;
