@@ -18,6 +18,8 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 #ifndef JO_TOSDB_DATABRIDGE
 #define JO_TOSDB_DATABRIDGE
 
+#ifndef XPLATFORM_PYTHON_CONSTS_ONLY
+
 /* internal objects of exported impl classes not exported;
     look here if link errors on change of_tos-databridge... mods */
 #pragma warning( once : 4251 )
@@ -106,6 +108,9 @@ class DLL_SPEC_IMPL_ DynamicIPCSlave;
 /* externally: limiting use of Win typedefs to LPCSTR / LPSTR, when possible 
    internally: WinAPI facing / relevant code will use all    */
 #include <windows.h> 
+
+#endif /* XPLATFROM_PYTHON_CONSTS_ONLY */
+
 #include <time.h>
 #ifdef __cplusplus
 #include <map>
@@ -150,6 +155,8 @@ typedef unsigned char type_bits_type;
 #endif
 
 #define TOSDB_MAX_STR_SZ ((unsigned long)0xFF)
+
+#ifndef XPLATFORM_PYTHON_CONSTS_ONLY
 
 extern char    DLL_SPEC_IMPL_  TOSDB_LOG_PATH[ MAX_PATH+20 ]; 
 /* consts NOT exported from tos-databridge-0.1[].dll */    
@@ -749,4 +756,5 @@ public:
 };
 
 #endif
+#endif /* XPLATFROM_PYTHON_CONSTS_ONLY */
 #endif

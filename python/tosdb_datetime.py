@@ -17,12 +17,13 @@
 """ TOS_DateTime: how we deal with date-time values produced from the
 data engine.
 
-It inherits from a named tuple constructed from either the 
-extended C/C++ _DateTimeStamp struct ( C stdlib tm struct + micro_seconds) or 
-time.py's struct_time. It allows for basic addition and subtraction returning 
-a new object or a DateTimeDiff tuple respectively, as well as comparison 
-operators and static utilities to convert betwen DateTimeDiff objects and 
-microseconds.
+It inherits from a named tuple constructed from the extended C/C++
+_DateTimeStamp struct ( C stdlib tm struct + micro_seconds), time.py's
+struct_time, or itself (copy construction). It can be pickled (serialized);
+allows for basic addition and subtraction returning a new object or a
+DateTimeDiff tuple, respectively; overloads comparison operators; and
+provides static utility functions to convert betwen DateTimeDiff objects
+and microseconds.
 """
 
 from collections import namedtuple
@@ -57,12 +58,15 @@ class TOS_DateTime( namedtuple( "DateTime",
                     ["micro","sec","min","hour","day","month","year"])):
     """ The object used for handling DateTime values
 
-        TOS_DateTime is built on top of  a simplified named tuple. It can be 
-        constructed from _DateTimeStamp or struct_time from the time.py library.
-        It overloads special methods to make it easier to read and manipulate.
-        It provides some static functions for convenience.       
+        TOS_DateTime is built on top of a simplified named tuple. It can be 
+        constructed from _DateTimeStamp, struct_time from the time.py library,
+        or itself (copy construction). It can be pickled (serialized); allows
+        for basic addition and subtraction returning a new object or a
+        DateTimeDiff tuple, respectively; overloads comparison operators;
+        and provides static utility functions to convert betwen DateTimeDiff
+        objects and microseconds.       
 
-        object: either a _DateTimeStamp( ideally from the impl. ) or a 
+        object: either a _DateTimeStamp( ideally from the impl. ), a 
         time.struct_time           
         micro_second: optional if adding a time.struct_time that lacks a 
         micro_second field

@@ -36,29 +36,14 @@ walk-through.
 
 ### deal with global consts better, so we can import directly to here
 
-from tosdb_datetime import TOS_DateTime
+
 from threading import Thread
+import tosdbX
 import socket
-import pickle
-
-virtual_CREATE = '1'
-virtual_CALL = '2'
-virtual_DESTROY = '3'
-virtual_SUCCESS = '4'
-virtual_FAIL = '5'
-
-virtual_MAX_REQ_SIZE = 1000 # arbitrary for now
-virtual_TYPE_ATTR = {'i':int,'s':str,'b':bool}
 
 DUMMY_DEF_TIMEOUT = 2000
 DUMMY_MAX_STR_SZ = 0xFF
 DUMMY_STR_DATA_SZ = 0xFF
-
-
-class TOSDB_Error(Exception):
-    """ Base exception for tosdb.py """    
-    def __init__(self,  *messages ):        
-        Exception( *messages )
 
 class VTOS_DataServer( Thread ):
 
@@ -80,36 +65,40 @@ class VTOS_DataServer( Thread ):
         self._rflag = True
         # need a more active way to break out, poll more often !
         while self._rflag:           
-            dat, addr = self._my_sock.recvfrom( virtual_MAX_REQ_SIZE )        
-            if dat:            
-                args = dat.decode().strip().split(' ')
-                ret_b = virtual_FAIL.encode()
-                if args[0] == virtual_CREATE:
-                    upargs = pickle.loads(args[1])
-                    cargs = [ virtual_TYPE_ATTR[t](v) for t,v in upargs ]
-                    ret = self._create_callback( *cargs )
-                    if ret:
-                        ret_b = (virtual_SUCCESS + ' ' + ret).encode()                                                                      
-                elif args[0] == virtual_CALL:
-                    has_args = len(args) > 3
-                    if has_args:
-                        upargs = pickle.loads(args[3])
-                        cargs = [ virtual_TYPE_ATTR[t](v) for t,v in upargs ]                    
-                        ret = self._call_callback( args[1], args[2], *cargs)
-                    else:
-                        ret = self._call_callback( args[1], args[2] )                        
-                    if ret:
-                        ret_b = virtual_SUCCESS.encode()
-                        if type(ret) != bool:                        
+            dat, addr = self._my_sock.recvfrom( virtual_MAX_REQ_SIZE )
+            if not dat:
+                continue                        
+            args = dat.strip().split(b' ')
+            msg_t = args[0].decode()
+            ret_b = virtual_FAIL.encode()
+            if msg_t == virtual_CREATE:
+                upargs = pickle.loads(args[1])
+                cargs = [ virtual_TYPE_ATTR[t](v) for t,v in upargs ]
+                ret = self._create_callback( *cargs )
+                if ret:
+                    ret_b = (virtual_SUCCESS + ' ' + ret).encode()                                                                      
+            elif msg_t == virtual_CALL:
+                if len(args) > 3:              
+                    upargs = pickle.loads(args[3])
+                    cargs = [ virtual_TYPE_ATTR[t](v) for t,v in upargs ]                    
+                    ret = self._call_callback( args[1].decode(),
+                                               args[2].decode(), *cargs)
+                else:
+                    ret = self._call_callback( args[1].decode(),
+                                               args[2].decode() )                        
+                if ret:
+                    ret_b = virtual_SUCCESS.encode()
+                    if type(ret) != bool:
+                        if ret[1]: #namedtuple special case
+                            ret_b = virtual_SUCCESS_NT.encode()
+                                    + b' ' + dumpnamedtuple(ret[0])
+                        else:
                             ret_b += b' ' + pickle.dumps(ret)                        
-                elif args[0] == virtual_DESTROY:
-                    if self._virtual_destroy_callback( args[1] ):
-                        ret_b = virtual_SUCCESS.encode()                     
-              
-                if not ret_b:
-                    raise TOSDB_Error("invalid return value to virtual block")
-                
-                virtual_sock.sendto( ret_b, addr ) 
+            elif msg_t == virtual_DESTROY:
+                if self._virtual_destroy_callback( args[1].decode() ):
+                    ret_b = virtual_SUCCESS.encode()                           
+            
+            virtual_sock.sendto( ret_b, addr ) 
             
                  
        
@@ -365,7 +354,10 @@ class VTOS_DataBlock:
                 if virt_type == virtual_CREATE:
                     return args[1].decode()
                 elif virt_type == virtual_CALL and len(args) > 1:
-                    return pickle.loads( args[1] )
+                    if status == virtual_SUCCESS_NT:
+                        return loadnamedtuple( args[1] )
+                    else:
+                        return pickle.loads( args[1] )
                 elif virt_type == virtual_DESTROY:
                     return True
                 

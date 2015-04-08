@@ -20,8 +20,6 @@ Please refer to README.html for an explanation of the underlying library.
 Please refer to PythonTutorial.html in /python/docs for a step-by-step 
 walk-through.
 
-This library's three main sections:
-
 Global Admin Functions: these functions simply call some of the underlying 
 library functions to get/set limits, block counts etc.
 
@@ -31,14 +29,6 @@ object-oriented. A unique block id is handled by the object and the unique C
 calls are handled accordingly. It also abstracts away most of the type 
 complexity of the underlying calls, raising TOSDB_Error exceptions if  internal 
 errors occur.
-
-Class TOS_DateTime: how we deal with date-time values produced from the
-data engine. It inherits from a named tuple constructed from either the 
-extended C/C++ _DateTimeStamp struct ( C stdlib tm struct + micro_seconds) or 
-time.py's struct_time. It allows for basic addition and subtraction returning 
-a new object or a DateTimeDiff tuple respectively, as well as comparison 
-operators and static utilities to convert betwen DateTimeDiff objects and 
-microseconds.
 
  ********************************** IMPORTANT ********************************
 Calling clean_up() de-allocates shared resources of the underlying library and
@@ -50,6 +40,7 @@ RECOMMENDED YOU CALL THIS FUNCTION before you exit.
 # _tosdb is how we deal with C++ header defined consts, those exported from the
 # back-end libs, and '#define' compile-time consts necessary for C compatibility
 from _tosdb import*  # also allows us to migrate away from ctypes when necessary
+import tosdbX # cross platform lib
 from os import walk, stat, curdir, listdir, sep
 from io import StringIO
 from re import compile,search, match, split
@@ -79,19 +70,14 @@ _ppchar_ = _PTR_( _pchar_ )
 import argparse
 import socket
 
-BASE_YR = 1900
-
-_dllRawName = "tos-databridge"
-_sysArch = "x64" if ( log( maxsize * 2, 2) > 33 ) else "x86"
-_dllQNameRE = compile('^('+_dllRawName 
+DLL_BASE_NAME = "tos-databridge"
+SYS_ARCH_TYPE = "x64" if ( log( maxsize * 2, 2) > 33 ) else "x86"
+REGEX_NON_ALNUM = compile("[\W+]")
+REGEX_DLL_NAME = compile('^('+DLL_BASE_NAME 
                           + '-)[\d]{1,2}.[\d]{1,2}-'
-                          +_sysArch +'(.dll)$')
+                          + SYS_ARCH_TYPE +'(.dll)$')
 _dll = None
 
-class TOSDB_Error(Exception):
-    """ Base exception for tosdb.py """    
-    def __init__(self,  *messages ):        
-        Exception( *messages )
    
 def init(dllpath = None, root = "C:\\"):
     """ Initialize the underlying tos-databridge DLL
@@ -103,7 +89,7 @@ def init(dllpath = None, root = "C:\\"):
     rel = set()
     try:
         if dllpath is None:
-            matcher = partial( match, _dllQNameRE)  # regex match function
+            matcher = partial( match, REGEX_DLL_NAME)  # regex match function
             for nfile in map( matcher, listdir( curdir )):
                 if nfile: # try the current dir first             
                     rel.add( curdir+ sep + nfile.string )                    
@@ -142,6 +128,7 @@ def init(dllpath = None, root = "C:\\"):
 
 virtual_blocks = dict()
 virtual_data_server = None
+_namedtuple_flag = False
 
 def virtualize_over_udp( address, enable=True):
     global virtual_data_server
@@ -170,15 +157,17 @@ def virtualize_over_udp( address, enable=True):
             return False
 
     def _virtual_call_callback( name, meth, *args):
-        global virtual_blocks
+        global virtual_blocks, _namedtuple_flag
         print("DEBUG", "in virtual_call_callback")
         try:
             blk = virtual_blocks[ name ]
             meth = blk.getattr(blk, meth )
             ret = meth( *args )
-            return ret if ret else True
+            return (ret,_namedtuple_flag) if ret else True
         except:
-            return False 
+            return False
+        finally:
+            _namedtuple_flag = False
 
     try:
         if enable:
@@ -189,7 +178,7 @@ def virtualize_over_udp( address, enable=True):
             virtual_data_server.start()
         elif virtual_data_server is not None:
             virtual_data_server.stop()
-            virtual_data_serve = None
+            virtual_data_server = None
     except Exception as e:
         raise TOSDB_Error("virtualization error", str(e) )
         
@@ -247,12 +236,11 @@ def _type_switch( typeB ):
     else: # default to string
         return( "String", _string_ )
 
-def _str_clean( *strings ):
-    rex = compile("[\W+]")
+def _str_clean( *strings ):    
     fin = []
     for s in strings:               
         tmpS = ''
-        for sub in split( rex, s):
+        for sub in split( REGEX_NON_ALNUM, s):
             tmpS = tmpS + sub
         fin.append(tmpS)
     return fin
