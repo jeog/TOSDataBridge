@@ -18,278 +18,92 @@
 
 Please refer to README.html for an explanation of the underlying library.
 Please refer to PythonTutorial.html in /python/docs for a step-by-step 
-walk-through.
-
-Global Admin Functions: these functions simply call some of the underlying 
-library functions to get/set limits, block counts etc.
+walk-through. (currently this may be out-dated as the python layer is updated)
 
 Class TOS_DataBlock: very similar to the 'block' approach of the underlying
 library(again, see the README.html) except the interface is explicitly
 object-oriented. A unique block id is handled by the object and the unique C
 calls are handled accordingly. It also abstracts away most of the type 
-complexity of the underlying calls, raising TOSDB_Error exceptions if  internal 
+complexity of the underlying calls, raising TOSDB_Error exceptions ifinternal 
 errors occur.
 
- ********************************** IMPORTANT ********************************
-Calling clean_up() de-allocates shared resources of the underlying library and
-Service. We attempt to clean up resources automatically for you on exit but in
-certain cases we can't, so its not guaranteed to happen.  Therefore it's HIGHLY
-RECOMMENDED YOU CALL THIS FUNCTION before you exit.
+Class VTOS_DataBlock: same interface as TOS_DataBlock except it utilizes a thin
+virtualization layer over UDP. Method calls are serialized and sent over a
+phsyical/virtual network to a windows machine running the core implemenataion,
+passing returned values back.
+
+Those who want to access the TOS_DataBlock on linux while running Windows in
+a virtual machine can abstract away nearly all the (unfortunately necessary)
+non-portable parts of the core implementation.
+
+In order to create a virtual block the 'local' windows implementation must
+do everything it would normally do to instantiate a TOS_DataBlock (i.e connect
+to a running TOSDataBridge service via init/connect) and then call
+enable_virtualization() with an address tuple (addr,port) that the virtual
+server ( _VTOS_DataServer ) will used to listen for 'remote' virtual blocks.
+
+tosdb.py will attempt to load the non-portable _tosdb_win.py if on windows.
+The following are some of the important calls imported from _tosdb_win.py that
+control the underlying DLL:
+
+  init() initializes the underlying library
+  connect() connects to the library (init attemps this for you)
+  connected() returns connection status (boolean)
+  get_block_limit() returns block limit of the library's RawDataBlock factory
+  set_block_limit() changes block limit of the library's RawDataBlock factory
+  get_block_count() returns the current number of blocks in the library
+
+  ********************************* IMPORTANT *********************************
+  clean_up() de-allocates shared resources of the underlying library and
+    Service. We attempt to clean up resources automatically for you on exit
+    but in certain cases we can't, so its not guaranteed to happen. Therefore
+    it's HIGHLY RECOMMENDED YOU CALL THIS FUNCTION before you exit. 
 """
 
-from tosdbX import *# cross platform lib
-from tosdb_datetime import TOS_DateTime, _DateTimeStamp, asctime, localtime
-from tosdb_virtual import VTOS_DataServer
-from collections import namedtuple
-from os import walk, stat, curdir, listdir, sep
-from io import StringIO
-from re import compile,search, match, split
-from functools import partial 
-from itertools import takewhile
-from math import log 
-from sys import maxsize 
-from uuid import uuid4
+
+# _tosdb is how we deal with C++ header defined consts, those exported from the
+# back-end libs, and '#define' compile-time consts necessary for C compatibility
+from _tosdb import *  # also allows us to migrate away from ctypes when necessary
+from _tosdb_errors import *
+from tosdb_datetime import TOS_DateTime, _DateTimeStamp
+
 # types and type 'modifiers' use _[ name ]_ format
-from ctypes import WinDLL, cast, pointer, Structure, \
-    create_string_buffer as _BUF_, \
-    POINTER as _PTR_, \
-    c_double as _double_, \
-    c_float as _float_, \
-    c_ulong as _ulong_, \
-    c_long as _long_, \
-    c_longlong as _longlong_, \
-    c_char_p as _string_, \
-    c_char as _char_, \
-    c_ubyte as _uchar_, \
-    c_int as _int_, \
-    c_void_p as _pvoid_
+from ctypes import cast as _cast, pointer as _pointer, \
+     create_string_buffer as _BUF_, POINTER as _PTR_, c_double as _double_, \
+     c_float as _float_, c_ulong as _ulong_, c_long as _long_, \
+     c_longlong as _longlong_, c_char_p as _string_, c_char as _char_, \
+     c_ubyte as _uchar_, c_int as _int_, c_void_p as _pvoid_
 _pchar_ = _PTR_( _char_ )
 _ppchar_ = _PTR_( _pchar_ )
-import argparse
-import socket
 
-DLL_BASE_NAME = "tos-databridge"
-SYS_ARCH_TYPE = "x64" if ( log( maxsize * 2, 2) > 33 ) else "x86"
-REGEX_NON_ALNUM = compile("[\W+]")
-REGEX_DLL_NAME = compile('^('+DLL_BASE_NAME 
-                          + '-)[\d]{1,2}.[\d]{1,2}-'
-                          + SYS_ARCH_TYPE +'(.dll)$')
-_dll = None
+from collections import namedtuple as _namedtuple
+from io import StringIO as _StringIO
+from uuid import uuid4 as _uuid4
+from threading import Thread as _Thread
+from argparse import ArgumentParser as _ArgumentParser
+from platform import system as _system
+import socket as _socket
+import pickle as _pickle
 
-   
-def init(dllpath = None, root = "C:\\"):
-    """ Initialize the underlying tos-databridge DLL
+if _system() in ["Windows","windows"]:
+    from  _tosdb_win import *
+    if __name__ == "__main__":
+        _handle_args()        
+else:
+    def _lib_call( f, *args, ret_type = _int_, arg_list = None ):
+        raise TOSDB_Error("_lib_call can only be called from Windows. " +
+                          "Make sure you are working with VTOS_DataBlock." )
 
-    dllpath: string of the exact path of the DLL
-    root: string of the directory to start walking/searching to find the DLL
-    """
-    global _dll
-    rel = set()
-    try:
-        if dllpath is None:
-            matcher = partial( match, REGEX_DLL_NAME)  # regex match function
-            for nfile in map( matcher, listdir( curdir )):
-                if nfile: # try the current dir first             
-                    rel.add( curdir+ sep + nfile.string )                    
-            if not rel:                
-                for root,dirs, files in walk(root): # no luck, walk the dir tree 
-                    for file in map( matcher, files):  
-                        if file:                           
-                            rel.add( root + sep + file.string )                           
-                if not rel: # if still nothing throw
-                    raise TOSDB_Error(" could not locate DLL")    
-            if len(rel) > 1:  # only use the most recent version(s)
-                verVal = compile('-[\d]{1,2}.[\d]{1,2}-')
-                vers = tuple( zip( map( 
-                    lambda x: search(verVal,x).group().strip('-'),rel), rel ) )
-                versMax = max(vers)[0].split('.')[0]
-                minTup= tuple( (x[0].split('.')[1],x[1]) 
-                               for x in vers if x[0].split('.')[0] == versMax )         
-                minMax = max(minTup)[0]
-                rel = set( x[1] for x in minTup if x[0] == minMax )                      
-            # find the most recently updated
-            d = dict( zip(map( lambda x : stat(x).st_mtime, rel), rel ) )
-            rec = max(d)
-            dllpath = d[ rec ]
-        _dll = WinDLL( dllpath )
-        print( "+ Using Module ", dllpath )
-        print( "+ Last Update ", asctime( localtime( stat(dllpath).st_mtime ) ))
-        if connect():
-            print("+ Succesfully Connected to Service \ Engine")
-        else:
-            print("- Failed to Connect to Service \ Engine")
-    except Exception as e:
-        raise TOSDB_Error(" unable to initialize library", e )
-
-###
-###
-
-virtual_blocks = dict() # add remote address #
-virtual_data_server = None
-_namedtuple_flag = False
-
-def virtualize_over_udp( address, enable=True):
-    global virtual_data_server
-    
-    def _virtual_create_callback( *args ):
-        global virtual_blocks
-        print("DEBUG", "in virtual_create_callback")
-        blk = None
-        try:
-            print( *args )
-            blk = TOS_DataBlock( *args ) 
-            virtual_blocks[blk._name] = blk
-            return blk._name                                       
-        except:
-            if blk:
-                virtual_blocks.pop(blk._name)
-                del blk
-            return False       
-
-    def _virtual_destroy_callback( name ):
-        global virtual_blocks
-        print("DEBUG", "in virtual_destroy_callback")
-        try:
-            blk = virtual_blocks.pop( name )
-            del blk
-            return True
-        except:
-            return False
-
-    # clean up encoding/decoding ops
-    # output exception somewhere
-    def _virtual_call_callback( name, meth, *args):
-        global virtual_blocks, _namedtuple_flag
-        print("DEBUG", "in virtual_call_callback")
-        try:
-            name = name.encode('ascii')
-            print( name, meth, *args)
-            blk = virtual_blocks[ name ]         
-            meth = getattr(blk, meth )          
-            ret = meth( *args )          
-            return (ret,_namedtuple_flag) if ret else True
-        except Exception as e:
-            print( str(e) )
-            return False
-        finally:
-            _namedtuple_flag = False
-
-    try:
-        if enable:
-            virtual_data_server = VTOS_DataServer( address,
-                                                   _virtual_create_callback,
-                                                   _virtual_destroy_callback,
-                                                   _virtual_call_callback )
-            virtual_data_server.start()
-        elif virtual_data_server is not None:
-            virtual_data_server.stop()
-            virtual_data_server = None
-    except Exception as e:
-        raise TOSDB_Error("virtualization error", str(e) )
-        
-
-def connect():
-    """ Attempts to connect to the library """
-    return not bool( _lib_call( "TOSDB_Connect") )
-
-def connected():
-    """ Returns true if there is an active connection to the library """
-    return bool( _lib_call("TOSDB_IsConnected", ret_type = _ulong_ ) )
-                
-def clean_up():
-    """ Clean up shared resources. ! CALL BEFORE EXITING INTERPRETER ! """
-    global _dll
-    if _dll is not None:       
-        if _lib_call( "TOSDB_CloseBlocks" ):
-            print("- Error Closing Blocks")
-        else:
-            print("+ Closing Blocks")
-        _lib_call( "TOSDB_Disconnect" )
-        print("+ Disconnecting From Service \ Engine")        
-        print( "+ Closing Module ", _dll._name )
-        del _dll
-        _dll = None
-
-# how we access the underlying calls
-def _lib_call( f, *args, ret_type = _int_, arg_list = None ):        
-    if not _dll:
-        raise TOSDB_Error( "tos-databridge DLL is currently not loaded ")
-        return # in case exc gets ignored on clean_up
-    try:        
-        attr = getattr( _dll, str(f) )
-        if ret_type:
-            attr.restype = ret_type
-        if isinstance( arg_list, list):
-            attr.argtypes = arg_list
-        return attr(*args)              
-    except Exception as e:
-        cStat = " Not Connected"
-        if f != "TOSDB_IsConnected": # avoid infinite recursion
-           if connected():
-               cStat = " Connected"               
-        raise TOSDB_Error( "Unable to execute library function ", f ,cStat, e)
-
-def _type_switch( typeB ):
-    if ( typeB == INTGR_BIT + QUAD_BIT ):
-        return ( "LongLong", _longlong_ )
-    elif ( typeB == INTGR_BIT ):
-        return ( "Long", _long_ )
-    elif ( typeB == QUAD_BIT ):
-        return ( "Double", _double_ )
-    elif ( typeB == 0 ):
-        return ( "Float", _float_ )
-    else: # default to string
-        return( "String", _string_ )
-
-def _str_clean( *strings ):    
-    fin = []
-    for s in strings:               
-        tmpS = ''
-        for sub in split( REGEX_NON_ALNUM, s):
-            tmpS = tmpS + sub
-        fin.append(tmpS)
-    return fin
-
-def get_block_limit():
-    """ Returns the block limit of C/C++ RawDataBlock factory """
-    return _lib_call( "TOSDB_GetBlockLimit", ret_type =_ulong_ )
-
-def set_block_limit( new_limit ):
-    """ Changes the block limit of C/C++ RawDataBlock factory """
-    _lib_call( "TOSDB_SetBlockLimit", new_limit, ret_type = _ulong_ )
-
-def get_block_count():
-    """ Returns the count of current instantiated blocks """
-    return _lib_call( "TOSDB_GetBlockCount", ret_type = _ulong_ )
-
-def type_bits( topic ):
-    """ Returns the type bits for a particular 'topic'
-
-    topic: string representing a TOS data field('LAST','ASK', etc)
-    returns -> value that can be logical &'d with type bit contstants 
-    ( ex. QUAD_BIT )
-    """
-    tyBits = _uchar_()
-    err = _lib_call( "TOSDB_GetTypeBits", topic.encode("ascii"), 
-                     pointer(tyBits) )
-    if(err):
-       raise TOSDB_Error( "error value [ " + str(err) +
-                          " ] returned from library call", "TOSDB_GetTypeBits")
-    return tyBits.value
-
-def type_string( topic ):
-    """ Returns a platform-dependent string of the type of a particular 'topic'
-
-    topic: string representing a TOS data field('LAST','ASK', etc)
-    """
-    tyStr = _BUF_( MAX_STR_SZ + 1 )
-    err = _lib_call( "TOSDB_GetTypeString", topic.encode("ascii"), tyStr, 
-                     (MAX_STR_SZ + 1) )
-    if(err):
-        raise TOSDB_Error( "error value [ " + str(err) +
-                          " ] returned from library call","TOSDB_GetTypeString")
-    return tyStr.value.decode()
-
+_virtual_blocks = dict() # add remote address #
+_virtual_data_server = None
+_virtual_CREATE = '1'
+_virtual_CALL = '2'
+_virtual_DESTROY = '3'
+_virtual_FAIL = '4'
+_virtual_SUCESS = '5'
+_virtual_SUCCESS_NT = '6'
+_virtual_MAX_REQ_SZ = 1000 # arbitrary for now
+_virtual_VAR_TYPES = {'i':int,'s':str,'b':bool}
 
 class TOS_DataBlock:
     """ The main object for storing TOS data.    
@@ -301,7 +115,7 @@ class TOS_DataBlock:
     Please review the attached README.html for details.
     """    
     def __init__( self, size = 1000, date_time = False, timeout = DEF_TIMEOUT ):        
-        self._name = (uuid4().hex).encode("ascii")
+        self._name = (_uuid4().hex).encode("ascii")
         self._valid = False
         err = _lib_call( "TOSDB_CreateBlock", self._name , size, date_time, 
                          timeout )        
@@ -315,7 +129,8 @@ class TOS_DataBlock:
         self._date_time = date_time
         self._items = []   
         self._topics = []
-        
+        self._namedtuple_flag = False
+  
     def __del__( self ): # for convenience, no guarantee
         if _lib_call is not None and self._valid:
             err = _lib_call( "TOSDB_CloseBlock", self._name )      
@@ -323,7 +138,8 @@ class TOS_DataBlock:
                 print(" - Error [ ",err," ] Closing Block (leak possible) " )
 
     def __str__( self ):
-        sio = StringIO() # ouput buffer
+        _clear_return_status()
+        sio = _StringIO() # ouput buffer
         tf = self.total_frame() # get the frame
         count = 0
         maxDict = { "col0":0}       
@@ -355,6 +171,9 @@ class TOS_DataBlock:
             count += 1              
         sio.seek(0)
         return sio.read()
+
+    def _clear_return_status():
+        self._namedtuple_flag = False
     
     # private _valid calls assume .upper() already called
     def _valid_item( self, item ):
@@ -370,8 +189,9 @@ class TOS_DataBlock:
              raise TOSDB_Error( topic + " not found" )
 
     def _item_count( self ):
+        _clear_return_status()
         i_count = _ulong_()
-        err = _lib_call("TOSDB_GetItemCount", self._name, pointer(i_count) )
+        err = _lib_call("TOSDB_GetItemCount", self._name, _pointer(i_count) )
         if(err):
             raise TOSDB_Error( "error value [ " + str(err) + 
                                " ] returned from library call", 
@@ -379,16 +199,18 @@ class TOS_DataBlock:
         return i_count.value
 
     def _topic_count( self ):
+        _clear_return_status()
         t_count = _ulong_()
-        err =  _lib_call("TOSDB_GetTopicCount", self._name, pointer(t_count) )
+        err =  _lib_call("TOSDB_GetTopicCount", self._name, _pointer(t_count) )
         if(err):
             raise TOSDB_Error( "error value [ "+ str(err) +
                                " ] returned from library call", 
                                "TOSDB_GetTopicCount" )
         return t_count.value
 
-    def info(self):
+    def info(self):        
         """ Returns a more readable dict of info about the underlying block """
+        _clear_return_status()
         return { "Name": self._name.decode('ascii'), 
                  "Items": self.items(),
                  "Topics": self.topics(), 
@@ -398,8 +220,9 @@ class TOS_DataBlock:
     
     def get_block_size( self ):
         """ Returns the amount of historical data stored in the block """
+        _clear_return_status()
         b_size = _ulong_()
-        err = _lib_call( "TOSDB_GetBlockSize", self._name, pointer(b_size))
+        err = _lib_call( "TOSDB_GetBlockSize", self._name, _pointer(b_size))
         if(err):
             raise TOSDB_Error( "error value [ "  + str(err) + 
                                " ] returned from library call", 
@@ -417,6 +240,7 @@ class TOS_DataBlock:
             self._block_size = sz
             
     def stream_occupancy( self, item, topic ):
+        _clear_return_status()
         item = item.upper()
         topic = topic.upper()
         self._valid_item(item)
@@ -426,7 +250,7 @@ class TOS_DataBlock:
                          self._name,
                          item.encode("ascii"),
                          topic.encode("ascii"),
-                         pointer(occ),
+                         _pointer(occ),
                          arg_list = [ _string_, _string_, _string_, 
                                       _PTR_(_ulong_) ] )
         if(err):
@@ -441,11 +265,12 @@ class TOS_DataBlock:
         str_max: the maximum length of item strings returned
         returns -> list of strings 
         """
+        _clear_return_status()
         size = self._item_count()  
         # store char buffers    
         strs = [ _BUF_(str_max + 1) for _ in range(size)]  
         # cast char buffers into (char*)[ ]     
-        strs_array = ( _pchar_* size)( *[ cast(s, _pchar_) for s in strs] ) 
+        strs_array = ( _pchar_* size)( *[ _cast(s, _pchar_) for s in strs] ) 
         err = _lib_call( "TOSDB_GetItemNames", 
                          self._name,
                          strs_array,
@@ -457,7 +282,7 @@ class TOS_DataBlock:
                                " ] returned from library call", 
                                "TOSDB_GetItemNames" )
         else:
-            return [cast(ptr, _string_).value.decode() for ptr in strs_array]            
+            return [_cast(ptr, _string_).value.decode() for ptr in strs_array]            
               
     def topics( self,  str_max = MAX_STR_SZ ):
         """ Returns the topics currently in the block (and not pre-cached).
@@ -465,11 +290,12 @@ class TOS_DataBlock:
         str_max: the maximum length of topic strings returned  
         returns -> list of strings 
         """
+        _clear_return_status()
         size = self._topic_count()
         # store char buffers
         strs = [ _BUF_(str_max + 1) for _ in range(size)]  
         # cast char buffers into (char*)[ ]
-        strs_array = ( _pchar_* size)( *[ cast(s, _pchar_) for s in strs] )         
+        strs_array = ( _pchar_* size)( *[ _cast(s, _pchar_) for s in strs] )         
         err =_lib_call( "TOSDB_GetTopicNames", 
                         self._name,
                         strs_array,
@@ -481,7 +307,7 @@ class TOS_DataBlock:
                                " ] returned from library call", 
                                "TOSDB_GetTopicNames" )            
         else:
-            return [cast(ptr, _string_).value.decode() for ptr in strs_array] 
+            return [_cast(ptr, _string_).value.decode() for ptr in strs_array] 
       
     
     def add_items( self, *items ):
@@ -572,6 +398,7 @@ class TOS_DataBlock:
         check_indx: throw if datum doesn't exist at that particular index
         data_str_max: the maximum size of string data returned
         """
+        _clear_return_status()
         item = item.upper()
         topic = topic.upper()
         if( date_time and not self._date_time ):
@@ -597,7 +424,7 @@ class TOS_DataBlock:
                             indx,
                             ret_str,
                             data_str_max + 1,
-                            ( pointer(dts) if date_time 
+                            ( _pointer(dts) if date_time 
                                            else _PTR_(_DateTimeStamp)() ),
                             arg_list = [ _string_,  _string_, _string_, 
                                          _long_, _pchar_, _ulong_, 
@@ -617,8 +444,8 @@ class TOS_DataBlock:
                              item.encode("ascii"),
                              topic.encode("ascii"),
                              indx,
-                             pointer(val),
-                             ( pointer(dts) if date_time 
+                             _pointer(val),
+                             ( _pointer(dts) if date_time 
                                             else _PTR_(_DateTimeStamp)() ),
                              arg_list = [ _string_,  _string_, _string_, 
                                           _long_, _PTR_(typeTup[1]), 
@@ -648,6 +475,7 @@ class TOS_DataBlock:
         if date_time is True: returns-> list of 2tuple
         else: returns -> list              
         """
+        _clear_return_status()
         item = item.upper()
         topic = topic.upper()
         if( date_time and not self._date_time ):
@@ -674,7 +502,7 @@ class TOS_DataBlock:
             # store char buffers
             strs = [ _BUF_(  data_str_max +1 ) for _ in range(size)]   
             # cast char buffers into (char*)[ ]          
-            strs_array = ( _pchar_ * size)( *[ cast(s, _pchar_) for s in strs] ) 
+            strs_array = ( _pchar_ * size)( *[ _cast(s, _pchar_) for s in strs] ) 
             err = _lib_call( "TOSDB_GetStreamSnapshotStrings", 
                              self._name,
                              item.encode("ascii"),
@@ -697,11 +525,11 @@ class TOS_DataBlock:
             if ( date_time ):
                 adj_dts =  [TOS_DateTime( x ) for x in dtss]
                 return [_ for _ in zip( 
-                            map( lambda x : cast(x, _string_).value.decode(), 
+                            map( lambda x : _cast(x, _string_).value.decode(), 
                                  strs_array ), 
                             adj_dts ) ]        
             else:
-                return [cast(ptr,_string_).value.decode() for ptr in strs_array]
+                return [_cast(ptr,_string_).value.decode() for ptr in strs_array]
         else:
             num_array =  (typeTup[1] * size)()   
             err = _lib_call( "TOSDB_GetStreamSnapshot"+typeTup[0]+"s", 
@@ -743,7 +571,7 @@ class TOS_DataBlock:
         if date_time is True: returns -> list of 2tuple
         else returns-> list
         """
-        global _namedtuple_flag
+        _clear_return_status()
         topic = topic.upper()
         if( date_time and not self._date_time ):
             raise TOSDB_Error( " date_time is not available for this block " )
@@ -753,13 +581,13 @@ class TOS_DataBlock:
         # store char buffers
         labs = [ _BUF_(label_str_max+1) for _ in range(size)] 
         # cast char buffers int (char*)[ ]
-        labs_array = ( _pchar_ * size)( *[ cast(s, _pchar_) for s in labs] )  
+        labs_array = ( _pchar_ * size)( *[ _cast(s, _pchar_) for s in labs] )  
         tBits = type_bits( topic )
         typeTup = _type_switch( tBits )       
         if (typeTup[0] is "String"):                     
             # store char buffers 
             strs = [ _BUF_(  data_str_max + 1 ) for _ in range(size)]               
-            strs_array = ( _pchar_ * size)( *[ cast(s, _pchar_) for s in strs] ) 
+            strs_array = ( _pchar_ * size)( *[ _cast(s, _pchar_) for s in strs] ) 
             # cast char buffers int (char*)[ ]                
             err = _lib_call( "TOSDB_GetItemFrameStrings", 
                              self._name,
@@ -779,14 +607,14 @@ class TOS_DataBlock:
                 raise TOSDB_Error( "error value [ " + str(err) + 
                                    " ] returned from library call",
                                    "TOSDB_GetItemFrameStrings" )
-            s_map = map( lambda x : cast(x, _string_).value.decode(), 
+            s_map = map( lambda x : _cast(x, _string_).value.decode(), 
                          strs_array )           
             if( labels):
-                l_map = map( lambda x : cast(x, _string_).value.decode(), 
+                l_map = map( lambda x : _cast(x, _string_).value.decode(), 
                              labs_array )
-                _ntuple_ = namedtuple( _str_clean(topic)[0], 
+                _ntuple_ = _namedtuple( _str_clean(topic)[0], 
                                        _str_clean( *l_map ) )
-                _namedtuple_flag = True
+                self._namedtuple_flag = True
                 if( date_time ):
                     adj_dts = [TOS_DateTime( x ) for x in dtss]
                     return _ntuple_( *zip( s_map, adj_dts ) )                        
@@ -819,11 +647,11 @@ class TOS_DataBlock:
                                    " ] returned from library call",
                                    "TOSDB_GetItemFrame"+typeTup[0]+"s" ) 
             if( labels):                                
-                l_map = map( lambda x : cast(x, _string_).value.decode(), 
+                l_map = map( lambda x : _cast(x, _string_).value.decode(), 
                              labs_array )
-                _ntuple_ = namedtuple( _str_clean(topic)[0], 
+                _ntuple_ = _namedtuple( _str_clean(topic)[0], 
                                        _str_clean( *l_map ) )
-                _namedtuple_flag = True
+                self._namedtuple_flag = True
                 if( date_time ):
                     adj_dts = [TOS_DateTime( x ) for x in dtss]
                     return _ntuple_( *zip( num_array, adj_dts ) )                        
@@ -851,7 +679,7 @@ class TOS_DataBlock:
         if date_time is True: returns -> list of 2tuple
         else returns-> list
         """
-        global _namedtuple_flag
+        _clear_return_status()
         item = item.upper()
         if( date_time and not self._date_time ):
             raise TOSDB_Error( " date_time is not available for this block " )
@@ -862,8 +690,8 @@ class TOS_DataBlock:
         labs = [ _BUF_( label_str_max + 1 ) for _ in range(size)] 
         strs = [ _BUF_( data_str_max + 1 ) for _ in range(size)] 
         # cast char buffers int (char*)[ ]                      
-        labs_array = ( _pchar_ * size)( *[ cast(s, _pchar_) for s in labs] ) 
-        strs_array = ( _pchar_ * size)( *[ cast(s, _pchar_) for s in strs] )  
+        labs_array = ( _pchar_ * size)( *[ _cast(s, _pchar_) for s in labs] ) 
+        strs_array = ( _pchar_ * size)( *[ _cast(s, _pchar_) for s in strs] )  
         err = _lib_call( "TOSDB_GetTopicFrameStrings", 
                          self._name,
                          item.encode("ascii"),
@@ -882,13 +710,13 @@ class TOS_DataBlock:
             raise TOSDB_Error( "error value of [ " + str(err)  + 
                                " ] returned from library call",
                                "TOSDB_GetTopicFrameStrings" ) 
-        s_map = map( lambda x : cast(x, _string_).value.decode(), strs_array)
+        s_map = map( lambda x : _cast(x, _string_).value.decode(), strs_array)
         if( labels):
-            l_map = map( lambda x : cast(x, _string_).value.decode(), 
+            l_map = map( lambda x : _cast(x, _string_).value.decode(), 
                          labs_array )
-            _ntuple_ = namedtuple( _str_clean(item)[0], 
+            _ntuple_ = _namedtuple( _str_clean(item)[0], 
                                    _str_clean( *l_map ) )
-            _namedtuple_flag = True
+            self._namedtuple_flag = True
             if( date_time ):
                 adj_dts = [TOS_DateTime( x ) for x in dtss]
                 return _ntuple_( *zip( s_map, adj_dts ) )                        
@@ -930,30 +758,428 @@ class TOS_DataBlock:
                                         label_str_max) for item 
                                                        in self.items() ]
 
-if __name__ == "__main__": 
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--root", 
-        help = "root directory to start searching for the library" )
+###
+###
+###            
+
+class VTOS_DataBlock:
+    """ The main object for storing TOS data. (VIRTUAL)   
+
+    address: the adddress of the actual implementation
+    size: how much historical data to save
+    date_time: should block include date-time stamp with each data-point?
+    timeout: how long to wait for responses from TOS-DDE server 
+
+    Please review the attached README.html for details.
+    """
+
+    # check that address is 2-tuple
+    def __init__( self, address, size = 1000, date_time = False,
+                  timeout = DEF_TIMEOUT ):
+        self._my_addr = address
+        self._my_sock = _socket.socket( _socket.AF_INET, _socket.SOCK_DGRAM )
+        self._name = self._call( _virtual_CREATE, '__init__',
+                                 ('i',size), ('b',date_time), ('i',timeout) )
+        
+    def __del__( self ):
+        try:
+            if self._call( _virtual_DESTROY ):
+                self._my_sock.close()
+        except TOSDB_Error as e:
+            print( e.args[0] )          
+
+    def __str__( self ):
+        return self._call( _virtual_CALL, '__str__' )    
+  
+    def _valid_item( self, item ):
+        try:
+            self._call( _virtual_CALL, '_valid_item', ('s',item) )
+        except TOSDB_Error as e:
+            raise TOSDB_Error( item + " not found")
+
+    def _valid_topic( self, topic ):
+        try:
+            self._call( _virtual_CALL, '_valid_topic', ('s',topic) )
+        except TOSDB_Error as e:
+            raise TOSDB_Error( topic + " not found")
+
+    def _item_count( self ):
+        return self._call( _virtual_CALL, '_item_count' )
+
+    def _topic_count( self ):
+        return self._call( _virtual_CALL, '_topic_count' )
+
+    def info(self):
+        """ Returns a more readable dict of info about the underlying block """
+        return self._call( _virtual_CALL, 'info' )
+    
+    def get_block_size( self ):
+        """ Returns the amount of historical data stored in the block """
+        return self._call( _virtual_CALL, 'get_block_size' )
+    
+    def set_block_size( self, sz ):
+        """ Changes the amount of historical data stored in the block """
+        self._call( _virtual_CALL, 'set_block_size', ('i',sz) )
+            
+    def stream_occupancy( self, item, topic ):
+        return self._call( _virtual_CALL, 'stream_occupancy', ('s',item),
+                           ('s',topic) )
+    
+    def items( self, str_max = MAX_STR_SZ ):
+        """ Returns the items currently in the block (and not pre-cached).
+        
+        str_max: the maximum length of item strings returned
+        returns -> list of strings 
+        """
+        return self._call( _virtual_CALL, 'items', ('i',str_max) )          
+              
+    def topics( self,  str_max = MAX_STR_SZ ):
+        """ Returns the topics currently in the block (and not pre-cached).
+        
+        str_max: the maximum length of topic strings returned  
+        returns -> list of strings 
+        """
+        return self._call( _virtual_CALL, 'topics', ('i',str_max) ) 
+      
+    
+    def add_items( self, *items ):
+        """ Add items ( ex. 'IBM', 'SPY' ) to the block.
+
+        NOTE: if there are no topics currently in the block, these items will 
+        be pre-cached and appear not to exist, until a valid topic is added.
+
+        *items: any numer of item strings
+        """               
+        self._call( _virtual_CALL, 'add_items', *zip('s'*len(items), items) )
+       
+
+    def add_topics( self, *topics ):
+        """ Add topics ( ex. 'LAST', 'ASK' ) to the block.
+
+        NOTE: if there are no items currently in the block, these topics will 
+        be pre-cached and appear not to exist, until a valid item is added.
+
+        *topics: any numer of topic strings
+        """               
+        self._call( _virtual_CALL, 'add_topics', *zip('s'*len(topics), topics) )
+
+    def remove_items( self, *items ):
+        """ Remove items ( ex. 'IBM', 'SPY' ) from the block.
+
+        NOTE: if there this call removes all items from the block the 
+        remaining topics will be pre-cached and appear not to exist, until 
+        a valid item is re-added.
+
+        *items: any numer of item strings
+        """
+        self._call( _virtual_CALL, 'remove_items', *zip('s'*len(items), items) )
+
+    def remove_topics( self, *topics ):
+        """ Remove topics ( ex. 'LAST', 'ASK' ) from the block.
+
+        NOTE: if there this call removes all topics from the block the 
+        remaining items will be pre-cached and appear not to exist, until 
+        a valid topic is re-added.
+
+        *topics: any numer of topic strings
+        """
+        self._call( _virtual_CALL, 'remove_topics', *zip('s'*len(topics), topics) )
+        
+    def get( self, item, topic, date_time = False, indx = 0, 
+             check_indx = True, data_str_max = STR_DATA_SZ ):
+        """ Return a single data-point from the data-stream
+        
+        item: any item string in the block
+        topic: any topic string in the block
+        date_time: (True/False) attempt to retrieve a TOS_DateTime object   
+        indx: index of data-points [0 to block_size), [-block_size to -1]
+        check_indx: throw if datum doesn't exist at that particular index
+        data_str_max: the maximum size of string data returned
+        """
+        return self._call( _virtual_CALL, 'get', ('s',item), ('s',topic),
+                           ('b',date_time), ('i',indx), ('b',check_indx),
+                           ('i', data_str_max) )
+
+    def stream_snapshot( self, item, topic, date_time = False, 
+                         end = -1, beg = 0, smart_size = True, 
+                         data_str_max = STR_DATA_SZ ):
+        """ Return multiple data-points(a snapshot) from the data-stream
+        
+        item: any item string in the block
+        topic: any topic string in the block
+        date_time: (True/False) attempt to retrieve a TOS_DateTime object              
+        end: index of least recent data-point ( end of the snapshot )
+        beg: index of most recent data-point ( beginning of the snapshot )        
+        smart_size: limits amount of returned data by data-stream's occupancy
+        data_str_max: the maximum length of string data returned
+
+        if date_time is True: returns-> list of 2tuple
+        else: returns -> list              
+        """
+        return self._call( _virtual_CALL, 'stream_snapshot', ('s',item),
+                           ('s',topic), ('b',date_time), ('i',end), ('i',beg),
+                           ('b',smart_size), ('i', data_str_max) )
+
+    def item_frame( self, topic, date_time = False, labels = True, 
+                    data_str_max = STR_DATA_SZ,
+                    label_str_max = MAX_STR_SZ ):
+        """ Return all the most recent item values for a particular topic.
+
+        topic: any topic string in the block
+        date_time: (True/False) attempt to retrieve a TOS_DateTime object       
+        labels: (True/False) pull the item labels with the values 
+        data_str_max: the maximum length of string data returned
+        label_str_max: the maximum length of item label strings returned
+
+        if labels and date_time are True: returns-> namedtuple of 2tuple
+        if labels is True: returns -> namedtuple
+        if date_time is True: returns -> list of 2tuple
+        else returns-> list
+        """
+        return self._call( _virtual_CALL, 'item_frame', ('s',topic),
+                           ('b',date_time), ('b',labels), ('i', data_str_max),
+                           ('i', label_str_max) )   
+
+    def topic_frame( self, item, date_time = False, labels = True, 
+                     data_str_max = STR_DATA_SZ,
+                     label_str_max = MAX_STR_SZ ):
+        """ Return all the most recent topic values for a particular item:
+  
+        item: any item string in the block
+        date_time: (True/False) attempt to retrieve a TOS_DateTime object       
+        labels: (True/False) pull the topic labels with the values 
+        data_str_max: the maximum length of string data returned
+        label_str_max: the maximum length of topic label strings returned
+
+        if labels and date_time are True: returns-> namedtuple of 2tuple
+        if labels is True: returns -> namedtuple
+        if date_time is True: returns -> list of 2tuple
+        else returns-> list
+        """
+        return self._call( _virtual_CALL, 'topic_frame', ('s',item),
+                           ('b',date_time), ('b',labels), ('i', data_str_max),
+                           ('i', label_str_max) )
+
+    def total_frame( self, date_time = False, labels = True, 
+                     data_str_max = STR_DATA_SZ,
+                     label_str_max = MAX_STR_SZ ):
+        """ Return a matrix of the most recent values:  
+        
+        date_time: (True/False) attempt to retrieve a TOS_DateTime object        
+        labels: (True/False) pull the item and topic labels with the values 
+        data_str_max: the maximum length of string data returned
+        label_str_max: the maximum length of label strings returned
+        
+        if labels and date_time are True: returns-> dict of namedtuple of 2tuple
+        if labels is True: returns -> dict of namedtuple
+        if date_time is True: returns -> list of 2tuple
+        else returns-> list
+        """
+        return self._call( _virtual_CALL, 'total_frame', ('b',date_time),
+                           ('b',labels), ('i', data_str_max),
+                           ('i', label_str_max) )
+    
+    def _call( self, virt_type, method='', *arg_buffer ):
+        req_b = b''
+        if virt_type == _virtual_CREATE:
+            req_b = _virtual_CREATE.encode() + (b' ' + _pickle.dumps(arg_buffer))
+        elif virt_type == _virtual_CALL:
+            req_b = (_virtual_CALL + ' ' + self._name + ' ' + method).encode()
+            if arg_buffer:
+                req_b += (b' ' + _pickle.dumps(arg_buffer))
+        elif virt_type == _virtual_DESTROY:
+            req_b = (_virtual_CREATE + ' ' + self._name).encode()
+        else:
+            raise TOSDB_Error( "Type Error: virt_type" )        
+        c = self._my_sock.sendto( req_b, self._my_addr )
+        if c == 0:
+            raise TOSDB_Error("_call -> sendto() failed")
+        else:
+            ret_b = self._my_sock.recv( 1000 )
+            print(ret_b)
+            # hold off on decode til we un-pickle 
+            args = ret_b.strip().split(b' ')
+            status = args[0].decode()
+            if status == _virtual_FAIL:
+                raise TOSDB_Error( "underlying block returned failure status: " +
+                                    args[1].decode(),
+                                   "virt_type: " + str(virt_type),
+                                   "method_or_name: " + str(method_or_name),
+                                   "arg_buffer: " + str(arg_buffer) )
+            else:
+                if virt_type == _virtual_CREATE:
+                    return args[1].decode()
+                elif virt_type == _virtual_CALL and len(args) > 1:
+                    if status == _virtual_SUCCESS_NT:
+                        return _loadnamedtuple( args[1] )
+                    else:
+                        return _pickle.loads( args[1] )
+                elif virt_type == _virtual_DESTROY:
+                    return True
+
+###
+###
+###            
+    
+def enable_virtualization( address ):
+    global _virtual_data_server
+    
+    def _create_callback( *args ):
+        global _virtual_blocks
+        print("DEBUG", "in _create_callback")
+        blk = None
+        try:
+            print( *args )
+            blk = TOS_DataBlock( *args ) 
+            _virtual_blocks[blk._name] = blk
+            return blk._name                                       
+        except:
+            if blk:
+                _virtual_blocks.pop(blk._name)
+                del blk
+            return False       
+
+    def _destroy_callback( name ):
+        global _virtual_blocks
+        print("DEBUG", "in _destroy_callback")
+        try:
+            blk = _virtual_blocks.pop( name )
+            del blk
+            return True
+        except:
+            return False
+
+    # clean up encoding/decoding ops
+    # output exception somewhere
+    def _call_callback( name, meth, *args):
+        global _virtual_blocks
+        print("DEBUG", "in _call_callback")
+        try:
+            name = name.encode('ascii')
+            print( name, meth, *args)
+            blk = _virtual_blocks[ name ]         
+            meth = getattr(blk, meth )          
+            ret = meth( *args )          
+            return (ret,blk._namedtuple_flag) if ret else True
+        except Exception as e:
+            print( str(e) )
+            return False
+        finally:
+            self._namedtuple_flag = False
+
+    class _VTOS_DataServer( _Thread ):
+        
+        def __init__( self, address, create_callback, destroy_callback,
+                      call_callback):
+            super().__init__()
+            self._my_addr = address
+            self._create_callback = create_callback
+            self._destroy_callback = destroy_callback
+            self._call_callback = call_callback
+            self._rflag = False
+            self._my_sock = _socket.socket( _socket.AF_INET, _socket.SOCK_DGRAM )
+            self._my_sock.bind( address )
+            
+        def stop(self):
+            self._rflag = False
+            self._my_sock.close()
+
+        def run(self):
+            self._rflag = True
+            # need a more active way to break out, poll more often !
+            while self._rflag:           
+                dat, addr = self._my_sock.recvfrom( _virtual_MAX_REQ_SZ )            
+                if not dat:
+                    continue
+                print(dat) #DEBUG#
+                args = dat.strip().split(b' ')
+                msg_t = args[0].decode()
+                ret_b = _virtual_FAIL.encode()
+                if msg_t == _virtual_CREATE:
+                    upargs = _pickle.loads(args[1])                
+                    cargs = [ _virtual_VAR_TYPES[t](v) for t,v in upargs ]
+                    print('create upargs', upargs)
+                    ret = self._create_callback( *cargs )
+                    if ret:
+                        ret_b = (_virtual_SUCESS + ' ').encode() + ret                                                                   
+                elif msg_t == _virtual_CALL:
+                    if len(args) > 3:              
+                        upargs = _pickle.loads(args[3])
+                        cargs = [ _virtual_VAR_TYPES[t](v) for t,v in upargs ]
+                        print('call upargs', upargs)
+                        ret = self._call_callback( args[1].decode(),
+                                                   args[2].decode(), *cargs)
+                    else:
+                        ret = self._call_callback( args[1].decode(),
+                                                   args[2].decode() )                        
+                    if ret:
+                        ret_b = _virtual_SUCESS.encode()
+                        if type(ret) != bool:
+                            if ret[1]: #namedtuple special case
+                                ret_b = _virtual_SUCCESS_NT.encode() \
+                                        + b' ' + _dumpnamedtuple(ret[0])
+                            else:
+                                ret_b += b' ' + _pickle.dumps(ret[0])                        
+                elif msg_t == _virtual_DESTROY:
+                    if self._virtual_destroy_callback( args[1].decode() ):
+                        ret_b = _virtual_SUCESS.encode()                           
+                
+                self._my_sock.sendto( ret_b, addr )
+
+    try:
+        _virtual_data_server = _VTOS_DataServer( address,_create_callback,
+                                                _destroy_callback,_call_callback)
+        _virtual_data_server.start()      
+    except Exception as e:
+        raise TOSDB_Error("virtualization error", str(e) )
+
+def disable_virtualization():
+    try:
+        if _virtual_data_server is not None:
+           _virtual_data_server.stop()
+           _virtual_data_server = None
+           _virtual_blocks.clear()
+    except Exception as e:
+        raise TOSDB_Error("virtualization error", str(e) )    
+
+def _dumpnamedtuple( nt ):
+    n = type(nt).__name__
+    od = nt.__dict__
+    return _pickle.dumps( (n,tuple(od.keys()),tuple(od.values())) )
+
+def _loadnamedtuple( nt):
+    name,keys,vals = _pickle.loads( nt )
+    ty = _namedtuple( name, keys )
+    return ty( *vals )
+
+def _handle_args():
+    parser = _ArgumentParser()
+    parser.add_argument( "--root", 
+                         help = "root directory to search for the library" )
     parser.add_argument( "--path", help="the exact path of the library" )
     parser.add_argument( "-n", "--noinit", 
-        help="don't initialize the library automatically", action="store_true" )
+                         help="don't initialize the library automatically",
+                         action="store_true" )
     args = parser.parse_args()   
-    if(not args.noinit):
-        if( args.path ):
-            init( dllpath = args.path )
-        elif( args.root ):
-            init( root = args.root )
+    if(args.noinit):
+        return
+    if( args.path ):
+        init( dllpath = args.path )
+    elif( args.root ):
+        init( root = args.root )
+    else:
+        print( "*WARNING* by not supplying --root, --path, or " +
+               "--noinit( -n ) arguments you are opting for a default " +
+               "search root of 'C:\\'. This will attempt to search " +
+               "the ENTIRE disk/drive for the tos-databridge library. " +
+               "It's recommended you restart the program with the " +
+               "library path (after --path) or a narrower directory " +
+               "root (after --root)." )                
+        if( input( "Do you want to continue anyway? (y/n): ") == 'y' ):
+            init()
         else:
-            print( "*WARNING* by not supplying --root, --path, or --noinit " +
-                   "( -n )  arguments you are opting for a default search " + 
-                   "root of 'C:\\'. This will attempt to search the ENTIRE " +
-                   "disk/drive for the tos-databridge library. It's " + 
-                   "recommended you restart the program with the library " +
-                   "path (after --path) or a narrower directory root " +
-                   "(after --root)." )
-            resp = input( "Do you want to continue anyway? (y/n): ")
-            if( resp == 'y' ):
-                init()
-            else:
-                print("- init(root='C:\\') aborted")
+            print("- init(root='C:\\') aborted")
+        
+
+
                 

@@ -26,20 +26,16 @@ provides static utility functions to convert betwen DateTimeDiff objects
 and microseconds.
 """
 
+from _tosdb_errors import *
 from collections import namedtuple
 from time import mktime, struct_time, asctime, localtime, strftime
-from ctypes import Structure, c_long as _long_, c_int as _int_
+from ctypes import Structure as _Structure, c_long as _long_, c_int as _int_
 
 BASE_YR = 1900
 
-class TOSDB_Error(Exception):
-    """ Base exception for tosdb.py """    
-    def __init__(self,  *messages ):        
-        Exception( *messages )
-
-class _DateTimeStamp(Structure):
+class _DateTimeStamp(_Structure):
     """ Our 'private' C stdlib date-time struct w/ added micro-second field """
-    class _CTime(Structure):
+    class _CTime(_Structure):
         """ C stdlib tm struct """
         _fields_ =  [ ("tm_sec", _int_),
                       ("tm_min", _int_),
