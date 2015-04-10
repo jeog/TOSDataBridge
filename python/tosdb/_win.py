@@ -46,7 +46,9 @@ _ppchar_ = _PTR_( _pchar_ )
 DLL_BASE_NAME = "tos-databridge"
 SYS_ARCH_TYPE = "x64" if ( _log( _maxsize * 2, 2) > 33 ) else "x86"
 
+# move to _tosdb
 _NTUP_TAG_ATTR = "_dont_worry_about_why_this_attribute_has_a_weird_name_"
+
 _REGEX_NON_ALNUM = _compile("[\W+]")
 _REGEX_DLL_NAME = _compile('^('+DLL_BASE_NAME 
                           + '-)[\d]{1,2}.[\d]{1,2}-'
@@ -798,7 +800,7 @@ def _type_switch( typeB ):
 
 # create a custom namedtuple with an i.d tag for special pickling
 def _gen_namedtuple( name, attrs ):
-    nt = _namedtuple( name, attr )
+    nt = _namedtuple( name, attrs )
     setattr(nt, _NTUP_TAG_ATTR, True)
     return nt
 

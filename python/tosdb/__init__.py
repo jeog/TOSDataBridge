@@ -124,7 +124,10 @@ _virtual_SUCCESS = '5'
 _virtual_SUCCESS_NT = '6'
 _virtual_MAX_REQ_SZ = 512 # arbitrary for now
                            # need to handle large return values i.e a million vals
-_virtual_VAR_TYPES = {'i':int,'s':str,'b':bool}   
+_virtual_VAR_TYPES = {'i':int,'s':str,'b':bool}
+
+# move to _tosdb
+_NTUP_TAG_ATTR = "_dont_worry_about_why_this_attribute_has_a_weird_name_"
 
 class VTOS_DataBlock:
     """ The main object for storing TOS data. (VIRTUAL)   
@@ -338,7 +341,7 @@ class VTOS_DataBlock:
             if arg_buffer:
                 req_b += (b' ' + _pickle.dumps(arg_buffer))
         elif virt_type == _virtual_DESTROY:
-            req_b = (_virtual_CREATE + ' ' + self._name).encode()
+            req_b = (_virtual_DESTROY + ' ' + self._name).encode()
         else:
             raise TOSDB_VirtError( "invalid virt_type" )        
         
@@ -347,7 +350,7 @@ class VTOS_DataBlock:
             raise TOSDB_VirtCommError("sendto() failed", "VTOS_DataBlock._call")
                   
         try:
-            ret_b = _recv_udp( self._my_sock, _virtual_MAX_REQ_SZ )
+            ret_b = _recv_udp( self._my_sock, _virtual_MAX_REQ_SZ )[0]
         except _socket.timeout as e:
             raise TOSDB_VirtCommError("socket timed out","VTOS_DataBlock._call")
             
@@ -360,7 +363,7 @@ class VTOS_DataBlock:
             # more info on what happened
             raise TOSDB_VirtError( "failure status returned: ",
                                    "virt_type: " + str(virt_type),
-                                   "method_or_name: " + str(method_or_name),
+                                   "method: " + str(method),
                                    "arg_buffer: " + str(arg_buffer) )
         
         if virt_type == _virtual_CREATE:
@@ -391,7 +394,8 @@ def enable_virtualization( address ):
             blk = TOS_DataBlock( *args ) 
             _virtual_blocks[blk._name] = (blk, addr)
             return blk._name                                       
-        except:
+        except Exception as e:
+            print('create exc', e)
             if blk:
                 _virtual_blocks.pop(blk._name)
                 del blk
@@ -440,7 +444,8 @@ def enable_virtualization( address ):
             self._rflag = False
             self._my_sock.close()
 
-        def _handle_create( args, addr ):
+        def _handle_create( self, args, addr ):
+            print("X", args )
             upargs = _pickle.loads(args[1])                
             cargs = [ _virtual_VAR_TYPES[t](v) for t,v in upargs ]
             print('create upargs', upargs)
@@ -448,7 +453,7 @@ def enable_virtualization( address ):
             if ret:
                 return (_virtual_SUCCESS + ' ').encode() + ret           
 
-        def _handle_call( args ):
+        def _handle_call( self, args ):
             if len(args) > 3:              
                 upargs = _pickle.loads(args[3])
                 cargs = [ _virtual_VAR_TYPES[t](v) for t,v in upargs ]
@@ -458,7 +463,7 @@ def enable_virtualization( address ):
             else:
                 ret = self._call_callback( args[1].decode(), args[2].decode() )          
             if ret:
-                ret_b = _virtual_SUCESS.encode()
+                ret_b = _virtual_SUCCESS.encode()
                 if type(ret) != bool:
                     if hasattr(ret,_NTUP_TAG_ATTR):
                         ret_b = _virtual_SUCCESS_NT.encode() \
@@ -467,7 +472,7 @@ def enable_virtualization( address ):
                         ret_b += b' ' + _pickle.dumps(ret) 
                 return ret_b          
 
-        def _handle_destroy( args ):
+        def _handle_destroy( self, args ):
             if self._virtual_destroy_callback( args[1].decode() ):
                 return _virtual_SUCCESS.encode()                 
 
@@ -480,7 +485,7 @@ def enable_virtualization( address ):
                     dat = None
                 if not dat:
                     continue
-                print(dat) #DEBUG#
+                print('dat',dat) #DEBUG#
                 args = dat.strip().split(b' ')
                 msg_t = args[0].decode()
                 r = None
@@ -493,6 +498,8 @@ def enable_virtualization( address ):
                 _send_udp( self._my_sock, addr, 
                            r if r else _virtual_FAIL.encode(), 
                            _virtual_MAX_REQ_SZ )
+                dat = None
+                addr = None
 
     try:
         _virtual_data_server = _VTOS_DataServer( address, _create_callback,
@@ -521,6 +528,7 @@ def _send_udp( sock, addr, data, dgram_sz ):
     return snt
 
 def disable_virtualization():
+    global _virtual_data_server, _virtual_blocks
     try:
         if _virtual_data_server is not None:
            _virtual_data_server.stop()

@@ -9,7 +9,7 @@ from io import StringIO
 from platform import system
 import sys
 
-_isWinSys = system() in ["Windows","windows"]
+_isWinSys = system() in ["Windows","windows","WINDOWS"]
 _sysArch = "x64" if ( log( sys.maxsize * 2, 2) > 33 ) else "x86"
 _sysArchD = "Win32" if _sysArch == "x86" else "x64"
 _sysMinorV = sys.version_info.minor
@@ -24,8 +24,10 @@ setup_dict = {
 }      
          
 # the cross platfrom stub
-ext_stub = Extension( "_tosdb", sources=[ "_tosdb.cpp" ], 
-                      include_dirs=[ "../include" ], optional=True )
+ext_stub = Extension( "_tosdb",
+                      sources=[ "_tosdb.cpp" ], 
+                      include_dirs=[ "../include" ],
+                      optional=True )
 
 ext_win = Extension( **ext_stub.__dict__ )
 
@@ -61,14 +63,14 @@ try: # capture setup errors but allow setup to complete (optional=True)
 except (BaseException) as err:
     print("- fatal error thrown during setup: ",type(err))
     print(err)
-    if _isWindSys:           
+    if _isWinSys:           
         print("+ Would you like to try again with a pre-compiled _tosdb.pyd?")         
         if input() in ["y","Y","yes","Yes","YES"]:            
             pydF = "_tosdb-"+str(_sysArch)+"-"+str(_sysMinorV)+".pyd"
             if pydF in listdir():           
                 print("Found _tosdb.pyd, sending it to python root directory")
                 copy2("./"+pydF, "./_tosdb.pyd")
-                setup( data_files=[(".",["_tosdb.pyd"]) ], **setup_dict_win )
+                setup( data_files=[(".",["_tosdb.pyd"]) ], **setup_dict )
                 remove("./_tosdb.pyd")
             else:
                 print("Sorry, can't find one that matches your python version.")
