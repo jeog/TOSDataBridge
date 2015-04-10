@@ -47,8 +47,7 @@ class _DateTimeStamp(_Structure):
                       ("tm_yday", _int_),
                       ("tm_isdst", _int_) ]
             
-    _fields_ =  [ ("ctime_struct", _CTime),
-                  ("micro_second", _long_) ]
+    _fields_ =  [ ("ctime_struct", _CTime), ("micro_second", _long_) ]
 
 class TOS_DateTime( namedtuple( "DateTime",
                     ["micro","sec","min","hour","day","month","year"])):
@@ -67,64 +66,70 @@ class TOS_DateTime( namedtuple( "DateTime",
         micro_second: optional if adding a time.struct_time that lacks a 
         micro_second field
     """
-    dtd_tuple = namedtuple("DateTimeDiff",
-                            ["micro","sec","min","hour","day","sign"])
+    dtd_tuple = namedtuple( "DateTimeDiff",
+                            ["micro","sec","min","hour","day","sign"] )
     _mktime = None # cache total sec from epoch to make ops easier
+    
     @staticmethod
     def _createSTime( object ):
-        return struct_time( [ object.ctime_struct.tm_year  + BASE_YR,
-            object.ctime_struct.tm_mon +1, object.ctime_struct.tm_mday,
-            object.ctime_struct.tm_hour, object.ctime_struct.tm_min,
-            object.ctime_struct.tm_sec, object.ctime_struct.tm_wday + 1,
-            object.ctime_struct.tm_yday + 1, object.ctime_struct.tm_isdst ] )
+        return struct_time( [ object.ctime_struct.tm_year + BASE_YR,
+                              object.ctime_struct.tm_mon +1,
+                              object.ctime_struct.tm_mday,
+                              object.ctime_struct.tm_hour,
+                              object.ctime_struct.tm_min,
+                              object.ctime_struct.tm_sec,
+                              object.ctime_struct.tm_wday + 1,
+                              object.ctime_struct.tm_yday + 1,
+                              object.ctime_struct.tm_isdst ] )
 
     def __getnewargs__(self):        
         return ( (self.sec,self.min,self.hour,self.day,self.month,self.year),
-                self.micro ) 
+                 self.micro ) 
     
     def __new__( cls, object, micro_second = 0 ):
         if micro_second != 0:
             micro_second %= 1000000
         _stime = None      
-        if( isinstance( object, _DateTimeStamp ) ):
+        if isinstance( object, _DateTimeStamp ):
               _stime = cls._createSTime( object )
               micro_second = object.micro_second
-        elif( isinstance( object, struct_time ) ):
+        elif isinstance( object, struct_time ):
             _stime = object
-        elif( isinstance( object, TOS_DateTime) ):
+        elif isinstance( object, TOS_DateTime):
             return super(TOS_DateTime, cls).__new__( cls, object.micro,
                                                      object.sec, object.min,
                                                      object.hour, object.day,
                                                      object.month, object.year )
-        elif( isinstance( object, tuple )):
+        elif isinstance( object, tuple ):
             return super(TOS_DateTime, cls).__new__( cls, micro_second, *object)
         else:
-            raise TypeError( "invalid 'object' passed to __new__")   
+            raise TOSDB_DateTimeError( "invalid 'object' passed to __new__" )
+        
         return super(TOS_DateTime, cls).__new__( cls, micro_second,
                                                  _stime.tm_sec, _stime.tm_min,
                                                  _stime.tm_hour, _stime.tm_mday,
                                                  _stime.tm_mon, _stime.tm_year )
 
     def __init__(self, object, micro_second=0):
-        if( isinstance( object, _DateTimeStamp ) ):
+        if isinstance( object, _DateTimeStamp ):
               self._mktime = mktime( TOS_DateTime._createSTime( object ) )          
-        elif( isinstance( object, struct_time ) ):
+        elif isinstance( object, struct_time ):
             self._mktime = mktime(object)
-        elif( isinstance( object, TOS_DateTime) ):
+        elif isinstance( object, TOS_DateTime):
             self._mktime = object._mktime
         else:
-            raise TypeError( "invalid 'object' passed to __init__")
+            raise TOSDB_DateTimeError( "invalid 'object' passed to __init__" )
 
     def __str__( self ):
         return strftime( "%m/%d/%y %H:%M:%S", 
                           localtime( self._mktime ) ) + " " + str(self.micro)
 
     def __add__(self, micro_seconds ):
-        if( not isinstance(micro_seconds, int) ):                
-            raise TypeError( "micro_seconds must be integer")
+        if not isinstance(micro_seconds, int):                
+            raise TOSDB_DateTimeError( "micro_seconds must be integer" )
         incr_sec = micro_seconds // 1000000
         ms_new = self.micro + ( micro_seconds % 1000000  )        
-        if(  ms_new >= 1000000 ):
+        if ms_new >= 1000000:
             incr_sec += 1
             ms_new -= 1000000
         # reduce to seconds, increment, return to struct_time        
@@ -137,12 +142,12 @@ class TOS_DateTime( namedtuple( "DateTime",
     def __sub__(self, other_or_micro_sec ):
         other = other_or_micro_sec
         # if we are subtracting an integer
-        if( isinstance( other , int ) ):
-            if ( other < 0 ):
+        if isinstance( other , int ):
+            if other < 0:
                 return self.__add__( other * -1 )
             other_sec = other // 1000000
             ms_diff = self.micro - ( other % 1000000 )
-            if( ms_diff < 0 ): # take a second, if needed
+            if ms_diff < 0: # take a second, if needed
                 other_sec += 1
                 ms_diff += 1000000
             # reduce to seconds, decrement, return to stuct_time          
@@ -152,16 +157,17 @@ class TOS_DateTime( namedtuple( "DateTime",
             # return a new TOS_DateTime 
             return TOS_DateTime( new_time, micro_second = ms_diff )            
         # if we are subtracting another TOS_DateTime
-        elif( isinstance( other, TOS_DateTime) ):
+        elif isinstance( other, TOS_DateTime):
             try: # try to get other's time in seconds                                         
                 sec_diff = self._mktime - other._mktime         
                 ms_diff = self.micro - other.micro
                 # convert the diff in micro_seconds to the diff-tuple
                 return TOS_DateTime.micro_to_dtd( sec_diff * 1000000 + ms_diff )     
             except Exception as e:
-                raise TOSDB_Error( "invalid TOS_DateTime object (other)", e )
+                raise TOSDB_DateTimeError( "invalid TOS_DateTime object", e )
         else:
-              raise TypeError( "other_or_micro_sec must be TOS_DateTime or int")
+            raise TOSDB_DateTimeError( "other_or_micro_sec must be " +
+                                       "TOS_DateTime or int" )
 
     def __lt__( self, other ):
         return (self._compare( other ) < 0)
@@ -182,10 +188,10 @@ class TOS_DateTime( namedtuple( "DateTime",
         return (self._compare( other ))
     
     def _compare( self, other ):
-        if( not isinstance( other, TOS_DateTime ) ):
-            raise TypeError("unorderable types") 
+        if not isinstance( other, TOS_DateTime ):
+            raise TOSDB_DateTimeError("unable to compare; unorderable types") 
         diff = self._mktime - other._mktime
-        if ( diff == 0 ):            
+        if diff == 0:            
             diff = self.micro - other.micro   
         return (-1 if diff < 0 else 1) if diff else 0         
 
@@ -193,7 +199,7 @@ class TOS_DateTime( namedtuple( "DateTime",
     def micro_to_dtd( micro_seconds ):
         """ Converts micro_seconds to DateTimeDiff  """
         pos = True
-        if ( micro_seconds < 0 ):
+        if micro_seconds < 0:
             pos = False
             micro_seconds = abs( micro_seconds )
         new_ms =  int(micro_seconds % 1000000)
@@ -204,8 +210,8 @@ class TOS_DateTime( namedtuple( "DateTime",
         micro_seconds //= 60
         new_hour = int(micro_seconds % 24)
         new_day = int(micro_seconds // 24)        
-        return TOS_DateTime.dtd_tuple(                                                
-             new_ms, new_sec, new_min, new_hour, new_day,('+' if pos else '-'))        
+        return TOS_DateTime.dtd_tuple( new_ms, new_sec, new_min, new_hour,
+                                       new_day, ('+' if pos else '-') )        
         
     @staticmethod
     def dtd_to_micro( dtd ):
@@ -215,9 +221,9 @@ class TOS_DateTime( namedtuple( "DateTime",
         tmp = tmp*60 + dtd.sec
         tmp *= 1000000
         tmp += dtd.micro
-        if( dtd.sign == '+'):
-            return  tmp 
-        elif( dtd.sign == '-'):
+        if dtd.sign == '+':
+            return tmp 
+        elif dtd.sign == '-':
             return tmp * -1
         else:
-            raise TOSDB_Error( "invalid 'sign' field in DateTimeDiff" )
+            raise TOSDB_DateTimeError( "invalid 'sign' field in DateTimeDiff" )

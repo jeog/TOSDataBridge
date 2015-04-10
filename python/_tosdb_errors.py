@@ -14,10 +14,42 @@
 #   'LICENSE.txt', along with this program.  If not, see 
 #   <http://www.gnu.org/licenses/>.
 
-"""_tosdb_errors.py :  error/exception hierarchy 
-"""
-
-class TOSDB_Error(Exception):
+class TOSDB_Error( Exception ):
     """ Base exception for tosdb.py """    
     def __init__(self,  *messages ):        
         Exception( *messages )
+
+class TOSDB_PlatformError( TOSDB_Error ):
+    def __init__( self, *messages ):
+        TOSDB_Error( messages )
+
+class TOSDB_CLibError( TOSDB_Error ):
+    def __init__( self, *messages ):
+        TOSDB_Error( messages )
+
+class TOSDB_ValueError( TOSDB_Error ):
+    def __init__( self, *messages ):
+        TOSDB_Error( messages )
+
+class TOSDB_DateTimeError( TOSDB_Error ):
+    def __init__( self, *messages ):
+        TOSDB_Error( messages )
+
+class TOSDB_DataError( TOSDB_Error ):
+    def __init__( self, *messages ):
+        TOSDB_Error( messages )
+
+class TOSDB_IndexError( TOSDB_Error, IndexError ):
+    def __init__( self, *messages ):
+        TOSDB_Error( messages )
+        IndexError( *messages )
+
+class TOSDB_VirtError( TOSDB_Error ):
+    def __init__( self, *messages ):
+        TOSDB_Error( messages )
+
+class TOSDB_VirtCommError( TOSDB_VirtError ):
+    def __init__( self, *messages ):
+        TOSDB_Error( messages )
+
+    
