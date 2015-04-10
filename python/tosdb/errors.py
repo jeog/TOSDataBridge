@@ -27,6 +27,10 @@ class TOSDB_CLibError( TOSDB_Error ):
     def __init__( self, *messages ):
         TOSDB_Error( messages )
 
+class TOSDB_DataBlockError( TOSDB_Error ):
+    def __init__( self, *messages ):
+        TOSDB_Error( messages )
+
 class TOSDB_ValueError( TOSDB_Error ):
     def __init__( self, *messages ):
         TOSDB_Error( messages )

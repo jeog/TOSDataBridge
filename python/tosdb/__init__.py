@@ -120,7 +120,7 @@ _virtual_CREATE = '1'
 _virtual_CALL = '2'
 _virtual_DESTROY = '3'
 _virtual_FAIL = '4'
-_virtual_SUCESS = '5'
+_virtual_SUCCESS = '5'
 _virtual_SUCCESS_NT = '6'
 _virtual_MAX_REQ_SZ = 512 # arbitrary for now
                            # need to handle large return values i.e a million vals
@@ -141,12 +141,17 @@ class VTOS_DataBlock:
                   timeout = DEF_TIMEOUT ):
         self._my_addr = address
         self._my_sock = _socket.socket( _socket.AF_INET, _socket.SOCK_DGRAM )
+        self._my_sock.settimeout( timeout / 1000 )
+        # in case __del__ is called during socket op
+        self._name = None 
         self._name = self._call( _virtual_CREATE, '__init__',
-                                 ('i',size), ('b',date_time), ('i',timeout) )
+                                ('i',size), ('b',date_time), ('i',timeout) )
         
     def __del__( self ):
         try:
-            if self._call( _virtual_DESTROY ):
+            if self._name:
+                self._call( _virtual_DESTROY )
+            if self._my_sock:
                 self._my_sock.close()
         except TOSDB_Error as e:
             print( e.args[0] )          
@@ -336,34 +341,37 @@ class VTOS_DataBlock:
             req_b = (_virtual_CREATE + ' ' + self._name).encode()
         else:
             raise TOSDB_VirtError( "invalid virt_type" )        
-        #c = self._my_sock.sendto( req_b, self._my_addr )
-        c = _send_udp( self._my_sock, self._my_addr, req_b, _virtual_MAX_REQ_SZ )
-        if c == 0:
-            raise TOSDB_VirtCommError("_call -> sendto() failed")
-        else:
-            #ret_b = self._my_sock.recv( 1000 )
+        
+        if not _send_udp( self._my_sock, self._my_addr, req_b, 
+                          _virtual_MAX_REQ_SZ):
+            raise TOSDB_VirtCommError("sendto() failed", "VTOS_DataBlock._call")
+                  
+        try:
             ret_b = _recv_udp( self._my_sock, _virtual_MAX_REQ_SZ )
-            print(ret_b)
-            # hold off on decode til we un-pickle 
-            args = ret_b.strip().split(b' ')
-            status = args[0].decode()
-            if status == _virtual_FAIL:
-                # need to make the error/failure return more robust
-                # more info on what happened
-                raise TOSDB_VirtError( "failure status returned: ",
-                                       "virt_type: " + str(virt_type),
-                                       "method_or_name: " + str(method_or_name),
-                                       "arg_buffer: " + str(arg_buffer) )
+        except _socket.timeout as e:
+            raise TOSDB_VirtCommError("socket timed out","VTOS_DataBlock._call")
+            
+        print(ret_b)
+        # hold off on decode til we un-pickle 
+        args = ret_b.strip().split(b' ')
+        status = args[0].decode()
+        if status == _virtual_FAIL:
+            # need to make the error/failure return more robust
+            # more info on what happened
+            raise TOSDB_VirtError( "failure status returned: ",
+                                   "virt_type: " + str(virt_type),
+                                   "method_or_name: " + str(method_or_name),
+                                   "arg_buffer: " + str(arg_buffer) )
+        
+        if virt_type == _virtual_CREATE:
+            return args[1].decode()
+        elif virt_type == _virtual_CALL and len(args) > 1:
+            if status == _virtual_SUCCESS_NT:
+                return _loadnamedtuple( args[1] )
             else:
-                if virt_type == _virtual_CREATE:
-                    return args[1].decode()
-                elif virt_type == _virtual_CALL and len(args) > 1:
-                    if status == _virtual_SUCCESS_NT:
-                        return _loadnamedtuple( args[1] )
-                    else:
-                        return _pickle.loads( args[1] )
-                elif virt_type == _virtual_DESTROY:
-                    return True
+                return _pickle.loads( args[1] )
+        elif virt_type == _virtual_DESTROY:
+            return True
 
 _TOS_DataBlock.register( VTOS_DataBlock )
 
@@ -432,50 +440,59 @@ def enable_virtualization( address ):
             self._rflag = False
             self._my_sock.close()
 
+        def _handle_create( args, addr ):
+            upargs = _pickle.loads(args[1])                
+            cargs = [ _virtual_VAR_TYPES[t](v) for t,v in upargs ]
+            print('create upargs', upargs)
+            ret = self._create_callback( addr, *cargs )
+            if ret:
+                return (_virtual_SUCCESS + ' ').encode() + ret           
+
+        def _handle_call( args ):
+            if len(args) > 3:              
+                upargs = _pickle.loads(args[3])
+                cargs = [ _virtual_VAR_TYPES[t](v) for t,v in upargs ]
+                print('call upargs', upargs)
+                ret = self._call_callback( args[1].decode(), args[2].decode(), 
+                                           *cargs)
+            else:
+                ret = self._call_callback( args[1].decode(), args[2].decode() )          
+            if ret:
+                ret_b = _virtual_SUCESS.encode()
+                if type(ret) != bool:
+                    if hasattr(ret,_NTUP_TAG_ATTR):
+                        ret_b = _virtual_SUCCESS_NT.encode() \
+                                + b' ' + _dumpnamedtuple(ret)
+                    else:
+                        ret_b += b' ' + _pickle.dumps(ret) 
+                return ret_b          
+
+        def _handle_destroy( args ):
+            if self._virtual_destroy_callback( args[1].decode() ):
+                return _virtual_SUCCESS.encode()                 
+
         def run(self):
-            self._rflag = True
-            # need a more active way to break out, poll more often !
-            # use settimeout and poll on return
-            while self._rflag:           
-                #dat, addr = self._my_sock.recvfrom( _virtual_MAX_REQ_SZ )            
-                dat, addr = _recv_udp( self._my_sock, _virtual_MAX_REQ_SZ )            
+            self._rflag = True            
+            while self._rflag:               
+                try:            
+                    dat, addr = _recv_udp( self._my_sock, _virtual_MAX_REQ_SZ )            
+                except _socket.timeout as e:
+                    dat = None
                 if not dat:
                     continue
                 print(dat) #DEBUG#
                 args = dat.strip().split(b' ')
                 msg_t = args[0].decode()
-                ret_b = _virtual_FAIL.encode()
+                r = None
                 if msg_t == _virtual_CREATE:
-                    upargs = _pickle.loads(args[1])                
-                    cargs = [ _virtual_VAR_TYPES[t](v) for t,v in upargs ]
-                    print('create upargs', upargs)
-                    ret = self._create_callback( addr, *cargs )
-                    if ret:
-                        ret_b = (_virtual_SUCESS + ' ').encode() + ret                                                                   
+                    r = self._handle_create( args, addr )                    
                 elif msg_t == _virtual_CALL:
-                    if len(args) > 3:              
-                        upargs = _pickle.loads(args[3])
-                        cargs = [ _virtual_VAR_TYPES[t](v) for t,v in upargs ]
-                        print('call upargs', upargs)
-                        ret = self._call_callback( args[1].decode(),
-                                                   args[2].decode(), *cargs)
-                    else:
-                        ret = self._call_callback( args[1].decode(),
-                                                   args[2].decode() )                        
-                    if ret:
-                        ret_b = _virtual_SUCESS.encode()
-                        if type(ret) != bool:
-                            if hasattr(ret,_NTUP_TAG_ATTR):
-                                ret_b = _virtual_SUCCESS_NT.encode() \
-                                        + b' ' + _dumpnamedtuple(ret)
-                            else:
-                                ret_b += b' ' + _pickle.dumps(ret)                        
+                    r = self._handle_call( args )                      
                 elif msg_t == _virtual_DESTROY:
-                    if self._virtual_destroy_callback( args[1].decode() ):
-                        ret_b = _virtual_SUCESS.encode()                           
-                
-                #self._my_sock.sendto( ret_b, addr )
-                _send_udp( self._my_sock, addr, ret_b, _virtual_MAX_REQ_SZ )
+                    r = self._handle_destroy( args )       
+                _send_udp( self._my_sock, addr, 
+                           r if r else _virtual_FAIL.encode(), 
+                           _virtual_MAX_REQ_SZ )
 
     try:
         _virtual_data_server = _VTOS_DataServer( address, _create_callback,
@@ -486,15 +503,15 @@ def enable_virtualization( address ):
         raise TOSDB_VirtError( "(enable) virtualization error", e )
 
 def _recv_udp( sock, dgram_sz ):
-    tot = b''
+    tot = b''   
     r, addr = sock.recvfrom( dgram_sz )
     while len(r) == dgram_sz:
         tot += r
         r, addr = sock.recvfrom( dgram_sz )
     tot += r
-    return (tot,addr)
+    return (tot,addr)    
 
-def _send_udp( sock, addr, dgram_sz, data ):
+def _send_udp( sock, addr, data, dgram_sz ):
     dl = len(data)
     snt = 0
     for i in range( 0, dl, dgram_sz ):
