@@ -22,8 +22,8 @@ Please refer to the tosdb.py docstring for detailed information.
 # _tosdb is how we deal with C++ header defined consts, those exported from the
 # back-end libs, and '#define' compile-time consts necessary for C compatibility
 from _tosdb import *  # also allows us to migrate away from ctypes when necessary
-from _tosdb_errors import *
-from tosdb_datetime import TOS_DateTime, _DateTimeStamp
+from .errors import *
+from .datetime import TOS_DateTime, _DateTimeStamp
 from io import StringIO as _StringIO
 from uuid import uuid4 as _uuid4
 from functools import partial as _partial

@@ -64,7 +64,7 @@ control the underlying DLL:
 # _tosdb is how we deal with C++ header defined consts, those exported from the
 # back-end libs, and '#define' compile-time consts necessary for C compatibility
 from _tosdb import *  # also allows us to migrate away from ctypes when necessary
-from _tosdb_errors import *
+from .errors import *
 from collections import namedtuple as _namedtuple
 from threading import Thread as _Thread
 from argparse import ArgumentParser as _ArgumentParser
@@ -111,7 +111,7 @@ class _TOS_DataBlock(metaclass=_ABCMeta):
 _isWinSys = _system() in ["Windows","windows","WINDOWS"]
 
 if _isWinSys: 
-    from _tosdb_win import * # import the core implementation
+    from ._win import * # import the core implementation
     _TOS_DataBlock.register( TOS_DataBlock ) # and register as virtual subclass
 
 _virtual_blocks = dict() 
@@ -498,7 +498,7 @@ def _send_udp( sock, addr, dgram_sz, data ):
     dl = len(data)
     snt = 0
     for i in range( 0, dl, dgram_sz ):
-        snt += sock.sendto( data[i:i+dgram_sz], addr ) == 0:            
+        snt += sock.sendto( data[i:i+dgram_sz], addr )          
     if dl % dgram_sz == 0:
         sock.sendto( b'', addr)
     return snt

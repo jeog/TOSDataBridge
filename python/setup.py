@@ -20,7 +20,7 @@ setup_dict_win = {
   "description": "Python Front-End / Wrapper for TOS-DataBridge (C/C++)",
   "author":"Jonathon Ogden",
   "author_email":"jeog.dev@gmail.com",
-  "py_modules":['tosdb'] 
+  "packages": ['tosdb'] 
 }               
 
 tosdb_ext_stub = Extension( 

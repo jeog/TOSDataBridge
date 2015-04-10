@@ -26,7 +26,7 @@ provides static utility functions to convert betwen DateTimeDiff objects
 and microseconds.
 """
 
-from _tosdb_errors import *
+from .errors import *
 from collections import namedtuple
 from time import mktime, struct_time, asctime, localtime, strftime
 from ctypes import Structure as _Structure, c_long as _long_, c_int as _int_

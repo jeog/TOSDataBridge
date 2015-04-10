@@ -1,6 +1,6 @@
-from tosdb import TOS_DataBlock
-from threading import Thread
-import time
+from tosdb import _TOS_DataBlock
+from threading import Thread as _Thread
+import time as _time
 
 def _bind_class_fields_late(cls):
     cls.min         = cls(60)
@@ -19,7 +19,7 @@ class StartInterval:
                                                                                 
 class GetOnInterval:       
     def __init__(self,block,item,topic):      
-        if type(block) != TOS_DataBlock
+        if type(block) != _TOS_DataBlock:
             raise TypeError("block must be of type tosdb.TOS_DataBlock")
         self._block = block
         if not block._valid_topic( topic ):
@@ -42,7 +42,7 @@ class GetOnTimeInterval( GetOnInterval ):
             raise TypeError("start_interval must be of type StartInterval")
         self._start_interval = start_interval.val
         self._rflag = True
-        self._thread = Thread( target=self._time_interval_loop )
+        self._thread = _Thread( target=self._time_interval_loop )
         self._thread.start()        
         
     def stop(self):
@@ -53,17 +53,17 @@ class GetOnTimeInterval( GetOnInterval ):
         while self._rflag:
             val = self._block.get( self._item, self._topic )
             self._callback( val )
-            for i in range( self._interval )
+            for i in range( self._interval ):
                 if not self._rflag:
                     break
-                time.sleep( 1 )
+                _time.sleep( 1 )
 
     def _spin_until( self ):
-        gmt = time.gmtime()
+        gmt = _time.gmtime()
         gmt_sec = gmt.tm_sec + gmt.tm_min * 60
         while (gmt_sec % self.start_interval > 0) and self._rflag:
-            time.sleep(.5)
-            gmt = time.gmtime()
+            _time.sleep(.5)
+            gmt = _time.gmtime()
             gmt_sec = gmt.tm_sec + gmt.tm_min * 60
       
 
