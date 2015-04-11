@@ -671,7 +671,7 @@ class TOS_DataBlock:
                     adj_dts = [ TOS_DateTime(x) for x in dtss ]
                     return _nt_( *zip(num_array,adj_dts) )                        
                 else:
-                    return _nte_( *num_array )                            
+                    return _nt_( *num_array )                            
             else:
                 if date_time:
                     adj_dts = [ TOS_DateTime(x) for x in dtss ]

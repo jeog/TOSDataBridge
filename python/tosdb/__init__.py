@@ -122,9 +122,10 @@ _virtual_DESTROY = '3'
 _virtual_FAIL = '4'
 _virtual_SUCCESS = '5'
 _virtual_SUCCESS_NT = '6'
-_virtual_MAX_REQ_SZ = 512 # arbitrary for now
+_virtual_DGRM_SZ = 512 # arbitrary for now
                            # need to handle large return values i.e a million vals
 _virtual_VAR_TYPES = {'i':int,'s':str,'b':bool}
+_vDelim = b'*'
 
 # move to _tosdb
 _NTUP_TAG_ATTR = "_dont_worry_about_why_this_attribute_has_a_weird_name_"
@@ -333,30 +334,29 @@ class VTOS_DataBlock:
                            ('i', label_str_max) )
     
     def _call( self, virt_type, method='', *arg_buffer ):
-        req_b = b''
+        
         if virt_type == _virtual_CREATE:
-            req_b = _virtual_CREATE.encode() + (b' ' + _pickle.dumps(arg_buffer))
+            req_b = _encode_message( _virtual_CREATE, _pickle.dumps(arg_buffer) )
         elif virt_type == _virtual_CALL:
-            req_b = (_virtual_CALL + ' ' + self._name + ' ' + method).encode()
+            req_b = _encode_message(_virtual_CALL, self._name, method)
             if arg_buffer:
-                req_b += (b' ' + _pickle.dumps(arg_buffer))
+                req_b = _encode_message( req_b, _pickle.dumps(arg_buffer) )
         elif virt_type == _virtual_DESTROY:
-            req_b = (_virtual_DESTROY + ' ' + self._name).encode()
+            req_b = _encode_message( _virtual_DESTROY, self._name)
         else:
             raise TOSDB_VirtError( "invalid virt_type" )        
         
-        if not _send_udp( self._my_sock, self._my_addr, req_b, 
-                          _virtual_MAX_REQ_SZ):
+        if not _send_udp( self._my_sock, self._my_addr, req_b, _virtual_DGRM_SZ):
             raise TOSDB_VirtCommError("sendto() failed", "VTOS_DataBlock._call")
                   
         try:
-            ret_b = _recv_udp( self._my_sock, _virtual_MAX_REQ_SZ )[0]
+            ret_b = _recv_udp( self._my_sock, _virtual_DGRM_SZ )[0]
         except _socket.timeout as e:
             raise TOSDB_VirtCommError("socket timed out","VTOS_DataBlock._call")
             
         print(ret_b)
         # hold off on decode til we un-pickle 
-        args = ret_b.strip().split(b' ')
+        args = ret_b.strip().split(_vDelim)
         status = args[0].decode()
         if status == _virtual_FAIL:
             # need to make the error/failure return more robust
@@ -380,8 +380,8 @@ _TOS_DataBlock.register( VTOS_DataBlock )
 
 ###
 ###
-###            
-    
+###
+   
 def enable_virtualization( address ):
     global _virtual_data_server
     
@@ -451,7 +451,7 @@ def enable_virtualization( address ):
             print('create upargs', upargs)
             ret = self._create_callback( addr, *cargs )
             if ret:
-                return (_virtual_SUCCESS + ' ').encode() + ret           
+                return _encode_message( _virtual_SUCCESS, ret )          
 
         def _handle_call( self, args ):
             if len(args) > 3:              
@@ -466,10 +466,10 @@ def enable_virtualization( address ):
                 ret_b = _virtual_SUCCESS.encode()
                 if type(ret) != bool:
                     if hasattr(ret,_NTUP_TAG_ATTR):
-                        ret_b = _virtual_SUCCESS_NT.encode() \
-                                + b' ' + _dumpnamedtuple(ret)
+                        ret_b = _encode_message( _virtual_SUCCESS_NT,
+                                                 _dumpnamedtuple(ret) )
                     else:
-                        ret_b += b' ' + _pickle.dumps(ret) 
+                        ret_b = _encode_message( ret_b, _pickle.dumps(ret) )
                 return ret_b          
 
         def _handle_destroy( self, args ):
@@ -480,13 +480,13 @@ def enable_virtualization( address ):
             self._rflag = True            
             while self._rflag:               
                 try:            
-                    dat, addr = _recv_udp( self._my_sock, _virtual_MAX_REQ_SZ )            
+                    dat, addr = _recv_udp( self._my_sock, _virtual_DGRM_SZ )            
                 except _socket.timeout as e:
                     dat = None
                 if not dat:
                     continue
                 print('dat',dat) #DEBUG#
-                args = dat.strip().split(b' ')
+                args = dat.split(_vDelim)
                 msg_t = args[0].decode()
                 r = None
                 if msg_t == _virtual_CREATE:
@@ -497,7 +497,7 @@ def enable_virtualization( address ):
                     r = self._handle_destroy( args )       
                 _send_udp( self._my_sock, addr, 
                            r if r else _virtual_FAIL.encode(), 
-                           _virtual_MAX_REQ_SZ )
+                           _virtual_DGRM_SZ )
                 dat = None
                 addr = None
 
@@ -508,24 +508,6 @@ def enable_virtualization( address ):
         _virtual_data_server.start()      
     except Exception as e:
         raise TOSDB_VirtError( "(enable) virtualization error", e )
-
-def _recv_udp( sock, dgram_sz ):
-    tot = b''   
-    r, addr = sock.recvfrom( dgram_sz )
-    while len(r) == dgram_sz:
-        tot += r
-        r, addr = sock.recvfrom( dgram_sz )
-    tot += r
-    return (tot,addr)    
-
-def _send_udp( sock, addr, data, dgram_sz ):
-    dl = len(data)
-    snt = 0
-    for i in range( 0, dl, dgram_sz ):
-        snt += sock.sendto( data[i:i+dgram_sz], addr )          
-    if dl % dgram_sz == 0:
-        sock.sendto( b'', addr)
-    return snt
 
 def disable_virtualization():
     global _virtual_data_server, _virtual_blocks
@@ -546,6 +528,30 @@ def _loadnamedtuple( nt):
     name,keys,vals = _pickle.loads( nt )
     ty = _namedtuple( name, keys )
     return ty( *vals )
+
+def _recv_udp( sock, dgram_sz ):
+    tot = b''   
+    r, addr = sock.recvfrom( dgram_sz )
+    while len(r) == dgram_sz:
+        tot += r
+        r, addr = sock.recvfrom( dgram_sz )
+    tot += r
+    return (tot,addr)    
+
+def _send_udp( sock, addr, data, dgram_sz ):
+    dl = len(data)
+    snt = 0
+    for i in range( 0, dl, dgram_sz ):
+        snt += sock.sendto( data[i:i+dgram_sz], addr )          
+    if dl % dgram_sz == 0:
+        sock.sendto( b'', addr)
+    return snt
+
+def _encode_message( *parts ):
+    tot = b''
+    for p in parts:
+        tot += ( (p.encode() if type(p) is not bytes else p)  + _vDelim )
+    return tot.rstrip(_vDelim)
 
 
 if __name__ == "__main__" and _isWinSys:
