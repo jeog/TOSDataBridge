@@ -70,6 +70,7 @@ from threading import Thread as _Thread
 from argparse import ArgumentParser as _ArgumentParser
 from platform import system as _system
 from abc import ABCMeta as _ABCMeta, abstractmethod as _abstractmethod
+from sys import stderr as _stderr
 import socket as _socket
 import pickle as _pickle
 
@@ -105,8 +106,8 @@ class _TOS_DataBlock(metaclass=_ABCMeta):
     def item_frame(): pass
     @_abstractmethod
     def topic_frame(): pass
-    @_abstractmethod
-    def total_frame(): pass
+    #@_abstractmethod
+    #def total_frame(): pass
     
 _isWinSys = _system() in ["Windows","windows","WINDOWS"]
 
@@ -116,16 +117,17 @@ if _isWinSys:
 
 _virtual_blocks = dict() 
 _virtual_data_server = None
-_virtual_CREATE = '1'
-_virtual_CALL = '2'
-_virtual_DESTROY = '3'
-_virtual_FAIL = '4'
-_virtual_SUCCESS = '5'
-_virtual_SUCCESS_NT = '6'
-_virtual_DGRM_SZ = 512 # arbitrary for now
-                           # need to handle large return values i.e a million vals
-_virtual_VAR_TYPES = {'i':int,'s':str,'b':bool}
-_vDelim = b'*'
+
+_vCREATE = '1'
+_vCALL = '2'
+_vDESTROY = '3'
+_vFAIL = '4'
+_vSUCCESS = '5'
+_vSUCCESS_NT = '6'
+_vDGRAM_SZ = 512 
+_vTYPES = {'i':int,'s':str,'b':bool}
+_vDELIM = b'*'
+_vDELIM_S = _vDELIM.decode()
 
 # move to _tosdb
 _NTUP_TAG_ATTR = "_dont_worry_about_why_this_attribute_has_a_weird_name_"
@@ -148,35 +150,35 @@ class VTOS_DataBlock:
         self._my_sock.settimeout( timeout / 1000 )
         # in case __del__ is called during socket op
         self._name = None 
-        self._name = self._call( _virtual_CREATE, '__init__',
+        self._name = self._call( _vCREATE, '__init__',
                                 ('i',size), ('b',date_time), ('i',timeout) )
         
     def __del__( self ):
         try:
             if self._name:
-                self._call( _virtual_DESTROY )
+                self._call( _vDESTROY )
             if self._my_sock:
                 self._my_sock.close()
         except TOSDB_Error as e:
             print( e.args[0] )          
 
     def __str__( self ):
-        return self._call( _virtual_CALL, '__str__' )    
+        return self._call( _vCALL, '__str__' )    
   
     def info(self):
         """ Returns a more readable dict of info about the underlying block """
-        return self._call( _virtual_CALL, 'info' )
+        return self._call( _vCALL, 'info' )
     
     def get_block_size( self ):
         """ Returns the amount of historical data stored in the block """
-        return self._call( _virtual_CALL, 'get_block_size' )
+        return self._call( _vCALL, 'get_block_size' )
     
     def set_block_size( self, sz ):
         """ Changes the amount of historical data stored in the block """
-        self._call( _virtual_CALL, 'set_block_size', ('i',sz) )
+        self._call( _vCALL, 'set_block_size', ('i',sz) )
             
     def stream_occupancy( self, item, topic ):
-        return self._call( _virtual_CALL, 'stream_occupancy', ('s',item),
+        return self._call( _vCALL, 'stream_occupancy', ('s',item),
                            ('s',topic) )
     
     def items( self, str_max = MAX_STR_SZ ):
@@ -185,7 +187,7 @@ class VTOS_DataBlock:
         str_max: the maximum length of item strings returned
         returns -> list of strings 
         """
-        return self._call( _virtual_CALL, 'items', ('i',str_max) )          
+        return self._call( _vCALL, 'items', ('i',str_max) )          
               
     def topics( self,  str_max = MAX_STR_SZ ):
         """ Returns the topics currently in the block (and not pre-cached).
@@ -193,7 +195,7 @@ class VTOS_DataBlock:
         str_max: the maximum length of topic strings returned  
         returns -> list of strings 
         """
-        return self._call( _virtual_CALL, 'topics', ('i',str_max) ) 
+        return self._call( _vCALL, 'topics', ('i',str_max) ) 
       
     
     def add_items( self, *items ):
@@ -204,7 +206,7 @@ class VTOS_DataBlock:
 
         *items: any numer of item strings
         """               
-        self._call( _virtual_CALL, 'add_items', *zip('s'*len(items), items) )
+        self._call( _vCALL, 'add_items', *zip('s'*len(items), items) )
        
 
     def add_topics( self, *topics ):
@@ -215,7 +217,7 @@ class VTOS_DataBlock:
 
         *topics: any numer of topic strings
         """               
-        self._call( _virtual_CALL, 'add_topics', *zip('s'*len(topics), topics) )
+        self._call( _vCALL, 'add_topics', *zip('s'*len(topics), topics) )
 
     def remove_items( self, *items ):
         """ Remove items ( ex. 'IBM', 'SPY' ) from the block.
@@ -226,7 +228,7 @@ class VTOS_DataBlock:
 
         *items: any numer of item strings
         """
-        self._call( _virtual_CALL, 'remove_items', *zip('s'*len(items), items) )
+        self._call( _vCALL, 'remove_items', *zip('s'*len(items), items) )
 
     def remove_topics( self, *topics ):
         """ Remove topics ( ex. 'LAST', 'ASK' ) from the block.
@@ -237,7 +239,7 @@ class VTOS_DataBlock:
 
         *topics: any numer of topic strings
         """
-        self._call( _virtual_CALL, 'remove_topics', *zip('s'*len(topics), topics) )
+        self._call( _vCALL, 'remove_topics', *zip('s'*len(topics), topics) )
         
     def get( self, item, topic, date_time = False, indx = 0, 
              check_indx = True, data_str_max = STR_DATA_SZ ):
@@ -250,7 +252,7 @@ class VTOS_DataBlock:
         check_indx: throw if datum doesn't exist at that particular index
         data_str_max: the maximum size of string data returned
         """
-        return self._call( _virtual_CALL, 'get', ('s',item), ('s',topic),
+        return self._call( _vCALL, 'get', ('s',item), ('s',topic),
                            ('b',date_time), ('i',indx), ('b',check_indx),
                            ('i', data_str_max) )
 
@@ -270,7 +272,7 @@ class VTOS_DataBlock:
         if date_time is True: returns-> list of 2tuple
         else: returns -> list              
         """
-        return self._call( _virtual_CALL, 'stream_snapshot', ('s',item),
+        return self._call( _vCALL, 'stream_snapshot', ('s',item),
                            ('s',topic), ('b',date_time), ('i',end), ('i',beg),
                            ('b',smart_size), ('i', data_str_max) )
 
@@ -290,7 +292,7 @@ class VTOS_DataBlock:
         if date_time is True: returns -> list of 2tuple
         else returns-> list
         """
-        return self._call( _virtual_CALL, 'item_frame', ('s',topic),
+        return self._call( _vCALL, 'item_frame', ('s',topic),
                            ('b',date_time), ('b',labels), ('i', data_str_max),
                            ('i', label_str_max) )   
 
@@ -310,77 +312,83 @@ class VTOS_DataBlock:
         if date_time is True: returns -> list of 2tuple
         else returns-> list
         """
-        return self._call( _virtual_CALL, 'topic_frame', ('s',item),
+        return self._call( _vCALL, 'topic_frame', ('s',item),
                            ('b',date_time), ('b',labels), ('i', data_str_max),
                            ('i', label_str_max) )
-
-    def total_frame( self, date_time = False, labels = True, 
-                     data_str_max = STR_DATA_SZ,
-                     label_str_max = MAX_STR_SZ ):
-        """ Return a matrix of the most recent values:  
-        
-        date_time: (True/False) attempt to retrieve a TOS_DateTime object        
-        labels: (True/False) pull the item and topic labels with the values 
-        data_str_max: the maximum length of string data returned
-        label_str_max: the maximum length of label strings returned
-        
-        if labels and date_time are True: returns-> dict of namedtuple of 2tuple
-        if labels is True: returns -> dict of namedtuple
-        if date_time is True: returns -> list of 2tuple
-        else returns-> list
-        """
-        return self._call( _virtual_CALL, 'total_frame', ('b',date_time),
-                           ('b',labels), ('i', data_str_max),
-                           ('i', label_str_max) )
-    
+##
+##  !! need to find a way to pickle an iterable of namedtuples !!
+##
+##    def total_frame( self, date_time = False, labels = True, 
+##                     data_str_max = STR_DATA_SZ,
+##                     label_str_max = MAX_STR_SZ ):
+##        """ Return a matrix of the most recent values:  
+##        
+##        date_time: (True/False) attempt to retrieve a TOS_DateTime object        
+##        labels: (True/False) pull the item and topic labels with the values 
+##        data_str_max: the maximum length of string data returned
+##        label_str_max: the maximum length of label strings returned
+##        
+##        if labels and date_time are True: returns-> dict of namedtuple of 2tuple
+##        if labels is True: returns -> dict of namedtuple
+##        if date_time is True: returns -> list of 2tuple
+##        else returns-> list
+##        """
+##        return self._call( _vCALL, 'total_frame', ('b',date_time),
+##                           ('b',labels), ('i', data_str_max),
+##                           ('i', label_str_max) )
+   
     def _call( self, virt_type, method='', *arg_buffer ):
         
-        if virt_type == _virtual_CREATE:
-            req_b = _encode_message( _virtual_CREATE, _pickle.dumps(arg_buffer) )
-        elif virt_type == _virtual_CALL:
-            req_b = _encode_message(_virtual_CALL, self._name, method)
+        self._check_for_delim(method, *arg_buffer)        
+        if virt_type == _vCREATE:
+            req_b = _encode_msg( _vCREATE, _pickle.dumps(arg_buffer) )
+        elif virt_type == _vCALL:
+            req_b = _encode_msg(_vCALL, self._name, method)
             if arg_buffer:
-                req_b = _encode_message( req_b, _pickle.dumps(arg_buffer) )
-        elif virt_type == _virtual_DESTROY:
-            req_b = _encode_message( _virtual_DESTROY, self._name)
+                req_b = _encode_msg( req_b, _pickle.dumps(arg_buffer) )
+        elif virt_type == _vDESTROY:
+            req_b = _encode_msg( _vDESTROY, self._name)
         else:
             raise TOSDB_VirtError( "invalid virt_type" )        
         
-        if not _send_udp( self._my_sock, self._my_addr, req_b, _virtual_DGRM_SZ):
+        if not _send_udp( self._my_sock, self._my_addr, req_b, _vDGRAM_SZ):
             raise TOSDB_VirtCommError("sendto() failed", "VTOS_DataBlock._call")
                   
         try:
-            ret_b = _recv_udp( self._my_sock, _virtual_DGRM_SZ )[0]
+            ret_b = _recv_udp( self._my_sock, _vDGRAM_SZ )[0]
         except _socket.timeout as e:
             raise TOSDB_VirtCommError("socket timed out","VTOS_DataBlock._call")
-            
-        print(ret_b)
-        # hold off on decode til we un-pickle 
-        args = ret_b.strip().split(_vDelim)
+      
+        args = ret_b.strip().split(_vDELIM)
         status = args[0].decode()
-        if status == _virtual_FAIL:
+        if status == _vFAIL:
+            #
             # need to make the error/failure return more robust
             # more info on what happened
+            #
             raise TOSDB_VirtError( "failure status returned: ",
                                    "virt_type: " + str(virt_type),
                                    "method: " + str(method),
                                    "arg_buffer: " + str(arg_buffer) )
         
-        if virt_type == _virtual_CREATE:
+        if virt_type == _vCREATE:
             return args[1].decode()
-        elif virt_type == _virtual_CALL and len(args) > 1:
-            if status == _virtual_SUCCESS_NT:
+        elif virt_type == _vCALL and len(args) > 1:
+            if status == _vSUCCESS_NT:
                 return _loadnamedtuple( args[1] )
             else:
                 return _pickle.loads( args[1] )
-        elif virt_type == _virtual_DESTROY:
+        elif virt_type == _vDESTROY:
             return True
+
+    @staticmethod
+    def _check_for_delim( *strings ):
+        for s in strings:
+            if _vDELIM_S in s:
+               raise TOSDB_ValueError("input contains a '" + _vDELIM_S + "'")
 
 _TOS_DataBlock.register( VTOS_DataBlock )
 
-###
-###
-###
    
 def enable_virtualization( address ):
     global _virtual_data_server
@@ -395,36 +403,32 @@ def enable_virtualization( address ):
             _virtual_blocks[blk._name] = (blk, addr)
             return blk._name                                       
         except Exception as e:
-            print('create exc', e)
+            print( "exception caught in _create_callback: ", e , file=_stderr )
             if blk:
                 _virtual_blocks.pop(blk._name)
                 del blk
             return False       
 
     def _destroy_callback( name ):
-        global _virtual_blocks
-        print("DEBUG", "in _destroy_callback")
+        global _virtual_blocks        
         try:
             blk = _virtual_blocks.pop( name )
             del blk
             return True
-        except:
+        except Exception as e:
+            print( "exception caught in _destroy_callback: ", e, file=_stderr)
             return False
 
-    # clean up encoding/decoding ops
-    # output exception somewhere
     def _call_callback( name, meth, *args):
-        global _virtual_blocks
-        print("DEBUG", "in _call_callback")
+        global _virtual_blocks    
         try:
-            name = name.encode('ascii')
-            print( name, meth, *args)
+            name = name.encode('ascii')           
             blk = _virtual_blocks[name][0]         
             meth = getattr(blk, meth )          
             ret = meth( *args )          
             return ret if ret else True
         except Exception as e:
-            print( str(e) )
+            print( "exception caught in _call_callback: ", e, file=_stderr )
             return False
        
     class _VTOS_DataServer( _Thread ):
@@ -444,62 +448,55 @@ def enable_virtualization( address ):
             self._rflag = False
             self._my_sock.close()
 
-        def _handle_create( self, args, addr ):
-            print("X", args )
+        def _handle_create( self, args, addr ):            
             upargs = _pickle.loads(args[1])                
-            cargs = [ _virtual_VAR_TYPES[t](v) for t,v in upargs ]
-            print('create upargs', upargs)
+            cargs = [ _vTYPES[t](v) for t,v in upargs ]            
             ret = self._create_callback( addr, *cargs )
             if ret:
-                return _encode_message( _virtual_SUCCESS, ret )          
+                return _encode_msg( _vSUCCESS, ret )          
 
         def _handle_call( self, args ):
             if len(args) > 3:              
                 upargs = _pickle.loads(args[3])
-                cargs = [ _virtual_VAR_TYPES[t](v) for t,v in upargs ]
-                print('call upargs', upargs)
+                cargs = [ _vTYPES[t](v) for t,v in upargs ]                
                 ret = self._call_callback( args[1].decode(), args[2].decode(), 
                                            *cargs)
             else:
-                ret = self._call_callback( args[1].decode(), args[2].decode() )          
+                ret = self._call_callback( args[1].decode(), args[2].decode() )            
             if ret:
-                ret_b = _virtual_SUCCESS.encode()
+                ret_b = _vSUCCESS.encode()
                 if type(ret) != bool:
                     if hasattr(ret,_NTUP_TAG_ATTR):
-                        ret_b = _encode_message( _virtual_SUCCESS_NT,
-                                                 _dumpnamedtuple(ret) )
+                        ret_b = _encode_msg( _vSUCCESS_NT, _dumpnamedtuple(ret) )
                     else:
-                        ret_b = _encode_message( ret_b, _pickle.dumps(ret) )
+                        ret_b = _encode_msg( ret_b, _pickle.dumps(ret) )
                 return ret_b          
 
         def _handle_destroy( self, args ):
             if self._virtual_destroy_callback( args[1].decode() ):
-                return _virtual_SUCCESS.encode()                 
+                return _vSUCCESS.encode()                 
 
         def run(self):
             self._rflag = True            
             while self._rflag:               
                 try:            
-                    dat, addr = _recv_udp( self._my_sock, _virtual_DGRM_SZ )            
+                    dat, addr = _recv_udp( self._my_sock, _vDGRAM_SZ )            
                 except _socket.timeout as e:
                     dat = None
                 if not dat:
-                    continue
-                print('dat',dat) #DEBUG#
-                args = dat.split(_vDelim)
+                    continue               
+                args = dat.split(_vDELIM)
                 msg_t = args[0].decode()
                 r = None
-                if msg_t == _virtual_CREATE:
+                if msg_t == _vCREATE:
                     r = self._handle_create( args, addr )                    
-                elif msg_t == _virtual_CALL:
+                elif msg_t == _vCALL:
                     r = self._handle_call( args )                      
-                elif msg_t == _virtual_DESTROY:
+                elif msg_t == _vDESTROY:
                     r = self._handle_destroy( args )       
-                _send_udp( self._my_sock, addr, 
-                           r if r else _virtual_FAIL.encode(), 
-                           _virtual_DGRM_SZ )
-                dat = None
-                addr = None
+                _send_udp( self._my_sock, addr, r if r else _vFAIL.encode(), 
+                           _vDGRAM_SZ )
+                dat = addr = None              
 
     try:
         _virtual_data_server = _VTOS_DataServer( address, _create_callback,
@@ -547,11 +544,11 @@ def _send_udp( sock, addr, data, dgram_sz ):
         sock.sendto( b'', addr)
     return snt
 
-def _encode_message( *parts ):
+def _encode_msg( *parts ):
     tot = b''
     for p in parts:
-        tot += ( (p.encode() if type(p) is not bytes else p)  + _vDelim )
-    return tot.rstrip(_vDelim)
+        tot += ( (p.encode() if type(p) is not bytes else p)  + _vDELIM )
+    return tot.rstrip(_vDELIM)
 
 
 if __name__ == "__main__" and _isWinSys:
