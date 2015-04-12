@@ -968,7 +968,7 @@ int TOSDB_GetStreamSnapshotAtomicMarker_( LPCSTR id,
         db = GetBlockOrThrow( id );
         dat = db->block->raw_stream_ptr(sItem, tTopic);
 
-        dat->copy_using_atomic_marker(dest,arrLen,end,beg,datetime);
+        dat->copy_using_atomic_marker(dest,arrLen,beg,datetime);
 
         return 0;
     }catch( const tosdb_data_stream::error e ){
@@ -987,12 +987,12 @@ int TOSDB_GetStreamSnapshotAtomicMarker_( LPCSTR id,
 
 template< typename T > 
 int TOSDB_GetStreamSnapshotAtomicMarker_( LPCSTR id,
-                              LPCSTR sItem, 
-                              LPCSTR sTopic, 
-                              T* dest, 
-                              size_type arrLen, 
-                              pDateTimeStamp datetime,                             
-                              long beg )
+                                          LPCSTR sItem, 
+                                          LPCSTR sTopic, 
+                                          T* dest, 
+                                          size_type arrLen, 
+                                          pDateTimeStamp datetime,                             
+                                          long beg )
 {    
     if( !CheckStringLength( sTopic ) ) /* let this go thru std::string ? */
         return -1;     
@@ -1076,7 +1076,7 @@ int TOSDB_GetStreamSnapshotAtomicMarkerStrings( LPCSTR id,
         dat->copy_using_atomic_marker(dest,arrLen,strLen,beg,datetime);
 
         return 0;
-    }catch( const tosdb_data_stream::error e ){
+    }catch( const tosdb_data_stream::error& e ){
         /*
             FOR NOW LETS JUST SQUASH THE EXCEPTION and let caller know
             TODO: handle unset_marker gracefully, allert caller to bad sz, beg etc 

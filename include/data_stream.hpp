@@ -82,7 +82,7 @@ public:
 
     unset_marker()
         : 
-        error( "marker unset (_mrkCount == -1), no data to return" )               
+        error( "marker unset (*_mrkCount == -1), no data to return" )               
         {                
         }
 };
@@ -173,7 +173,25 @@ private:
         copy( tmp.get(), sz, end, beg, sec );
         for( size_t i = 0; i < sz; ++i )            
             dest[i] = (_outTy)tmp.get()[i];                                
-    }    
+    }  
+
+    template < typename _inTy, typename _outTy >
+    void _copy_using_atomic_marker( _outTy* dest, 
+                                    size_t sz,                 
+                                    int beg, 
+                                    secondary_type* sec ) const
+    {    
+        if( !dest )
+            throw invalid_argument( "->copy(): *dest argument can not be null");     
+    
+        std::unique_ptr< _inTy, void(*)(_inTy*)> tmp( new _inTy[sz], 
+                                                      [](_inTy* _ptr){ 
+                                                          delete[] _ptr; 
+                                                      } );
+        copy_using_atomic_marker( tmp.get(), sz, beg, sec );
+        for( size_t i = 0; i < sz; ++i )            
+            dest[i] = (_outTy)tmp.get()[i];                                
+    }  
 
 protected:
 
@@ -307,7 +325,7 @@ virtual void copy( _inTy* dest, size_t sz, int end = -1, int beg = 0, \
 virtual void copy_using_atomic_marker( _inTy* dest, size_t sz, int beg = 0, \
                    secondary_type* sec = nullptr) const \
 { \
-    _copy< _outTy >( dest, sz, beg, sec ); \
+    _copy_using_atomic_marker< _outTy >( dest, sz, beg, sec ); \
 } 
 #define virtual_void_marker_copy_2arg_BREAK( _inTy, _dropBool ) \
 virtual void copy_using_atomic_marker( _inTy* dest, size_t sz, int beg = 0, \
@@ -351,7 +369,7 @@ virtual void copy_using_atomic_marker( _inTy* dest, size_t sz, int beg = 0, \
         std::unique_ptr< char*, decltype( dstr ) > strMat( AllocStrArray( 
                                                               sz, STR_DATA_SZ ), 
                                                            dstr );
-        this->copy( strMat.get(), sz, STR_DATA_SZ , beg, sec);                
+        this->copy_using_atomic_marker( strMat.get(), sz, STR_DATA_SZ , beg, sec);                
         std::copy_n( strMat.get(), sz, dest );            
     }
 
@@ -398,8 +416,8 @@ class Object
         if( _qCount < _qBound )
             ++_qCount;
 
-        if( _mrkCount < (_qBound - 1) )
-            ++_mrkCount
+        if( *_mrkCount < (_qBound - 1) )
+            ++(*_mrkCount);
 
         _mtx->unlock();
     } 
@@ -410,7 +428,7 @@ protected:
     
     std::recursive_mutex* const  _mtx; 
     volatile bool                _push_has_priority;    
-    size_t                       _qCount, _qBound, _mrkCount;    
+    size_t                       _qCount, _qBound, *_mrkCount;    
     _myImplTy                    _myImplObj;
 
     void _yld_to_push() const
@@ -429,21 +447,16 @@ protected:
 
         if ( _qBound != sz )    
             throw size_violation( 
-                "Internal size/bounds violation in tosdb_data_stream",
-                _qBound, sz 
-                );          
+                "Internal size/bounds violation in tosdb_data_stream", _qBound, sz );          
   
         if ( end < 0 ) end += sz; 
         if ( beg < 0 ) beg += sz;
         if ( beg >= sz || end >= sz || beg < 0 || end < 0 )    
-            throw out_of_range(
-                "adj index value out of range in tosdb_data_stream",
-                sz, beg, end
-                );
+            throw out_of_range( "adj index value out of range in tosdb_data_stream",
+                                sz, beg, end );
         else if ( beg > end )     
             throw invalid_argument( 
-                "adj beg index value > end index value in tosdb_data_stream"                 
-                );
+                "adj beg index value > end index value in tosdb_data_stream" );
 
         return true;
     }
@@ -474,7 +487,7 @@ public:
         _myImplObj( std::min<size_t>(sz,MAX_BOUND_SIZE) ),
         _qBound( std::min<size_t>(sz,MAX_BOUND_SIZE) ),
         _qCount( 0 ),
-        _mrkCount( -1 ),
+        _mrkCount( new size_t(-1) ),
         _mtx( new std::recursive_mutex ),
         _push_has_priority( true )
         {            
@@ -504,7 +517,8 @@ public:
 
     virtual ~Object()
         {
-            delete this->_mtx;        
+            delete this->_mtx;  
+            delete this->_mrkCount;
         }
 
     bool empty() const 
@@ -557,7 +571,7 @@ public:
                                    int beg = 0, 
                                    secondary_type* sec = nullptr) const 
     {
-        if( _mrkCount < 0 )
+        if( *_mrkCount < 0 )
             /* ideally we should do something else, but the current infastructure
                doesn't allow us to return an 'error' code so we must rely on the
                calling code to catch 'unset_marker'*/
@@ -570,7 +584,7 @@ public:
             if beg is > _mrkCount do we just let exc mechanism handle it ??
             should we just wrapp all these events with unset_marker into a single exc ??
          */
-        copy( dest, sz, _mrkCount, beg, sec);
+        copy( dest, sz, *_mrkCount, beg, sec);
 
     }
 
@@ -580,10 +594,10 @@ public:
                                    int beg = 0, 
                                    secondary_type* sec = nullptr) const 
     {
-        if( _mrkCount < 0 )           
+        if( *_mrkCount < 0 )           
             throw unset_marker(); 
      
-        copy( dest, destSz, strSz, _mrkCount, beg, sec);
+        copy( dest, destSz, strSz, *_mrkCount, beg, sec);
     }
         
     void copy( Ty* dest, 
@@ -609,7 +623,7 @@ public:
         else 
             _copy_to_ptr(_myImplObj,dest,sz,end,beg);         
         
-        _mrkCount = beg - 1;         
+        *_mrkCount = beg - 1;         
     }
     
     /* slow(er), has to go thru generic_type to get strings */
@@ -639,7 +653,7 @@ public:
                        std::min<size_t>( strSz-1, genS.length() ) );                                  
         }    
 
-        _mrkCount = beg - 1; 
+        *_mrkCount = beg - 1; 
     }
 
     generic_type operator[]( int indx) const
@@ -649,12 +663,12 @@ public:
         _guardTy _lock_( *_mtx );
 
         if ( !indx ){ /* optimize for indx == 0 */
-            _mrkCount = -1;
+            *_mrkCount = -1;
             return generic_type( _myImplObj.front() ); 
         }
 
         _check_adj( indx, dummy, _myImplObj ); 
-        _mrkCount = indx - 1; 
+        *_mrkCount = indx - 1; 
 
         return generic_type( _myImplObj.at(indx) );         
     }
@@ -685,7 +699,7 @@ public:
                 std::insert_iterator< generic_vector_type >( tmp, tmp.begin() ), 
                 []( Ty x ){ return generic_type(x); } );   
 
-        _mrkCount = beg - 1; 
+        *_mrkCount = beg - 1; 
          
         return tmp;    
     }
@@ -728,8 +742,8 @@ class Object< Ty, SecTy, GenTy, true, Allocator >
         if( _qCount < _qBound )
             ++_qCount;
 
-        if( _mrkCount < (_qBound - 1) )
-            ++_mrkCount
+        if( *_mrkCount < (_qBound - 1) )
+            ++(*_mrkCount);
 
         _mtx->unlock();
     } 
@@ -866,7 +880,7 @@ public:
         else
             *dest = _myImplSecObj.at( indx );    
 
-        _mrkCount = indx - 1; /* _mrkCount NOT reset by _myBase */
+        *_mrkCount = indx - 1; /* _mrkCount NOT reset by _myBase */
     }
 
     secondary_vector_type
@@ -890,7 +904,7 @@ public:
             std::copy( bIter, eIter, tmp.begin() );
         }
 
-        _mrkCount = beg - 1; /* _mrkCount NOT reset by _myBase */
+        *_mrkCount = beg - 1; /* _mrkCount NOT reset by _myBase */
 
         return tmp;    
     }
