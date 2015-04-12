@@ -523,6 +523,13 @@ EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int                         TOSDB_GetStreamS
 EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int                         TOSDB_GetStreamSnapshotLongLongs( LPCSTR id, LPCSTR sItem, LPCSTR sTopic, ext_size_type* dest, size_type arrLen, pDateTimeStamp datetime, long end, long beg); 
 EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int                         TOSDB_GetStreamSnapshotLongs( LPCSTR id, LPCSTR sItem, LPCSTR sTopic, def_size_type* dest, size_type arrLen, pDateTimeStamp datetime, long end, long beg); 
 EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int                         TOSDB_GetStreamSnapshotStrings( LPCSTR id, LPCSTR sItem, LPCSTR sTopic, LPSTR* dest, size_type arrLen, size_type strLen, pDateTimeStamp datetime, long end, long beg);
+/*** data-stream-marker ( C only for now ) ***/
+EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int                         TOSDB_GetStreamSnapshotAtomicMarkerDoubles( LPCSTR id,LPCSTR sItem,LPCSTR sTopic,ext_price_type* dest,size_type arrLen, pDateTimeStamp datetime, long beg);
+EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int                         TOSDB_GetStreamSnapshotAtomicMarkerFloats( LPCSTR id, LPCSTR sItem, LPCSTR sTopic, def_price_type* dest, size_type arrLen, pDateTimeStamp datetime, long beg);
+EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int                         TOSDB_GetStreamSnapshotAtomicMarkerLongLongs( LPCSTR id, LPCSTR sItem, LPCSTR sTopic, ext_size_type* dest, size_type arrLen, pDateTimeStamp datetime, long beg);
+EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int                         TOSDB_GetStreamSnapshotAtomicMarkerLongs( LPCSTR id, LPCSTR sItem, LPCSTR sTopic, def_size_type* dest, size_type arrLen, pDateTimeStamp datetime, long beg);
+EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int                         TOSDB_GetStreamSnapshotAtomicMarkerStrings( LPCSTR id, LPCSTR sItem, LPCSTR sTopic, LPSTR* dest, size_type arrLen, size_type strLen, pDateTimeStamp datetime, long beg);
+/*** data-stream-marker ( C only for now ) ***/
 #ifdef __cplusplus
 /* Get all the most recent item values for a particular topic */
 template< bool b > auto                             TOSDB_GetItemFrame( std::string id, TOS_Topics::TOPICS tTopic) -> typename std::conditional< b, generic_dts_map_type, generic_map_type >::type; 

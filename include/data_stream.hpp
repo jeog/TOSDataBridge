@@ -77,6 +77,16 @@ public:
         }
 };
 
+class unset_marker : public error{
+public:
+
+    unset_marker()
+        : 
+        error( "marker unset (_mrkCount == -1), no data to return" )               
+        {                
+        }
+};
+
 /* 
     can't make std::exception a virtual base from the 
     stdexcept path so double construction of std::exception 
@@ -117,6 +127,8 @@ public:
         return error::what();
     }
 };
+
+
     
 /*    The interface to tosdb_data_stream     */
 template< typename SecTy, typename GenTy >
@@ -288,6 +300,62 @@ virtual void copy( _inTy* dest, size_t sz, int end = -1, int beg = 0, \
         this->copy( strMat.get(), sz, STR_DATA_SZ , end, beg, sec);                
         std::copy_n( strMat.get(), sz, dest );            
     }
+
+    /**************************/
+
+#define virtual_void_marker_copy_2arg_DROP( _inTy, _outTy ) \
+virtual void copy_using_atomic_marker( _inTy* dest, size_t sz, int beg = 0, \
+                   secondary_type* sec = nullptr) const \
+{ \
+    _copy< _outTy >( dest, sz, beg, sec ); \
+} 
+#define virtual_void_marker_copy_2arg_BREAK( _inTy, _dropBool ) \
+virtual void copy_using_atomic_marker( _inTy* dest, size_t sz, int beg = 0, \
+                   secondary_type* sec = nullptr) const \
+{ \
+    _throw_type_error< _inTy* >( "->copy()", _dropBool ); \
+}
+
+    virtual_void_marker_copy_2arg_DROP( long long, long )
+    virtual_void_marker_copy_2arg_DROP( long, int )
+    virtual_void_marker_copy_2arg_DROP( int, short )
+    virtual_void_marker_copy_2arg_DROP( short, char )
+    virtual_void_marker_copy_2arg_BREAK( char, true )
+    virtual_void_marker_copy_2arg_DROP( unsigned long long, unsigned long )
+    virtual_void_marker_copy_2arg_DROP( unsigned long, unsigned int )
+    virtual_void_marker_copy_2arg_DROP( unsigned int, unsigned short )
+    virtual_void_marker_copy_2arg_DROP( unsigned short, unsigned char )
+    virtual_void_marker_copy_2arg_BREAK( unsigned char, true )
+    virtual_void_marker_copy_2arg_DROP( double, float )
+    virtual_void_marker_copy_2arg_BREAK( float, false ) 
+
+    virtual void copy_using_atomic_marker( char** dest, 
+                                           size_t destSz, 
+                                           size_t strSz,                         
+                                           int beg = 0, 
+                                           secondary_type* sec = nullptr ) const 
+    { 
+        _throw_type_error< std::string* >( "->copy()", false );         
+    }
+
+    virtual void copy_using_atomic_marker( std::string* dest, 
+                                           size_t sz,                                         
+                                           int beg = 0, 
+                                           secondary_type* sec = nullptr ) const
+    {
+        if( !dest )
+            throw invalid_argument( "->copy(): *dest argument can not be null");
+
+        auto dstr = [sz]( char** _pptr){ DeallocStrArray( _pptr, sz); };
+
+        std::unique_ptr< char*, decltype( dstr ) > strMat( AllocStrArray( 
+                                                              sz, STR_DATA_SZ ), 
+                                                           dstr );
+        this->copy( strMat.get(), sz, STR_DATA_SZ , beg, sec);                
+        std::copy_n( strMat.get(), sz, dest );            
+    }
+
+    /******************/
     
     virtual ~Interface()
         {
@@ -330,6 +398,9 @@ class Object
         if( _qCount < _qBound )
             ++_qCount;
 
+        if( _mrkCount < (_qBound - 1) )
+            ++_mrkCount
+
         _mtx->unlock();
     } 
 
@@ -339,7 +410,7 @@ protected:
     
     std::recursive_mutex* const  _mtx; 
     volatile bool                _push_has_priority;    
-    size_t                       _qCount, _qBound;    
+    size_t                       _qCount, _qBound, _mrkCount;    
     _myImplTy                    _myImplObj;
 
     void _yld_to_push() const
@@ -403,6 +474,7 @@ public:
         _myImplObj( std::min<size_t>(sz,MAX_BOUND_SIZE) ),
         _qBound( std::min<size_t>(sz,MAX_BOUND_SIZE) ),
         _qCount( 0 ),
+        _mrkCount( -1 ),
         _mtx( new std::recursive_mutex ),
         _push_has_priority( true )
         {            
@@ -413,6 +485,7 @@ public:
         _myImplObj( stream._myImplObj ),
         _qBound( stream._qBound ),
         _qCount( stream._qCount ),
+        _mrkCount( stream._mrkCount ),
         _mtx( new std::recursive_mutex ),
         _push_has_priority( true )
         {            
@@ -422,7 +495,8 @@ public:
         : 
         _myImplObj( std::move( stream._myImplObj) ),
         _qBound( stream._qBound ),
-        _qCount( stream._qCount ),                
+        _qCount( stream._qCount ),   
+        _mrkCount( stream._mrkCount ),
         _mtx( new std::recursive_mutex ),
         _push_has_priority( true )
         {                
@@ -477,6 +551,40 @@ public:
         _count1 = 0;
         _push( (Ty)gen );        
     }
+
+    void copy_using_atomic_marker( Ty* dest, 
+                                   size_t sz,                            
+                                   int beg = 0, 
+                                   secondary_type* sec = nullptr) const 
+    {
+        if( _mrkCount < 0 )
+            /* ideally we should do something else, but the current infastructure
+               doesn't allow us to return an 'error' code so we must rely on the
+               calling code to catch 'unset_marker'*/
+            throw unset_marker(); 
+        /* 
+            NOTE: we need a better way of handling the unknown length of the data
+            vis-a-vis the passed in buffer length or do we just make calling code
+            check the legnth ?? 
+            should we provide a getter for _mrkCount ??
+            if beg is > _mrkCount do we just let exc mechanism handle it ??
+            should we just wrapp all these events with unset_marker into a single exc ??
+         */
+        copy( dest, sz, _mrkCount, beg, sec);
+
+    }
+
+    void copy_using_atomic_marker( char** dest, 
+                                   size_t destSz, 
+                                   size_t strSz,                              
+                                   int beg = 0, 
+                                   secondary_type* sec = nullptr) const 
+    {
+        if( _mrkCount < 0 )           
+            throw unset_marker(); 
+     
+        copy( dest, destSz, strSz, _mrkCount, beg, sec);
+    }
         
     void copy( Ty* dest, 
                size_t sz, 
@@ -500,6 +608,8 @@ public:
             *dest = beg ? _myImplObj.at(beg) : _myImplObj.front();
         else 
             _copy_to_ptr(_myImplObj,dest,sz,end,beg);         
+        
+        _mrkCount = beg - 1;         
     }
     
     /* slow(er), has to go thru generic_type to get strings */
@@ -518,7 +628,7 @@ public:
 
         _yld_to_push();        
         _guardTy _lock_( *_mtx );                    
-        _check_adj(end,beg, _myImplObj);                        
+        _check_adj( end, beg, _myImplObj);                        
 
         bIter = _myImplObj.cbegin() + beg; 
         eIter = _myImplObj.cbegin() + std::min< size_t >(++end, _qCount);
@@ -527,7 +637,9 @@ public:
             std::string genS = generic_type( *bIter ).as_string();                
             strncpy_s( dest[i], strSz, genS.c_str(), 
                        std::min<size_t>( strSz-1, genS.length() ) );                                  
-        }            
+        }    
+
+        _mrkCount = beg - 1; 
     }
 
     generic_type operator[]( int indx) const
@@ -536,10 +648,14 @@ public:
 
         _guardTy _lock_( *_mtx );
 
-        if ( !indx ) /* optimize for indx == 0 */
+        if ( !indx ){ /* optimize for indx == 0 */
+            _mrkCount = -1;
             return generic_type( _myImplObj.front() ); 
+        }
 
-        _check_adj( indx, dummy, _myImplObj );             
+        _check_adj( indx, dummy, _myImplObj ); 
+        _mrkCount = indx - 1; 
+
         return generic_type( _myImplObj.at(indx) );         
     }
 
@@ -568,6 +684,8 @@ public:
                    generic_type doesn't allow default construction */
                 std::insert_iterator< generic_vector_type >( tmp, tmp.begin() ), 
                 []( Ty x ){ return generic_type(x); } );   
+
+        _mrkCount = beg - 1; 
          
         return tmp;    
     }
@@ -609,6 +727,9 @@ class Object< Ty, SecTy, GenTy, true, Allocator >
 
         if( _qCount < _qBound )
             ++_qCount;
+
+        if( _mrkCount < (_qBound - 1) )
+            ++_mrkCount
 
         _mtx->unlock();
     } 
@@ -681,7 +802,7 @@ public:
 
         _guardTy _lock_( *_mtx );    
         
-        _myBase::copy(dest, sz, end, beg);  
+        _myBase::copy(dest, sz, end, beg);  /* _mrkCount reset by _myBase */
           
         if( !sec )
             return;
@@ -725,7 +846,7 @@ public:
      
         _guardTy _lock_( *_mtx );  
       
-        generic_type gen = operator[](indx);
+        generic_type gen = operator[](indx); /* _mrkCount reset by _myBase */
         if( !indx )
             return both_type( gen, _myImplSecObj.front() );
 
@@ -743,7 +864,9 @@ public:
         if( !indx )
             *dest = _myImplSecObj.front();
         else
-            *dest = _myImplSecObj.at( indx );        
+            *dest = _myImplSecObj.at( indx );    
+
+        _mrkCount = indx - 1; /* _mrkCount NOT reset by _myBase */
     }
 
     secondary_vector_type
@@ -766,6 +889,9 @@ public:
             tmp.resize(iterDiff); 
             std::copy( bIter, eIter, tmp.begin() );
         }
+
+        _mrkCount = beg - 1; /* _mrkCount NOT reset by _myBase */
+
         return tmp;    
     }
 };    

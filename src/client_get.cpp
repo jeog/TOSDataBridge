@@ -943,6 +943,157 @@ int TOSDB_GetStreamSnapshotStrings( LPCSTR id,
     }
 }
 
+/**************************
+**** data-stream-marker ***
+**************************/
+
+template< typename T > 
+int TOSDB_GetStreamSnapshotAtomicMarker_( LPCSTR id,
+                                         LPCSTR sItem, 
+                                         TOS_Topics::TOPICS tTopic, 
+                                         T* dest, 
+                                         size_type arrLen, 
+                                         pDateTimeStamp datetime,                                         
+                                         long beg )
+{
+    const TOSDBlock *db;
+    TOSDB_RawDataBlock::stream_const_ptr_type dat;
+
+    if( !CheckIDLength( id ) || !CheckStringLength( sItem ))
+        return -1;
+
+    try{
+        rGuardTy _lock_(*globalMutex);
+
+        db = GetBlockOrThrow( id );
+        dat = db->block->raw_stream_ptr(sItem, tTopic);
+
+        dat->copy_using_atomic_marker(dest,arrLen,end,beg,datetime);
+
+        return 0;
+    }catch( const tosdb_data_stream::error e ){
+        /*
+            FOR NOW LETS JUST SQUASH THE EXCEPTION and let caller know
+            TODO: handle unset_marker gracefully, allert caller to bad sz, beg etc 
+        */
+        return -3;
+    }catch( const std::exception& e ){
+        TOSDB_LogH( "GetStreamSnapshot<T>", e.what() );
+        return -2;
+    }catch( ... ){
+        return -2;    
+    }
+}
+
+template< typename T > 
+int TOSDB_GetStreamSnapshotAtomicMarker_( LPCSTR id,
+                              LPCSTR sItem, 
+                              LPCSTR sTopic, 
+                              T* dest, 
+                              size_type arrLen, 
+                              pDateTimeStamp datetime,                             
+                              long beg )
+{    
+    if( !CheckStringLength( sTopic ) ) /* let this go thru std::string ? */
+        return -1;     
+   
+    return TOSDB_GetStreamSnapshotAtomicMarker_( id, sItem, GetTopicEnum( sTopic ), 
+                                                 dest, arrLen, datetime, beg );
+}
+
+int TOSDB_GetStreamSnapshotAtomicMarkerDoubles( LPCSTR id,
+                                                LPCSTR sItem, 
+                                                LPCSTR sTopic, 
+                                                ext_price_type* dest, 
+                                                size_type arrLen, 
+                                                pDateTimeStamp datetime,                                                 
+                                                long beg)
+{
+    return TOSDB_GetStreamSnapshotAtomicMarker_( id, sItem, sTopic, dest, arrLen, 
+                                                 datetime, beg );
+}
+
+int TOSDB_GetStreamSnapshotAtomicMarkerFloats( LPCSTR id, 
+                                               LPCSTR sItem, 
+                                               LPCSTR sTopic, 
+                                               def_price_type* dest, 
+                                               size_type arrLen, 
+                                               pDateTimeStamp datetime,                                                
+                                               long beg )
+{
+    return TOSDB_GetStreamSnapshotAtomicMarker_( id, sItem, sTopic, dest, arrLen, 
+                                                 datetime, beg);
+}
+
+int TOSDB_GetStreamSnapshotAtomicMarkerLongLongs( LPCSTR id, 
+                                                  LPCSTR sItem, 
+                                                  LPCSTR sTopic, 
+                                                  ext_size_type* dest, 
+                                                  size_type arrLen, 
+                                                  pDateTimeStamp datetime,                                                 
+                                                  long beg )
+{
+    return TOSDB_GetStreamSnapshotAtomicMarker_( id, sItem, sTopic, dest, arrLen, 
+                                                 datetime, beg);    
+}
+
+int TOSDB_GetStreamSnapshotAtomicMarkerLongs( LPCSTR id, 
+                                              LPCSTR sItem, 
+                                              LPCSTR sTopic, 
+                                              def_size_type* dest, 
+                                              size_type arrLen, 
+                                              pDateTimeStamp datetime,                                              
+                                              long beg )
+{
+    return TOSDB_GetStreamSnapshotAtomicMarker_( id, sItem, sTopic, dest, arrLen, 
+                                                 datetime, beg);    
+}
+
+int TOSDB_GetStreamSnapshotAtomicMarkerStrings( LPCSTR id, 
+                                                LPCSTR sItem, 
+                                                LPCSTR sTopic, 
+                                                LPSTR* dest, 
+                                                size_type arrLen, 
+                                                size_type strLen, 
+                                                pDateTimeStamp datetime,                                                 
+                                                long beg )
+{
+    const TOSDBlock *db;
+    TOSDB_RawDataBlock::stream_const_ptr_type dat;
+    TOS_Topics::TOPICS tTopic;
+
+    if( !CheckIDLength(id) || !CheckStringLength( sItem, sTopic ) )
+        return -1;
+
+    tTopic = GetTopicEnum( sTopic );    
+    
+    try{
+        rGuardTy _lock_(*globalMutex);
+
+        db = GetBlockOrThrow( id );
+        dat = db->block->raw_stream_ptr(sItem, tTopic);
+
+        dat->copy_using_atomic_marker(dest,arrLen,strLen,beg,datetime);
+
+        return 0;
+    }catch( const tosdb_data_stream::error e ){
+        /*
+            FOR NOW LETS JUST SQUASH THE EXCEPTION and let caller know
+            TODO: handle unset_marker gracefully, allert caller to bad sz, beg etc 
+        */
+        return -3;   
+    }catch( const std::exception& e ){
+        TOSDB_LogH( "TOSDB_GetStreamSnapshotStrings()", e.what() );
+        return -2;
+    }catch( ... ){
+        return -2;    
+    }
+}
+
+/**************************
+**** data-stream-marker ***
+**************************/
+
 template<> 
 generic_map_type TOSDB_GetItemFrame< false >( std::string id, 
                                               TOS_Topics::TOPICS tTopic )
