@@ -18,6 +18,7 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 #include "tos_databridge.h"
 
 const TOS_Topics::topic_map_entry_type gtmArr[] = {
+    
     TOS_Topics::topic_map_entry_type(
         TOS_Topics::TOPICS::NULL_TOPIC, " "),
     TOS_Topics::topic_map_entry_type(

@@ -752,9 +752,9 @@ class TOS_DataBlock:
             else:
                 return val.value
 
-    def stream_snapshot_atomic_marker( self, item, topic, date_time = False, 
-                                       buf_size = 1000, beg = 0,                                        
-                                       data_str_max = STR_DATA_SZ ):
+    def stream_snapshot_from_marker( self, item, topic, date_time = False, 
+                                     buf_size = 1000, beg = 0,                                        
+                                     data_str_max = STR_DATA_SZ ):
         item = item.upper()
         topic = topic.upper()
         if( date_time and not self._date_time ):
@@ -767,7 +767,8 @@ class TOS_DataBlock:
             raise IndexError("Invalid index value(s) passed to stream_snapshot")           
         dtss = (_DateTimeStamp * buf_size)()
         tBits = type_bits( topic )
-        typeTup = _type_switch( tBits )   
+        typeTup = _type_switch( tBits )
+        get_size = _long_()
         if (typeTup[0] == "String"):
             # store char buffers
             strs = [ _BUF_(  data_str_max +1 ) for _ in range(buf_size)]   
@@ -783,13 +784,18 @@ class TOS_DataBlock:
                              ( dtss if date_time 
                                     else _PTR_(_DateTimeStamp)() ),                            
                              beg,
+                             pointer( get_size ),
                              arg_list = [ _string_, _string_, _string_, 
                                           _ppchar_, _ulong_, _ulong_, 
-                                          _PTR_(_DateTimeStamp), _long_ ] )
+                                          _PTR_(_DateTimeStamp), _long_,
+                                          _PTR_(_long_) ] )
             if ( err ):
                 raise TOSDB_Error( "error value [ " + str(err) + 
                                    " ] returned from library call",
-                                   "TOSDB_GetStreamSnapshotAtomicMarkerStrings") 
+                                   "TOSDB_GetStreamSnapshotAtomicMarkerStrings")
+
+            print("DEBUG, get_size: ", str(get_size) )
+            
             if ( date_time ):
                 adj_dts =  [TOS_DateTime( x ) for x in dtss]
                 return [_ for _ in zip( 
@@ -810,14 +816,19 @@ class TOS_DataBlock:
                              ( dtss if date_time 
                                     else _PTR_(_DateTimeStamp)() ),                             
                              beg,
+                             pointer( get_size ),
                              arg_list = [ _string_, _string_, _string_, 
                                           _PTR_(typeTup[1]), _ulong_, 
-                                          _PTR_(_DateTimeStamp), _long_ ] )
+                                          _PTR_(_DateTimeStamp), _long_,
+                                          _PTR_(_long_) ] )
             if ( err ):
                 raise TOSDB_Error( "error value of [ " + str(err) + 
                                    " ] returned from library call",
                                    "TOSDB_GetStreamSnapshotAtomicMarker " \
-                                       + typeTup[0] + "s" ) 
+                                       + typeTup[0] + "s" )
+
+            print("DEBUG, get_size: ", str(get_size) )
+            
             if( date_time ):
                 adj_dts =  [TOS_DateTime( x ) for x in dtss]
                 return [_ for _ in zip( num_array, adj_dts )]       

@@ -77,16 +77,6 @@ public:
         }
 };
 
-class unset_marker : public error{
-public:
-
-    unset_marker()
-        : 
-        error( "marker unset (*_mrkCount == -1), no data to return" )               
-        {                
-        }
-};
-
 /* 
     can't make std::exception a virtual base from the 
     stdexcept path so double construction of std::exception 
@@ -157,40 +147,46 @@ private:
     }
 
     template < typename _inTy, typename _outTy >
-    void _copy( _outTy* dest, 
-                size_t sz, 
-                int end, 
-                int beg, 
-                secondary_type* sec ) const
+    size_t _copy( _outTy* dest, 
+                  size_t sz, 
+                  int end, 
+                  int beg, 
+                  secondary_type* sec ) const
     {    
+        size_t ret;
         if( !dest )
             throw invalid_argument( "->copy(): *dest argument can not be null");     
     
-        std::unique_ptr< _inTy, void(*)(_inTy*)> tmp( new _inTy[sz], 
-                                                      [](_inTy* _ptr){ 
-                                                          delete[] _ptr; 
-                                                      } );
-        copy( tmp.get(), sz, end, beg, sec );
+        std::unique_ptr<_inTy,void(*)(_inTy*)> tmp( new _inTy[sz], 
+                                                    [](_inTy* _ptr){ 
+                                                        delete[] _ptr; 
+                                                    } );
+        ret = copy( tmp.get(), sz, end, beg, sec );
         for( size_t i = 0; i < sz; ++i )            
             dest[i] = (_outTy)tmp.get()[i];                                
+
+        return ret;
     }  
 
     template < typename _inTy, typename _outTy >
-    void _copy_using_atomic_marker( _outTy* dest, 
-                                    size_t sz,                 
-                                    int beg, 
-                                    secondary_type* sec ) const
+    long long _copy_using_atomic_marker( _outTy* dest, 
+                                         size_t sz,                 
+                                         int beg, 
+                                         secondary_type* sec ) const
     {    
+        long long ret;
         if( !dest )
             throw invalid_argument( "->copy(): *dest argument can not be null");     
     
-        std::unique_ptr< _inTy, void(*)(_inTy*)> tmp( new _inTy[sz], 
-                                                      [](_inTy* _ptr){ 
-                                                          delete[] _ptr; 
-                                                      } );
-        copy_using_atomic_marker( tmp.get(), sz, beg, sec );
+        std::unique_ptr<_inTy,void(*)(_inTy*)> tmp( new _inTy[sz], 
+                                                    [](_inTy* _ptr){
+                                                        delete[] _ptr;
+                                                    } );
+        ret = copy_from_marker( tmp.get(), sz, beg, sec );
         for( size_t i = 0; i < sz; ++i )            
-            dest[i] = (_outTy)tmp.get()[i];                                
+            dest[i] = (_outTy)tmp.get()[i];  
+
+        return ret;
     }  
 
 protected:
@@ -266,16 +262,17 @@ virtual void push( const _inTy str, secondary_type&& sec = secondary_type()) \
     virtual_void_push_2arg_LOOP( char*, std::string( str ) )
 
 #define virtual_void_copy_2arg_DROP( _inTy, _outTy ) \
-virtual void copy( _inTy* dest, size_t sz, int end = -1, int beg = 0, \
-                   secondary_type* sec = nullptr) const \
+virtual size_t copy( _inTy* dest, size_t sz, int end = -1, int beg = 0, \
+                     secondary_type* sec = nullptr) const \
 { \
-    _copy< _outTy >( dest, sz, end, beg, sec ); \
+    return _copy< _outTy >( dest, sz, end, beg, sec ); \
 } 
 #define virtual_void_copy_2arg_BREAK( _inTy, _dropBool ) \
-virtual void copy( _inTy* dest, size_t sz, int end = -1, int beg = 0, \
-                   secondary_type* sec = nullptr) const \
+virtual size_t copy( _inTy* dest, size_t sz, int end = -1, int beg = 0, \
+                     secondary_type* sec = nullptr) const \
 { \
     _throw_type_error< _inTy* >( "->copy()", _dropBool ); \
+    return 0; \
 }
 
     virtual_void_copy_2arg_DROP( long long, long )
@@ -291,47 +288,50 @@ virtual void copy( _inTy* dest, size_t sz, int end = -1, int beg = 0, \
     virtual_void_copy_2arg_DROP( double, float )
     virtual_void_copy_2arg_BREAK( float, false ) 
 
-    virtual void copy( char** dest, 
+    virtual size_t copy( char** dest, 
                        size_t destSz, 
                        size_t strSz, 
                        int end = -1, 
                        int beg = 0 , 
                        secondary_type* sec = nullptr ) const 
     { 
-        _throw_type_error< std::string* >( "->copy()", false );         
+        _throw_type_error< std::string* >( "->copy()", false );    
+        return 0;
     }
 
-    virtual void copy( std::string* dest, 
+    virtual size_t copy( std::string* dest, 
                        size_t sz, 
                        int end = -1, 
                        int beg = 0, 
                        secondary_type* sec = nullptr ) const
     {
+        size_t ret;
         if( !dest )
             throw invalid_argument( "->copy(): *dest argument can not be null");
 
         auto dstr = [sz]( char** _pptr){ DeallocStrArray( _pptr, sz); };
 
-        std::unique_ptr< char*, decltype( dstr ) > strMat( AllocStrArray( 
-                                                              sz, STR_DATA_SZ ), 
-                                                           dstr );
-        this->copy( strMat.get(), sz, STR_DATA_SZ , end, beg, sec);                
+        std::unique_ptr<char*,decltype(dstr)> strMat( AllocStrArray(sz,STR_DATA_SZ), 
+                                                      dstr );
+        ret = this->copy( strMat.get(), sz, STR_DATA_SZ , end, beg, sec);                
         std::copy_n( strMat.get(), sz, dest );            
+        return ret;
     }
 
     /**************************/
 
 #define virtual_void_marker_copy_2arg_DROP( _inTy, _outTy ) \
-virtual void copy_using_atomic_marker( _inTy* dest, size_t sz, int beg = 0, \
-                   secondary_type* sec = nullptr) const \
+virtual long long copy_from_marker( _inTy* dest, size_t sz, int beg = 0, \
+                                            secondary_type* sec = nullptr) const \
 { \
-    _copy_using_atomic_marker< _outTy >( dest, sz, beg, sec ); \
+    return _copy_using_atomic_marker< _outTy >( dest, sz, beg, sec ); \
 } 
 #define virtual_void_marker_copy_2arg_BREAK( _inTy, _dropBool ) \
-virtual void copy_using_atomic_marker( _inTy* dest, size_t sz, int beg = 0, \
-                   secondary_type* sec = nullptr) const \
+virtual long long copy_from_marker( _inTy* dest, size_t sz, int beg = 0, \
+                                            secondary_type* sec = nullptr) const \
 { \
     _throw_type_error< _inTy* >( "->copy()", _dropBool ); \
+    return 0; \
 }
 
     virtual_void_marker_copy_2arg_DROP( long long, long )
@@ -347,30 +347,33 @@ virtual void copy_using_atomic_marker( _inTy* dest, size_t sz, int beg = 0, \
     virtual_void_marker_copy_2arg_DROP( double, float )
     virtual_void_marker_copy_2arg_BREAK( float, false ) 
 
-    virtual void copy_using_atomic_marker( char** dest, 
-                                           size_t destSz, 
-                                           size_t strSz,                         
-                                           int beg = 0, 
-                                           secondary_type* sec = nullptr ) const 
+    virtual long long copy_from_marker( char** dest, 
+                                                size_t destSz, 
+                                                size_t strSz,                         
+                                                int beg = 0, 
+                                                secondary_type* sec = nullptr) const 
     { 
-        _throw_type_error< std::string* >( "->copy()", false );         
+        _throw_type_error< std::string* >( "->copy()", false );  
+        return 0;
     }
 
-    virtual void copy_using_atomic_marker( std::string* dest, 
-                                           size_t sz,                                         
-                                           int beg = 0, 
-                                           secondary_type* sec = nullptr ) const
+    virtual long long copy_from_marker( std::string* dest, 
+                                                size_t sz,                                         
+                                                int beg = 0, 
+                                                secondary_type* sec = nullptr) const
     {
+        long long ret;
         if( !dest )
             throw invalid_argument( "->copy(): *dest argument can not be null");
 
         auto dstr = [sz]( char** _pptr){ DeallocStrArray( _pptr, sz); };
 
-        std::unique_ptr< char*, decltype( dstr ) > strMat( AllocStrArray( 
-                                                              sz, STR_DATA_SZ ), 
-                                                           dstr );
-        this->copy_using_atomic_marker( strMat.get(), sz, STR_DATA_SZ , beg, sec);                
-        std::copy_n( strMat.get(), sz, dest );            
+        std::unique_ptr<char*,decltype(dstr)> strMat( AllocStrArray(sz,STR_DATA_SZ), 
+                                                      dstr );
+        ret = this->copy_from_marker( strMat.get(), sz, STR_DATA_SZ , 
+                                              beg, sec );                
+        std::copy_n( strMat.get(), sz, dest );   
+        return ret;
     }
 
     /******************/
@@ -380,7 +383,6 @@ virtual void copy_using_atomic_marker( _inTy* dest, size_t sz, int beg = 0, \
         }
 };
 
-/*    The container object w/o secondary deque */
 template < typename Ty,
            typename SecTy,
            typename GenTy,            
@@ -388,12 +390,14 @@ template < typename Ty,
            typename Allocator = std::allocator<Ty> >
 class Object
     : public Interface<SecTy, GenTy>{
+/*    
+ * The container object w/o secondary deque 
+ */
 
     class{
         static const bool valid = GenTy::Type_Check<Ty>::value;    
-        static_assert( valid, 
-            "tosdb_data_stream::object can not be compiled; \
-            Ty failed GenTy's type-check;" ); 
+        static_assert( valid, "tosdb_data_stream::object can not be compiled; "
+                              "Ty failed GenTy's type-check;" ); 
     }_inst_check_;    
     
     typedef Object< Ty, SecTy, GenTy, UseSecondary, Allocator>   _myTy;
@@ -404,9 +408,8 @@ class Object
     _myTy& operator=(const _myTy &);
     
     void _push(const Ty _item) 
-    {    /* if can't obtain lock indicate other threads should yield to us */        
-        /* using raw locking, push/pop doesn't throw */
-        _push_has_priority = _mtx->try_lock();
+    {   /* if can't obtain lock indicate other threads should yield to us */       
+        _push_has_priority = _mtx->try_lock(); /*O.K. push/pop doesn't throw*/
         if( !_push_has_priority )
             _mtx->lock(); /* block regardless */                 
 
@@ -416,9 +419,12 @@ class Object
         if( _qCount < _qBound )
             ++_qCount;
 
-        if( *_mrkCount < (_qBound - 1) )
-            ++(*_mrkCount);
-
+        if( !(*_mrkOverset) && ((*_mrkCount) < (long long)_qBound) ){
+            if( *_mrkCount == _qBound - 1 )
+                *_mrkOverset = true;
+            else
+                ++(*_mrkCount); 
+        }
         _mtx->unlock();
     } 
 
@@ -427,8 +433,10 @@ protected:
     typedef std::lock_guard<std::recursive_mutex >  _guardTy;
     
     std::recursive_mutex* const  _mtx; 
-    volatile bool                _push_has_priority;    
-    size_t                       _qCount, _qBound, *_mrkCount;    
+    volatile bool                _push_has_priority;
+    bool* const                  _mrkOverset;    
+    size_t                       _qCount, _qBound;
+    long long* const             _mrkCount;    
     _myImplTy                    _myImplObj;
 
     void _yld_to_push() const
@@ -462,7 +470,7 @@ protected:
     }
 
     template< typename ImplTy, typename DestTy > 
-    void _copy_to_ptr( ImplTy& impl, 
+    size_t _copy_to_ptr( ImplTy& impl, 
                        DestTy* dest, 
                        size_t sz, 
                        unsigned int end, 
@@ -474,7 +482,9 @@ protected:
             std::min< size_t >( sz + beg, std::min< size_t >( ++end, _qCount ));
 
         if( bIter < eIter )
-            std::copy( bIter, eIter, dest );     
+            return std::copy( bIter, eIter, dest ) - dest;  
+        else
+            return 0;
     }
 
 public:
@@ -487,7 +497,8 @@ public:
         _myImplObj( std::min<size_t>(sz,MAX_BOUND_SIZE) ),
         _qBound( std::min<size_t>(sz,MAX_BOUND_SIZE) ),
         _qCount( 0 ),
-        _mrkCount( new size_t(-1) ),
+        _mrkCount( new long long(-1) ),
+        _mrkOverset( new bool(false) ),
         _mtx( new std::recursive_mutex ),
         _push_has_priority( true )
         {            
@@ -498,7 +509,8 @@ public:
         _myImplObj( stream._myImplObj ),
         _qBound( stream._qBound ),
         _qCount( stream._qCount ),
-        _mrkCount( stream._mrkCount ),
+        _mrkCount( new long long(*stream._mrkCount) ),
+        _mrkOverset( new bool(*stream._mrkOverset) ),
         _mtx( new std::recursive_mutex ),
         _push_has_priority( true )
         {            
@@ -509,7 +521,8 @@ public:
         _myImplObj( std::move( stream._myImplObj) ),
         _qBound( stream._qBound ),
         _qCount( stream._qCount ),   
-        _mrkCount( stream._mrkCount ),
+        _mrkCount( new long long(*stream._mrkCount) ),
+        _mrkOverset( new bool(*stream._mrkOverset) ),
         _mtx( new std::recursive_mutex ),
         _push_has_priority( true )
         {                
@@ -566,51 +579,68 @@ public:
         _push( (Ty)gen );        
     }
 
-    void copy_using_atomic_marker( Ty* dest, 
-                                   size_t sz,                            
-                                   int beg = 0, 
-                                   secondary_type* sec = nullptr) const 
+    long long copy_from_marker( Ty* dest, 
+                                        size_t sz,                            
+                                        int beg = 0, 
+                                        secondary_type* sec = nullptr) const 
     {
+        long long ret;
         if( *_mrkCount < 0 )
-            /* ideally we should do something else, but the current infastructure
-               doesn't allow us to return an 'error' code so we must rely on the
-               calling code to catch 'unset_marker'*/
-            throw unset_marker(); 
-        /* 
-            NOTE: we need a better way of handling the unknown length of the data
-            vis-a-vis the passed in buffer length or do we just make calling code
-            check the legnth ?? 
-            should we provide a getter for _mrkCount ??
-            if beg is > _mrkCount do we just let exc mechanism handle it ??
-            should we just wrapp all these events with unset_marker into a single exc ??
-         */
-        copy( dest, sz, *_mrkCount, beg, sec);
+            /* IF mark hasn't moved, let caller know */
+            return 0; 
+        
+               /* O.K. as long as MAX_BOUND_SIZE == INT_MAX */
+        ret = (long long)copy( dest, sz, *_mrkCount, beg, sec);
 
+        if( *_mrkOverset ){
+            /*
+             * IF mark is overset (i.e hits back of stream):
+             *  1) reset flag
+             *  2) return negative size
+             */
+            *_mrkOverset = false;            
+            ret *= -1;            
+        }
+        return ret;
     }
 
-    void copy_using_atomic_marker( char** dest, 
-                                   size_t destSz, 
-                                   size_t strSz,                              
-                                   int beg = 0, 
-                                   secondary_type* sec = nullptr) const 
+    long long copy_from_marker( char** dest, 
+                                size_t destSz, 
+                                size_t strSz,                              
+                                int beg = 0, 
+                                secondary_type* sec = nullptr) const 
     {
-        if( *_mrkCount < 0 )           
-            throw unset_marker(); 
-     
-        copy( dest, destSz, strSz, *_mrkCount, beg, sec);
+        long long ret;
+        if( *_mrkCount < 0 )
+            /* IF mark hasn't moved, let caller know */
+            return 0; 
+        
+               /* O.K. as long as MAX_BOUND_SIZE == INT_MAX */
+        ret = (long long)copy( dest, destSz, strSz, *_mrkCount, beg, sec);
+
+        if( *_mrkOverset ){
+            /*
+             * IF mark is overset (i.e hits back of stream):
+             *  1) reset flag
+             *  2) return negative size
+             */
+            *_mrkOverset = false;            
+            ret *= -1;            
+        }
+        return ret;    
     }
         
-    void copy( Ty* dest, 
+    size_t copy( Ty* dest, 
                size_t sz, 
                int end = -1, 
                int beg = 0, 
                secondary_type* sec = nullptr) const 
     {    
-        static_assert( 
-            !std::is_same<Ty,char>::value, 
-            "->copy() accepts char**, not char*" 
-            );
+        size_t ret;
 
+        static_assert( !std::is_same<Ty,char>::value, 
+                       "->copy() accepts char**, not char*" );
+        
         if( !dest )
             throw invalid_argument( "->copy(): *dest argument can not be null");
 
@@ -618,24 +648,29 @@ public:
         _guardTy _lock_( *_mtx );
         _check_adj( end, beg, _myImplObj );                     
 
-        if( end == beg )
+        if( end == beg ){
             *dest = beg ? _myImplObj.at(beg) : _myImplObj.front();
-        else 
-            _copy_to_ptr(_myImplObj,dest,sz,end,beg);         
+            ret = 1;
+        }else 
+            ret = _copy_to_ptr(_myImplObj,dest,sz,end,beg);         
         
-        *_mrkCount = beg - 1;         
+        *_mrkCount = beg - 1;   
+        *_mrkOverset = false;
+
+        return ret;
     }
     
     /* slow(er), has to go thru generic_type to get strings */
     /* note: if sz <= genS.length() the string is truncated */
-    void copy( char** dest, 
+    size_t copy( char** dest, 
                size_t destSz, 
                size_t strSz, 
                int end = -1, 
                int beg = 0, 
                secondary_type* sec = nullptr) const 
     {
-        _myImplTy::const_iterator bIter, eIter;       
+        _myImplTy::const_iterator bIter, eIter;
+        size_t i;
  
         if( !dest )
             throw invalid_argument( "->copy(): *dest argument can not be null");
@@ -647,13 +682,16 @@ public:
         bIter = _myImplObj.cbegin() + beg; 
         eIter = _myImplObj.cbegin() + std::min< size_t >(++end, _qCount);
 
-        for( size_t i = 0; (i < destSz) && (bIter < eIter); ++bIter, ++i ){             
+        for( i = 0; (i < destSz) && (bIter < eIter); ++bIter, ++i ){             
             std::string genS = generic_type( *bIter ).as_string();                
             strncpy_s( dest[i], strSz, genS.c_str(), 
                        std::min<size_t>( strSz-1, genS.length() ) );                                  
         }    
 
         *_mrkCount = beg - 1; 
+        *_mrkOverset = false;
+
+        return i;
     }
 
     generic_type operator[]( int indx) const
@@ -664,11 +702,14 @@ public:
 
         if ( !indx ){ /* optimize for indx == 0 */
             *_mrkCount = -1;
+            *_mrkOverset = false;
             return generic_type( _myImplObj.front() ); 
         }
 
         _check_adj( indx, dummy, _myImplObj ); 
+
         *_mrkCount = indx - 1; 
+        *_mrkOverset = false;
 
         return generic_type( _myImplObj.at(indx) );         
     }
@@ -700,6 +741,7 @@ public:
                 []( Ty x ){ return generic_type(x); } );   
 
         *_mrkCount = beg - 1; 
+        *_mrkOverset = false;
          
         return tmp;    
     }
@@ -742,9 +784,12 @@ class Object< Ty, SecTy, GenTy, true, Allocator >
         if( _qCount < _qBound )
             ++_qCount;
 
-        if( *_mrkCount < (_qBound - 1) )
-            ++(*_mrkCount);
-
+        if( !(*_mrkOverset) && ((*_mrkCount) < (long long)_qBound) ){
+            if( *_mrkCount == _qBound - 1 )
+                *_mrkOverset = true;
+            else
+                ++(*_mrkCount); 
+        }
         _mtx->unlock();
     } 
 
@@ -805,37 +850,44 @@ public:
         _push( (Ty)gen, std::move(sec) );
     }
     
-    void copy( Ty* dest, 
+    size_t copy( Ty* dest, 
                size_t sz, 
                int end = -1, 
                int beg = 0, 
                secondary_type* sec = nullptr) const 
-    {        
+    {     
+        size_t ret;
         if( !dest )
             throw invalid_argument( "->copy(): *dest argument can not be null");
 
         _guardTy _lock_( *_mtx );    
         
-        _myBase::copy(dest, sz, end, beg);  /* _mrkCount reset by _myBase */
+        _myBase::copy(dest, sz, end, beg); /*_mrkCount reset by _myBase*/
           
         if( !sec )
-            return;
+            return 0;
         /*repeat the check to update index vals */ 
         _check_adj( end, beg, _myImplSecObj );       
  
-        if( end == beg )    
+        if( end == beg ){    
             *sec = beg ? _myImplSecObj.at(beg) : _myImplSecObj.front();
-        else    
-            _copy_to_ptr( _myImplSecObj, sec, sz, end, beg);    
+            ret = 1;
+        }else    
+            ret = _copy_to_ptr( _myImplSecObj, sec, sz, end, beg);    
+        /*
+         * check ret vs. the return value of _myBase::copy for consistency ??
+        */
+        return ret;
     }
 
-    void copy( char** dest, 
+    size_t copy( char** dest, 
                size_t destSz, 
                size_t strSz, 
                int end = -1, 
                int beg = 0, 
                secondary_type* sec = nullptr) const 
-    {            
+    {        
+        size_t ret;
         if( !dest  )
             throw invalid_argument( "->copy(): *dest argument can not be null");
 
@@ -844,14 +896,19 @@ public:
         _myBase::copy(dest, destSz, strSz, end, beg);
 
         if( !sec )
-            return;
+            return 0;
         /*repeat the check to update index vals*/
         _check_adj( end, beg, _myImplSecObj ); 
 
-        if( end == beg )
+        if( end == beg ){
             *sec = beg ? _myImplSecObj.at(beg) : _myImplSecObj.front();
-        else
-            _copy_to_ptr( _myImplSecObj, sec, destSz, end, beg);        
+            ret = 1;
+        }else
+            ret = _copy_to_ptr( _myImplSecObj, sec, destSz, end, beg);        
+        /*
+         * check ret vs. the return value of _myBase::copy for consistency ??
+        */
+        return ret;
     }
     
     both_type both( int indx ) const                        
@@ -881,6 +938,7 @@ public:
             *dest = _myImplSecObj.at( indx );    
 
         *_mrkCount = indx - 1; /* _mrkCount NOT reset by _myBase */
+        *_mrkOverset = false;
     }
 
     secondary_vector_type
@@ -905,6 +963,7 @@ public:
         }
 
         *_mrkCount = beg - 1; /* _mrkCount NOT reset by _myBase */
+        *_mrkOverset = false;
 
         return tmp;    
     }

@@ -948,13 +948,14 @@ int TOSDB_GetStreamSnapshotStrings( LPCSTR id,
 **************************/
 
 template< typename T > 
-int TOSDB_GetStreamSnapshotAtomicMarker_( LPCSTR id,
-                                         LPCSTR sItem, 
-                                         TOS_Topics::TOPICS tTopic, 
-                                         T* dest, 
-                                         size_type arrLen, 
-                                         pDateTimeStamp datetime,                                         
-                                         long beg )
+int TOSDB_GetStreamSnapshotFromMarker_( LPCSTR id,
+                                        LPCSTR sItem, 
+                                        TOS_Topics::TOPICS tTopic, 
+                                        T* dest, 
+                                        size_type arrLen, 
+                                        pDateTimeStamp datetime,                                         
+                                        long beg,
+                                        long *get_size )
 {
     const TOSDBlock *db;
     TOSDB_RawDataBlock::stream_const_ptr_type dat;
@@ -967,18 +968,11 @@ int TOSDB_GetStreamSnapshotAtomicMarker_( LPCSTR id,
 
         db = GetBlockOrThrow( id );
         dat = db->block->raw_stream_ptr(sItem, tTopic);
-
-        dat->copy_using_atomic_marker(dest,arrLen,beg,datetime);
-
+                /* O.K. as long as data_stream::MAX_BOUND_SIZE == INT_MAX */
+        *get_size = (long)(dat->copy_from_marker(dest,arrLen,beg,datetime));
         return 0;
-    }catch( const tosdb_data_stream::error e ){
-        /*
-            FOR NOW LETS JUST SQUASH THE EXCEPTION and let caller know
-            TODO: handle unset_marker gracefully, allert caller to bad sz, beg etc 
-        */
-        return -3;
     }catch( const std::exception& e ){
-        TOSDB_LogH( "GetStreamSnapshot<T>", e.what() );
+        TOSDB_LogH( "GetStreamSnapshotFromMarker<T>", e.what() );
         return -2;
     }catch( ... ){
         return -2;    
@@ -986,77 +980,84 @@ int TOSDB_GetStreamSnapshotAtomicMarker_( LPCSTR id,
 }
 
 template< typename T > 
-int TOSDB_GetStreamSnapshotAtomicMarker_( LPCSTR id,
-                                          LPCSTR sItem, 
-                                          LPCSTR sTopic, 
-                                          T* dest, 
-                                          size_type arrLen, 
-                                          pDateTimeStamp datetime,                             
-                                          long beg )
+int TOSDB_GetStreamSnapshotFromMarker_( LPCSTR id,
+                                        LPCSTR sItem, 
+                                        LPCSTR sTopic, 
+                                        T* dest, 
+                                        size_type arrLen, 
+                                        pDateTimeStamp datetime,                             
+                                        long beg,
+                                        long *get_size )
 {    
     if( !CheckStringLength( sTopic ) ) /* let this go thru std::string ? */
-        return -1;     
+        return 0;     
    
-    return TOSDB_GetStreamSnapshotAtomicMarker_( id, sItem, GetTopicEnum( sTopic ), 
-                                                 dest, arrLen, datetime, beg );
+    return TOSDB_GetStreamSnapshotFromMarker_( id, sItem, GetTopicEnum( sTopic ), 
+                                               dest, arrLen, datetime, beg, 
+                                               get_size );
 }
 
-int TOSDB_GetStreamSnapshotAtomicMarkerDoubles( LPCSTR id,
-                                                LPCSTR sItem, 
-                                                LPCSTR sTopic, 
-                                                ext_price_type* dest, 
-                                                size_type arrLen, 
-                                                pDateTimeStamp datetime,                                                 
-                                                long beg)
-{
-    return TOSDB_GetStreamSnapshotAtomicMarker_( id, sItem, sTopic, dest, arrLen, 
-                                                 datetime, beg );
-}
-
-int TOSDB_GetStreamSnapshotAtomicMarkerFloats( LPCSTR id, 
-                                               LPCSTR sItem, 
-                                               LPCSTR sTopic, 
-                                               def_price_type* dest, 
-                                               size_type arrLen, 
-                                               pDateTimeStamp datetime,                                                
-                                               long beg )
-{
-    return TOSDB_GetStreamSnapshotAtomicMarker_( id, sItem, sTopic, dest, arrLen, 
-                                                 datetime, beg);
-}
-
-int TOSDB_GetStreamSnapshotAtomicMarkerLongLongs( LPCSTR id, 
-                                                  LPCSTR sItem, 
-                                                  LPCSTR sTopic, 
-                                                  ext_size_type* dest, 
-                                                  size_type arrLen, 
-                                                  pDateTimeStamp datetime,                                                 
-                                                  long beg )
-{
-    return TOSDB_GetStreamSnapshotAtomicMarker_( id, sItem, sTopic, dest, arrLen, 
-                                                 datetime, beg);    
-}
-
-int TOSDB_GetStreamSnapshotAtomicMarkerLongs( LPCSTR id, 
+int TOSDB_GetStreamSnapshotDoublesFromMarker( LPCSTR id,
                                               LPCSTR sItem, 
                                               LPCSTR sTopic, 
-                                              def_size_type* dest, 
+                                              ext_price_type* dest, 
                                               size_type arrLen, 
-                                              pDateTimeStamp datetime,                                              
-                                              long beg )
+                                              pDateTimeStamp datetime,                                                 
+                                              long beg,
+                                              long *get_size )
 {
-    return TOSDB_GetStreamSnapshotAtomicMarker_( id, sItem, sTopic, dest, arrLen, 
-                                                 datetime, beg);    
+    return TOSDB_GetStreamSnapshotFromMarker_( id, sItem, sTopic, dest, arrLen, 
+                                               datetime, beg, get_size );
 }
 
-int TOSDB_GetStreamSnapshotAtomicMarkerStrings( LPCSTR id, 
+int TOSDB_GetStreamSnapshotFloatsFromMarker( LPCSTR id, 
+                                             LPCSTR sItem, 
+                                             LPCSTR sTopic, 
+                                             def_price_type* dest, 
+                                             size_type arrLen, 
+                                             pDateTimeStamp datetime,                                                
+                                             long beg,
+                                             long *get_size )
+{
+    return TOSDB_GetStreamSnapshotFromMarker_( id, sItem, sTopic, dest, arrLen, 
+                                               datetime, beg, get_size);
+}
+
+int TOSDB_GetStreamSnapshotLongLongsFromMarker( LPCSTR id, 
                                                 LPCSTR sItem, 
                                                 LPCSTR sTopic, 
-                                                LPSTR* dest, 
+                                                ext_size_type* dest, 
                                                 size_type arrLen, 
-                                                size_type strLen, 
                                                 pDateTimeStamp datetime,                                                 
-                                                long beg )
+                                                long beg,
+                                                long *get_size )
+{
+    return TOSDB_GetStreamSnapshotFromMarker_( id, sItem, sTopic, dest, arrLen, 
+                                               datetime, beg, get_size);    
+}
+
+int TOSDB_GetStreamSnapshotLongsFromMarker( LPCSTR id, 
+                                            LPCSTR sItem, 
+                                            LPCSTR sTopic, 
+                                            def_size_type* dest, 
+                                            size_type arrLen, 
+                                            pDateTimeStamp datetime,                                              
+                                            long beg,
+                                            long *get_size )
+{
+    return TOSDB_GetStreamSnapshotFromMarker_( id, sItem, sTopic, dest, arrLen, 
+                                               datetime, beg, get_size);    
+}
+
+int TOSDB_GetStreamSnapshotStringsFromMarker( LPCSTR id, 
+                                              LPCSTR sItem, 
+                                              LPCSTR sTopic, 
+                                              LPSTR* dest, 
+                                              size_type arrLen, 
+                                              size_type strLen, 
+                                              pDateTimeStamp datetime,                                                 
+                                              long beg,
+                                              long *get_size)
 {
     const TOSDBlock *db;
     TOSDB_RawDataBlock::stream_const_ptr_type dat;
@@ -1072,18 +1073,12 @@ int TOSDB_GetStreamSnapshotAtomicMarkerStrings( LPCSTR id,
 
         db = GetBlockOrThrow( id );
         dat = db->block->raw_stream_ptr(sItem, tTopic);
-
-        dat->copy_using_atomic_marker(dest,arrLen,strLen,beg,datetime);
-
+                /* O.K. as long as data_stream::MAX_BOUND_SIZE == INT_MAX */
+        *get_size = (long)(dat->copy_from_marker( dest, arrLen, strLen, beg,
+                                                  datetime ));     
         return 0;
-    }catch( const tosdb_data_stream::error& e ){
-        /*
-            FOR NOW LETS JUST SQUASH THE EXCEPTION and let caller know
-            TODO: handle unset_marker gracefully, allert caller to bad sz, beg etc 
-        */
-        return -3;   
     }catch( const std::exception& e ){
-        TOSDB_LogH( "TOSDB_GetStreamSnapshotStrings()", e.what() );
+        TOSDB_LogH( "TOSDB_GetStreamSnapshotStringsFromMarker()", e.what() );
         return -2;
     }catch( ... ){
         return -2;    
