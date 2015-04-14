@@ -84,7 +84,7 @@ _dllRawName = "tos-databridge"
 _sysArch = "x64" if ( log( maxsize * 2, 2) > 33 ) else "x86"
 _dllQNameRE = compile('^('+_dllRawName 
                           + '-)[\d]{1,2}.[\d]{1,2}-'
-                          +_sysArch + '(.dll)$')
+                          +_sysArch + '_d(.dll)$') ## _d for debug
 _dll = None
 
 class TOSDB_Error(Exception):
@@ -774,7 +774,7 @@ class TOS_DataBlock:
             strs = [ _BUF_(  data_str_max +1 ) for _ in range(buf_size)]   
             # cast char buffers into (char*)[ ]          
             strs_array = (_pchar_ * buf_size)(*[ cast(s,_pchar_) for s in strs]) 
-            err = _lib_call( "TOSDB_GetStreamSnapshotAtomicMarkerStrings", 
+            err = _lib_call( "TOSDB_GetStreamSnapshotStringsFromMarker", 
                              self._name,
                              item.encode("ascii"),
                              topic.encode("ascii"),
@@ -792,22 +792,29 @@ class TOS_DataBlock:
             if ( err ):
                 raise TOSDB_Error( "error value [ " + str(err) + 
                                    " ] returned from library call",
-                                   "TOSDB_GetStreamSnapshotAtomicMarkerStrings")
+                                   "TOSDB_GetStreamSnapshotStringsFromMarker")
 
             print("DEBUG, get_size: ", str(get_size) )
+
+            get_size = get_size.value
+            if get_size < 0:
+                raise TOSDB_error("get_size < 0; data lost before the 'marker'")
+            elif get_size == 0:
+                return None
             
             if ( date_time ):
-                adj_dts =  [TOS_DateTime( x ) for x in dtss]
+                adj_dts =  [TOS_DateTime( x ) for x in dtss[:get_size] ]
                 return [_ for _ in zip( 
                             map( lambda x : cast(x, _string_).value.decode(), 
-                                 strs_array ), 
+                                 strs_array[:get_size] ), 
                             adj_dts ) ]        
             else:
-                return [cast(ptr,_string_).value.decode() for ptr in strs_array]
+                return [ cast(ptr,_string_).value.decode()
+                         for ptr in strs_array[:get_size] ]
         else:
             num_array =  (typeTup[1] * buf_size)()   
-            err = _lib_call( "TOSDB_GetStreamSnapshotAtomicMarker" \
-                                 + typeTup[0] + "s", 
+            err = _lib_call( "TOSDB_GetStreamSnapshot" \
+                                 + typeTup[0] + "sFromMarker" , 
                              self._name,
                              item.encode("ascii"),
                              topic.encode("ascii"),
@@ -824,16 +831,23 @@ class TOS_DataBlock:
             if ( err ):
                 raise TOSDB_Error( "error value of [ " + str(err) + 
                                    " ] returned from library call",
-                                   "TOSDB_GetStreamSnapshotAtomicMarker " \
-                                       + typeTup[0] + "s" )
+                                   "TOSDB_GetStreamSnapshot" \
+                                       + typeTup[0] + "sFromMarker" )
 
             print("DEBUG, get_size: ", str(get_size) )
+
+            get_size = get_size.value
+            if get_size < 0:
+                raise TOSDB_error("get_size < 0; data lost before the 'marker'")
+                get_size *= -1 # a reminder if we want to change the flow
+            elif get_size == 0:
+                return None
             
             if( date_time ):
-                adj_dts =  [TOS_DateTime( x ) for x in dtss]
-                return [_ for _ in zip( num_array, adj_dts )]       
+                adj_dts =  [TOS_DateTime( x ) for x in dtss[:get_size]]
+                return [_ for _ in zip( num_array[:get_size], adj_dts )]       
             else:
-                return [_ for _ in num_array]
+                return [_ for _ in num_array[:get_size]]
             
         
     def stream_snapshot( self, item, topic, date_time = False, 

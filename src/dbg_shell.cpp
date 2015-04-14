@@ -61,7 +61,7 @@ void get_cstr_topics();
 void del_cstr_items();
 void del_cstr_topics();
 template<typename T >
-void deal_with_stream_data(size_type len, T* dataRay);
+void deal_with_stream_data(size_type len, T* dataRay, bool show_dts);
 template<typename T>
 void _get();
 template<typename T>
@@ -1038,8 +1038,12 @@ void deal_with_stream_data(size_type len, T* dataRay, bool show_dts)
         prompt>> indx_inpt;
         if( indx_inpt == "all")
         {
-            for(size_type i = 0; i < len; ++i)
-                std::cout<<dataRay[i]<<' '<< show_dts ? dtsRay[i] : '' <<std::endl;
+            for(size_type i = 0; i < len; ++i){
+                if( show_dts )
+                    std::cout<<dataRay[i]<<' '<< dtsRay[i] <<std::endl;
+                else
+                    std::cout<<dataRay[i]<<' ' <<std::endl;
+            }
             break;
         }
         else
@@ -1047,7 +1051,10 @@ void deal_with_stream_data(size_type len, T* dataRay, bool show_dts)
             try
             {
                 long long ind1 = std::stoll( indx_inpt);
-                std::cout<<dataRay[ind1]<<' '<< show_dts ? dtsRay[ind1] : '' <<std::endl;
+                if( show_dts )
+                    std::cout<<dataRay[ind1]<<' '<< dtsRay[ind1] <<std::endl;
+                else
+                    std::cout<<dataRay[ind1]<<' ' <<std::endl;
             }
             catch(...)
             {

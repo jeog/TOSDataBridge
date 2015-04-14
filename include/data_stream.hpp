@@ -200,17 +200,16 @@ protected:
 
 public:
 
-    virtual size_t                  bound_size() const = 0;
-    virtual size_t                  bound_size( size_t ) = 0;
-    virtual size_t                  size() const = 0;
-    virtual bool                    empty() const = 0;    
-    virtual bool                    uses_secondary() = 0;
-    virtual generic_type            operator[]( int ) const    = 0;
-    virtual both_type               both( int ) const = 0;    
-    virtual generic_vector_type     vector( int end = -1, 
-                                            int beg = 0 ) const = 0;
-    virtual secondary_vector_type   secondary_vector( int end = -1, 
-                                                      int beg = 0 ) const = 0;    
+    virtual size_t                bound_size() const = 0;
+    virtual size_t                bound_size( size_t ) = 0;
+    virtual size_t                size() const = 0;
+    virtual bool                  empty() const = 0;    
+    virtual bool                  uses_secondary() = 0;
+    virtual generic_type          operator[]( int ) const = 0;
+    virtual both_type             both( int ) const = 0;    
+    virtual generic_vector_type   vector( int end = -1, int beg = 0 ) const = 0;
+    virtual secondary_vector_type secondary_vector( int end = -1, 
+                                                    int beg = 0 ) const = 0;    
     
     virtual void push( const generic_type& obj, 
                        secondary_type&& sec = secondary_type() ) = 0;
@@ -289,21 +288,21 @@ virtual size_t copy( _inTy* dest, size_t sz, int end = -1, int beg = 0, \
     virtual_void_copy_2arg_BREAK( float, false ) 
 
     virtual size_t copy( char** dest, 
-                       size_t destSz, 
-                       size_t strSz, 
-                       int end = -1, 
-                       int beg = 0 , 
-                       secondary_type* sec = nullptr ) const 
+                         size_t destSz, 
+                         size_t strSz, 
+                         int end = -1, 
+                         int beg = 0 , 
+                         secondary_type* sec = nullptr ) const 
     { 
         _throw_type_error< std::string* >( "->copy()", false );    
         return 0;
     }
 
     virtual size_t copy( std::string* dest, 
-                       size_t sz, 
-                       int end = -1, 
-                       int beg = 0, 
-                       secondary_type* sec = nullptr ) const
+                         size_t sz, 
+                         int end = -1, 
+                         int beg = 0, 
+                         secondary_type* sec = nullptr ) const
     {
         size_t ret;
         if( !dest )
@@ -322,13 +321,13 @@ virtual size_t copy( _inTy* dest, size_t sz, int end = -1, int beg = 0, \
 
 #define virtual_void_marker_copy_2arg_DROP( _inTy, _outTy ) \
 virtual long long copy_from_marker( _inTy* dest, size_t sz, int beg = 0, \
-                                            secondary_type* sec = nullptr) const \
+                                    secondary_type* sec = nullptr) const \
 { \
     return _copy_using_atomic_marker< _outTy >( dest, sz, beg, sec ); \
 } 
 #define virtual_void_marker_copy_2arg_BREAK( _inTy, _dropBool ) \
 virtual long long copy_from_marker( _inTy* dest, size_t sz, int beg = 0, \
-                                            secondary_type* sec = nullptr) const \
+                                    secondary_type* sec = nullptr) const \
 { \
     _throw_type_error< _inTy* >( "->copy()", _dropBool ); \
     return 0; \
@@ -348,19 +347,19 @@ virtual long long copy_from_marker( _inTy* dest, size_t sz, int beg = 0, \
     virtual_void_marker_copy_2arg_BREAK( float, false ) 
 
     virtual long long copy_from_marker( char** dest, 
-                                                size_t destSz, 
-                                                size_t strSz,                         
-                                                int beg = 0, 
-                                                secondary_type* sec = nullptr) const 
+                                        size_t destSz, 
+                                        size_t strSz,                         
+                                        int beg = 0, 
+                                        secondary_type* sec = nullptr) const 
     { 
         _throw_type_error< std::string* >( "->copy()", false );  
         return 0;
     }
 
     virtual long long copy_from_marker( std::string* dest, 
-                                                size_t sz,                                         
-                                                int beg = 0, 
-                                                secondary_type* sec = nullptr) const
+                                        size_t sz,                                         
+                                        int beg = 0, 
+                                        secondary_type* sec = nullptr) const
     {
         long long ret;
         if( !dest )
@@ -427,6 +426,26 @@ class Object
         }
         _mtx->unlock();
     } 
+
+    long long _chk_marker( long long copy_sz, int beg, long long marker,
+                           bool was_overset ) const
+    {
+        if( was_overset ){
+            /*
+             * IF mark is overset (i.e hits back of stream):
+             *  1) reset flag (probably unecessary)
+             *  2) return negative size
+             */
+            *_mrkOverset = false;            
+            copy_sz *= -1;            
+        }else if( copy_sz < ((int)(marker) - beg) )
+            /*
+             * IF we don't copy enough(sz is too small), return negative size
+             */
+            copy_sz *= -1;
+
+        return copy_sz; 
+    }
 
 protected:
 
@@ -532,6 +551,7 @@ public:
         {
             delete this->_mtx;  
             delete this->_mrkCount;
+            delete this->_mrkOverset;
         }
 
     bool empty() const 
@@ -580,28 +600,16 @@ public:
     }
 
     long long copy_from_marker( Ty* dest, 
-                                        size_t sz,                            
-                                        int beg = 0, 
-                                        secondary_type* sec = nullptr) const 
-    {
-        long long ret;
-        if( *_mrkCount < 0 )
-            /* IF mark hasn't moved, let caller know */
-            return 0; 
-        
-               /* O.K. as long as MAX_BOUND_SIZE == INT_MAX */
-        ret = (long long)copy( dest, sz, *_mrkCount, beg, sec);
-
-        if( *_mrkOverset ){
-            /*
-             * IF mark is overset (i.e hits back of stream):
-             *  1) reset flag
-             *  2) return negative size
-             */
-            *_mrkOverset = false;            
-            ret *= -1;            
-        }
-        return ret;
+                                size_t sz,                            
+                                int beg = 0, 
+                                secondary_type* sec = nullptr) const 
+    {        
+        long long m = *_mrkCount;
+        bool s = *_mrkOverset;
+        if( m < 0 ) /*IF mark hasn't moved, tell caller immediately*/
+            return 0;         
+                             /* O.K. as long as MAX_BOUND_SIZE == INT_MAX */
+        return _chk_marker( (long long)copy(dest,sz,m,beg,sec), beg, m, s);
     }
 
     long long copy_from_marker( char** dest, 
@@ -609,38 +617,26 @@ public:
                                 size_t strSz,                              
                                 int beg = 0, 
                                 secondary_type* sec = nullptr) const 
-    {
-        long long ret;
-        if( *_mrkCount < 0 )
-            /* IF mark hasn't moved, let caller know */
-            return 0; 
-        
-               /* O.K. as long as MAX_BOUND_SIZE == INT_MAX */
-        ret = (long long)copy( dest, destSz, strSz, *_mrkCount, beg, sec);
-
-        if( *_mrkOverset ){
-            /*
-             * IF mark is overset (i.e hits back of stream):
-             *  1) reset flag
-             *  2) return negative size
-             */
-            *_mrkOverset = false;            
-            ret *= -1;            
-        }
-        return ret;    
+    {       
+        long long m = *_mrkCount;
+        bool s = *_mrkOverset;
+        if( m < 0 ) /*IF mark hasn't moved, tell caller immediately*/
+            return 0;         
+                             /* O.K. as long as MAX_BOUND_SIZE == INT_MAX */
+        return _chk_marker( (long long)copy( dest, destSz, strSz, m, beg, sec), 
+                             beg, m, s );
     }
         
     size_t copy( Ty* dest, 
-               size_t sz, 
-               int end = -1, 
-               int beg = 0, 
-               secondary_type* sec = nullptr) const 
+                 size_t sz, 
+                 int end = -1, 
+                 int beg = 0, 
+                 secondary_type* sec = nullptr) const 
     {    
         size_t ret;
 
         static_assert( !std::is_same<Ty,char>::value, 
-                       "->copy() accepts char**, not char*" );
-        
+                       "->copy() accepts char**, not char*" );        
         if( !dest )
             throw invalid_argument( "->copy(): *dest argument can not be null");
 
@@ -862,10 +858,10 @@ public:
 
         _guardTy _lock_( *_mtx );    
         
-        _myBase::copy(dest, sz, end, beg); /*_mrkCount reset by _myBase*/
+        ret = _myBase::copy(dest, sz, end, beg); /*_mrkCount reset by _myBase*/
           
         if( !sec )
-            return 0;
+            return ret;
         /*repeat the check to update index vals */ 
         _check_adj( end, beg, _myImplSecObj );       
  
@@ -893,10 +889,10 @@ public:
 
         _guardTy _lock_( *_mtx );
 
-        _myBase::copy(dest, destSz, strSz, end, beg);
+        ret = _myBase::copy(dest, destSz, strSz, end, beg);
 
         if( !sec )
-            return 0;
+            return ret;
         /*repeat the check to update index vals*/
         _check_adj( end, beg, _myImplSecObj ); 
 
