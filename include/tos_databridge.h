@@ -414,6 +414,7 @@ typedef ILSet< const TOS_Topics::TOPICS,
                TOS_Topics::top_less >     topic_set_type;
 
 #endif
+
 /* NOTE int return types indicate an error value is returned */
 EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int             TOSDB_Connect();
 EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int             TOSDB_Disconnect();
@@ -446,6 +447,7 @@ EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int             TOSDB_GetTypeBits( LPCSTR sT
 EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int             TOSDB_GetTypeString( LPCSTR sTopic, LPSTR dest, size_type strLen );
 EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int             TOSDB_IsUsingDateTime( LPCSTR id, unsigned int* pBoolInt );
 EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int             TOSDB_GetStreamOccupancy( LPCSTR id,LPCSTR sItem, LPCSTR sTopic, size_type* sz );
+EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int             TOSDB_GetMarkerPosition( LPCSTR id,LPCSTR sItem, LPCSTR sTopic, long long* pos );
 EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int             TOSDB_DumpSharedBufferStatus();
 #ifdef __cplusplus
 DLL_SPEC_IFACE_ NO_THROW_ int           TOSDB_Add( std::string id, str_set_type sItems, topic_set_type tTopics );
@@ -467,6 +469,8 @@ DLL_SPEC_IFACE_ size_type               TOSDB_GetTopicCount( std::string id);
 DLL_SPEC_IFACE_ bool                    TOSDB_IsUsingDateTime( std::string id );
 DLL_SPEC_IFACE_ size_type               TOSDB_GetBlockSize( std::string id );
 DLL_SPEC_IFACE_ size_type               TOSDB_GetStreamOccupancy( std::string id, std::string sItem, TOS_Topics::TOPICS tTopic );
+DLL_SPEC_IFACE_ long long               TOSDB_GetMarkerPosition( std::string id, std::string sItem, TOS_Topics::TOPICS tTopic );
+
 /* Get individual data points */
 template< typename T, bool b > auto            TOSDB_Get( std::string id, std::string sItem, TOS_Topics::TOPICS tTopic, long indx = 0 ) 
                                                -> typename std::conditional< b, std::pair< T, DateTimeStamp> , T >::type;
@@ -523,6 +527,13 @@ EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int                         TOSDB_GetStreamS
 EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int                         TOSDB_GetStreamSnapshotLongLongs( LPCSTR id, LPCSTR sItem, LPCSTR sTopic, ext_size_type* dest, size_type arrLen, pDateTimeStamp datetime, long end, long beg); 
 EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int                         TOSDB_GetStreamSnapshotLongs( LPCSTR id, LPCSTR sItem, LPCSTR sTopic, def_size_type* dest, size_type arrLen, pDateTimeStamp datetime, long end, long beg); 
 EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int                         TOSDB_GetStreamSnapshotStrings( LPCSTR id, LPCSTR sItem, LPCSTR sTopic, LPSTR* dest, size_type arrLen, size_type strLen, pDateTimeStamp datetime, long end, long beg);
+/*** data-stream-marker ( C only for now ) ***/
+EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int                         TOSDB_GetStreamSnapshotDoublesFromMarker( LPCSTR id,LPCSTR sItem,LPCSTR sTopic,ext_price_type* dest,size_type arrLen, pDateTimeStamp datetime, long beg, long *get_size);
+EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int                         TOSDB_GetStreamSnapshotFloatsFromMarker( LPCSTR id, LPCSTR sItem, LPCSTR sTopic, def_price_type* dest, size_type arrLen, pDateTimeStamp datetime, long beg, long *get_size);
+EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int                         TOSDB_GetStreamSnapshotLongLongsFromMarker( LPCSTR id, LPCSTR sItem, LPCSTR sTopic, ext_size_type* dest, size_type arrLen, pDateTimeStamp datetime, long beg, long *get_size);
+EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int                         TOSDB_GetStreamSnapshotLongsFromMarker( LPCSTR id, LPCSTR sItem, LPCSTR sTopic, def_size_type* dest, size_type arrLen, pDateTimeStamp datetime, long beg, long *get_size);
+EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int                         TOSDB_GetStreamSnapshotStringsFromMarker( LPCSTR id, LPCSTR sItem, LPCSTR sTopic, LPSTR* dest, size_type arrLen, size_type strLen, pDateTimeStamp datetime, long beg, long *get_size);
+/*** data-stream-marker ( C only for now ) ***/
 #ifdef __cplusplus
 /* Get all the most recent item values for a particular topic */
 template< bool b > auto                             TOSDB_GetItemFrame( std::string id, TOS_Topics::TOPICS tTopic) -> typename std::conditional< b, generic_dts_map_type, generic_map_type >::type; 

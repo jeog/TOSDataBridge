@@ -410,7 +410,6 @@ int TOSDB_GetStreamOccupancy( LPCSTR id,
 
     try{
         rGuardTy _lock_(*globalMutex);
-
         db = GetBlockOrThrow( id );
         dat = db->block->raw_stream_ptr(sItem, t);
         *sz = (size_type)(dat->size());
@@ -431,12 +430,60 @@ size_type TOSDB_GetStreamOccupancy( std::string id,
     TOSDB_RawDataBlock::stream_const_ptr_type dat;
 
     rGuardTy _lock_(*globalMutex);
-
     db = GetBlockOrThrow(id);
-    dat = db->block->raw_stream_ptr( sItem, tTopic );   
- 
+    dat = db->block->raw_stream_ptr( sItem, tTopic );    
     try{
         return (size_type)(dat->size());
+    }catch( const tosdb_data_stream::error& e ){
+        throw TOSDB_data_stream_error( e, 
+                                       "tosdb_data_stream error caught and "
+                                       "encapsulated in "
+                                       "TOSDB_GetStreamOccupancy()" );
+    }catch( ... ){
+        throw;
+    }
+}
+
+int TOSDB_GetMarkerPosition( LPCSTR id,
+                            LPCSTR sItem, 
+                            LPCSTR sTopic, 
+                            long long* pos )
+{
+    const TOSDBlock *db;
+    TOSDB_RawDataBlock::stream_const_ptr_type dat;
+    TOS_Topics::TOPICS t;
+
+    if( !CheckIDLength( id ) || !CheckStringLength( sItem, sTopic ) )
+        return -1;    
+
+    t = GetTopicEnum(sTopic);
+
+    try{
+        rGuardTy _lock_(*globalMutex);
+        db = GetBlockOrThrow( id );
+        dat = db->block->raw_stream_ptr(sItem, t);
+        *pos = (dat->marker_position());
+        return 0;
+    }catch( const std::exception& e ){
+        TOSDB_LogH( "TOSDB_GetStreamOccupancy()", e.what() );
+        return -2;
+    }catch( ... ){
+        return -2;    
+    }    
+}
+
+long long TOSDB_GetMarkerPosition( std::string id, 
+                                   std::string sItem, 
+                                   TOS_Topics::TOPICS tTopic )
+{
+    const TOSDBlock *db;    
+    TOSDB_RawDataBlock::stream_const_ptr_type dat;
+
+    rGuardTy _lock_(*globalMutex);
+    db = GetBlockOrThrow(id);
+    dat = db->block->raw_stream_ptr( sItem, tTopic );    
+    try{
+        return (dat->marker_position());
     }catch( const tosdb_data_stream::error& e ){
         throw TOSDB_data_stream_error( e, 
                                        "tosdb_data_stream error caught and "
@@ -942,6 +989,152 @@ int TOSDB_GetStreamSnapshotStrings( LPCSTR id,
         return -2;    
     }
 }
+
+/**************************
+**** data-stream-marker ***
+**************************/
+
+template< typename T > 
+int TOSDB_GetStreamSnapshotFromMarker_( LPCSTR id,
+                                        LPCSTR sItem, 
+                                        TOS_Topics::TOPICS tTopic, 
+                                        T* dest, 
+                                        size_type arrLen, 
+                                        pDateTimeStamp datetime,                                         
+                                        long beg,
+                                        long *get_size )
+{
+    const TOSDBlock *db;
+    TOSDB_RawDataBlock::stream_const_ptr_type dat;
+
+    if( !CheckIDLength( id ) || !CheckStringLength( sItem ))
+        return -1;
+
+    try{
+        rGuardTy _lock_(*globalMutex);
+
+        db = GetBlockOrThrow( id );
+        dat = db->block->raw_stream_ptr(sItem, tTopic);
+                /* O.K. as long as data_stream::MAX_BOUND_SIZE == INT_MAX */
+        *get_size = (long)(dat->copy_from_marker(dest,arrLen,beg,datetime));
+        return 0;
+    }catch( const std::exception& e ){
+        TOSDB_LogH( "GetStreamSnapshotFromMarker<T>", e.what() );
+        return -2;
+    }catch( ... ){
+        return -2;    
+    }
+}
+
+template< typename T > 
+int TOSDB_GetStreamSnapshotFromMarker_( LPCSTR id,
+                                        LPCSTR sItem, 
+                                        LPCSTR sTopic, 
+                                        T* dest, 
+                                        size_type arrLen, 
+                                        pDateTimeStamp datetime,                             
+                                        long beg,
+                                        long *get_size )
+{    
+    if( !CheckStringLength( sTopic ) ) /* let this go thru std::string ? */
+        return 0;     
+   
+    return TOSDB_GetStreamSnapshotFromMarker_( id, sItem, GetTopicEnum( sTopic ), 
+                                               dest, arrLen, datetime, beg, 
+                                               get_size );
+}
+
+int TOSDB_GetStreamSnapshotDoublesFromMarker( LPCSTR id,
+                                              LPCSTR sItem, 
+                                              LPCSTR sTopic, 
+                                              ext_price_type* dest, 
+                                              size_type arrLen, 
+                                              pDateTimeStamp datetime,                                                 
+                                              long beg,
+                                              long *get_size )
+{
+    return TOSDB_GetStreamSnapshotFromMarker_( id, sItem, sTopic, dest, arrLen, 
+                                               datetime, beg, get_size );
+}
+
+int TOSDB_GetStreamSnapshotFloatsFromMarker( LPCSTR id, 
+                                             LPCSTR sItem, 
+                                             LPCSTR sTopic, 
+                                             def_price_type* dest, 
+                                             size_type arrLen, 
+                                             pDateTimeStamp datetime,                                                
+                                             long beg,
+                                             long *get_size )
+{
+    return TOSDB_GetStreamSnapshotFromMarker_( id, sItem, sTopic, dest, arrLen, 
+                                               datetime, beg, get_size);
+}
+
+int TOSDB_GetStreamSnapshotLongLongsFromMarker( LPCSTR id, 
+                                                LPCSTR sItem, 
+                                                LPCSTR sTopic, 
+                                                ext_size_type* dest, 
+                                                size_type arrLen, 
+                                                pDateTimeStamp datetime,                                                 
+                                                long beg,
+                                                long *get_size )
+{
+    return TOSDB_GetStreamSnapshotFromMarker_( id, sItem, sTopic, dest, arrLen, 
+                                               datetime, beg, get_size);    
+}
+
+int TOSDB_GetStreamSnapshotLongsFromMarker( LPCSTR id, 
+                                            LPCSTR sItem, 
+                                            LPCSTR sTopic, 
+                                            def_size_type* dest, 
+                                            size_type arrLen, 
+                                            pDateTimeStamp datetime,                                              
+                                            long beg,
+                                            long *get_size )
+{
+    return TOSDB_GetStreamSnapshotFromMarker_( id, sItem, sTopic, dest, arrLen, 
+                                               datetime, beg, get_size);    
+}
+
+int TOSDB_GetStreamSnapshotStringsFromMarker( LPCSTR id, 
+                                              LPCSTR sItem, 
+                                              LPCSTR sTopic, 
+                                              LPSTR* dest, 
+                                              size_type arrLen, 
+                                              size_type strLen, 
+                                              pDateTimeStamp datetime,                                                 
+                                              long beg,
+                                              long *get_size)
+{
+    const TOSDBlock *db;
+    TOSDB_RawDataBlock::stream_const_ptr_type dat;
+    TOS_Topics::TOPICS tTopic;
+
+    if( !CheckIDLength(id) || !CheckStringLength( sItem, sTopic ) )
+        return -1;
+
+    tTopic = GetTopicEnum( sTopic );    
+    
+    try{
+        rGuardTy _lock_(*globalMutex);
+
+        db = GetBlockOrThrow( id );
+        dat = db->block->raw_stream_ptr(sItem, tTopic);
+                /* O.K. as long as data_stream::MAX_BOUND_SIZE == INT_MAX */
+        *get_size = (long)(dat->copy_from_marker( dest, arrLen, strLen, beg,
+                                                  datetime ));     
+        return 0;
+    }catch( const std::exception& e ){
+        TOSDB_LogH( "TOSDB_GetStreamSnapshotStringsFromMarker()", e.what() );
+        return -2;
+    }catch( ... ){
+        return -2;    
+    }
+}
+
+/**************************
+**** data-stream-marker ***
+**************************/
 
 template<> 
 generic_map_type TOSDB_GetItemFrame< false >( std::string id, 

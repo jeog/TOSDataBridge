@@ -84,7 +84,7 @@ _dllRawName = "tos-databridge"
 _sysArch = "x64" if ( log( maxsize * 2, 2) > 33 ) else "x86"
 _dllQNameRE = compile('^('+_dllRawName 
                           + '-)[\d]{1,2}.[\d]{1,2}-'
-                          +_sysArch +'(.dll)$')
+                          +_sysArch + '(.dll)$') ## _d for debug
 _dll = None
 
 class TOSDB_Error(Exception):
@@ -752,6 +752,111 @@ class TOS_DataBlock:
             else:
                 return val.value
 
+    def stream_snapshot_from_marker( self, item, topic, date_time = False, 
+                                     buf_size = 1000, beg = 0,
+                                     throw_on_partial = True,
+                                     data_str_max = STR_DATA_SZ ):
+        item = item.upper()
+        topic = topic.upper()
+        if( date_time and not self._date_time ):
+            raise TOSDB_Error( " date_time is not available for this block " )
+        self._valid_item(item)
+        self._valid_topic(topic)      
+        if ( beg < 0 ):
+            beg += self._block_size   
+        if (  beg < 0 or beg >= self._block_size or buf_size <= 0):
+            raise IndexError("Invalid index value(s) passed to stream_snapshot")           
+        dtss = (_DateTimeStamp * buf_size)()
+        tBits = type_bits( topic )
+        typeTup = _type_switch( tBits )
+        get_size = _long_()
+        if (typeTup[0] == "String"):
+            # store char buffers
+            strs = [ _BUF_(  data_str_max +1 ) for _ in range(buf_size)]   
+            # cast char buffers into (char*)[ ]          
+            strs_array = (_pchar_ * buf_size)(*[ cast(s,_pchar_) for s in strs]) 
+            err = _lib_call( "TOSDB_GetStreamSnapshotStringsFromMarker", 
+                             self._name,
+                             item.encode("ascii"),
+                             topic.encode("ascii"),
+                             strs_array,
+                             buf_size,
+                             data_str_max + 1,                        
+                             ( dtss if date_time 
+                                    else _PTR_(_DateTimeStamp)() ),                            
+                             beg,
+                             pointer( get_size ),
+                             arg_list = [ _string_, _string_, _string_, 
+                                          _ppchar_, _ulong_, _ulong_, 
+                                          _PTR_(_DateTimeStamp), _long_,
+                                          _PTR_(_long_) ] )
+            if ( err ):
+                raise TOSDB_Error( "error value [ " + str(err) + 
+                                   " ] returned from library call",
+                                   "TOSDB_GetStreamSnapshotStringsFromMarker")
+
+            print("DEBUG, get_size: ", str(get_size) )
+
+            get_size = get_size.value
+            if get_size == 0:
+                return None
+            elif get_size < 0:
+                if throw_on_partial:
+                    raise TOSDB_Error("data lost before the 'marker'")
+                else:
+                    get_size *= -1                
+            
+            
+            if ( date_time ):
+                adj_dts =  [TOS_DateTime( x ) for x in dtss[:get_size] ]
+                return [_ for _ in zip( 
+                            map( lambda x : cast(x, _string_).value.decode(), 
+                                 strs_array[:get_size] ), 
+                            adj_dts ) ]        
+            else:
+                return [ cast(ptr,_string_).value.decode()
+                         for ptr in strs_array[:get_size] ]
+        else:
+            num_array =  (typeTup[1] * buf_size)()   
+            err = _lib_call( "TOSDB_GetStreamSnapshot" \
+                                 + typeTup[0] + "sFromMarker" , 
+                             self._name,
+                             item.encode("ascii"),
+                             topic.encode("ascii"),
+                             num_array,
+                             buf_size,
+                             ( dtss if date_time 
+                                    else _PTR_(_DateTimeStamp)() ),                             
+                             beg,
+                             pointer( get_size ),
+                             arg_list = [ _string_, _string_, _string_, 
+                                          _PTR_(typeTup[1]), _ulong_, 
+                                          _PTR_(_DateTimeStamp), _long_,
+                                          _PTR_(_long_) ] )
+            if ( err ):
+                raise TOSDB_Error( "error value of [ " + str(err) + 
+                                   " ] returned from library call",
+                                   "TOSDB_GetStreamSnapshot" \
+                                       + typeTup[0] + "sFromMarker" )
+
+            print("DEBUG, get_size: ", str(get_size) )
+
+            get_size = get_size.value
+            if get_size == 0:
+                return None
+            elif get_size < 0:
+                if throw_on_partial:
+                    raise TOSDB_Error("data lost before the 'marker'")
+                else:
+                    get_size *= -1
+            
+            if( date_time ):
+                adj_dts =  [TOS_DateTime( x ) for x in dtss[:get_size]]
+                return [_ for _ in zip( num_array[:get_size], adj_dts )]       
+            else:
+                return [_ for _ in num_array[:get_size]]
+            
+        
     def stream_snapshot( self, item, topic, date_time = False, 
                          end = -1, beg = 0, smart_size = True, 
                          data_str_max = STR_DATA_SZ ):

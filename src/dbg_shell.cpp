@@ -61,7 +61,7 @@ void get_cstr_topics();
 void del_cstr_items();
 void del_cstr_topics();
 template<typename T >
-void deal_with_stream_data(size_type len, T* dataRay);
+void deal_with_stream_data(size_type len, T* dataRay, bool show_dts);
 template<typename T>
 void _get();
 template<typename T>
@@ -72,6 +72,8 @@ template<typename T>
 void _getStreamSnapshot( int(*func)(LPCSTR,LPCSTR,LPCSTR,T*,size_type,pDateTimeStamp,long,long) );
 template<typename T>
 void _getStreamSnapshot();
+template<typename T>
+void _getStreamSnapshotFromMarker( int(*func)(LPCSTR,LPCSTR,LPCSTR,T*,size_type,pDateTimeStamp,long,long*) );
 
 std::string admin_commands[] = 
 {
@@ -90,6 +92,7 @@ std::string admin_commands[] =
     "GetPreCachedItemNamesCPP","GetPreCachedTopicNamesCPP","GetPreCachedTopicEnums",
     "GetTypeBits","GetTypeString","IsUsingDateTime","IsUsingDateTimeCPP",
     "GetStreamOccupancy","GetStreamOccupancyCPP",
+    "GetMarkerPosition","GetMarkerPositionCPP",
     "DumpBufferStatus"
 };
 std::string get_val_commands[] = 
@@ -109,7 +112,12 @@ std::string get_ds_commands[] =
     "GetStreamSnapshot<float>",
     "GetStreamSnapshot<long_long>",
     "GetStreamSnapshot<long>",
-    "GetStreamSnapshot<std::string>"
+    "GetStreamSnapshot<std::string>",
+    "GetStreamSnapshotDoublesFromMarker",
+    "GetStreamSnapshotFloatsFromMarker", 
+    "GetStreamSnapshotLongLongsFromMarker",
+    "GetStreamSnapshotLongsFromMarker",
+    "GetStreamSnapshotStringsFromMarker",
 };
 std::string get_frame_commands[] = 
 {
@@ -139,6 +147,8 @@ int main( int argc, char* argv[])
     std::cout<<"[--                                                         --]" <<std::endl;
     std::cout<<"[-- Use the 'Connect' command to connect to the Service.    --]" <<std::endl;
     std::cout<<"[-- Type 'commands' for a list of commands; 'exit' to exit. --]" <<std::endl;
+    std::cout<<"[--                                                         --]" <<std::endl;
+    std::cout<<"[-- NOTE: Topics/Items are case sensitive; use upper-case   --]" <<std::endl;
     std::cout<<"[--                                                         --]" <<std::endl;
     std::cout<<"[-------------------------------------------------------------]" <<std::endl;
     std::cout<<std::endl;
@@ -674,6 +684,21 @@ int main( int argc, char* argv[])
                 std::cout<< TOSDB_GetStreamOccupancy( block, item, TOS_Topics::globalTopicMap[topic] )<<std::endl;        
                 continue;
             }
+            if( cmmnd == "GetMarkerPosition" )
+            {
+                get_block_item_topic();        
+                long long sz;
+                int ret = TOSDB_GetMarkerPosition( block.c_str(), item.c_str(), topic.c_str(), &sz );
+                if(ret) std::cout<<"error: "<<ret<<std::endl;
+                else std::cout<< sz <<std::endl;
+                continue;
+            }
+            if( cmmnd == "GetMarkerPositionCPP" )
+            {
+                get_block_item_topic();        
+                std::cout<< TOSDB_GetMarkerPosition( block, item, TOS_Topics::globalTopicMap[topic] )<<std::endl;        
+                continue;
+            }
             if( cmmnd == "DumpBufferStatus" )
             {                
                 TOSDB_DumpSharedBufferStatus();
@@ -776,7 +801,7 @@ int main( int argc, char* argv[])
                 prompt>>end;
                 int ret = TOSDB_GetStreamSnapshotStrings( block.c_str(),item.c_str(),topic.c_str(),dataRay,len,TOSDB_STR_DATA_SZ,dtsRay,end,beg);
                 if(ret) std::cout<<"error: "<<ret<<std::endl;
-                else deal_with_stream_data(len, dataRay);
+                else deal_with_stream_data(len, dataRay,false);
                 DeallocStrArray( dataRay, len );
                 delete dtsRay;
                 continue;
@@ -812,6 +837,55 @@ int main( int argc, char* argv[])
                 _getStreamSnapshot< generic_type >();
                 continue;
             }
+
+            /********/
+
+            if( cmmnd == "GetStreamSnapshotDoublesFromMarker" )
+            {
+                _getStreamSnapshotFromMarker<double>( 
+                    TOSDB_GetStreamSnapshotDoublesFromMarker );
+                continue;
+            }
+            if( cmmnd == "GetStreamSnapshotFloatsFromMarker" )
+            {
+                _getStreamSnapshotFromMarker<float>( 
+                    TOSDB_GetStreamSnapshotFloatsFromMarker );
+                continue;
+            }
+            if( cmmnd == "GetStreamSnapshotLongLongsFromMarker" )
+            {
+                _getStreamSnapshotFromMarker<long long>( 
+                    TOSDB_GetStreamSnapshotLongLongsFromMarker );
+                continue;
+            }
+            if( cmmnd == "GetStreamSnapshotLongsFromMarker" )
+            {
+                _getStreamSnapshotFromMarker<long>( 
+                    TOSDB_GetStreamSnapshotLongsFromMarker );
+                continue;
+            }
+            if( cmmnd == "GetStreamSnapshotStringsFromMarker" )
+            {
+                size_type len;
+                long beg, get_size;
+                get_block_item_topic();
+                prompt<<"length of array to pass: ";
+                prompt>>len;
+                char** dataRay = AllocStrArray( len, TOSDB_STR_DATA_SZ - 1 );
+                dtsRay = new DateTimeStamp[len];
+                prompt<<"beginning datastream index: ";
+                prompt>>beg;               
+                int ret = TOSDB_GetStreamSnapshotStringsFromMarker( 
+                    block.c_str(),item.c_str(),topic.c_str(),dataRay,len,
+                    TOSDB_STR_DATA_SZ,dtsRay,beg, &get_size );
+                if(ret) std::cout<<"error: "<<ret<<std::endl;
+                else deal_with_stream_data(len, dataRay,false);
+                DeallocStrArray( dataRay, len );
+                delete dtsRay;
+                continue;
+            }
+
+            /*******/
 
             if( cmmnd == "GetItemFrame" ) 
             {            
@@ -971,7 +1045,7 @@ void get_block_item_topic_indx()
     prompt>> indx;
 }
 template<typename T >
-void deal_with_stream_data(size_type len, T* dataRay)
+void deal_with_stream_data(size_type len, T* dataRay, bool show_dts)
 {
     std::string indx_inpt;
     char loopA = 'n';
@@ -981,8 +1055,12 @@ void deal_with_stream_data(size_type len, T* dataRay)
         prompt>> indx_inpt;
         if( indx_inpt == "all")
         {
-            for(size_type i = 0; i < len; ++i)
-                std::cout<<dataRay[i]<<' '<<dtsRay[i] <<std::endl;
+            for(size_type i = 0; i < len; ++i){
+                if( show_dts )
+                    std::cout<<dataRay[i]<<' '<< dtsRay[i] <<std::endl;
+                else
+                    std::cout<<dataRay[i]<<' ' <<std::endl;
+            }
             break;
         }
         else
@@ -990,7 +1068,10 @@ void deal_with_stream_data(size_type len, T* dataRay)
             try
             {
                 long long ind1 = std::stoll( indx_inpt);
-                std::cout<<dataRay[ind1]<<' '<<dtsRay[ind1] <<std::endl;
+                if( show_dts )
+                    std::cout<<dataRay[ind1]<<' '<< dtsRay[ind1] <<std::endl;
+                else
+                    std::cout<<dataRay[ind1]<<' ' <<std::endl;
             }
             catch(...)
             {
@@ -1057,7 +1138,7 @@ void _get( int(*func)(LPCSTR,LPCSTR,LPCSTR,long,T*,pDateTimeStamp) )
     prompt<<"get datetime stamp?(y/n): ";        
     std::cin.get();
     prompt>> dtsB ;
-    if( dtsB = 'y')
+    if( dtsB == 'y')
     {
         int ret = func( block.c_str(),item.c_str(),topic.c_str(),indx,&d,&dts);
         if(ret) std::cout<<"error: "<<ret<<std::endl;
@@ -1107,21 +1188,56 @@ void _getStreamSnapshot( int(*func)(LPCSTR,LPCSTR,LPCSTR,T*,size_type,pDateTimeS
     prompt<<"get datetime stamp?(y/n): ";        
     std::cin.get();
     prompt>> dtsB ;
-    if( dtsB = 'y' )
+    if( dtsB == 'y' )
     {
         int ret = func( block.c_str(),item.c_str(),topic.c_str(),dataRay,len,dtsRay,end,beg);
         if(ret) std::cout<<"error: "<<ret<<std::endl;
-        else deal_with_stream_data(len, dataRay);
+        else deal_with_stream_data(len, dataRay, true);
     }
     else
     {
         int ret = func( block.c_str(),item.c_str(),topic.c_str(),dataRay,len,nullptr,end,beg);
         if(ret) std::cout<<"error: "<<ret<<std::endl;
-        else deal_with_stream_data(len, dataRay);
+        else deal_with_stream_data(len, dataRay, false);
     }    
     delete[] dataRay;
     delete[] dtsRay;
 }
+
+/******/
+
+template<typename T>
+void _getStreamSnapshotFromMarker( int(*func)(LPCSTR,LPCSTR,LPCSTR,T*,size_type,pDateTimeStamp,long,long*) )
+{
+    size_type len;
+    long beg, get_size;
+    get_block_item_topic();
+    prompt<<"length of array to pass: ";
+    prompt>>len;
+    T* dataRay = new T[len];
+    dtsRay = new DateTimeStamp[len];
+    prompt<<"beginning datastream index: ";
+    prompt>>beg;
+    prompt<<"get datetime stamp?(y/n): ";        
+    std::cin.get();
+    prompt>> dtsB ;
+    if( dtsB == 'y' )
+    {
+        int ret = func( block.c_str(),item.c_str(),topic.c_str(),dataRay,len,dtsRay,beg,&get_size);
+        if(ret) std::cout<<"error: "<<ret<<std::endl;
+        else deal_with_stream_data(len, dataRay, true);
+    }
+    else
+    {
+        int ret = func( block.c_str(),item.c_str(),topic.c_str(),dataRay,len,nullptr,beg,&get_size);
+        if(ret) std::cout<<"error: "<<ret<<std::endl;
+        else deal_with_stream_data(len, dataRay, false);
+    }    
+    delete[] dataRay;
+    delete[] dtsRay;
+}
+
+/*****/
 
 
 template<typename T>
