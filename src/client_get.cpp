@@ -410,7 +410,6 @@ int TOSDB_GetStreamOccupancy( LPCSTR id,
 
     try{
         rGuardTy _lock_(*globalMutex);
-
         db = GetBlockOrThrow( id );
         dat = db->block->raw_stream_ptr(sItem, t);
         *sz = (size_type)(dat->size());
@@ -431,12 +430,60 @@ size_type TOSDB_GetStreamOccupancy( std::string id,
     TOSDB_RawDataBlock::stream_const_ptr_type dat;
 
     rGuardTy _lock_(*globalMutex);
-
     db = GetBlockOrThrow(id);
-    dat = db->block->raw_stream_ptr( sItem, tTopic );   
- 
+    dat = db->block->raw_stream_ptr( sItem, tTopic );    
     try{
         return (size_type)(dat->size());
+    }catch( const tosdb_data_stream::error& e ){
+        throw TOSDB_data_stream_error( e, 
+                                       "tosdb_data_stream error caught and "
+                                       "encapsulated in "
+                                       "TOSDB_GetStreamOccupancy()" );
+    }catch( ... ){
+        throw;
+    }
+}
+
+int TOSDB_GetMarkerPosition( LPCSTR id,
+                            LPCSTR sItem, 
+                            LPCSTR sTopic, 
+                            long long* pos )
+{
+    const TOSDBlock *db;
+    TOSDB_RawDataBlock::stream_const_ptr_type dat;
+    TOS_Topics::TOPICS t;
+
+    if( !CheckIDLength( id ) || !CheckStringLength( sItem, sTopic ) )
+        return -1;    
+
+    t = GetTopicEnum(sTopic);
+
+    try{
+        rGuardTy _lock_(*globalMutex);
+        db = GetBlockOrThrow( id );
+        dat = db->block->raw_stream_ptr(sItem, t);
+        *pos = (dat->marker_position());
+        return 0;
+    }catch( const std::exception& e ){
+        TOSDB_LogH( "TOSDB_GetStreamOccupancy()", e.what() );
+        return -2;
+    }catch( ... ){
+        return -2;    
+    }    
+}
+
+long long TOSDB_GetMarkerPosition( std::string id, 
+                                   std::string sItem, 
+                                   TOS_Topics::TOPICS tTopic )
+{
+    const TOSDBlock *db;    
+    TOSDB_RawDataBlock::stream_const_ptr_type dat;
+
+    rGuardTy _lock_(*globalMutex);
+    db = GetBlockOrThrow(id);
+    dat = db->block->raw_stream_ptr( sItem, tTopic );    
+    try{
+        return (dat->marker_position());
     }catch( const tosdb_data_stream::error& e ){
         throw TOSDB_data_stream_error( e, 
                                        "tosdb_data_stream error caught and "

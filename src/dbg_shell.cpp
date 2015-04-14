@@ -92,6 +92,7 @@ std::string admin_commands[] =
     "GetPreCachedItemNamesCPP","GetPreCachedTopicNamesCPP","GetPreCachedTopicEnums",
     "GetTypeBits","GetTypeString","IsUsingDateTime","IsUsingDateTimeCPP",
     "GetStreamOccupancy","GetStreamOccupancyCPP",
+    "GetMarkerPosition","GetMarkerPositionCPP",
     "DumpBufferStatus"
 };
 std::string get_val_commands[] = 
@@ -147,7 +148,8 @@ int main( int argc, char* argv[])
     std::cout<<"[-- Use the 'Connect' command to connect to the Service.    --]" <<std::endl;
     std::cout<<"[-- Type 'commands' for a list of commands; 'exit' to exit. --]" <<std::endl;
     std::cout<<"[--                                                         --]" <<std::endl;
-    std::cout<<"[-- NOTE: 'Topics' are case sensitive; user upper-case      --]" <<std::endl;
+    std::cout<<"[-- NOTE: Topics/Items are case sensitive; use upper-case   --]" <<std::endl;
+    std::cout<<"[--                                                         --]" <<std::endl;
     std::cout<<"[-------------------------------------------------------------]" <<std::endl;
     std::cout<<std::endl;
     while(1)
@@ -680,6 +682,21 @@ int main( int argc, char* argv[])
             {
                 get_block_item_topic();        
                 std::cout<< TOSDB_GetStreamOccupancy( block, item, TOS_Topics::globalTopicMap[topic] )<<std::endl;        
+                continue;
+            }
+            if( cmmnd == "GetMarkerPosition" )
+            {
+                get_block_item_topic();        
+                long long sz;
+                int ret = TOSDB_GetMarkerPosition( block.c_str(), item.c_str(), topic.c_str(), &sz );
+                if(ret) std::cout<<"error: "<<ret<<std::endl;
+                else std::cout<< sz <<std::endl;
+                continue;
+            }
+            if( cmmnd == "GetMarkerPositionCPP" )
+            {
+                get_block_item_topic();        
+                std::cout<< TOSDB_GetMarkerPosition( block, item, TOS_Topics::globalTopicMap[topic] )<<std::endl;        
                 continue;
             }
             if( cmmnd == "DumpBufferStatus" )

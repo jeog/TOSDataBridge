@@ -84,7 +84,7 @@ _dllRawName = "tos-databridge"
 _sysArch = "x64" if ( log( maxsize * 2, 2) > 33 ) else "x86"
 _dllQNameRE = compile('^('+_dllRawName 
                           + '-)[\d]{1,2}.[\d]{1,2}-'
-                          +_sysArch + '_d(.dll)$') ## _d for debug
+                          +_sysArch + '(.dll)$') ## _d for debug
 _dll = None
 
 class TOSDB_Error(Exception):
@@ -753,7 +753,8 @@ class TOS_DataBlock:
                 return val.value
 
     def stream_snapshot_from_marker( self, item, topic, date_time = False, 
-                                     buf_size = 1000, beg = 0,                                        
+                                     buf_size = 1000, beg = 0,
+                                     throw_on_partial = True,
                                      data_str_max = STR_DATA_SZ ):
         item = item.upper()
         topic = topic.upper()
@@ -797,10 +798,14 @@ class TOS_DataBlock:
             print("DEBUG, get_size: ", str(get_size) )
 
             get_size = get_size.value
-            if get_size < 0:
-                raise TOSDB_error("get_size < 0; data lost before the 'marker'")
-            elif get_size == 0:
+            if get_size == 0:
                 return None
+            elif get_size < 0:
+                if throw_on_partial:
+                    raise TOSDB_Error("data lost before the 'marker'")
+                else:
+                    get_size *= -1                
+            
             
             if ( date_time ):
                 adj_dts =  [TOS_DateTime( x ) for x in dtss[:get_size] ]
@@ -837,11 +842,13 @@ class TOS_DataBlock:
             print("DEBUG, get_size: ", str(get_size) )
 
             get_size = get_size.value
-            if get_size < 0:
-                raise TOSDB_error("get_size < 0; data lost before the 'marker'")
-                get_size *= -1 # a reminder if we want to change the flow
-            elif get_size == 0:
+            if get_size == 0:
                 return None
+            elif get_size < 0:
+                if throw_on_partial:
+                    raise TOSDB_Error("data lost before the 'marker'")
+                else:
+                    get_size *= -1
             
             if( date_time ):
                 adj_dts =  [TOS_DateTime( x ) for x in dtss[:get_size]]

@@ -447,6 +447,7 @@ EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int             TOSDB_GetTypeBits( LPCSTR sT
 EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int             TOSDB_GetTypeString( LPCSTR sTopic, LPSTR dest, size_type strLen );
 EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int             TOSDB_IsUsingDateTime( LPCSTR id, unsigned int* pBoolInt );
 EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int             TOSDB_GetStreamOccupancy( LPCSTR id,LPCSTR sItem, LPCSTR sTopic, size_type* sz );
+EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int             TOSDB_GetMarkerPosition( LPCSTR id,LPCSTR sItem, LPCSTR sTopic, long long* pos );
 EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int             TOSDB_DumpSharedBufferStatus();
 #ifdef __cplusplus
 DLL_SPEC_IFACE_ NO_THROW_ int           TOSDB_Add( std::string id, str_set_type sItems, topic_set_type tTopics );
@@ -468,6 +469,8 @@ DLL_SPEC_IFACE_ size_type               TOSDB_GetTopicCount( std::string id);
 DLL_SPEC_IFACE_ bool                    TOSDB_IsUsingDateTime( std::string id );
 DLL_SPEC_IFACE_ size_type               TOSDB_GetBlockSize( std::string id );
 DLL_SPEC_IFACE_ size_type               TOSDB_GetStreamOccupancy( std::string id, std::string sItem, TOS_Topics::TOPICS tTopic );
+DLL_SPEC_IFACE_ long long               TOSDB_GetMarkerPosition( std::string id, std::string sItem, TOS_Topics::TOPICS tTopic );
+
 /* Get individual data points */
 template< typename T, bool b > auto            TOSDB_Get( std::string id, std::string sItem, TOS_Topics::TOPICS tTopic, long indx = 0 ) 
                                                -> typename std::conditional< b, std::pair< T, DateTimeStamp> , T >::type;
