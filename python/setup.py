@@ -6,8 +6,10 @@ from math import log
 from os import listdir, remove, walk
 from shutil import copy2
 from io import StringIO
+from platform import system
 import sys
 
+_isWinSys = system() in ["Windows","windows","WINDOWS"]
 _sysArch = "x64" if ( log( sys.maxsize * 2, 2) > 33 ) else "x86"
 _sysArchD = "Win32" if _sysArch == "x86" else "x64"
 _sysMinorV = sys.version_info.minor
@@ -18,49 +20,34 @@ setup_dict = {
   "description": "Python Front-End / Wrapper for TOS-DataBridge (C/C++)",
   "author":"Jonathon Ogden",
   "author_email":"jeog.dev@gmail.com",
-  "py_modules":['tosdb'] 
-} 
-              
-_tosdbExt = Extension( 
-  "_tosdb",
-  sources=["_tosdb.cpp"],
-  include_dirs=["..\\include"],
-  library_dirs=[ "..\\bin\\Release\\"+_sysArchD ],
-  libraries=["_tos-databridge-shared-"+_sysArch,
-             "_tos-databridge-static-"+_sysArch],
-  define_macros=[ ("THIS_IMPORTS_IMPLEMENTATION",None),
-                  ("THIS_DOESNT_IMPORT_INTERFACE",None) ],
-  extra_compile_args=["/EHsc"],
-  extra_link_args=["/LTCG"],
-  optional=True )
+  "packages": ['tosdb'] 
+}      
+         
+# the cross platfrom stub
+ext_stub = Extension( "_tosdb",
+                      sources=[ "_tosdb.cpp" ], 
+                      include_dirs=[ "../include" ],
+                      optional=True )
 
-def try_precompiled():    
-    print("+ Would you like to try again with a pre-compiled _tosdb.pyd?")
-    resp = input()
-    if resp not in ["y","Y","yes","Yes","YES"]:
-        return
-    pydF = "_tosdb-"+str(_sysArch)+"-"+str(_sysMinorV)+".pyd"
-    if pydF not in listdir():
-        print( "Sorry, we can't find one that matches your version of python.")
-        return
-    print("Found _tosdb.pyd, sending it to your python root directory")
-    copy2("./"+pydF, "./_tosdb.pyd")
-    setup( data_files=[(".",["_tosdb.pyd"]) ], **setup_dict )
-    remove("./_tosdb.pyd")
+ext_win = Extension( **ext_stub.__dict__ )
 
-class _tosdb_error(Exception):
-    def __init__(self,exc):
-        Exception(exc)
+# add/override for Win
+ext_win.library_dirs       =  [ "../bin/Release/"+_sysArchD ]
+ext_win.libraries          =  [ "_tos-databridge-shared-"+_sysArch,
+                                "_tos-databridge-static-"+_sysArch ]
+ext_win.define_macros      =  [ ("THIS_IMPORTS_IMPLEMENTATION",None),
+                                ("THIS_DOESNT_IMPORT_INTERFACE",None) ]
+ext_win.extra_compile_args =  ["/EHsc"]
+ext_win.extra_link_args    =  ["/LTCG"]  
         
-try:
-    # capture setup errors but allow setup to complete (optional=True)   
+try: # capture setup errors but allow setup to complete (optional=True)   
     sio = StringIO()
     se = sys.stderr
-    sys.stderr = sio 
-    setup( ext_modules=[_tosdbExt], **setup_dict )
+    sys.stderr = sio  
+    setup( ext_modules=[ ext_win if _isWinSys else ext_stub], **setup_dict )  
     sys.stderr = se    
     if sio.getvalue(): 
-        print( "\n+ Operation 'completed' with errors:\n")
+        print( '\n', "+ Operation 'completed' with errors:\n")
         print( sio.getvalue() )
         print( "+ Checking on the status of the build...")
         t = None
@@ -76,6 +63,16 @@ try:
 except (BaseException) as err:
     print("- fatal error thrown during setup: ",type(err))
     print(err)
-    try_precompiled()
+    if _isWinSys:           
+        print("+ Would you like to try again with a pre-compiled _tosdb.pyd?")         
+        if input() in ["y","Y","yes","Yes","YES"]:            
+            pydF = "_tosdb-"+str(_sysArch)+"-"+str(_sysMinorV)+".pyd"
+            if pydF in listdir():           
+                print("Found _tosdb.pyd, sending it to python root directory")
+                copy2("./"+pydF, "./_tosdb.pyd")
+                setup( data_files=[(".",["_tosdb.pyd"]) ], **setup_dict )
+                remove("./_tosdb.pyd")
+            else:
+                print("Sorry, can't find one that matches your python version.")
     
 
