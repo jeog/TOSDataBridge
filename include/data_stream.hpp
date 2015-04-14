@@ -461,15 +461,20 @@ protected:
 
     void _incr_intrnl_counts()
     {
+        long long penult = (long long)_qBound -1; 
+
         if( _qCount < _qBound )
             ++_qCount;
-
-        if( *_mrkCount >= (long long)_qBound )
-            throw error( "marker our of bounds" );
-        else if( *_mrkCount == (long long)_qBound - 1)
+                
+        if( *_mrkCount == penult )
             *_mrkOverset = true;
-        else
+        else if( *_mrkCount < penult )
             ++(*_mrkCount);
+        else           
+            /* 
+             *WE CANT THROW SO ATTEMP TO GET _mrkCount back in line
+            */
+            --(*_mrkCount);
     }
 
     template< typename ImplTy, typename DestTy > 
