@@ -27,7 +27,7 @@ from .datetime import TOS_DateTime, _DateTimeStamp
 from io import StringIO as _StringIO
 from uuid import uuid4 as _uuid4
 from functools import partial as _partial
-from math import log as _log
+from math import log as _log, ceil as _ceil
 from sys import maxsize as _maxsize
 from collections import namedtuple as _namedtuple
 from time import asctime as _asctime, localtime as _localtime
@@ -53,6 +53,7 @@ _REGEX_NON_ALNUM = _compile("[\W+]")
 _REGEX_DLL_NAME = _compile('^('+DLL_BASE_NAME 
                           + '-)[\d]{1,2}.[\d]{1,2}-'
                           + SYS_ARCH_TYPE +'(.dll)$')
+           
 _dll = None
         
 def init(dllpath = None, root = "C:\\"):
@@ -527,7 +528,7 @@ class TOS_DataBlock:
         if beg < 0 or end < 0 \
            or beg >= self._block_size or end >= self._block_size \
            or size <= 0:
-            raise TOSDB_IndexError( "invalid index value passed to get()" )           
+            raise TOSDB_IndexError("invalid 'beg' and/or 'end' index value(s)")           
         dtss = (_DateTimeStamp * size)()
         tBits = type_bits( topic )
         typeTup = _type_switch( tBits )   
@@ -583,6 +584,183 @@ class TOS_DataBlock:
                 return [ _ for _ in zip(num_array,adj_dts) ]       
             else:
                 return [ _ for _ in num_array ]
+
+    def stream_snapshot_from_marker( self, item, topic, date_time = False, 
+                                     beg = 0, margin_of_safety = 100,
+                                     throw_if_data_lost = True,
+                                     data_str_max = STR_DATA_SZ ):
+        """ Return multiple data-points(a snapshot) from the data-stream,
+        ending where the last call began
+
+        It's likely the stream will grow between consecutive calls. This call
+        guarantees to pick up where the last get(), stream_snapshot(), or
+        stream_snapshot_from_marker() call ended (under a few assumptions, see
+        below). 
+
+        Internally the stream maintains a 'marker' that keeps track of
+        the position of the last value pulled. It moves(increases) as the
+        stream takes in new data and resets to the beginning of where data
+        is last pulled from. This can be though of as an atomic operation
+        with respect to the previous call as the act of retreiving the data
+        and moving the marker are synchronized with internal stream
+        operations (i.e new data can't be pushed in until they BOTH complete).
+
+        There are three states - resulting from the following - to be aware of:
+          1) a 'beg' value that is greater than the marker (even if beg = 0)
+          2) a marker that moves through the entire stream and hits the bound
+          3) passing a buffer that is too small for the whole range
+
+        State (1) can be caused by passing in a beginning index that is past
+        the current marker, or by passing in 0 when the marker has yet to
+        move. 'None' will be returned.
+
+        State (2) occurs when the marker doesn't get reset before enough data
+        is pushed into the stream that it hits the bound (block_size); as the
+        oldest data is popped of the back of the stream it is lost (the
+        marker can't grow past the end of the stream). 
+
+        State (3) occurs when an inadequately large enough buffer is used.
+        The call handles buffer sizing for you by calling down to get the
+        marker index, subtracting the beginning index passed in, and adding
+        the margin_of_safety to assure the marker doesn't outgrow the
+        buffer by the time the low-level retrieval operation takes place.
+        The default value of 100 would mean that over 100 push operations
+        would have to take place during this call, highly unlikely (if not
+        impossible).
+
+        In either case (state (2) or (3)) if throw_if_data_lost is True a
+        TOSDB_Error will be thrown, if not the data that is available will
+        be returned as normal. Obviously, the 'guarantee' would require
+        the error condition be thrown.
+        
+        item: any item string in the block
+        topic: any topic string in the block
+        date_time: (True/False) attempt to retrieve a TOS_DateTime object                      
+        beg: index of most recent data-point ( beginning of the snapshot )        
+        margin_of_safety: (True/False) error margin for async stream growth
+        throw_if_data_loss: (True/False) how to handle error states (see above)
+        data_str_max: the maximum length of string data returned
+
+        if beg > internal marker value: returns -> None        
+        if date_time is True: returns-> list of 2tuple
+        else: returns -> list              
+        """
+        
+        item = item.upper()
+        topic = topic.upper()
+        if date_time and not self._date_time:
+            raise TOSDB_DateTimeError("date_time not available for this block")
+        self._valid_item(item)
+        self._valid_topic(topic)      
+        if beg < 0:
+            beg += self._block_size   
+        if beg < 0 or beg >= self._block_size:
+            raise TOSDB_IndexError("invalid 'beg' index value")
+
+        if buf_safety_ratio < 1 or buf_safety_ratio > 2:
+            raise TOSDB_ValueError("buf_safety_ratio must be between 1 and 2")
+        
+        mpos = _longlong_()
+        err = _lib_call( "TOSDB_GetMarkerPosition",
+                         self._name,
+                         item.encode("ascii"),
+                         topic.encode("ascii"),
+                         pointer(mpos),
+                         arg_list = [ _str_, _str_, _str_, _str_,
+                                      _PTR(_longlong_) ] )
+        if err:
+           raise TOSDB_CLibError( "error value [ "+ str(err) + " ] " +
+                                  "returned from library call",
+                                  "TOSDB_GetMarkerPosition" )
+        cur_sz = mpos - beg + 1
+        if cur_sz < 0:
+            return None
+        safe_sz = cur_sz + margin_of_safety
+        dtss = (_DateTimeStamp * safe_sz)()
+        tBits = type_bits( topic )
+        typeTup = _type_switch( tBits )
+        get_size = _long_()
+        if typeTup[0] == "String":
+            # store char buffers
+            strs = [ _BUF_(  data_str_max +1 ) for _ in range(safe_sz) ]   
+            # cast char buffers into (char*)[ ]          
+            strs_array = (_pchar_ * safe_sz)(*[ cast(s,_pchar_) for s in strs]) 
+            err2 = _lib_call( "TOSDB_GetStreamSnapshotStringsFromMarker", 
+                              self._name,
+                              item.encode("ascii"),
+                              topic.encode("ascii"),
+                              strs_array,
+                              safe_sz,
+                              data_str_max + 1,                        
+                              dtss if date_time else _PTR_(_DateTimeStamp)(),                            
+                              beg,
+                              pointer( get_size ),
+                              arg_list = [ _str_, _str_, _str_, _ppchar_,
+                                           _ulong_, _ulong_,
+                                           _PTR_(_DateTimeStamp), _long_,
+                                           _PTR_(_long_) ] )
+            if err2:
+                raise TOSDB_CLibError( "error value [ " + str(err2) + 
+                                       " ] returned from library call",
+                                       "TOSDB_GetStreamSnapshotStrings" \
+                                           + "FromMarker")
+
+            print("DEBUG, get_size: ", str(get_size) )
+            get_size = get_size.value
+            if get_size == 0:
+                return None
+            elif get_size < 0:
+                if throw_if_data_lost:
+                    raise TOSDB_Error("data lost before the 'marker'")
+                else:
+                    get_size *= -1               
+            
+            if date_time:
+                adj_dts = [ TOS_DateTime( x ) for x in dtss[:get_size] ]
+                return [ _ for _ in \
+                         zip( map( lambda x : cast(x, _str_).value.decode(), 
+                                   strs_array[:get_size] ), adj_dts ) ]        
+            else:
+                return [ cast(ptr,_str_).value.decode()
+                         for ptr in strs_array[:get_size] ]
+        else:
+            num_array = (typeTup[1] * safe_sz)()   
+            err2 = _lib_call( "TOSDB_GetStreamSnapshot" \
+                                 + typeTup[0] + "sFromMarker" , 
+                              self._name,
+                              item.encode("ascii"),
+                              topic.encode("ascii"),
+                              num_array,
+                              safe_sz,
+                              dtss if date_time else _PTR_(_DateTimeStamp)(),                             
+                              beg,
+                              pointer( get_size ),
+                              arg_list = [ _str_, _str_, _str_,
+                                           _PTR_(typeTup[1]), _ulong_, 
+                                           _PTR_(_DateTimeStamp), _long_,
+                                           _PTR_(_long_) ] )
+            if err2:
+                raise TOSDB_CLibError( "error value of [ " + str(err2) + 
+                                       " ] returned from library call",
+                                       "TOSDB_GetStreamSnapshot" \
+                                           + typeTup[0] + "sFromMarker" )
+
+            print("DEBUG, get_size: ", str(get_size) )
+            get_size = get_size.value
+            if get_size == 0:
+                return None
+            elif get_size < 0:
+                if throw_if_data_lost:
+                    raise TOSDB_Error("data lost before the 'marker'")
+                else:
+                    get_size *= -1
+            
+            if date_time:
+                adj_dts = [ TOS_DateTime( x ) for x in dtss[:get_size] ]
+                return [ _ for _ in zip( num_array[:get_size], adj_dts ) ]       
+            else:
+                return [ _ for _ in num_array[:get_size] ]    
+    
 
     def item_frame( self, topic, date_time = False, labels = True, 
                     data_str_max = STR_DATA_SZ, label_str_max = MAX_STR_SZ ):
@@ -796,7 +974,7 @@ def _type_switch( typeB ):
     elif typeB == 0:
         return ( "Float", _float_ )
     else: # default to string
-        return( "String", _string_ )
+        return( "String", _str_ )
 
 # create a custom namedtuple with an i.d tag for special pickling
 def _gen_namedtuple( name, attrs ):

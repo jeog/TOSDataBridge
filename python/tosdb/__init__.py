@@ -103,6 +103,8 @@ class _TOS_DataBlock(metaclass=_ABCMeta):
     @_abstractmethod
     def stream_snapshot(): pass
     @_abstractmethod
+    def stream_snapshot(): pass
+    @_abstractmethod
     def item_frame(): pass
     @_abstractmethod
     def topic_frame(): pass
@@ -276,6 +278,71 @@ class VTOS_DataBlock:
                            ('s',topic), ('b',date_time), ('i',end), ('i',beg),
                            ('b',smart_size), ('i', data_str_max) )
 
+def stream_snapshot_from_marker( self, item, topic, date_time = False, 
+                                     beg = 0, margin_of_safety = 100,
+                                     throw_if_data_lost = True,
+                                     data_str_max = STR_DATA_SZ ):
+        """ Return multiple data-points(a snapshot) from the data-stream,
+        ending where the last call began
+
+        It's likely the stream will grow between consecutive calls. This call
+        guarantees to pick up where the last get(), stream_snapshot(), or
+        stream_snapshot_from_marker() call ended (under a few assumptions, see
+        below). 
+
+        Internally the stream maintains a 'marker' that keeps track of
+        the position of the last value pulled. It moves(increases) as the
+        stream takes in new data and resets to the beginning of where data
+        is last pulled from. This can be though of as an atomic operation
+        with respect to the previous call as the act of retreiving the data
+        and moving the marker are synchronized with internal stream
+        operations (i.e new data can't be pushed in until they BOTH complete).
+
+        There are three states - resulting from the following - to be aware of:
+          1) a 'beg' value that is greater than the marker (even if beg = 0)
+          2) a marker that moves through the entire stream and hits the bound
+          3) passing a buffer that is too small for the whole range
+
+        State (1) can be caused by passing in a beginning index that is past
+        the current marker, or by passing in 0 when the marker has yet to
+        move. 'None' will be returned.
+
+        State (2) occurs when the marker doesn't get reset before enough data
+        is pushed into the stream that it hits the bound (block_size); as the
+        oldest data is popped of the back of the stream it is lost (the
+        marker can't grow past the end of the stream). 
+
+        State (3) occurs when an inadequately large enough buffer is used.
+        The call handles buffer sizing for you by calling down to get the
+        marker index, subtracting the beginning index passed in, and adding
+        the margin_of_safety to assure the marker doesn't outgrow the
+        buffer by the time the low-level retrieval operation takes place.
+        The default value of 100 would mean that over 100 push operations
+        would have to take place during this call, highly unlikely (if not
+        impossible).
+
+        In either case (state (2) or (3)) if throw_if_data_lost is True a
+        TOSDB_Error will be thrown, if not the data that is available will
+        be returned as normal. Obviously, the 'guarantee' would require
+        the error condition be thrown.
+        
+        item: any item string in the block
+        topic: any topic string in the block
+        date_time: (True/False) attempt to retrieve a TOS_DateTime object                      
+        beg: index of most recent data-point ( beginning of the snapshot )        
+        margin_of_safety: (True/False) error margin for async stream growth
+        throw_if_data_loss: (True/False) how to handle error states (see above)
+        data_str_max: the maximum length of string data returned
+
+        if beg > internal marker value: returns -> None        
+        if date_time is True: returns-> list of 2tuple
+        else: returns -> list              
+        """
+        return self._call( _vCALL, 'stream_snapshot_from_marker', ('s',item),
+                          ('s',topic), ('b',date_time), ('i',beg),
+                          ('i',margin_of_safety), ('b',throw_if_data_lost),
+                          ('i', data_str_max) )
+    
     def item_frame( self, topic, date_time = False, labels = True, 
                     data_str_max = STR_DATA_SZ,
                     label_str_max = MAX_STR_SZ ):
