@@ -445,9 +445,9 @@ size_type TOSDB_GetStreamOccupancy( std::string id,
 }
 
 int TOSDB_GetMarkerPosition( LPCSTR id,
-                            LPCSTR sItem, 
-                            LPCSTR sTopic, 
-                            long long* pos )
+                             LPCSTR sItem, 
+                             LPCSTR sTopic, 
+                             long long* pos )
 {
     const TOSDBlock *db;
     TOSDB_RawDataBlock::stream_const_ptr_type dat;
@@ -465,7 +465,7 @@ int TOSDB_GetMarkerPosition( LPCSTR id,
         *pos = (dat->marker_position());
         return 0;
     }catch( const std::exception& e ){
-        TOSDB_LogH( "TOSDB_GetStreamOccupancy()", e.what() );
+        TOSDB_LogH( "TOSDB_GetMarkerPosition()", e.what() );
         return -2;
     }catch( ... ){
         return -2;    
@@ -488,7 +488,57 @@ long long TOSDB_GetMarkerPosition( std::string id,
         throw TOSDB_data_stream_error( e, 
                                        "tosdb_data_stream error caught and "
                                        "encapsulated in "
-                                       "TOSDB_GetStreamOccupancy()" );
+                                       "TOSDB_GetMarkerPosition()" );
+    }catch( ... ){
+        throw;
+    }
+}
+
+int TOSDB_IsMarkerDirty( LPCSTR id,
+                         LPCSTR sItem, 
+                         LPCSTR sTopic, 
+                         unsigned int* is_dirty )
+{
+    const TOSDBlock *db;
+    TOSDB_RawDataBlock::stream_const_ptr_type dat;
+    TOS_Topics::TOPICS t;
+
+    if( !CheckIDLength( id ) || !CheckStringLength( sItem, sTopic ) )
+        return -1;    
+
+    t = GetTopicEnum(sTopic);
+
+    try{
+        rGuardTy _lock_(*globalMutex);
+        db = GetBlockOrThrow( id );
+        dat = db->block->raw_stream_ptr(sItem, t);
+        *is_dirty = (unsigned int)(dat->is_marker_dirty());
+        return 0;
+    }catch( const std::exception& e ){
+        TOSDB_LogH( "TOSDB_IsMarkerDirty()", e.what() );
+        return -2;
+    }catch( ... ){
+        return -2;    
+    }    
+}
+
+bool TOSDB_IsMarkerDirty( std::string id, 
+                          std::string sItem, 
+                          TOS_Topics::TOPICS tTopic )
+{
+    const TOSDBlock *db;    
+    TOSDB_RawDataBlock::stream_const_ptr_type dat;
+
+    rGuardTy _lock_(*globalMutex);
+    db = GetBlockOrThrow(id);
+    dat = db->block->raw_stream_ptr( sItem, tTopic );    
+    try{
+        return dat->is_marker_dirty();
+    }catch( const tosdb_data_stream::error& e ){
+        throw TOSDB_data_stream_error( e, 
+                                       "tosdb_data_stream error caught and "
+                                       "encapsulated in "
+                                       "TOSDB_IsMarkerDirty()" );
     }catch( ... ){
         throw;
     }

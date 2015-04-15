@@ -43,7 +43,6 @@ namespace tosdb_data_stream {
 
 class error : public std::exception{
 public:
-
     error( const char* info ) 
         : 
         std::exception( info ) 
@@ -53,7 +52,6 @@ public:
 
 class type_error : public error{
 public:
-
     type_error( const char* info ) 
         : 
         error( info ) 
@@ -63,7 +61,6 @@ public:
 
 class size_violation : public error{
 public:
-
     const size_t boundSize, dequeSize;   
          
     size_violation( const char* msg, size_t bSz, size_t dSz )
@@ -81,7 +78,6 @@ public:
 */
 class out_of_range : public error, public std::out_of_range {            
 public:
-
     const int size, beg, end;
 
     out_of_range( const char* msg, int sz, int beg, int end )
@@ -101,8 +97,7 @@ public:
 };
 
 class invalid_argument : public error, public std::invalid_argument {
-public:    
-
+public: 
     invalid_argument( const char* msg )
         : 
         std::invalid_argument( msg ), 
@@ -115,12 +110,13 @@ public:
         return error::what();
     }
 };
-
-
     
-/*    The interface to tosdb_data_stream     */
+
 template< typename SecTy, typename GenTy >
 class Interface {
+/*    
+ * The interface to tosdb_data_stream     
+ */
 public:
 
     typedef GenTy                     generic_type;
@@ -204,6 +200,7 @@ public:
     virtual bool                  empty() const = 0;    
     virtual bool                  uses_secondary() const = 0;
     virtual long long             marker_position() const = 0;
+    virtual bool                  is_marker_dirty() const = 0;
     virtual generic_type          operator[]( int ) const = 0;
     virtual both_type             both( int ) const = 0;    
     virtual generic_vector_type   vector( int end = -1, int beg = 0 ) const = 0;
@@ -307,16 +304,16 @@ virtual size_t copy( _inTy* dest, size_t sz, int end = -1, int beg = 0, \
         if( !dest )
             throw invalid_argument( "->copy(): *dest argument can not be null");
 
-        auto dstr = [sz]( char** _pptr){ DeallocStrArray( _pptr, sz); };
+        auto dstr = [sz]( char** pptr){ DeallocStrArray( pptr, sz); };
+        char** sarray = AllocStrArray(sz,STR_DATA_SZ);
 
-        std::unique_ptr<char*,decltype(dstr)> strMat( AllocStrArray(sz,STR_DATA_SZ), 
-                                                      dstr );
-        ret = this->copy( strMat.get(), sz, STR_DATA_SZ , end, beg, sec);                
-        std::copy_n( strMat.get(), sz, dest );            
+        std::unique_ptr<char*,decltype(dstr)> sptr( sarray, dstr);
+
+        ret = this->copy( sptr.get(), sz, STR_DATA_SZ , end, beg, sec);                
+        std::copy_n( sptr.get(), sz, dest ); 
+
         return ret;
     }
-
-    /**************************/
 
 #define virtual_void_marker_copy_2arg_DROP( _inTy, _outTy ) \
 virtual long long copy_from_marker( _inTy* dest, size_t sz, int beg = 0, \
@@ -328,7 +325,7 @@ virtual long long copy_from_marker( _inTy* dest, size_t sz, int beg = 0, \
 virtual long long copy_from_marker( _inTy* dest, size_t sz, int beg = 0, \
                                     secondary_type* sec = nullptr) const \
 { \
-    _throw_type_error< _inTy* >( "->copy()", _dropBool ); \
+    _throw_type_error< _inTy* >( "->copy_from_marker()", _dropBool ); \
     return 0; \
 }
 
@@ -351,7 +348,7 @@ virtual long long copy_from_marker( _inTy* dest, size_t sz, int beg = 0, \
                                         int beg = 0, 
                                         secondary_type* sec = nullptr) const 
     { 
-        _throw_type_error< std::string* >( "->copy()", false );  
+        _throw_type_error< std::string* >( "->copy_from_marker()", false );  
         return 0;
     }
 
@@ -362,19 +359,19 @@ virtual long long copy_from_marker( _inTy* dest, size_t sz, int beg = 0, \
     {
         long long ret;
         if( !dest )
-            throw invalid_argument( "->copy(): *dest argument can not be null");
+            throw invalid_argument( 
+                "->copy_from_marker(): *dest argument can not be null" );
 
-        auto dstr = [sz]( char** _pptr){ DeallocStrArray( _pptr, sz); };
+        auto dstr = [sz]( char** pptr){ DeallocStrArray( pptr, sz); };
+        char** sarray= AllocStrArray(sz,STR_DATA_SZ);
 
-        std::unique_ptr<char*,decltype(dstr)> strMat( AllocStrArray(sz,STR_DATA_SZ), 
-                                                      dstr );
-        ret = this->copy_from_marker( strMat.get(), sz, STR_DATA_SZ , 
-                                              beg, sec );                
-        std::copy_n( strMat.get(), sz, dest );   
+        std::unique_ptr<char*,decltype(dstr)> sptr( sarray, dstr);
+
+        ret = this->copy_from_marker( sptr.get(), sz, STR_DATA_SZ, beg, sec);                
+        std::copy_n( sptr.get(), sz, dest );   
+
         return ret;
     }
-
-    /******************/
     
     virtual ~Interface()
         {
@@ -398,12 +395,13 @@ class Object
                               "Ty failed GenTy's type-check;" ); 
     }_inst_check_;    
     
-    typedef Object< Ty, SecTy, GenTy, UseSecondary, Allocator>   _myTy;
-    typedef Interface< SecTy, GenTy >                            _myBase;
-    typedef std::deque< Ty, Allocator >                          _myImplTy;            
-    typedef typename _myImplTy::const_iterator::difference_type  _myImplDiffTy;    
+    typedef Object<Ty,SecTy,GenTy,UseSecondary,Allocator> _my_type;
+    typedef Interface<SecTy,GenTy>                        _my_base;
+    typedef std::deque<Ty,Allocator>                      _my_impl_type;            
+    typedef typename _my_impl_type::const_iterator
+                                  ::difference_type       _my_iterdiff_type;    
 
-    _myTy& operator=(const _myTy &);
+    _my_type& operator=(const _my_type &);
     
     void _push(const Ty _item) 
     {   /* if can't obtain lock indicate other threads should yield to us */       
@@ -411,8 +409,8 @@ class Object
         if( !_push_has_priority )
             _mtx->lock(); /* block regardless */  
 
-        _myImplObj.push_front(_item); 
-        _myImplObj.pop_back();       
+        _my_impl_obj.push_front(_item); 
+        _my_impl_obj.pop_back();       
         _incr_intrnl_counts();
 
         _mtx->unlock();
@@ -420,20 +418,19 @@ class Object
 
 protected:
 
-    typedef std::lock_guard<std::recursive_mutex >  _guardTy;
+    typedef std::lock_guard<std::recursive_mutex >  _my_lock_guard_type;
     
     std::recursive_mutex* const  _mtx; 
     volatile bool                _push_has_priority;
-    bool* const                  _mrkOverset;    
-    size_t                       _qCount, _qBound;
-    long long* const             _mrkCount;    
-    _myImplTy                    _myImplObj;
+    bool* const                  _mark_is_dirty;    
+    size_t                       _q_count, _q_bound;
+    long long* const             _mark_count;    
+    _my_impl_type                _my_impl_obj;
 
-    void _yld_to_push() const
+    void inline _yld_to_push() const
     {    
-        if( _push_has_priority )
-            return;
-        std::this_thread::yield();
+        if( !_push_has_priority )            
+            std::this_thread::yield();
     }
 
     template< typename T > 
@@ -443,15 +440,17 @@ protected:
     {  /* O.K. sz can't be > INT_MAX  */
         int sz = (int)impl.size();
 
-        if ( _qBound != sz )    
+        if ( _q_bound != sz )    
             throw size_violation( 
-                "Internal size/bounds violation in tosdb_data_stream", _qBound, sz );          
+                "Internal size/bounds violation in tosdb_data_stream", 
+                _q_bound, sz );          
   
         if ( end < 0 ) end += sz; 
         if ( beg < 0 ) beg += sz;
         if ( beg >= sz || end >= sz || beg < 0 || end < 0 )    
-            throw out_of_range( "adj index value out of range in tosdb_data_stream",
-                                sz, beg, end );
+            throw out_of_range( 
+                "adj index value out of range in tosdb_data_stream",
+                sz, beg, end );
         else if ( beg > end )     
             throw invalid_argument( 
                 "adj beg index value > end index value in tosdb_data_stream" );
@@ -461,76 +460,76 @@ protected:
 
     void _incr_intrnl_counts()
     {
-        long long penult = (long long)_qBound -1; 
+        long long penult = (long long)_q_bound -1; 
 
-        if( _qCount < _qBound )
-            ++_qCount;
+        if( _q_count < _q_bound )
+            ++_q_count;
                 
-        if( *_mrkCount == penult )
-            *_mrkOverset = true;
-        else if( *_mrkCount < penult )
-            ++(*_mrkCount);
-        else           
-            /* 
-             *WE CANT THROW SO ATTEMP TO GET _mrkCount back in line
+        if( *_mark_count == penult )
+            *_mark_is_dirty = true;
+        else if( *_mark_count < penult )
+            ++(*_mark_count);
+        else{        
+           /* 
+            * WE CANT THROW so attempt to get _mark_count back in line
+            * also set overset flag to alert caller of possible data issue
             */
-            --(*_mrkCount);
+            --(*_mark_count);
+            *_mark_is_dirty = true;
+        }
     }
 
     template< typename ImplTy, typename DestTy > 
     size_t _copy_to_ptr( ImplTy& impl, 
-                       DestTy* dest, 
-                       size_t sz, 
-                       unsigned int end, 
-                       unsigned int beg) const
+                         DestTy* dest, 
+                         size_t sz, 
+                         unsigned int end, 
+                         unsigned int beg) const
     {    
         ImplTy::const_iterator bIter = impl.cbegin() + beg;
         ImplTy::const_iterator eIter = 
             impl.cbegin() + 
-            std::min< size_t >( sz + beg, std::min< size_t >( ++end, _qCount ));
-
-        if( bIter < eIter )
-            return std::copy( bIter, eIter, dest ) - dest;  
-        else
-            return 0;
+            std::min< size_t >( sz + beg, std::min< size_t >( ++end, _q_count ));
+        
+        return (bIter < eIter) ? (std::copy( bIter, eIter, dest ) - dest) : 0;       
     }
 
 public:
 
-    typedef _myBase  interface_type;
-    typedef Ty       value_type;
+    typedef _my_base  interface_type;
+    typedef Ty        value_type;
 
     Object(size_t sz )
         : 
-        _myImplObj( std::max<size_t>(std::min<size_t>(sz,MAX_BOUND_SIZE),1) ),
-        _qBound( std::max<size_t>(std::min<size_t>(sz,MAX_BOUND_SIZE),1) ),
-        _qCount( 0 ),
-        _mrkCount( new long long(-1) ),
-        _mrkOverset( new bool(false) ),
+        _my_impl_obj( std::max<size_t>(std::min<size_t>(sz,MAX_BOUND_SIZE),1) ),
+        _q_bound( std::max<size_t>(std::min<size_t>(sz,MAX_BOUND_SIZE),1) ),
+        _q_count( 0 ),
+        _mark_count( new long long(-1) ),
+        _mark_is_dirty( new bool(false) ),
         _mtx( new std::recursive_mutex ),
         _push_has_priority( true )
         {            
         }
 
-    Object(const _myTy & stream )
+    Object(const _my_type & stream )
         : 
-        _myImplObj( stream._myImplObj ),
-        _qBound( stream._qBound ),
-        _qCount( stream._qCount ),
-        _mrkCount( new long long(*stream._mrkCount) ),
-        _mrkOverset( new bool(*stream._mrkOverset) ),
+        _my_impl_obj( stream._my_impl_obj ),
+        _q_bound( stream._q_bound ),
+        _q_count( stream._q_count ),
+        _mark_count( new long long(*stream._mark_count) ),
+        _mark_is_dirty( new bool(*stream._mark_is_dirty) ),
         _mtx( new std::recursive_mutex ),
         _push_has_priority( true )
         {            
         }
 
-    Object( _myTy && stream)
+    Object( _my_type && stream)
         : 
-        _myImplObj( std::move( stream._myImplObj) ),
-        _qBound( stream._qBound ),
-        _qCount( stream._qCount ),   
-        _mrkCount( new long long(*stream._mrkCount) ),
-        _mrkOverset( new bool(*stream._mrkOverset) ),
+        _my_impl_obj( std::move( stream._my_impl_obj) ),
+        _q_bound( stream._q_bound ),
+        _q_count( stream._q_count ),   
+        _mark_count( new long long(*stream._mark_count) ),
+        _mark_is_dirty( new bool(*stream._mark_is_dirty) ),
         _mtx( new std::recursive_mutex ),
         _push_has_priority( true )
         {                
@@ -539,38 +538,39 @@ public:
     virtual ~Object()
         {
             delete this->_mtx;  
-            delete this->_mrkCount;
-            delete this->_mrkOverset;
+            delete this->_mark_count;
+            delete this->_mark_is_dirty;
         }
 
-    bool       inline empty()           const { return _myImplObj.empty(); }
-    size_t     inline size()            const { return _qCount; }
+    bool       inline empty()           const { return _my_impl_obj.empty(); }
+    size_t     inline size()            const { return _q_count; }
     bool       inline uses_secondary()  const { return false; }
-    long long  inline marker_position() const { return *_mrkCount; }
-    size_t     inline bound_size()      const { return _qBound; }
+    bool       inline is_marker_dirty() const { return *_mark_is_dirty; }
+    long long  inline marker_position() const { return *_mark_count; }   
+    size_t     inline bound_size()      const { return _q_bound; }
    
     size_t bound_size( size_t sz )
     {
         sz = std::max<size_t>( std::min<size_t>(sz,MAX_BOUND_SIZE),1);
 
-        _guardTy _lock_( *_mtx );
-        _myImplObj.resize(sz);
+        _my_lock_guard_type lock( *_mtx );
+        _my_impl_obj.resize(sz);
 
-        if( sz < _qBound ){
+        if( sz < _q_bound ){
             /* IF bound is 'clipped' from the left(end) */
-            _myImplObj.shrink_to_fit();    
-            if( (long long)sz <= *_mrkCount ){
+            _my_impl_obj.shrink_to_fit();    
+            if( (long long)sz <= *_mark_count ){
                 /* IF marker is 'clipped' from the left(end) */
-                *_mrkCount = (long long)sz -1;
-                *_mrkOverset = true;
+                *_mark_count = (long long)sz -1;
+                *_mark_is_dirty = true;
             }
         }        
-        _qBound = sz;
-        if( sz < _qCount )
+        _q_bound = sz;
+        if( sz < _q_count )
             /* IF count is 'clipped' from the left(end) */
-            _qCount = sz;
+            _q_count = sz;
 
-        return _qBound;
+        return _q_bound;
     }    
         
     void push(const Ty val, secondary_type&& sec = secondary_type() ) 
@@ -599,50 +599,74 @@ public:
                                 secondary_type* sec = nullptr) const 
     {   /*           
         * 1) we need to cache mark vals before copy changes state
-        * 2) we can't access 'beg' before copy calls _check_adj()
+        * 2) adjust beg here; _check_adj requires a ref that we can't pass
         * 3) casts to long long O.K as long as MAX_BOUND_SIZE == INT_MAX
         */   
-        long long copy_sz;
-        long long old_count = *_mrkCount;
-        bool was_overset = *_mrkOverset;
+        long long copy_sz, req_sz;        
 
-        if( old_count < 0 ) /* IF mark hasn't moved */
-            return 0;         
-                   
-        copy_sz = (long long)copy( dest, sz, old_count, beg, sec);
+        _yld_to_push();
+        _my_lock_guard_type lock( *_mtx );
 
-        if( was_overset || copy_sz < (old_count - (long long)beg) )
+        bool was_dirty = *_mark_is_dirty;
+                  
+        if( beg < 0 )             
+            beg += (int)size();
+
+        req_sz = *_mark_count - (long long)beg + 1;         
+        if( beg < 0 || req_sz < 1) 
+            /*
+             * if beg is still invalid or > marker ... CALLER'S PROBLEM
+             * req_sz needs to account for inclusive range by adding 1
+             */
+            return 0;
+
+        /* CAREFUL: we cant have a negative *_mark_count past this point */
+        copy_sz = (long long)copy( dest, sz, *_mark_count, beg, sec);                  
+
+        if( was_dirty || copy_sz < req_sz )
            /*
-            * IF mark is overset (i.e hits back of stream) or we
+            * IF mark is dirty (i.e hits back of stream) or we
             * don't copy enough(sz is too small) return negative size
             */                      
            copy_sz *= -1;            
 
         return copy_sz;
     }
-
+    
     long long copy_from_marker( char** dest, 
                                 size_t destSz, 
                                 size_t strSz,                              
                                 int beg = 0, 
                                 secondary_type* sec = nullptr) const 
     {   /*           
-         * 1) we need to cache mark vals before copy changes state
-         * 2) we can't access beg before copy calls _check_adj()
-         * 3) casts to long long O.K as long as MAX_BOUND_SIZE == INT_MAX
-         */
-        long long copy_sz;
-        long long old_count = *_mrkCount;
-        bool was_overset = *_mrkOverset;
+        * 1) we need to cache mark vals before copy changes state
+        * 2) adjust beg here; _check_adj requires a ref that we can't pass
+        * 3) casts to long long O.K as long as MAX_BOUND_SIZE == INT_MAX
+        */   
+        long long copy_sz, req_sz;        
 
-        if( old_count < 0 ) /* IF mark hasn't moved */
-            return 0;         
-                            
-        copy_sz = (long long)copy( dest, destSz, strSz, old_count, beg, sec);
+        _yld_to_push();
+        _my_lock_guard_type lock( *_mtx );
 
-        if( was_overset || copy_sz < (old_count - (long long)beg) )
+        bool was_dirty = *_mark_is_dirty;
+                  
+        if( beg < 0 )             
+            beg += (int)size();
+
+        req_sz = *_mark_count - (long long)beg + 1;         
+        if( beg < 0 || req_sz < 1) 
+            /*
+             * if beg is still invalid or > marker ... CALLER'S PROBLEM
+             * req_sz needs to account for inclusive range by adding 1
+             */
+            return 0;
+
+        /* CAREFUL: we cant have a negative *_mark_count past this point */
+        copy_sz = (long long)copy( dest, destSz, strSz, *_mark_count, beg, sec);                  
+
+        if( was_dirty || copy_sz < req_sz )
            /*
-            * IF mark is overset (i.e hits back of stream) or we
+            * IF mark is dirty (i.e hits back of stream) or we
             * don't copy enough(sz is too small) return negative size
             */                      
            copy_sz *= -1;            
@@ -663,17 +687,17 @@ public:
             throw invalid_argument( "->copy(): *dest argument can not be null");
 
         _yld_to_push();
-        _guardTy _lock_( *_mtx );
-        _check_adj( end, beg, _myImplObj );                     
+        _my_lock_guard_type lock( *_mtx );
+        _check_adj( end, beg, _my_impl_obj );                     
 
         if( end == beg ){
-            *dest = beg ? _myImplObj.at(beg) : _myImplObj.front();
+            *dest = beg ? _my_impl_obj.at(beg) : _my_impl_obj.front();
             ret = 1;
         }else 
-            ret = _copy_to_ptr(_myImplObj,dest,sz,end,beg);         
+            ret = _copy_to_ptr(_my_impl_obj,dest,sz,end,beg);         
         
-        *_mrkCount = beg - 1;   
-        *_mrkOverset = false;
+        *_mark_count = beg - 1;   
+        *_mark_is_dirty = false;
 
         return ret;
     }
@@ -688,18 +712,18 @@ public:
          * slow(er), has to go thru generic_type to get strings 
          * note: if sz <= genS.length() the string is truncated 
          */
-        _myImplTy::const_iterator bIter, eIter;
+        _my_impl_type::const_iterator bIter, eIter;
         size_t i;
  
         if( !dest )
             throw invalid_argument( "->copy(): *dest argument can not be null");
 
         _yld_to_push();        
-        _guardTy _lock_( *_mtx );                    
-        _check_adj( end, beg, _myImplObj);                        
+        _my_lock_guard_type lock( *_mtx );                    
+        _check_adj( end, beg, _my_impl_obj);                        
 
-        bIter = _myImplObj.cbegin() + beg; 
-        eIter = _myImplObj.cbegin() + std::min< size_t >(++end, _qCount);
+        bIter = _my_impl_obj.cbegin() + beg; 
+        eIter = _my_impl_obj.cbegin() + std::min< size_t >(++end, _q_count);
 
         for( i = 0; (i < destSz) && (bIter < eIter); ++bIter, ++i )
         {             
@@ -708,8 +732,8 @@ public:
                        std::min<size_t>( strSz-1, genS.length() ) );                                  
         }    
 
-        *_mrkCount = beg - 1; 
-        *_mrkOverset = false;
+        *_mark_count = beg - 1; 
+        *_mark_is_dirty = false;
 
         return i;
     }
@@ -718,39 +742,39 @@ public:
     {
         int dummy = 0;
 
-        _guardTy _lock_( *_mtx );
+        _my_lock_guard_type lock( *_mtx );
         if ( !indx ){ /* optimize for indx == 0 */
-            *_mrkCount = -1;
-            *_mrkOverset = false;
-            return generic_type( _myImplObj.front() ); 
+            *_mark_count = -1;
+            *_mark_is_dirty = false;
+            return generic_type( _my_impl_obj.front() ); 
         }
 
-        _check_adj( indx, dummy, _myImplObj ); 
+        _check_adj( indx, dummy, _my_impl_obj ); 
 
-        *_mrkCount = indx - 1; 
-        *_mrkOverset = false;
+        *_mark_count = indx - 1; 
+        *_mark_is_dirty = false;
 
-        return generic_type( _myImplObj.at(indx) );         
+        return generic_type( _my_impl_obj.at(indx) );         
     }
 
     both_type both( int indx ) const                        
     {    
-        _guardTy _lock_( *_mtx );
+        _my_lock_guard_type lock( *_mtx );
         return both_type( operator[](indx), secondary_type() );
     }
 
     generic_vector_type 
     vector(int end = -1, int beg = 0) const 
     {
-        _myImplTy::const_iterator bIter, eIter;        
+        _my_impl_type::const_iterator bIter, eIter;        
         generic_vector_type tmp;  
       
         _yld_to_push();        
-        _guardTy _lock_( *_mtx );
-        _check_adj(end, beg, _myImplObj);
+        _my_lock_guard_type lock( *_mtx );
+        _check_adj(end, beg, _my_impl_obj);
                 
-        bIter = _myImplObj.cbegin() + beg;
-        eIter = _myImplObj.cbegin() + std::min< size_t >(++end, _qCount);  
+        bIter = _my_impl_obj.cbegin() + beg;
+        eIter = _my_impl_obj.cbegin() + std::min< size_t >(++end, _q_count);  
       
         if( bIter < eIter )                   
             std::transform( bIter, eIter, 
@@ -759,8 +783,8 @@ public:
                 std::insert_iterator< generic_vector_type >( tmp, tmp.begin() ), 
                 []( Ty x ){ return generic_type(x); } );   
 
-        *_mrkCount = beg - 1; 
-        *_mrkOverset = false;
+        *_mark_count = beg - 1; 
+        *_mark_is_dirty = false;
          
         return tmp;    
     }
@@ -768,8 +792,8 @@ public:
     secondary_vector_type
     secondary_vector( int end = -1, int beg = 0 ) const
     {                
-        _check_adj(end, beg, _myImplObj);                                            
-        return secondary_vector_type( std::min< size_t >(++end - beg, _qCount));
+        _check_adj(end, beg, _my_impl_obj);                                            
+        return secondary_vector_type( std::min< size_t >(++end - beg, _q_count));
     }
 
 };
@@ -783,11 +807,11 @@ class Object< Ty, SecTy, GenTy, true, Allocator >
 /*   
  * The container object w/ secondary deque   
  */
-    typedef Object< Ty, SecTy, GenTy, true, Allocator>   _myTy;
-    typedef Object< Ty, SecTy, GenTy, false, Allocator>  _myBase;
-    typedef std::deque< SecTy, Allocator >               _myImplSecTy;
+    typedef Object<Ty,SecTy,GenTy,true,Allocator>   _my_type;
+    typedef Object<Ty,SecTy,GenTy,false,Allocator>  _my_base;
+    typedef std::deque<SecTy,Allocator>             _my_sec_impl_type;
     
-    _myImplSecTy _myImplSecObj;    
+    _my_sec_impl_type _myImplSecObj;    
     
     void _push(const Ty _item, const secondary_type&& sec) 
     {    
@@ -795,8 +819,8 @@ class Object< Ty, SecTy, GenTy, true, Allocator >
         if( !_push_has_priority )
             _mtx->lock();
 
-        _myBase::_myImplObj.push_front(_item); 
-        _myBase::_myImplObj.pop_back();
+        _my_base::_my_impl_obj.push_front(_item); 
+        _my_base::_my_impl_obj.pop_back();
         _myImplSecObj.push_front( std::move(sec) );
         _myImplSecObj.pop_back();
         _incr_intrnl_counts();
@@ -806,26 +830,26 @@ class Object< Ty, SecTy, GenTy, true, Allocator >
 
 public:
 
-    typedef Ty    value_type;
+    typedef Ty value_type;
 
     Object(size_t sz )
         : 
         _myImplSecObj(std::max<size_t>(std::min<size_t>(sz,MAX_BOUND_SIZE),1)),
-        _myBase( std::max<size_t>(std::min<size_t>(sz,MAX_BOUND_SIZE),1))
+        _my_base( std::max<size_t>(std::min<size_t>(sz,MAX_BOUND_SIZE),1))
         {
         }
 
-    Object(const _myTy & stream)
+    Object(const _my_type & stream)
         : 
         _myImplSecObj( stream._myImplSecObj ),
-        _myBase( stream )
+        _my_base( stream )
         { 
         }
 
-    Object(_myTy && stream)
+    Object(_my_type && stream)
         : 
         _myImplSecObj( std::move( stream._myImplSecObj) ),
-        _myBase( std::move(stream) )
+        _my_base( std::move(stream) )
         {
         }
 
@@ -833,13 +857,13 @@ public:
     {
         sz = std::max<size_t>(std::min<size_t>(sz,MAX_BOUND_SIZE),1);
 
-        _guardTy _lock_( *_mtx );   
+        _my_lock_guard_type lock( *_mtx );   
      
         _myImplSecObj.resize(sz);
-        if (sz < _qCount)
+        if (sz < _q_count)
             _myImplSecObj.shrink_to_fit();  
   
-        return _myBase::bound_size(sz);        
+        return _my_base::bound_size(sz);        
     }
 
     bool inline uses_secondary(){ return true; }
@@ -868,9 +892,9 @@ public:
         if( !dest )
             throw invalid_argument( "->copy(): *dest argument can not be null");
 
-        _guardTy _lock_( *_mtx ); 
+        _my_lock_guard_type lock( *_mtx ); 
 
-        ret = _myBase::copy(dest, sz, end, beg); /*_mrkCount reset by _myBase*/
+        ret = _my_base::copy(dest, sz, end, beg); /*_mark_count reset by _my_base*/
           
         if( !sec )
             return ret;
@@ -883,7 +907,7 @@ public:
         }else    
             ret = _copy_to_ptr( _myImplSecObj, sec, sz, end, beg);    
         /*
-         * check ret vs. the return value of _myBase::copy for consistency ??
+         * check ret vs. the return value of _my_base::copy for consistency ??
         */
         return ret;
     }
@@ -899,9 +923,9 @@ public:
         if( !dest  )
             throw invalid_argument( "->copy(): *dest argument can not be null");
 
-        _guardTy _lock_( *_mtx );
+        _my_lock_guard_type lock( *_mtx );
 
-        ret = _myBase::copy(dest, destSz, strSz, end, beg);
+        ret = _my_base::copy(dest, destSz, strSz, end, beg);
 
         if( !sec )
             return ret;
@@ -914,7 +938,7 @@ public:
         }else
             ret = _copy_to_ptr( _myImplSecObj, sec, destSz, end, beg);        
         /*
-         * check ret vs. the return value of _myBase::copy for consistency ??
+         * check ret vs. the return value of _my_base::copy for consistency ??
         */
         return ret;
     }
@@ -923,9 +947,9 @@ public:
     {        
         int dummy = 0;   
      
-        _guardTy _lock_( *_mtx );  
+        _my_lock_guard_type lock( *_mtx );  
       
-        generic_type gen = operator[](indx); /* _mrkCount reset by _myBase */
+        generic_type gen = operator[](indx); /* _mark_count reset by _my_base */
         if( !indx )
             return both_type( gen, _myImplSecObj.front() );
 
@@ -937,7 +961,7 @@ public:
     {
         int dummy = 0;
 
-        _guardTy _lock_( *_mtx );
+        _my_lock_guard_type lock( *_mtx );
 
         _check_adj(indx, dummy, _myImplSecObj );
         if( !indx )
@@ -945,23 +969,23 @@ public:
         else
             *dest = _myImplSecObj.at( indx );    
 
-        *_mrkCount = indx - 1; /* _mrkCount NOT reset by _myBase */
-        *_mrkOverset = false;
+        *_mark_count = indx - 1; /* _mark_count NOT reset by _my_base */
+        *_mark_is_dirty = false;
     }
 
     secondary_vector_type
     secondary_vector( int end = -1, int beg = 0 ) const
     {
-        _myImplSecTy::const_iterator bIter, eIter;
-        _myImplSecTy::const_iterator::difference_type iterDiff;
+        _my_sec_impl_type::const_iterator bIter, eIter;
+        _my_sec_impl_type::const_iterator::difference_type iterDiff;
         secondary_vector_type tmp; 
        
         _yld_to_push();        
-        _guardTy _lock_( *_mtx );
+        _my_lock_guard_type lock( *_mtx );
         _check_adj(end, beg, _myImplSecObj);  
               
         bIter = _myImplSecObj.cbegin() + beg;
-        eIter = _myImplSecObj.cbegin() + std::min< size_t >(++end, _qCount);    
+        eIter = _myImplSecObj.cbegin() + std::min< size_t >(++end, _q_count);    
         iterDiff = eIter - bIter;
 
         if( iterDiff > 0 ){ 
@@ -970,8 +994,8 @@ public:
             std::copy( bIter, eIter, tmp.begin() );
         }
 
-        *_mrkCount = beg - 1; /* _mrkCount NOT reset by _myBase */
-        *_mrkOverset = false;
+        *_mark_count = beg - 1; /* _mark_count NOT reset by _my_base */
+        *_mark_is_dirty = false;
 
         return tmp;    
     }

@@ -278,7 +278,7 @@ class VTOS_DataBlock:
                            ('s',topic), ('b',date_time), ('i',end), ('i',beg),
                            ('b',smart_size), ('i', data_str_max) )
 
-def stream_snapshot_from_marker( self, item, topic, date_time = False, 
+    def stream_snapshot_from_marker( self, item, topic, date_time = False, 
                                      beg = 0, margin_of_safety = 100,
                                      throw_if_data_lost = True,
                                      data_str_max = STR_DATA_SZ ):
@@ -290,15 +290,11 @@ def stream_snapshot_from_marker( self, item, topic, date_time = False,
         stream_snapshot_from_marker() call ended (under a few assumptions, see
         below). 
 
-        Internally the stream maintains a 'marker' that keeps track of
-        the position of the last value pulled. It moves(increases) as the
-        stream takes in new data and resets to the beginning of where data
-        is last pulled from. This can be though of as an atomic operation
-        with respect to the previous call as the act of retreiving the data
-        and moving the marker are synchronized with internal stream
-        operations (i.e new data can't be pushed in until they BOTH complete).
+        Internally the stream maintains a 'marker' that tracks the position of
+        the last value pulled; the act of retreiving data and moving the
+        marker can be thought of as a single, 'atomic' operation.
 
-        There are three states - resulting from the following - to be aware of:
+        There are three states to be aware of:
           1) a 'beg' value that is greater than the marker (even if beg = 0)
           2) a marker that moves through the entire stream and hits the bound
           3) passing a buffer that is too small for the whole range
@@ -307,24 +303,20 @@ def stream_snapshot_from_marker( self, item, topic, date_time = False,
         the current marker, or by passing in 0 when the marker has yet to
         move. 'None' will be returned.
 
-        State (2) occurs when the marker doesn't get reset before enough data
-        is pushed into the stream that it hits the bound (block_size); as the
-        oldest data is popped of the back of the stream it is lost (the
-        marker can't grow past the end of the stream). 
+        State (2) occurs when the marker doesn't get reset before it hits the
+        bound (block_size); as the oldest data is popped of the back of the
+        stream it is lost (the marker can't grow past the end of the stream). 
 
-        State (3) occurs when an inadequately large enough buffer is used.
-        The call handles buffer sizing for you by calling down to get the
-        marker index, subtracting the beginning index passed in, and adding
-        the margin_of_safety to assure the marker doesn't outgrow the
-        buffer by the time the low-level retrieval operation takes place.
-        The default value of 100 would mean that over 100 push operations
-        would have to take place during this call, highly unlikely (if not
-        impossible).
+        State (3) occurs when an inadequately small buffer is used. The call
+        handles buffer sizing for you by calling down to get the marker index,
+        adjusting by 'beg' and 'margin_of_safety'. The latter helps assure the
+        marker doesn't outgrow the buffer by the time the low-level retrieval
+        operation completes. The default value indicates that over 100 push
+        operations would have to take place during this call(highly unlikely).
 
         In either case (state (2) or (3)) if throw_if_data_lost is True a
-        TOSDB_Error will be thrown, if not the data that is available will
-        be returned as normal. Obviously, the 'guarantee' would require
-        the error condition be thrown.
+        TOSDB_DataError will be thrown, otherwise the available data will
+        be returned as normal. 
         
         item: any item string in the block
         topic: any topic string in the block

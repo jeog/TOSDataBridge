@@ -93,6 +93,7 @@ std::string admin_commands[] =
     "GetTypeBits","GetTypeString","IsUsingDateTime","IsUsingDateTimeCPP",
     "GetStreamOccupancy","GetStreamOccupancyCPP",
     "GetMarkerPosition","GetMarkerPositionCPP",
+    "IsMarkerDirty","IsMarkerDirty",
     "DumpBufferStatus"
 };
 std::string get_val_commands[] = 
@@ -697,6 +698,21 @@ int main( int argc, char* argv[])
             {
                 get_block_item_topic();        
                 std::cout<< TOSDB_GetMarkerPosition( block, item, TOS_Topics::globalTopicMap[topic] )<<std::endl;        
+                continue;
+            }
+            if( cmmnd == "IsMarkerDirty" )
+            {            
+                get_block_item_topic(); 
+                unsigned int b;
+                int ret = TOSDB_IsMarkerDirty( block.c_str(), item.c_str(),topic.c_str(), &b);
+                if(ret) std::cout<<"error: "<<ret<<std::endl;
+                else std::cout<< std::boolalpha << ((b==1) ? true : false) <<std::endl;
+                continue;
+            }
+            if( cmmnd == "IsMarkerDirty" )
+            {            
+                get_block_item_topic(); 
+                std::cout<< std::boolalpha << TOSDB_IsMarkerDirty(block, item,TOS_Topics::globalTopicMap[topic]) <<std::endl;
                 continue;
             }
             if( cmmnd == "DumpBufferStatus" )

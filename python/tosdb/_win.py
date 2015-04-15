@@ -39,16 +39,15 @@ from ctypes import WinDLL as _WinDLL, cast as _cast, pointer as _pointer, \
      create_string_buffer as _BUF_, POINTER as _PTR_, c_double as _double_, \
      c_float as _float_, c_ulong as _ulong_, c_long as _long_, \
      c_longlong as _longlong_, c_char_p as _str_, c_char as _char_, \
-     c_ubyte as _uchar_, c_int as _int_, c_void_p as _pvoid_
+     c_ubyte as _uchar_, c_int as _int_, c_void_p as _pvoid_, c_uint as _uint_
 _pchar_ = _PTR_( _char_ )
 _ppchar_ = _PTR_( _pchar_ )   
 
 DLL_BASE_NAME = "tos-databridge"
 SYS_ARCH_TYPE = "x64" if ( _log( _maxsize * 2, 2) > 33 ) else "x86"
-
 # move to _tosdb
 _NTUP_TAG_ATTR = "_dont_worry_about_why_this_attribute_has_a_weird_name_"
-
+MIN_MARGIN_OF_SAFETY = 10
 _REGEX_NON_ALNUM = _compile("[\W+]")
 _REGEX_DLL_NAME = _compile('^('+DLL_BASE_NAME 
                           + '-)[\d]{1,2}.[\d]{1,2}-'
@@ -597,15 +596,11 @@ class TOS_DataBlock:
         stream_snapshot_from_marker() call ended (under a few assumptions, see
         below). 
 
-        Internally the stream maintains a 'marker' that keeps track of
-        the position of the last value pulled. It moves(increases) as the
-        stream takes in new data and resets to the beginning of where data
-        is last pulled from. This can be though of as an atomic operation
-        with respect to the previous call as the act of retreiving the data
-        and moving the marker are synchronized with internal stream
-        operations (i.e new data can't be pushed in until they BOTH complete).
+        Internally the stream maintains a 'marker' that tracks the position of
+        the last value pulled; the act of retreiving data and moving the
+        marker can be thought of as a single, 'atomic' operation.
 
-        There are three states - resulting from the following - to be aware of:
+        There are three states to be aware of:
           1) a 'beg' value that is greater than the marker (even if beg = 0)
           2) a marker that moves through the entire stream and hits the bound
           3) passing a buffer that is too small for the whole range
@@ -614,24 +609,20 @@ class TOS_DataBlock:
         the current marker, or by passing in 0 when the marker has yet to
         move. 'None' will be returned.
 
-        State (2) occurs when the marker doesn't get reset before enough data
-        is pushed into the stream that it hits the bound (block_size); as the
-        oldest data is popped of the back of the stream it is lost (the
-        marker can't grow past the end of the stream). 
+        State (2) occurs when the marker doesn't get reset before it hits the
+        bound (block_size); as the oldest data is popped of the back of the
+        stream it is lost (the marker can't grow past the end of the stream). 
 
-        State (3) occurs when an inadequately large enough buffer is used.
-        The call handles buffer sizing for you by calling down to get the
-        marker index, subtracting the beginning index passed in, and adding
-        the margin_of_safety to assure the marker doesn't outgrow the
-        buffer by the time the low-level retrieval operation takes place.
-        The default value of 100 would mean that over 100 push operations
-        would have to take place during this call, highly unlikely (if not
-        impossible).
+        State (3) occurs when an inadequately small buffer is used. The call
+        handles buffer sizing for you by calling down to get the marker index,
+        adjusting by 'beg' and 'margin_of_safety'. The latter helps assure the
+        marker doesn't outgrow the buffer by the time the low-level retrieval
+        operation completes. The default value indicates that over 100 push
+        operations would have to take place during this call(highly unlikely).
 
         In either case (state (2) or (3)) if throw_if_data_lost is True a
-        TOSDB_Error will be thrown, if not the data that is available will
-        be returned as normal. Obviously, the 'guarantee' would require
-        the error condition be thrown.
+        TOSDB_DataError will be thrown, otherwise the available data will
+        be returned as normal. 
         
         item: any item string in the block
         topic: any topic string in the block
@@ -657,22 +648,36 @@ class TOS_DataBlock:
         if beg < 0 or beg >= self._block_size:
             raise TOSDB_IndexError("invalid 'beg' index value")
 
-        if buf_safety_ratio < 1 or buf_safety_ratio > 2:
-            raise TOSDB_ValueError("buf_safety_ratio must be between 1 and 2")
-        
-        mpos = _longlong_()
-        err = _lib_call( "TOSDB_GetMarkerPosition",
+        if margin_of_safety < MIN_MARGIN_OF_SAFETY:
+            raise TOSDB_ValueError("margin_of_safety < MIN_MARGIN_OF_SAFETY")
+
+        is_dirty = _uint_()
+        err = _lib_call( "TOSDB_IsMarkerDirty",
                          self._name,
                          item.encode("ascii"),
                          topic.encode("ascii"),
-                         pointer(mpos),
-                         arg_list = [ _str_, _str_, _str_, _str_,
-                                      _PTR(_longlong_) ] )
+                         _pointer(is_dirty),
+                         arg_list = [ _str_, _str_, _str_, _PTR_(_uint_) ] )
         if err:
            raise TOSDB_CLibError( "error value [ "+ str(err) + " ] " +
                                   "returned from library call",
+                                  "TOSDB_IsMarkerDirty" )
+
+        if is_dirty and throw_if_data_lost:
+            raise TOSDB_DataError("marker is already dirty")
+        
+        mpos = _longlong_()
+        err2 = _lib_call( "TOSDB_GetMarkerPosition",
+                         self._name,
+                         item.encode("ascii"),
+                         topic.encode("ascii"),
+                         _pointer(mpos),
+                         arg_list = [ _str_, _str_, _str_, _PTR_(_longlong_) ])
+        if err2:
+           raise TOSDB_CLibError( "error value [ "+ str(err2) + " ] " +
+                                  "returned from library call",
                                   "TOSDB_GetMarkerPosition" )
-        cur_sz = mpos - beg + 1
+        cur_sz = mpos.value - beg + 1
         if cur_sz < 0:
             return None
         safe_sz = cur_sz + margin_of_safety
@@ -685,7 +690,7 @@ class TOS_DataBlock:
             strs = [ _BUF_(  data_str_max +1 ) for _ in range(safe_sz) ]   
             # cast char buffers into (char*)[ ]          
             strs_array = (_pchar_ * safe_sz)(*[ cast(s,_pchar_) for s in strs]) 
-            err2 = _lib_call( "TOSDB_GetStreamSnapshotStringsFromMarker", 
+            err3 = _lib_call( "TOSDB_GetStreamSnapshotStringsFromMarker", 
                               self._name,
                               item.encode("ascii"),
                               topic.encode("ascii"),
@@ -694,13 +699,13 @@ class TOS_DataBlock:
                               data_str_max + 1,                        
                               dtss if date_time else _PTR_(_DateTimeStamp)(),                            
                               beg,
-                              pointer( get_size ),
+                              _pointer( get_size ),
                               arg_list = [ _str_, _str_, _str_, _ppchar_,
                                            _ulong_, _ulong_,
                                            _PTR_(_DateTimeStamp), _long_,
                                            _PTR_(_long_) ] )
-            if err2:
-                raise TOSDB_CLibError( "error value [ " + str(err2) + 
+            if err3:
+                raise TOSDB_CLibError( "error value [ " + str(err3) + 
                                        " ] returned from library call",
                                        "TOSDB_GetStreamSnapshotStrings" \
                                            + "FromMarker")
@@ -711,7 +716,7 @@ class TOS_DataBlock:
                 return None
             elif get_size < 0:
                 if throw_if_data_lost:
-                    raise TOSDB_Error("data lost before the 'marker'")
+                    raise TOSDB_DataError("data lost behind the 'marker'")
                 else:
                     get_size *= -1               
             
@@ -725,7 +730,7 @@ class TOS_DataBlock:
                          for ptr in strs_array[:get_size] ]
         else:
             num_array = (typeTup[1] * safe_sz)()   
-            err2 = _lib_call( "TOSDB_GetStreamSnapshot" \
+            err3 = _lib_call( "TOSDB_GetStreamSnapshot" \
                                  + typeTup[0] + "sFromMarker" , 
                               self._name,
                               item.encode("ascii"),
@@ -734,13 +739,13 @@ class TOS_DataBlock:
                               safe_sz,
                               dtss if date_time else _PTR_(_DateTimeStamp)(),                             
                               beg,
-                              pointer( get_size ),
+                              _pointer( get_size ),
                               arg_list = [ _str_, _str_, _str_,
                                            _PTR_(typeTup[1]), _ulong_, 
                                            _PTR_(_DateTimeStamp), _long_,
                                            _PTR_(_long_) ] )
-            if err2:
-                raise TOSDB_CLibError( "error value of [ " + str(err2) + 
+            if err3:
+                raise TOSDB_CLibError( "error value of [ " + str(err3) + 
                                        " ] returned from library call",
                                        "TOSDB_GetStreamSnapshot" \
                                            + typeTup[0] + "sFromMarker" )
@@ -751,7 +756,7 @@ class TOS_DataBlock:
                 return None
             elif get_size < 0:
                 if throw_if_data_lost:
-                    raise TOSDB_Error("data lost before the 'marker'")
+                    raise TOSDB_DataError("data lost behind the 'marker'")
                 else:
                     get_size *= -1
             
