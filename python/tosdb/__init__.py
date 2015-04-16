@@ -410,9 +410,9 @@ class VTOS_DataBlock:
         if virt_type == _vCREATE:
             req_b = _pack_msg( _vCREATE, _pickle.dumps(arg_buffer) )
         elif virt_type == _vCALL:
-            req_b = _pack_msg( _vCALL, self._name, method) if arg_buffer else
-                    _pack_msg( _vCALL, self._name, method,
-                               _pickle.dumps(arg_buffer) )           
+            a = (_vCALL, self._name, method) \
+                + ( (_pickle.dumps(arg_buffer),) if arg_buffer else () )
+            req_b = _pack_msg( *a )           
         elif virt_type == _vDESTROY:
             req_b = _pack_msg( _vDESTROY, self._name)
         else:
