@@ -426,8 +426,10 @@ class VTOS_DataBlock:
             ret_b = _recv_udp( self._my_sock, _vDGRAM_SZ )[0]
         except _socket.timeout as e:
             raise TOSDB_VirtCommError("socket timed out","VTOS_DataBlock._call")
-      
-        args = _unpack_msg( ret_b )       
+
+        args = _unpack_msg( ret_b )     
+        print("DEBUG", args)
+
         status = args[0].decode()
         if status == _vFAIL:
             #
