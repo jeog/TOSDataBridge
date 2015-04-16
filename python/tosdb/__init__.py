@@ -133,10 +133,6 @@ _vSUCCESS = '5'
 _vSUCCESS_NT = '6'
 _vDGRAM_SZ = 512 
 _vTYPES = {'i':int,'s':str,'b':bool}
-_vDELIM = b'\x7E'
-_vESC = b'\x7D'
-_vDEXOR = chr(ord(_vDELIM) ^ ord(_vESC))
-_vEEXOR = chr(ord(_vESC) ^ ord(_vESC)) # 0
 ## !! _vDELIM MUST NOT HAVE THE SAME VALUE AS _vEEXOR !! ##
 _vDELIM = b'\x7E'
 _vESC = b'\x7D'
@@ -429,11 +425,9 @@ class VTOS_DataBlock:
         try:
             ret_b = _recv_udp( self._my_sock, _vDGRAM_SZ )[0]
         except _socket.timeout as e:
-            raise TOSDB_VirtCommError("socket timed out","VTOS_DataBlock._call")   
+            raise TOSDB_VirtCommError("socket timed out","VTOS_DataBlock._call")
       
-        args = _unpack_msg( ret_b )     
-	print("DEBUG", args)
-
+        args = _unpack_msg( ret_b )       
         status = args[0].decode()
         if status == _vFAIL:
             #
