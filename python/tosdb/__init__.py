@@ -432,7 +432,7 @@ class VTOS_DataBlock:
             raise TOSDB_VirtCommError("socket timed out","VTOS_DataBlock._call")   
       
         args = _unpack_msg( ret_b )     
-	print("DEBUG", args)
+        print("DEBUG", args)
 
         status = args[0].decode()
         if status == _vFAIL:
