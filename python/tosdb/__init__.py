@@ -406,16 +406,15 @@ class VTOS_DataBlock:
 ##                           ('i', label_str_max) )
    
     def _call( self, virt_type, method='', *arg_buffer ):
-        
-        #self._check_for_delim(method, *arg_buffer)        
+            
         if virt_type == _vCREATE:
-            req_b = _encode_msg( _vCREATE, _pickle.dumps(arg_buffer) )
+            req_b = _pack_msg( _vCREATE, _pickle.dumps(arg_buffer) )
         elif virt_type == _vCALL:
-            req_b = _encode_msg(_vCALL, self._name, method)
-            if arg_buffer:
-                req_b = _encode_msg( req_b, _pickle.dumps(arg_buffer) )
+            req_b = _pack_msg( _vCALL, self._name, method) if arg_buffer else
+                    _pack_msg( _vCALL, self._name, method,
+                               _pickle.dumps(arg_buffer) )           
         elif virt_type == _vDESTROY:
-            req_b = _encode_msg( _vDESTROY, self._name)
+            req_b = _pack_msg( _vDESTROY, self._name)
         else:
             raise TOSDB_VirtError( "invalid virt_type" )        
         
@@ -517,9 +516,10 @@ def enable_virtualization( address ):
             cargs = [ _vTYPES[t](v) for t,v in upargs ]            
             ret = self._create_callback( addr, *cargs )
             if ret:
-                return _encode_msg( _vSUCCESS, ret )          
+                return _pack_msg( _vSUCCESS, ret )          
 
         def _handle_call( self, args ):
+            print("DEBUG",args)
             if len(args) > 3:              
                 upargs = _pickle.loads( args[3])
                 cargs = [ _vTYPES[t](v) for t,v in upargs ]                
@@ -527,19 +527,19 @@ def enable_virtualization( address ):
                                            *cargs)
             else:
                 ret = self._call_callback( args[1].decode(), args[2].decode() )            
-            if ret:
-                ret_b = _vSUCCESS.encode()
+            if ret:                
                 if type(ret) != bool:
                     if hasattr(ret,_NTUP_TAG_ATTR):
-                        ret_b = _encode_msg( _vSUCCESS_NT, _dumpnamedtuple(ret) )
+                        return _pack_msg( _vSUCCESS_NT, _dumpnamedtuple(ret) )
                     else:
-                        ret_b = _encode_msg( ret_b, _pickle.dumps(ret) )
-                print("DEBUG",ret_b)
-                return ret_b          
+                        return _pack_msg( _vSUCCESS, _pickle.dumps(ret) )
+                else:
+                    return _pack_msg( _vSUCCESS )
+                     
 
         def _handle_destroy( self, args ):
             if self._destroy_callback( args[1].decode() ):
-                return _vSUCCESS.encode()                 
+                return _pack_msg( _vSUCCESS )
 
         def run(self):
             self._rflag = True            
@@ -551,7 +551,8 @@ def enable_virtualization( address ):
                 if not dat:
                     continue
                 try:                   
-                    args = _unpack_msg( dat )                  
+                    args = _unpack_msg( dat )
+                    print("DEBUG", args)
                     msg_t = args[0].decode()
                     r = None
                     if msg_t == _vCREATE:
@@ -561,7 +562,7 @@ def enable_virtualization( address ):
                     elif msg_t == _vDESTROY:
                         r = self._handle_destroy( args )       
                     _send_udp( self._my_sock, addr,
-                               r if r else _vFAIL.encode(), _vDGRAM_SZ )
+                               r if r else _pack_msg(_vFAIL), _vDGRAM_SZ )
                     dat = addr = None
                 except Exception as e:
                     print( e, file=_stderr)
@@ -614,7 +615,7 @@ def _send_udp( sock, addr, data, dgram_sz ):
         sock.sendto( b'', addr)
     return snt
 
-def _encode_msg( *parts ):
+def _pack_msg( *parts ):
     tot = b''
     for p in parts:
         enc = p.encode() if type(p) is not bytes else p         
