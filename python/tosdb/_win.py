@@ -29,6 +29,7 @@ from uuid import uuid4 as _uuid4
 from functools import partial as _partial
 from math import log as _log, ceil as _ceil
 from sys import maxsize as _maxsize
+from atexit import register as _on_exit
 from collections import namedtuple as _namedtuple
 from time import asctime as _asctime, localtime as _localtime
 from os import walk as _walk, stat as _stat, curdir as _curdir, \
@@ -45,13 +46,14 @@ _ppchar_ = _PTR_( _pchar_ )
 
 DLL_BASE_NAME = "tos-databridge"
 SYS_ARCH_TYPE = "x64" if ( _log( _maxsize * 2, 2) > 33 ) else "x86"
-# move to _tosdb
-_NTUP_TAG_ATTR = "_dont_worry_about_why_this_attribute_has_a_weird_name_"
 MIN_MARGIN_OF_SAFETY = 10
+
 _REGEX_NON_ALNUM = _compile("[\W+]")
 _REGEX_DLL_NAME = _compile('^('+DLL_BASE_NAME 
                           + '-)[\d]{1,2}.[\d]{1,2}-'
                           + SYS_ARCH_TYPE +'(.dll)$')
+# move to _tosdb
+_NTUP_TAG_ATTR = "_dont_worry_about_why_this_attribute_has_a_weird_name_"
            
 _dll = None
         
@@ -120,6 +122,8 @@ def clean_up():
         print( "+ Closing Module ", _dll._name )
         del _dll
         _dll = None
+
+_on_exit( clean_up )
     
 ###
 ### all this stuff can be wrapped with 'virtual' calls

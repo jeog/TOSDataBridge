@@ -76,6 +76,7 @@ from platform import system as _system
 from abc import ABCMeta as _ABCMeta, abstractmethod as _abstractmethod
 from sys import stderr as _stderr
 from re import sub as _sub
+from atexit import register as _on_exit
 import socket as _socket
 import pickle as _pickle
 
@@ -138,7 +139,6 @@ _vDELIM = b'\x7E'
 _vESC = b'\x7D'
 _vDEXOR = chr(ord(_vDELIM) ^ ord(_vESC)).encode()
 _vEEXOR = chr(ord(_vESC) ^ ord(_vESC)).encode() # 0
-_vDELIM_S = _vDELIM.decode()
 
 # move to _tosdb
 _NTUP_TAG_ATTR = "_dont_worry_about_why_this_attribute_has_a_weird_name_"
@@ -174,8 +174,9 @@ class VTOS_DataBlock:
             print( "Error closing virtual block: ", repr(e) )          
 
     def __str__( self ):
-        return self._call( _vCALL, '__str__' )    
-  
+        s = self._call( _vCALL, '__str__' )    
+        return s if s else ''
+    
     def info(self):
         """ Returns a more readable dict of info about the underlying block """
         return self._call( _vCALL, 'info' )
@@ -455,7 +456,7 @@ class VTOS_DataBlock:
 _TOS_DataBlock.register( VTOS_DataBlock )
 
    
-def enable_virtualization( address ):
+def enable_virtualization( address, poll_interval=DEF_TIMEOUT ):
     global _virtual_data_server
     
     def _create_callback( addr, *args ):
@@ -504,15 +505,16 @@ def enable_virtualization( address ):
     class _VTOS_DataServer( _Thread ):
         
         def __init__( self, address, create_callback, destroy_callback,
-                      call_callback):
-            super().__init__()
+                      call_callback, poll_interval):
+            super().__init__(daemon=True)
             self._my_addr = address
             self._create_callback = create_callback
             self._destroy_callback = destroy_callback
             self._call_callback = call_callback
             self._rflag = False
             self._my_sock = _socket.socket( _socket.AF_INET, _socket.SOCK_DGRAM )
-            self._my_sock.bind( address )
+            self._my_sock.settimeout( poll_interval / 1000 )
+            self._my_sock.bind( address )   
             
         def stop(self):
             self._rflag = False
@@ -553,11 +555,11 @@ def enable_virtualization( address ):
             self._rflag = True            
             while self._rflag:
                 dat = addr = None
-                try:            
-                    dat, addr = _recv_udp( self._my_sock, _vDGRAM_SZ )            
-                except _socket.timeout as e:
+                try:                   
+                    dat, addr = _recv_udp( self._my_sock, _vDGRAM_SZ )                   
+                except _socket.timeout as e:                   
                     dat = None
-                except: # anything else... kill the server
+                except: # anything else... kill the server                
                     break
                 
                 if not dat: # if no data or timeout ... try again
@@ -585,7 +587,8 @@ def enable_virtualization( address ):
             _virtual_data_server = _VTOS_DataServer( address,
                                                      _create_callback,
                                                      _destroy_callback,
-                                                     _call_callback )
+                                                     _call_callback,
+                                                     poll_interval)
             _virtual_data_server.start()      
     except Exception as e:
         raise TOSDB_VirtError( "(enable) virtualization error", e )
@@ -596,10 +599,13 @@ def disable_virtualization():
         if _virtual_data_server is not None:
            _virtual_data_server.stop()
            _virtual_data_server = None
-           _virtual_blocks.clear()
+        _virtual_blocks.clear()
     except Exception as e:
         raise TOSDB_VirtError( "(disable) virtualization error", e )    
-    
+
+#currently uncessary as server is daemon thread, but may be useful later
+_on_exit( disable_virtualization )
+
 def _dumpnamedtuple( nt ):
     n = type(nt).__name__
     od = nt.__dict__
