@@ -71,6 +71,7 @@ from argparse import ArgumentParser as _ArgumentParser
 from platform import system as _system
 from abc import ABCMeta as _ABCMeta, abstractmethod as _abstractmethod
 from sys import stderr as _stderr
+from re import sub as _sub
 import socket as _socket
 import pickle as _pickle
 
@@ -103,7 +104,7 @@ class _TOS_DataBlock(metaclass=_ABCMeta):
     @_abstractmethod
     def stream_snapshot(): pass
     @_abstractmethod
-    def stream_snapshot(): pass
+    def stream_snapshot_from_marker(): pass
     @_abstractmethod
     def item_frame(): pass
     @_abstractmethod
@@ -128,7 +129,10 @@ _vSUCCESS = '5'
 _vSUCCESS_NT = '6'
 _vDGRAM_SZ = 512 
 _vTYPES = {'i':int,'s':str,'b':bool}
-_vDELIM = b'*'
+_vDELIM = b'\x7E'
+_vESC = b'\x7D'
+_vDEXOR = chr(ord(_vDELIM) ^ ord(_vESC))
+_vEEXOR = chr(ord(_vESC) ^ ord(_vESC)) # 0
 _vDELIM_S = _vDELIM.decode()
 
 # move to _tosdb
@@ -416,9 +420,12 @@ class VTOS_DataBlock:
         try:
             ret_b = _recv_udp( self._my_sock, _vDGRAM_SZ )[0]
         except _socket.timeout as e:
-            raise TOSDB_VirtCommError("socket timed out","VTOS_DataBlock._call")
-      
+            raise TOSDB_VirtCommError("socket timed out","VTOS_DataBlock._call")      
+        
         args = ret_b.strip().split(_vDELIM)
+
+        print("DEBUG", args)
+
         status = args[0].decode()
         if status == _vFAIL:
             #
@@ -606,7 +613,12 @@ def _send_udp( sock, addr, data, dgram_sz ):
 def _encode_msg( *parts ):
     tot = b''
     for p in parts:
-        tot += ( (p.encode() if type(p) is not bytes else p)  + _vDELIM )
+	enc = p.encode() if type(p) is not bytes else p
+	#escape the delim
+        esc1 = _sub(_vDelim, _vDEXOR, enc) 
+	#escape the escape
+	esc2 = _sub(_vESC, _vEEXOR, esc1 )
+        tot += ( esc2 + _vDELIM )
     return tot.rstrip(_vDELIM)
 
 
