@@ -24,13 +24,17 @@ Class TOS_DataBlock (windows only): very similar to the 'block' approach of the
 underlying library(again, see the README.html) except the interface is
 explicitly object-oriented. A unique block id is handled by the object and the
 unique C calls are handled accordingly. It also abstracts away most of the type
-complexity of the underlying calls, raising TOSDB_Error exceptions ifinternal 
-errors occur.
+complexity of the underlying calls, raising TOSDB_CLibError exceptions if
+internal errors occur.
 
 Class VTOS_DataBlock: same interface as TOS_DataBlock except it utilizes a thin
 virtualization layer over UDP. Method calls are serialized and sent over a
 phsyical/virtual network to a windows machine running the core implemenataion,
 passing returned values back.
+
+Class _TOS_DataBlock: abstract base class of TOS_DataBlock and VTOS_DataBlock
+
+                                  * * *   
 
 Those who want to access the TOS_DataBlock on linux while running Windows in
 a virtual machine can abstract away nearly all the (unfortunately necessary)
@@ -42,8 +46,8 @@ to a running TOSDataBridge service via init/connect) and then call
 enable_virtualization() with an address tuple (addr,port) that the virtual
 server ( _VTOS_DataServer ) will used to listen for 'remote' virtual blocks.
 
-tosdb.py will attempt to load the non-portable _tosdb_win.py if on windows.
-The following are some of the important calls imported from _tosdb_win.py that
+tosdb.py will attempt to load the non-portable _win.py if on windows.
+The following are some of the important calls imported from _win.py that
 control the underlying DLL:
 
   init() initializes the underlying library
@@ -116,7 +120,7 @@ _isWinSys = _system() in ["Windows","windows","WINDOWS"]
 
 if _isWinSys: 
     from ._win import * # import the core implementation
-    _TOS_DataBlock.register( TOS_DataBlock ) # and register as virtual subclass
+    _TOS_DataBlock.register( TOS_DataBlock ) # register as virtual subclass
 
 _virtual_blocks = dict() 
 _virtual_data_server = None
@@ -133,6 +137,11 @@ _vDELIM = b'\x7E'
 _vESC = b'\x7D'
 _vDEXOR = chr(ord(_vDELIM) ^ ord(_vESC))
 _vEEXOR = chr(ord(_vESC) ^ ord(_vESC)) # 0
+## !! _vDELIM MUST NOT HAVE THE SAME VALUE AS _vEEXOR !! ##
+_vDELIM = b'\x7E'
+_vESC = b'\x7D'
+_vDEXOR = chr(ord(_vDELIM) ^ ord(_vESC)).encode()
+_vEEXOR = chr(ord(_vESC) ^ ord(_vESC)).encode() # 0
 _vDELIM_S = _vDELIM.decode()
 
 # move to _tosdb
@@ -355,8 +364,8 @@ class VTOS_DataBlock:
         if date_time is True: returns -> list of 2tuple
         else returns-> list
         """
-        return self._call( _vCALL, 'item_frame', ('s',topic),
-                           ('b',date_time), ('b',labels), ('i', data_str_max),
+        return self._call( _vCALL, 'item_frame', ('s',topic), ('b',date_time),
+                           ('b',labels), ('i', data_str_max),
                            ('i', label_str_max) )   
 
     def topic_frame( self, item, date_time = False, labels = True, 
@@ -375,8 +384,8 @@ class VTOS_DataBlock:
         if date_time is True: returns -> list of 2tuple
         else returns-> list
         """
-        return self._call( _vCALL, 'topic_frame', ('s',item),
-                           ('b',date_time), ('b',labels), ('i', data_str_max),
+        return self._call( _vCALL, 'topic_frame', ('s',item), ('b',date_time),
+                           ('b',labels), ('i', data_str_max),
                            ('i', label_str_max) )
 ##
 ##  !! need to find a way to pickle an iterable of namedtuples !!
@@ -402,7 +411,7 @@ class VTOS_DataBlock:
    
     def _call( self, virt_type, method='', *arg_buffer ):
         
-        self._check_for_delim(method, *arg_buffer)        
+        #self._check_for_delim(method, *arg_buffer)        
         if virt_type == _vCREATE:
             req_b = _encode_msg( _vCREATE, _pickle.dumps(arg_buffer) )
         elif virt_type == _vCALL:
@@ -420,11 +429,10 @@ class VTOS_DataBlock:
         try:
             ret_b = _recv_udp( self._my_sock, _vDGRAM_SZ )[0]
         except _socket.timeout as e:
-            raise TOSDB_VirtCommError("socket timed out","VTOS_DataBlock._call")      
-        
-        args = ret_b.strip().split(_vDELIM)
-
-        print("DEBUG", args)
+            raise TOSDB_VirtCommError("socket timed out","VTOS_DataBlock._call")   
+      
+        args = _unpack_msg( ret_b )     
+	print("DEBUG", args)
 
         status = args[0].decode()
         if status == _vFAIL:
@@ -446,12 +454,6 @@ class VTOS_DataBlock:
                 return _pickle.loads( args[1] )
         elif virt_type == _vDESTROY:
             return True
-
-    @staticmethod
-    def _check_for_delim( *strings ):
-        for s in strings:
-            if _vDELIM_S in s:
-               raise TOSDB_ValueError("input contains a '" + _vDELIM_S + "'")
 
 _TOS_DataBlock.register( VTOS_DataBlock )
 
@@ -523,7 +525,7 @@ def enable_virtualization( address ):
 
         def _handle_call( self, args ):
             if len(args) > 3:              
-                upargs = _pickle.loads(args[3])
+                upargs = _pickle.loads( args[3])
                 cargs = [ _vTYPES[t](v) for t,v in upargs ]                
                 ret = self._call_callback( args[1].decode(), args[2].decode(), 
                                            *cargs)
@@ -536,10 +538,11 @@ def enable_virtualization( address ):
                         ret_b = _encode_msg( _vSUCCESS_NT, _dumpnamedtuple(ret) )
                     else:
                         ret_b = _encode_msg( ret_b, _pickle.dumps(ret) )
+                print("DEBUG",ret_b)
                 return ret_b          
 
         def _handle_destroy( self, args ):
-            if self._virtual_destroy_callback( args[1].decode() ):
+            if self._destroy_callback( args[1].decode() ):
                 return _vSUCCESS.encode()                 
 
         def run(self):
@@ -550,25 +553,30 @@ def enable_virtualization( address ):
                 except _socket.timeout as e:
                     dat = None
                 if not dat:
-                    continue               
-                args = dat.split(_vDELIM)
-                msg_t = args[0].decode()
-                r = None
-                if msg_t == _vCREATE:
-                    r = self._handle_create( args, addr )                    
-                elif msg_t == _vCALL:
-                    r = self._handle_call( args )                      
-                elif msg_t == _vDESTROY:
-                    r = self._handle_destroy( args )       
-                _send_udp( self._my_sock, addr, r if r else _vFAIL.encode(), 
-                           _vDGRAM_SZ )
-                dat = addr = None              
+                    continue
+                try:                   
+                    args = _unpack_msg( dat )                  
+                    msg_t = args[0].decode()
+                    r = None
+                    if msg_t == _vCREATE:
+                        r = self._handle_create( args, addr )                    
+                    elif msg_t == _vCALL:
+                        r = self._handle_call( args )                      
+                    elif msg_t == _vDESTROY:
+                        r = self._handle_destroy( args )       
+                    _send_udp( self._my_sock, addr,
+                               r if r else _vFAIL.encode(), _vDGRAM_SZ )
+                    dat = addr = None
+                except Exception as e:
+                    print( e, file=_stderr)
 
     try:
-        _virtual_data_server = _VTOS_DataServer( address, _create_callback,
-                                                 _destroy_callback,
-                                                 _call_callback )
-        _virtual_data_server.start()      
+        if _virtual_data_server is None:
+            _virtual_data_server = _VTOS_DataServer( address,
+                                                     _create_callback,
+                                                     _destroy_callback,
+                                                     _call_callback )
+            _virtual_data_server.start()      
     except Exception as e:
         raise TOSDB_VirtError( "(enable) virtualization error", e )
 
@@ -613,14 +621,21 @@ def _send_udp( sock, addr, data, dgram_sz ):
 def _encode_msg( *parts ):
     tot = b''
     for p in parts:
-	enc = p.encode() if type(p) is not bytes else p
-	#escape the delim
-        esc1 = _sub(_vDelim, _vDEXOR, enc) 
-	#escape the escape
-	esc2 = _sub(_vESC, _vEEXOR, esc1 )
+        enc = p.encode() if type(p) is not bytes else p         
+        #escape the escape FIRST
+        esc1 = _sub(_vESC, _vESC + _vEEXOR, enc )
+        #escape the delim SECOND     
+        esc2 = _sub(_vDELIM, _vESC + _vDEXOR, esc1)
         tot += ( esc2 + _vDELIM )
     return tot.rstrip(_vDELIM)
 
+def _unpack_msg( msg ):
+    def _unescape_part( part ):
+        #unescape the delim FIRST
+        unesc1 = _sub( _vESC + _vDEXOR, _vDELIM, part )
+        #unescape the escape SECOND
+        return _sub( _vESC + _vEEXOR, _vESC, unesc1 )
+    return [ _unescape_part(p) for p in msg.strip().split(_vDELIM) ] 
 
 if __name__ == "__main__" and _isWinSys:
     parser = _ArgumentParser()
