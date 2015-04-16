@@ -125,12 +125,12 @@ if _isWinSys:
 _virtual_blocks = dict() 
 _virtual_data_server = None
 
-_vCREATE = '1'
-_vCALL = '2'
-_vDESTROY = '3'
-_vFAIL = '4'
-_vSUCCESS = '5'
-_vSUCCESS_NT = '6'
+_vCREATE = 'CREATE'
+_vCALL = 'CALL'
+_vDESTROY = 'DESTROY'
+_vFAILURE = 'FAILURE'
+_vSUCCESS = 'SUCCESS'
+_vSUCCESS_NT = 'SUCCESS_NT'
 _vDGRAM_SZ = 512 
 _vTYPES = {'i':int,'s':str,'b':bool}
 ## !! _vDELIM MUST NOT HAVE THE SAME VALUE AS _vEEXOR !! ##
@@ -171,7 +171,7 @@ class VTOS_DataBlock:
             if self._my_sock:
                 self._my_sock.close()
         except TOSDB_Error as e:
-            print( e.args[0] )          
+            print( "Error closing virtual block: ", repr(e) )          
 
     def __str__( self ):
         return self._call( _vCALL, '__str__' )    
@@ -419,26 +419,28 @@ class VTOS_DataBlock:
             raise TOSDB_VirtError( "invalid virt_type" )        
         
         if not _send_udp( self._my_sock, self._my_addr, req_b, _vDGRAM_SZ):
-            raise TOSDB_VirtCommError("sendto() failed", "VTOS_DataBlock._call")
+            raise TOSDB_VirtualizationError( "_send_udp() failed",
+                                             "VTOS_DataBlock._call" )
                   
         try:
             ret_b = _recv_udp( self._my_sock, _vDGRAM_SZ )[0]
         except _socket.timeout as e:
-            raise TOSDB_VirtCommError("socket timed out","VTOS_DataBlock._call")
+            raise TOSDB_VirtualizationError( "socket timed out",
+                                             "VTOS_DataBlock._call" )
 
         args = _unpack_msg( ret_b )     
         print("DEBUG", args)
 
         status = args[0].decode()
-        if status == _vFAIL:
+        if status == _vFAILURE:
             #
             # need to make the error/failure return more robust
             # more info on what happened
             #
-            raise TOSDB_VirtError( "failure status returned: ",
-                                   "virt_type: " + str(virt_type),
-                                   "method: " + str(method),
-                                   "arg_buffer: " + str(arg_buffer) )
+            raise TOSDB_VirtualizationError( "failure status returned",
+                                             "virt_type: " + str(virt_type),
+                                             "method: " + str(method),
+                                             "arg_buffer: " + str(arg_buffer) )
         
         if virt_type == _vCREATE:
             return args[1].decode()
@@ -466,24 +468,28 @@ def enable_virtualization( address ):
             _virtual_blocks[blk._name] = (blk, addr)
             return blk._name                                       
         except Exception as e:
-            print( "exception caught in _create_callback: ", e , file=_stderr )
+            print( "exception caught in _create_callback: ", repr(e),
+                   file=_stderr )
             if blk:
                 _virtual_blocks.pop(blk._name)
                 del blk
             return False       
 
     def _destroy_callback( name ):
-        global _virtual_blocks        
+        global _virtual_blocks
+        print("DEBUG", "in _destroy_callback")
         try:
-            blk = _virtual_blocks.pop( name )
+            blk = _virtual_blocks.pop( name.encode('ascii') )
             del blk
             return True
         except Exception as e:
-            print( "exception caught in _destroy_callback: ", e, file=_stderr)
+            print( "exception caught in _destroy_callback: ", repr(e),
+                   file=_stderr)
             return False
 
     def _call_callback( name, meth, *args):
-        global _virtual_blocks    
+        global _virtual_blocks
+        print("DEBUG", "in _call_callback")
         try:
             name = name.encode('ascii')           
             blk = _virtual_blocks[name][0]         
@@ -491,7 +497,8 @@ def enable_virtualization( address ):
             ret = meth( *args )          
             return ret if ret else True
         except Exception as e:
-            print( "exception caught in _call_callback: ", e, file=_stderr )
+            print( "exception caught in _call_callback: ", repr(e),
+                   file=_stderr )
             return False
        
     class _VTOS_DataServer( _Thread ):
@@ -518,6 +525,10 @@ def enable_virtualization( address ):
             if ret:
                 return _pack_msg( _vSUCCESS, ret )          
 
+        def _handle_destroy( self, args ):
+            if self._destroy_callback( args[1].decode() ):
+                return _pack_msg( _vSUCCESS )
+            
         def _handle_call( self, args ):
             print("DEBUG",args)
             if len(args) > 3:              
@@ -527,32 +538,33 @@ def enable_virtualization( address ):
                                            *cargs)
             else:
                 ret = self._call_callback( args[1].decode(), args[2].decode() )            
-            if ret:                
-                if type(ret) != bool:
-                    if hasattr(ret,_NTUP_TAG_ATTR):
-                        return _pack_msg( _vSUCCESS_NT, _dumpnamedtuple(ret) )
-                    else:
-                        return _pack_msg( _vSUCCESS, _pickle.dumps(ret) )
-                else:
-                    return _pack_msg( _vSUCCESS )
-                     
 
-        def _handle_destroy( self, args ):
-            if self._destroy_callback( args[1].decode() ):
+            if not ret:
+                return
+            if type(ret) is bool:
                 return _pack_msg( _vSUCCESS )
+            # look for our special namedtuple tag
+            if hasattr(ret,_NTUP_TAG_ATTR): 
+                return _pack_msg( _vSUCCESS_NT, _dumpnamedtuple(ret) )
+            else:
+                return _pack_msg( _vSUCCESS, _pickle.dumps(ret) )  
 
         def run(self):
             self._rflag = True            
-            while self._rflag:               
+            while self._rflag:
+                dat = addr = None
                 try:            
                     dat, addr = _recv_udp( self._my_sock, _vDGRAM_SZ )            
                 except _socket.timeout as e:
                     dat = None
-                if not dat:
+                except: # anything else... kill the server
+                    break
+                
+                if not dat: # if no data or timeout ... try again
                     continue
+                
                 try:                   
-                    args = _unpack_msg( dat )
-                    print("DEBUG", args)
+                    args = _unpack_msg( dat )                   
                     msg_t = args[0].decode()
                     r = None
                     if msg_t == _vCREATE:
@@ -560,12 +572,13 @@ def enable_virtualization( address ):
                     elif msg_t == _vCALL:
                         r = self._handle_call( args )                      
                     elif msg_t == _vDESTROY:
-                        r = self._handle_destroy( args )       
+                        r = self._handle_destroy( args )                    
                     _send_udp( self._my_sock, addr,
-                               r if r else _pack_msg(_vFAIL), _vDGRAM_SZ )
-                    dat = addr = None
+                               r if r else _pack_msg(_vFAILURE), _vDGRAM_SZ )                    
                 except Exception as e:
-                    print( e, file=_stderr)
+                    # can't be sure of args size so don't output
+                    print( "Exception caught in _VTOS_DataServer run loop: ",
+                           msg_t, " from ", str(addr), file=_stderr)
 
     try:
         if _virtual_data_server is None:
@@ -598,12 +611,12 @@ def _loadnamedtuple( nt):
     return ty( *vals )
 
 def _recv_udp( sock, dgram_sz ):
-    tot = b''   
+    tot = b''  
     r, addr = sock.recvfrom( dgram_sz )
     while len(r) == dgram_sz:
         tot += r
         r, addr = sock.recvfrom( dgram_sz )
-    tot += r
+    tot += r   
     return (tot,addr)    
 
 def _send_udp( sock, addr, data, dgram_sz ):

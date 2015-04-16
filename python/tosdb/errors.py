@@ -27,10 +27,6 @@ class TOSDB_CLibError( TOSDB_Error ):
     def __init__( self, *messages ):
         TOSDB_Error( messages )
 
-class TOSDB_DataBlockError( TOSDB_Error ):
-    def __init__( self, *messages ):
-        TOSDB_Error( messages )
-
 class TOSDB_ValueError( TOSDB_Error ):
     def __init__( self, *messages ):
         TOSDB_Error( messages )
@@ -48,12 +44,10 @@ class TOSDB_IndexError( TOSDB_Error, IndexError ):
         TOSDB_Error( messages )
         IndexError( *messages )
 
-class TOSDB_VirtError( TOSDB_Error ):
+class TOSDB_VirtualizationError( TOSDB_Error ):
     def __init__( self, *messages ):
         TOSDB_Error( messages )
 
-class TOSDB_VirtCommError( TOSDB_VirtError ):
-    def __init__( self, *messages ):
-        TOSDB_Error( messages )
+
 
     
