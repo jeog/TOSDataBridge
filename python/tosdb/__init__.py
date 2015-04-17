@@ -28,7 +28,7 @@ complexity of the underlying calls, raising TOSDB_CLibError exceptions if
 internal errors occur.
 
 Class VTOS_DataBlock: same interface as TOS_DataBlock except it utilizes a thin
-virtualization layer over UDP. Method calls are serialized and sent over a
+virtualization layer over TCP. Method calls are serialized and sent over a
 phsyical/virtual network to a windows machine running the core implemenataion,
 passing returned values back.
 
@@ -44,7 +44,8 @@ In order to create a virtual block the 'local' windows implementation must
 do everything it would normally do to instantiate a TOS_DataBlock (i.e connect
 to a running TOSDataBridge service via init/connect) and then call
 enable_virtualization() with an address tuple (addr,port) that the virtual
-server ( _VTOS_DataServer ) will used to listen for 'remote' virtual blocks.
+hub/servers ( _VTOS_Hub / _VTOS_DataServer ) will used to listen for 'remote'
+virtual blocks.
 
 tosdb.py will attempt to load the non-portable _win.py if on windows.
 The following are some of the important calls imported from _win.py that
@@ -72,6 +73,7 @@ from .errors import *
 from collections import namedtuple as _namedtuple
 from threading import Thread as _Thread
 from argparse import ArgumentParser as _ArgumentParser
+from functools import partial as _partial
 from platform import system as _system
 from abc import ABCMeta as _ABCMeta, abstractmethod as _abstractmethod
 from sys import stderr as _stderr
@@ -161,18 +163,16 @@ class VTOS_DataBlock:
         self._my_sock.settimeout( timeout / 1000 )
         self._my_sock.connect( address )
         # in case __del__ is called during socket op
-        self._name = None 
-        self._name = self._call( _vCREATE, '__init__',
-                                ('i',size), ('b',date_time), ('i',timeout) )
+        if not self._call( _vCREATE, '__init__', ('i',size),
+                           ('b',date_time), ('i',timeout) ):
+            raise TOSDB_VirtualizationError("CREATE failed")
         
     def __del__( self ):
         try:
-            if self._name:
-                self._call( _vDESTROY )
-            if self._my_sock:
-                self._my_sock.close()
+            self._call( _vDESTROY )
+            self._my_sock.close()
         except TOSDB_Error as e:
-            print( "Error closing virtual block: ", repr(e) )          
+            print( "Error closing virtual block:", repr(e) )          
 
     def __str__( self ):
         s = self._call( _vCALL, '__str__' )    
@@ -423,21 +423,21 @@ class VTOS_DataBlock:
             if not _send_tcp( self._my_sock, req_b, _vPACK_SZ):
                 raise TOSDB_VirtualizationError( "_send_tcp() failed",
                                                  "VTOS_DataBlock._call" )
-        except ConnectionResetError:
-            print("ConnectionResetError in _call", file=_stderr)
+            try:
+                ret_b = _recv_tcp( self._my_sock, _vPACK_SZ )
+            except _socket.timeout as e:
+                raise TOSDB_VirtualizationError( "socket timed out",
+                                                 "VTOS_DataBlock._call" )
+        except ConnectionResetError:         
             try:
                 self._my_sock.connect( self._hub_addr)
             except:
-                raise TOSDB_VirtualizationError("failed to reconnect to hub")
-                  
-        try:
-            ret_b = _recv_tcp( self._my_sock, _vPACK_SZ )
-        except _socket.timeout as e:
-            raise TOSDB_VirtualizationError( "socket timed out",
-                                             "VTOS_DataBlock._call" )
-     
-        args = _unpack_msg( ret_b )           
-        print("DEBUG", args)
+                raise TOSDB_VirtualizationError("failed to reconnect to hub",
+                                                "VTOS_DataBlock._call" )       
+        except ConnectionError as e:
+            TOSDB_VirtualizationError( repr(e) )
+    
+        args = _unpack_msg( ret_b )                 
         status = args[0].decode()
         if status == _vFAILURE:
             #
@@ -449,15 +449,14 @@ class VTOS_DataBlock:
                                              "method: " + str(method),
                                              "arg_buffer: " + str(arg_buffer) )
         
-        if virt_type == _vCREATE:
-            return args[1].decode()
+        if virt_type in [_vCREATE, _vDESTROY]:
+            return True
         elif virt_type == _vCALL and len(args) > 1:
             if status == _vSUCCESS_NT:
                 return _loadnamedtuple( args[1] )
             else:
                 return _pickle.loads( args[1] )
-        elif virt_type == _vDESTROY:
-            return True
+       
        
 _TOS_DataBlock.register( VTOS_DataBlock )
 
@@ -470,65 +469,25 @@ def enable_virtualization( address, poll_interval=DEF_TIMEOUT ):
        
     class _VTOS_DataServer( _Thread ):
         
-        def __init__( self, conn, poll_interval):
+        def __init__( self, conn, poll_interval, stop_callback):
             super().__init__(daemon=True)
             self._my_sock = conn[0]
             self._cli_addr = conn[1]
-            self._poll_interval = poll_interval     
+            self._poll_interval = poll_interval
+            self._my_sock.settimeout( poll_interval / 1000 )
+            self._rflag = False
+            self._stop_callback = stop_callback
             
         def stop(self):
-            self._rflag = False
-            self._my_sock.close()
-
-        def _handle_create( self, args ):            
-            upargs = _pickle.loads(args[1])                
-            cargs = [ _vTYPES[t](v) for t,v in upargs ]            
-            self._blk = TOS_DataBlock( *cargs )
-            if self._blk:
-                return _pack_msg( _vSUCCESS )          
-
-        def _handle_destroy( self, args ):
-            try:
-                del self._blk
-                return _pack_msg( _vSUCCESS )
-            except:
-                pass                        
-            
-        def _handle_call( self, args ):
-            print("DEBUG",args)
-            try:
-                meth = getattr(self._blk, args[2].decode())
-                if len(args) > 3:              
-                    upargs = _pickle.loads( args[3])
-                    cargs = [ _vTYPES[t](v) for t,v in upargs ]                
-                    ret = meth(*cargs)
-                else:
-                    ret = meth()
-                if not ret:
-                    return _pack_msg( _vSUCCESS )
-                # look for our special namedtuple tag
-                elif hasattr(ret,_NTUP_TAG_ATTR): 
-                    return _pack_msg( _vSUCCESS_NT, _dumpnamedtuple(ret) )
-                else:
-                    return _pack_msg( _vSUCCESS, _pickle.dumps(ret) )   
-            except:
-                return None             
+            self._rflag = False                      
 
         def run(self):
             self._rflag = True            
-            while self._rflag:
-                dat = None
+            while self._rflag:                                       
                 try:                   
-                    dat = _recv_tcp( self._my_sock, _vPACK_SZ )                   
-                except _socket.timeout as e:                   
-                    dat = None                
-                except: # anything else... kill the server                
-                    break
-                
-                if not dat: # if no data or timeout ... try again
-                    continue
-                
-                try:                   
+                    dat = _recv_tcp( self._my_sock, _vPACK_SZ )                  
+                    if not dat:                        
+                        break                
                     args = _unpack_msg( dat )                   
                     msg_t = args[0].decode()
                     r = None
@@ -537,16 +496,50 @@ def enable_virtualization( address, poll_interval=DEF_TIMEOUT ):
                     elif msg_t == _vCALL:
                         r = self._handle_call( args )                      
                     elif msg_t == _vDESTROY:
-                        r = self._handle_destroy( args )
-                    print("DEBUG-ret", r)
-                    global debug_buf
-                    debug_buf = r 
+                        r = self._handle_destroy( args )                   
                     _send_tcp( self._my_sock, r if r else _pack_msg(_vFAILURE),
-                               _vPACK_SZ )                    
-                except Exception as e:
-                    # can't be sure of args size so don't output
-                    print( "Exception caught in _VTOS_DataServer run loop: ",
-                           msg_t, " from ", str(addr), file=_stderr)
+                               _vPACK_SZ )                 
+                except _socket.timeout as e:                
+                    pass
+                except Exception as e:                   
+                    print( "Fatal Error in _VTOS_DataServer (TERMINATING) : ",
+                           repr(e), ":", msg_t, " from ", str(self._cli_addr),
+                           file=_stderr )
+                    self._rflag = False
+            self._stop_callback( self )
+        
+        def _handle_create( self, args ):
+            try:
+                upargs = _pickle.loads(args[1])                
+                cargs = [ _vTYPES[t](v) for t,v in upargs ]            
+                self._blk = TOS_DataBlock( *cargs )
+                return _pack_msg( _vSUCCESS )
+            except:
+                pass
+
+        def _handle_destroy( self, args ):
+            try:                
+                del self._blk
+                return _pack_msg( _vSUCCESS )
+            except:
+                pass                        
+            
+        def _handle_call( self, args ):
+            print("DEBUG",args)
+            try:
+                meth = getattr(self._blk, args[1].decode())
+                upargs = _pickle.loads( args[2]) if len(args) > 2 else ()
+                cargs = [ _vTYPES[t](v) for t,v in upargs ]
+                print( cargs )
+                ret = meth(*cargs)                
+                if not ret: # None is still a success
+                    return _pack_msg( _vSUCCESS )                
+                elif hasattr(ret,_NTUP_TAG_ATTR): #our special namedtuple tag
+                    return _pack_msg( _vSUCCESS_NT, _dumpnamedtuple(ret) )
+                else:
+                    return _pack_msg( _vSUCCESS, _pickle.dumps(ret) )   
+            except:
+                pass
 
     class _VTOS_Hub( _Thread ):
 
@@ -560,26 +553,29 @@ def enable_virtualization( address, poll_interval=DEF_TIMEOUT ):
             self._my_sock.settimeout( poll_interval / 1000 )
             self._my_sock.bind( address )
             self._my_sock.listen(0)
-            self._virtual_data_servers = []
+            self._virtual_data_servers = set()
 
         def stop(self):            
-            self._rflag = False
-            self._my_sock.close()
+            self._rflag = False         
 
         def run(self):
             self._rflag = True            
             while self._rflag:                
                 try:                   
                     conn = self._my_sock.accept()
-                    vserv = _VTOS_DataServer( conn, self._poll_interval )
-                    self._virtual_data_servers.append( vserv )
+                    vserv = _VTOS_DataServer( conn, self._poll_interval,
+                                              self._virtual_data_servers.discard )
+                    self._virtual_data_servers.add( vserv )
                     vserv.start()
                 except _socket.timeout as e:                   
                     continue                
-                except: # anything else... kill the server                
+                except Exception as e: # anything else... shutdown the hub
+                    print("_VTOS_Hub killed: ", repr(e), file=_stderr)
                     break                
-            for s in self._virtual_data_servers:
-                s.stop()
+            while self._virtual_data_servers:
+                self._virtual_data_servers.pop().stop()
+            
+            
     try:
         if _virtual_hub is None:
             _virtual_hub = _VTOS_Hub( address, poll_interval )
@@ -609,21 +605,21 @@ def _loadnamedtuple( nt):
     ty = _namedtuple( name, keys )
     return ty( *vals )
 
-def _recv_tcp( sock, dgram_sz ):
+def _recv_tcp( sock, pack_sz ):
     tot = b''  
-    r = sock.recv( dgram_sz )
-    while len(r) == dgram_sz:
+    r = sock.recv( pack_sz )
+    while len(r) == pack_sz:
         tot += r
-        r = sock.recv( dgram_sz )
+        r = sock.recv( pack_sz )
     tot += r   
-    return r  
+    return tot  
 
-def _send_tcp( sock, addr, data, dgram_sz ):
+def _send_tcp( sock, data, pack_sz ):
     dl = len(data)
     snt = 0
-    for i in range( 0, dl, dgram_sz ):
-        snt += sock.send( data[i:i+dgram_sz] )          
-    if dl % dgram_sz == 0:
+    for i in range( 0, dl, pack_sz ):
+        snt += sock.send( data[i:i+pack_sz] )          
+    if dl % pack_sz == 0:
         sock.send( b'')
     return snt
 
