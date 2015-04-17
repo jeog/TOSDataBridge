@@ -21,32 +21,39 @@ class TOSDB_Error( Exception ):
 
 class TOSDB_PlatformError( TOSDB_Error ):
     def __init__( self, *messages ):
-        TOSDB_Error( messages )
+        TOSDB_Error( *messages )
 
 class TOSDB_CLibError( TOSDB_Error ):
     def __init__( self, *messages ):
-        TOSDB_Error( messages )
-
-class TOSDB_ValueError( TOSDB_Error ):
-    def __init__( self, *messages ):
-        TOSDB_Error( messages )
+        TOSDB_Error( *messages )
 
 class TOSDB_DateTimeError( TOSDB_Error ):
     def __init__( self, *messages ):
-        TOSDB_Error( messages )
+        TOSDB_Error( *messages )
 
 class TOSDB_DataError( TOSDB_Error ):
     def __init__( self, *messages ):
-        TOSDB_Error( messages )
+        TOSDB_Error( *messages )
+
+class TOSDB_ValueError( TOSDB_Error, ValueError ):
+    def __init__( self, *messages ):
+        TOSDB_Error( *messages )
+        ValueError( *messages )
+
+class TOSDB_TypeError( TOSDB_Error, TypeError ):
+    def __init__( self, *messages ):
+        TOSDB_Error( *messages )
+        TypeError( *messages )
 
 class TOSDB_IndexError( TOSDB_Error, IndexError ):
     def __init__( self, *messages ):
-        TOSDB_Error( messages )
+        TOSDB_Error( *messages )
         IndexError( *messages )
 
 class TOSDB_VirtualizationError( TOSDB_Error ):
     def __init__( self, *messages ):
-        TOSDB_Error( messages )
+        TOSDB_Error( *messages )
+
 
 
 
