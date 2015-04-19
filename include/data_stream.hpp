@@ -396,7 +396,7 @@ class Object
     }_inst_check_;    
     
     typedef Object<Ty,SecTy,GenTy,UseSecondary,Allocator> _my_type;
-    typedef Interface<SecTy,GenTy>                        _my_base;
+    typedef Interface<SecTy,GenTy>                        _my_base_type;
     typedef std::deque<Ty,Allocator>                      _my_impl_type;            
     typedef typename _my_impl_type::const_iterator
                                   ::difference_type       _my_iterdiff_type;    
@@ -496,8 +496,8 @@ protected:
 
 public:
 
-    typedef _my_base  interface_type;
-    typedef Ty        value_type;
+    typedef _my_base_type  interface_type;
+    typedef Ty             value_type;
 
     Object(size_t sz )
         : 
@@ -808,10 +808,10 @@ class Object< Ty, SecTy, GenTy, true, Allocator >
  * The container object w/ secondary deque   
  */
     typedef Object<Ty,SecTy,GenTy,true,Allocator>   _my_type;
-    typedef Object<Ty,SecTy,GenTy,false,Allocator>  _my_base;
+    typedef Object<Ty,SecTy,GenTy,false,Allocator>  _my_base_type;
     typedef std::deque<SecTy,Allocator>             _my_sec_impl_type;
     
-    _my_sec_impl_type _myImplSecObj;    
+    _my_sec_impl_type _my_sec_impl_obj;    
     
     void _push(const Ty _item, const secondary_type&& sec) 
     {    
@@ -819,10 +819,10 @@ class Object< Ty, SecTy, GenTy, true, Allocator >
         if( !_push_has_priority )
             _mtx->lock();
 
-        _my_base::_my_impl_obj.push_front(_item); 
-        _my_base::_my_impl_obj.pop_back();
-        _myImplSecObj.push_front( std::move(sec) );
-        _myImplSecObj.pop_back();
+        _my_base_type::_my_impl_obj.push_front(_item); 
+        _my_base_type::_my_impl_obj.pop_back();
+        _my_sec_impl_obj.push_front( std::move(sec) );
+        _my_sec_impl_obj.pop_back();
         _incr_intrnl_counts();
 
         _mtx->unlock();
@@ -834,22 +834,22 @@ public:
 
     Object(size_t sz )
         : 
-        _myImplSecObj(std::max<size_t>(std::min<size_t>(sz,MAX_BOUND_SIZE),1)),
-        _my_base( std::max<size_t>(std::min<size_t>(sz,MAX_BOUND_SIZE),1))
+        _my_sec_impl_obj(std::max<size_t>(std::min<size_t>(sz,MAX_BOUND_SIZE),1)),
+        _my_base_type( std::max<size_t>(std::min<size_t>(sz,MAX_BOUND_SIZE),1))
         {
         }
 
     Object(const _my_type & stream)
         : 
-        _myImplSecObj( stream._myImplSecObj ),
-        _my_base( stream )
+        _my_sec_impl_obj( stream._my_sec_impl_obj ),
+        _my_base_type( stream )
         { 
         }
 
     Object(_my_type && stream)
         : 
-        _myImplSecObj( std::move( stream._myImplSecObj) ),
-        _my_base( std::move(stream) )
+        _my_sec_impl_obj( std::move( stream._my_sec_impl_obj) ),
+        _my_base_type( std::move(stream) )
         {
         }
 
@@ -859,11 +859,11 @@ public:
 
         _my_lock_guard_type lock( *_mtx );   
      
-        _myImplSecObj.resize(sz);
+        _my_sec_impl_obj.resize(sz);
         if (sz < _q_count)
-            _myImplSecObj.shrink_to_fit();  
+            _my_sec_impl_obj.shrink_to_fit();  
   
-        return _my_base::bound_size(sz);        
+        return _my_base_type::bound_size(sz);        
     }
 
     bool inline uses_secondary(){ return true; }
@@ -894,20 +894,20 @@ public:
 
         _my_lock_guard_type lock( *_mtx ); 
 
-        ret = _my_base::copy(dest, sz, end, beg); /*_mark_count reset by _my_base*/
+        ret = _my_base_type::copy(dest, sz, end, beg); /*_mark_count reset by _my_base_type*/
           
         if( !sec )
             return ret;
                 
-        _check_adj( end, beg, _myImplSecObj ); /*repeat to update index vals */ 
+        _check_adj( end, beg, _my_sec_impl_obj ); /*repeat to update index vals */ 
  
         if( end == beg ){    
-            *sec = beg ? _myImplSecObj.at(beg) : _myImplSecObj.front();
+            *sec = beg ? _my_sec_impl_obj.at(beg) : _my_sec_impl_obj.front();
             ret = 1;
         }else    
-            ret = _copy_to_ptr( _myImplSecObj, sec, sz, end, beg);    
+            ret = _copy_to_ptr( _my_sec_impl_obj, sec, sz, end, beg);    
         /*
-         * check ret vs. the return value of _my_base::copy for consistency ??
+         * check ret vs. the return value of _my_base_type::copy for consistency ??
         */
         return ret;
     }
@@ -925,20 +925,20 @@ public:
 
         _my_lock_guard_type lock( *_mtx );
 
-        ret = _my_base::copy(dest, destSz, strSz, end, beg);
+        ret = _my_base_type::copy(dest, destSz, strSz, end, beg);
 
         if( !sec )
             return ret;
         
-        _check_adj( end, beg, _myImplSecObj ); /*repeat to update index vals*/ 
+        _check_adj( end, beg, _my_sec_impl_obj ); /*repeat to update index vals*/ 
 
         if( end == beg ){
-            *sec = beg ? _myImplSecObj.at(beg) : _myImplSecObj.front();
+            *sec = beg ? _my_sec_impl_obj.at(beg) : _my_sec_impl_obj.front();
             ret = 1;
         }else
-            ret = _copy_to_ptr( _myImplSecObj, sec, destSz, end, beg);        
+            ret = _copy_to_ptr( _my_sec_impl_obj, sec, destSz, end, beg);        
         /*
-         * check ret vs. the return value of _my_base::copy for consistency ??
+         * check ret vs. the return value of _my_base_type::copy for consistency ??
         */
         return ret;
     }
@@ -949,12 +949,12 @@ public:
      
         _my_lock_guard_type lock( *_mtx );  
       
-        generic_type gen = operator[](indx); /* _mark_count reset by _my_base */
+        generic_type gen = operator[](indx); /* _mark_count reset by _my_base_type */
         if( !indx )
-            return both_type( gen, _myImplSecObj.front() );
+            return both_type( gen, _my_sec_impl_obj.front() );
 
-        _check_adj(indx, dummy, _myImplSecObj );            
-        return both_type( gen, _myImplSecObj.at(indx) );
+        _check_adj(indx, dummy, _my_sec_impl_obj );            
+        return both_type( gen, _my_sec_impl_obj.at(indx) );
     }
 
     void secondary( secondary_type* dest, int indx ) const
@@ -963,13 +963,13 @@ public:
 
         _my_lock_guard_type lock( *_mtx );
 
-        _check_adj(indx, dummy, _myImplSecObj );
+        _check_adj(indx, dummy, _my_sec_impl_obj );
         if( !indx )
-            *dest = _myImplSecObj.front();
+            *dest = _my_sec_impl_obj.front();
         else
-            *dest = _myImplSecObj.at( indx );    
+            *dest = _my_sec_impl_obj.at( indx );    
 
-        *_mark_count = indx - 1; /* _mark_count NOT reset by _my_base */
+        *_mark_count = indx - 1; /* _mark_count NOT reset by _my_base_type */
         *_mark_is_dirty = false;
     }
 
@@ -982,10 +982,10 @@ public:
        
         _yld_to_push();        
         _my_lock_guard_type lock( *_mtx );
-        _check_adj(end, beg, _myImplSecObj);  
+        _check_adj(end, beg, _my_sec_impl_obj);  
               
-        bIter = _myImplSecObj.cbegin() + beg;
-        eIter = _myImplSecObj.cbegin() + std::min< size_t >(++end, _q_count);    
+        bIter = _my_sec_impl_obj.cbegin() + beg;
+        eIter = _my_sec_impl_obj.cbegin() + std::min< size_t >(++end, _q_count);    
         iterDiff = eIter - bIter;
 
         if( iterDiff > 0 ){ 
@@ -994,7 +994,7 @@ public:
             std::copy( bIter, eIter, tmp.begin() );
         }
 
-        *_mark_count = beg - 1; /* _mark_count NOT reset by _my_base */
+        *_mark_count = beg - 1; /* _mark_count NOT reset by _my_base_type */
         *_mark_is_dirty = false;
 
         return tmp;    

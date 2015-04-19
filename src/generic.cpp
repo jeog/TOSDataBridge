@@ -23,8 +23,8 @@ namespace JO{
 Generic& Generic::operator=(const Generic& gen)
 {
     if ((*this) != gen){  
-        _typeVal = gen._typeVal;
-        _typeBSz = gen._typeBSz;
+        _type_val = gen._type_val;
+        _type_bsz = gen._type_bsz;
 
         if( _sub ) 
             delete _sub;
@@ -39,22 +39,22 @@ Generic& Generic::operator=( Generic&& gen )
     delete _sub;
 
     _sub = gen._sub;
-    _typeVal = gen._typeVal;
-    _typeBSz = gen._typeBSz;
+    _type_val = gen._type_val;
+    _type_bsz = gen._type_bsz;
     gen._sub = nullptr;
-    gen._typeVal = VOID_;
-    gen._typeBSz = 0;
+    gen._type_val = VOID_;
+    gen._type_bsz = 0;
 
     return *this;
 }
 
 void Generic::_sub_deep_copy( Generic& dest, const Generic& src)
 {            
-    if( src._typeVal == STRING_ )
+    if( src._type_val == STRING_ )
         dest._sub = new std::string(*((std::string*)src._sub));
     else{
-        dest._sub = malloc( src._typeBSz );
-        memcpy_s(dest._sub, src._typeBSz, src._sub, src._typeBSz );
+        dest._sub = malloc( src._type_bsz );
+        memcpy_s(dest._sub, src._type_bsz, src._sub, src._type_bsz );
     }
 }
 

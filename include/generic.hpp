@@ -39,8 +39,8 @@ class Generic {
     static const int STRING_    = 5;
 
     void* _sub;
-    unsigned char _typeVal;
-    unsigned char _typeBSz;
+    unsigned char _type_val;
+    unsigned char _type_bsz;
     
     template< typename T > void  _throw_bad_cast() const;
     template< typename T > T     _cast_to_val() const;
@@ -62,58 +62,58 @@ public:
     explicit Generic( long val )
         :
         _sub( new long(val) ),
-        _typeVal( LONG_ ),
-        _typeBSz( sizeof(long) )
+        _type_val( LONG_ ),
+        _type_bsz( sizeof(long) )
         {            
         }
 
     explicit Generic( long long val )
         :
         _sub( new long long(val) ),
-        _typeVal( LONG_LONG_ ),
-        _typeBSz( sizeof(long long) )
+        _type_val( LONG_LONG_ ),
+        _type_bsz( sizeof(long long) )
         {
         }
 
     explicit Generic( float val )
         :
         _sub( new float(val) ),
-        _typeVal( FLOAT_ ),
-        _typeBSz( sizeof(float) )
+        _type_val( FLOAT_ ),
+        _type_bsz( sizeof(float) )
         {
         }
 
     explicit Generic( double val )
         :
         _sub( new double(val) ),
-        _typeVal( DOUBLE_ ),
-        _typeBSz( sizeof(double) )
+        _type_val( DOUBLE_ ),
+        _type_bsz( sizeof(double) )
         {
         }
 
     explicit Generic( std::string str)
         : /* limit our string size + /0 to max UCHAR val */
         _sub( new std::string(str.substr(0,254)) ),
-        _typeVal( STRING_ ),
-        _typeBSz( (unsigned char)str.size() + 1 )
+        _type_val( STRING_ ),
+        _type_bsz( (unsigned char)str.size() + 1 )
         {        
         }
 
     Generic( Generic&& gen )
         :
         _sub( gen._sub ),
-        _typeVal( gen._typeVal ),
-        _typeBSz( gen._typeBSz)
+        _type_val( gen._type_val ),
+        _type_bsz( gen._type_bsz)
         {        
             gen._sub  = nullptr;
-            gen._typeVal = VOID_;
-            gen._typeBSz = 0;
+            gen._type_val = VOID_;
+            gen._type_bsz = 0;
         }
 
     Generic( const Generic& gen)
         : 
-        _typeVal( gen._typeVal ),
-        _typeBSz( gen._typeBSz)
+        _type_val( gen._type_val ),
+        _type_bsz( gen._type_bsz)
         {    
             _sub_deep_copy( *this, gen);                
         }    
@@ -129,8 +129,8 @@ public:
 
     bool operator==(const Generic& gen) const
     {
-        return ((_typeVal == gen._typeVal) && 
-                (as_string() == gen.as_string())) ? true : false;
+        return ( (_type_val == gen._type_val) 
+                 && (as_string() == gen.as_string()) );
     }
 
     bool operator!=(const Generic& gen) const
@@ -138,17 +138,17 @@ public:
         return !this->operator==(gen);
     }
 
-    inline size_t size() const            { return _typeBSz; }
+    inline size_t size() const            { return _type_bsz; }
 
-    inline bool is_float() const          { return ( _typeVal == FLOAT_ ); }    
-    inline bool is_double() const         { return ( _typeVal == DOUBLE_ ); }    
-    inline bool is_long() const           { return ( _typeVal == LONG_ ); }
-    inline bool is_long_long() const      { return ( _typeVal == LONG_LONG_ ); }    
-    inline bool is_string() const         { return ( _typeVal == STRING_ ); }
-    inline bool is_floating_point() const { return ( _typeVal == FLOAT_ || 
-                                                     _typeVal == DOUBLE_ ); }
-    inline bool is_integer() const        { return ( _typeVal == LONG_ || 
-                                                     _typeVal == LONG_LONG_ ); }
+    inline bool is_float() const          { return (_type_val == FLOAT_); }    
+    inline bool is_double() const         { return (_type_val == DOUBLE_); }    
+    inline bool is_long() const           { return (_type_val == LONG_); }
+    inline bool is_long_long() const      { return (_type_val == LONG_LONG_); }    
+    inline bool is_string() const         { return (_type_val == STRING_); }
+    inline bool is_floating_point() const { return (_type_val == FLOAT_ || 
+                                                    _type_val == DOUBLE_); }
+    inline bool is_integer() const        { return (_type_val == LONG_ || 
+                                                    _type_val == LONG_LONG_); }
 
     inline long      as_long() const      { return _val_switch<long>(); }
     inline long long as_long_long() const { return _val_switch<long long>(); }
@@ -168,7 +168,7 @@ template< typename T >
 T Generic::_val_switch() const
 {
     try{
-        switch( _typeVal ){
+        switch( _type_val ){
         case LONG_:
             return (T)(*(long*)_sub);
             break;
@@ -188,7 +188,7 @@ T Generic::_val_switch() const
         default:
             throw;
         }
-    }catch( ... ){
+    }catch(...){
         std::ostringstream msgStrm;
         msgStrm << "error casting generic to < " << typeid(T).name() << " >";
         throw std::bad_cast( msgStrm.str().c_str() );

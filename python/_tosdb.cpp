@@ -27,7 +27,7 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 #ifndef XPLATFORM_PYTHON_CONSTS_ONLY
 
 const TOS_Topics::topic_map_type& 
-TOS_Topics::globalTopicMap = TOS_Topics::_globalTopicMap;
+TOS_Topics::map = TOS_Topics::_map;
 
 const char* TOPICS_NAME      =  "TOPICS";
 #endif
@@ -65,17 +65,17 @@ PyMODINIT_FUNC PyInit__tosdb(void)
         our Topics enum as an immutable sequence 
     */
     PyObject* topicObj = 
-        PyTuple_New( TOS_Topics::globalTopicMap.size() ); 
+        PyTuple_New( TOS_Topics::map.size() ); 
 
     TOS_Topics::topic_map_type::const_iterator1_type cbIter = 
-        TOS_Topics::globalTopicMap.cbegin();
+        TOS_Topics::map.cbegin();
 
     int count = 0;
     do
         PyTuple_SET_ITEM( topicObj, count++, 
                           PyUnicode_FromString( cbIter->second.c_str() ) );
 	
-    while( ++cbIter != TOS_Topics::globalTopicMap.cend() );	
+    while( ++cbIter != TOS_Topics::map.cend() );	
 
     PyObject_SetAttrString( pyMod, TOPICS_NAME, topicObj);        
  

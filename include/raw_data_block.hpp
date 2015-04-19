@@ -25,28 +25,29 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 template< typename GenericTy, typename DateTimeTy >
 class RawDataBlock {    
         
-    typedef tosdb_data_stream::Interface< DateTimeTy, 
-                                          GenericTy >    _iStreamTy;    
-    typedef std::unique_ptr< _iStreamTy >                _iStreamPtrTy;
+    typedef tosdb_data_stream::Interface< DateTimeTy,
+                                          GenericTy >  _stream_type;    
+    typedef std::unique_ptr< _stream_type >            _stream_uptr_type;
     typedef std::map< const TOS_Topics::TOPICS, 
-                      _iStreamPtrTy, 
-                      TOS_Topics::top_less >             _tRowTy;
+                      _stream_uptr_type, 
+                      TOS_Topics::top_less >           _row_type;
     typedef std::pair< const TOS_Topics::TOPICS, 
-                       _iStreamPtrTy >                   _tRowElemTy;
-    typedef std::unique_ptr< _tRowTy >                   _tRowPtrTy;    
-    typedef std::pair< const std::string , _tRowPtrTy >  _rawBlockElemTy;    
-    typedef std::lock_guard< std::recursive_mutex >      _guardTy;
+                       _stream_uptr_type >             _row_elem_type;
+    typedef std::unique_ptr< _row_type >               _row_uptr_type;    
+    typedef std::pair< const std::string, 
+                       _row_uptr_type >                _col_elem_type;    
+    typedef std::lock_guard< std::recursive_mutex >    _my_lock_guard_type;
 
-    std::recursive_mutex* const                          _mtxR;
-    std::unordered_map< std::string, _tRowPtrTy >        _rawBlock;
+    std::recursive_mutex* const                        _mtx;
+    std::unordered_map< std::string, _row_uptr_type >  _block;
 
-    size_type       _blockSize;
-    str_set_type    _itemNames;    
-    topic_set_type  _topicEnums;
-    bool            _dtFlag;    
+    size_type       _block_sz;
+    str_set_type    _item_names;    
+    topic_set_type  _topic_enums;
+    bool            _datetime;    
         
-    static size_type _blockCount_;
-    static size_type _maxBlockCount_;
+    static size_type _block_count_;
+    static size_type _max_block_count_;
 
     /* 
        FORCE PUBLIC TO USE FACTORIES 
@@ -56,45 +57,45 @@ class RawDataBlock {
                   const size_type sz, 
                   bool datetime ) 
         :
-        _itemNames( sItems ),
-        _topicEnums( tTopics ),
-        _blockSize( sz ),
-        _dtFlag( datetime ),
-        _mtxR( new std::recursive_mutex )
+        _item_names( sItems ),
+        _topic_enums( tTopics ),
+        _block_sz( sz ),
+        _datetime( datetime ),
+        _mtx( new std::recursive_mutex )
     {            
         init();
-        ++_blockCount_;
+        ++_block_count_;
     }
 
     RawDataBlock( const size_type sz, bool datetime )
         : 
-        _itemNames(),
-        _topicEnums(),    
-        _blockSize( sz ),
-        _dtFlag( datetime ),
-        _mtxR( new std::recursive_mutex )
+        _item_names(),
+        _topic_enums(),    
+        _block_sz( sz ),
+        _datetime( datetime ),
+        _mtx( new std::recursive_mutex )
     {
-        ++_blockCount_;
+        ++_block_count_;
     }
 
     RawDataBlock( const RawDataBlock& block )
         :
-        _mtxR( new std::recursive_mutex )
+        _mtx( new std::recursive_mutex )
         {
-            //++_blockCount_;
+            //++_block_count_;
             /* provide semantics if necessary */
         }
 
     RawDataBlock( RawDataBlock&& block )
         :
-        _mtxR( new std::recursive_mutex )
+        _mtx( new std::recursive_mutex )
     {
         /* provide semantics if necessary */
     }
 
     RawDataBlock& operator=( const RawDataBlock& block )    
     {
-        //++_blockCount_;
+        //++_block_count_;
         /* provide semantics if necessary */
     }
 
@@ -105,25 +106,24 @@ class RawDataBlock {
 
     void init() 
     {
-        _guardTy _lock_(*_mtxR);
+        _my_lock_guard_type lock(*_mtx);
 
-        for (auto & i : _itemNames){
-            _rawBlock.insert( 
-                _rawBlockElemTy( i, 
-                                 std::move( 
-                                   populateTBlock( 
-                                     std::move( _tRowPtrTy(new _tRowTy)))))); 
+        for (auto & i : _item_names){
+            _block.insert( 
+                _col_elem_type( i, 
+                                std::move( populateTBlock( 
+                                  std::move(_row_uptr_type(new _row_type)))))); 
         }
     }
 
-    _tRowTy*   insertTopic( _tRowTy*, TOS_Topics::TOPICS topic);
-    _tRowPtrTy populateTBlock( _tRowPtrTy );
+    _row_type*      insertTopic( _row_type*, TOS_Topics::TOPICS topic);
+    _row_uptr_type  populateTBlock( _row_uptr_type );
 
 public:
-    typedef GenericTy         generic_type;
-    typedef DateTimeTy        datetime_type;
-    typedef _iStreamTy        stream_type;
-    typedef const _iStreamTy* stream_const_ptr_type;
+    typedef GenericTy           generic_type;
+    typedef DateTimeTy          datetime_type;
+    typedef _stream_type        stream_type;
+    typedef const _stream_type* stream_const_ptr_type;
     
     typedef std::vector< generic_type>             vector_type; 
     typedef std::pair< std::string, generic_type > pair_type; 
@@ -146,27 +146,24 @@ public:
                  const size_type sz,
                  const bool datetime ) 
     {
-        if( sItems.empty() || tTopics.empty() ){    
-            throw TOSDB_data_block_error("RawDataBlock<>::CreateBlock(...) : " 
-                                         "sItems and tTopics can not be empty"); 
-        }
-           
-        if ( _blockCount_ < _maxBlockCount_ ) 
+        if( sItems.empty() || tTopics.empty() )    
+            throw TOSDB_DataBlockError(
+                "RawDataBlock<>::CreateBlock() : sItems and/or tTopics empty"); 
+          
+        if ( _block_count_ < _max_block_count_ ) 
             return new RawDataBlock( inames, itopics, sz, datetime ) ; 
         else        
-            throw TOSDB_data_block_limit_error( _maxBlockCount_ );  
-          
+            throw TOSDB_DataBlockLimitError( _max_block_count_ );           
         return nullptr;
     }
 
     static RawDataBlock* const 
     CreateBlock( const size_type sz, const bool datetime ) 
     {
-        if ( _blockCount_ < _maxBlockCount_ ) 
+        if ( _block_count_ < _max_block_count_ ) 
             return new RawDataBlock( sz, datetime );
         else    
-            throw TOSDB_data_block_limit_error( _maxBlockCount_ ); 
-   
+            throw TOSDB_DataBlockLimitError( _max_block_count_ );   
         return nullptr;
     }
 
@@ -179,16 +176,14 @@ public:
                              const size_type sz,
                              const bool datetime ) 
     {
-        if( sItems.empty() || tTopics.empty() ){    
-            throw TOSDB_data_block_error("RawDataBlock<>::CreateBlock(...) : " 
-                                         "sItems and tTopics can not be empty");    
-        }
+        if( sItems.empty() || tTopics.empty() )    
+            throw TOSDB_DataBlockError(
+                "RawDataBlock<>::CreateBlock() : sItems and/or tTopics empty");    
 
-        if ( _blockCount_ < _maxBlockCount_ ) 
+        if ( _block_count_ < _max_block_count_ ) 
             new(dest) RawDataBlock( inames, itopics, sz, datetime );
         else
-            throw TOSDB_data_block_limit_error( _maxBlockCount_ );
-
+            throw TOSDB_DataBlockLimitError( _max_block_count_ );
         return nullptr;
     }
 
@@ -196,408 +191,395 @@ public:
                              const size_type sz,
                              const bool datetime ) 
     {
-        if ( _blockCount_ < _maxBlockCount_ ) 
+        if ( _block_count_ < _max_block_count_ ) 
             new(dest) RawDataBlock( sz, datetime ); 
         else
-            throw TOSDB_data_block_limit_error( _maxBlockCount_ );
-
+            throw TOSDB_DataBlockLimitError( _max_block_count_ );
         return nullptr;
     }
 
     static size_type block_count() 
     {
-        return _blockCount_;
+        return _block_count_;
     }
 
     static size_type max_block_count()
     {
-        return _maxBlockCount_;
+        return _max_block_count_;
     }
 
-    static size_type 
-    max_block_count(const size_type mbc)
+    static size_type max_block_count(const size_type mbc)
     {
-        return (mbc >= _blockCount_) 
-                ? (_maxBlockCount_ = mbc) 
-                : _maxBlockCount_ ; 
+        return (mbc >= _block_count_) 
+                ? (_max_block_count_ = mbc) 
+                : _max_block_count_ ; 
     }
     
     size_type block_size( size_type b )
     {
-        _guardTy _lock_(*_mtxR);
+        _my_lock_guard_type lock(*_mtx);
 
         if( b > INT_MAX ) /* don't allow larger blocks */
             b = INT_MAX; 
 
-        for(auto & rawPr : _rawBlock)
+        for(auto & rawPr : _block)
             for(auto & tPr : *(rawPr.second) )
                 tPr.second->bound_size(b);
 
-        return (_blockSize = b);
+        return (_block_sz = b);
     }
 
     size_type block_size() const 
     {
-        return _blockSize;
+        return _block_sz;
     }    
 
     size_type item_count() const
     {
-        return (size_type)(_itemNames.size());
+        return (size_type)(_item_names.size());
     }
 
     size_type topic_count() const
     {
-        return (size_type)(_topicEnums.size());
+        return (size_type)(_topic_enums.size());
     }
 
-    void add_item( std::string sItem ); 
+    void add_item( std::string item ); 
 
-    void remove_item( std::string sItem ); 
+    void remove_item( std::string item ); 
 
-    void add_topic( TOS_Topics::TOPICS tTopic ); 
+    void add_topic( TOS_Topics::TOPICS topic ); 
 
-    void remove_topic( TOS_Topics::TOPICS tTopic ); 
+    void remove_topic( TOS_Topics::TOPICS topic ); 
 
     template < typename Val, typename DT > 
-    void insertData( TOS_Topics::TOPICS tTopic, 
-                     std::string sItem, 
+    void insertData( TOS_Topics::TOPICS topic, 
+                     std::string item, 
                      Val val, 
                      DT&& datetime ); 
 
-    const _iStreamTy*   
-    raw_stream_ptr( std::string sItem, TOS_Topics::TOPICS tTopic ) const ;
+    const _stream_type* raw_stream_ptr( std::string item, 
+                                        TOS_Topics::TOPICS topic ) const ;
 
-    map_type 
-    map_of_frame_items(TOS_Topics::TOPICS tTopic) const ;
+    map_type map_of_frame_items(TOS_Topics::TOPICS topic) const ;
 
-    map_type 
-    map_of_frame_topics( std::string sItem ) const ;
+    map_type map_of_frame_topics( std::string item ) const ;
 
-    map_datetime_type 
-    pair_map_of_frame_items( TOS_Topics::TOPICS ) const ;
+    map_datetime_type pair_map_of_frame_items( TOS_Topics::TOPICS ) const ;
 
-    map_datetime_type 
-    pair_map_of_frame_topics( std::string sItem ) const ;
+    map_datetime_type pair_map_of_frame_topics( std::string item ) const ;
 
-    matrix_type 
-    matrix_of_frame() const ;
+    matrix_type matrix_of_frame() const ;
 
-    matrix_datetime_type     
-    pair_matrix_of_frame() const ;
+    matrix_datetime_type pair_matrix_of_frame() const ;
     
     topic_set_type topics() const
     {
-        return _topicEnums;
+        return _topic_enums;
     }
 
     str_set_type items() const
     {
-        return _itemNames;
+        return _item_names;
     }
 
-    bool has_topic( TOS_Topics::TOPICS tTopic) const
+    bool has_topic( TOS_Topics::TOPICS topic) const
     {
-        return (_topicEnums.find(tTopic) != _topicEnums.cend());
+        return (_topic_enums.find(topic) != _topic_enums.cend());
     }
 
-    bool has_item( const char* sItem) const
+    bool has_item( const char* item) const
     {
-        return (_itemNames.find(sItem) != _itemNames.cend());
+        return (_item_names.find(item) != _item_names.cend());
     }
 
     bool uses_dtstamp() const
     {
-        return this->_dtFlag;
+        return this->_datetime;
     }
 
     ~RawDataBlock() 
     {
-        delete _mtxR;        
+        delete _mtx;        
         /* 
            All the heap deallocs are handled by unique_ptr destructors 
         */    
-        --_blockCount_;
+        --_block_count_;
     }
 }; 
 
 template< typename T, typename T2 > 
-size_type RawDataBlock<T,T2>::_blockCount_ = 0;
+size_type RawDataBlock<T,T2>::_block_count_ = 0;
 
 template< typename T, typename T2 > 
-size_type RawDataBlock< T, T2>::_maxBlockCount_ = 10;
+size_type RawDataBlock< T, T2>::_max_block_count_ = 10;
 
 template< typename TG, typename TD >
 template < typename Val, typename DT > 
-void RawDataBlock<TG,TD>::insertData( TOS_Topics::TOPICS tTopic, 
-                                      std::string sItem, 
+void RawDataBlock<TG,TD>::insertData( TOS_Topics::TOPICS topic, 
+                                      std::string item, 
                                       Val val, 
                                       DT&& datetime ) 
 {
-    _iStreamTy *dBlck; 
-    _tRowTy    *tBlck;     
+    _stream_type *stream; 
+    _row_type    *topics;     
 
     try{        
-        _guardTy _lock_(*_mtxR);    
-        tBlck = _rawBlock.at(sItem).get(); 
+        _my_lock_guard_type lock(*_mtx);    
+        topics = _block.at(item).get(); 
 
-        if ( !tBlck ) 
-            throw TOSDB_data_block_error("insertData() _rawBlock returned " 
-                                         "nullptr for this item");   
+        if ( !topics ) 
+            throw TOSDB_DataBlockError(
+                "insertData() _block returned nullptr for this item" );   
 
-        dBlck = (tBlck->at( tTopic )).get();
-        if ( !dBlck ) 
-            throw TOSDB_data_block_error("insertData() _rawBlock returned " 
-                                         "nullptr for this topic");  
+        stream = (topics->at( topic )).get();
+        if ( !stream ) 
+            throw TOSDB_DataBlockError(
+                "insertData() _block returned nullptr for this topic" );  
           
-        dBlck->push( val, std::move(datetime) );                   
+        stream->push( val, std::move(datetime) );                   
     }catch( const std::out_of_range& ){        
         TOSDB_LogH("DataBlock"," DDE_DATA<T> rejected from block ");
         throw;
-    }catch( const TOSDB_error& ){    
+    }catch( const TOSDB_Error& ){    
         throw;
     }catch( const tosdb_data_stream::error& e){        
-        throw TOSDB_data_stream_error(e, "insertData()", e.what());
+        throw TOSDB_DataStreamError(e, "insertData()", e.what());
     }catch( const std::exception & e){        
-        throw TOSDB_data_block_error(e, "insertData()");
+        throw TOSDB_DataBlockError(e, "insertData()");
     }catch( ... ){        
-        throw TOSDB_data_block_error("insertData(); Unknown Exception");
+        throw TOSDB_DataBlockError("insertData(); Unknown Exception");
     }
 }
 
 template< typename TG, typename TD > 
-void RawDataBlock<TG,TD>::add_item( std::string sItem ) 
+void RawDataBlock<TG,TD>::add_item( std::string item ) 
 {        
     try{
-        _guardTy _lock_(*_mtxR);
+        _my_lock_guard_type lock(*_mtx);
 
-        if( _itemNames.insert( sItem ).second ){
+        if( _item_names.insert( item ).second ){
 
-            _rawBlock.erase( sItem );
-            _rawBlock.insert( 
-                _rawBlockElemTy( sItem, 
-                                 std::move( 
-                                   populateTBlock( 
-                                     std::move( _tRowPtrTy( new _tRowTy ))))));
+            _block.erase( item );
+            _block.insert( 
+                _col_elem_type(item, 
+                                std::move( populateTBlock( 
+                                  std::move(_row_uptr_type(new _row_type))))));
         }   
     }catch( const std::exception & e ){
-        throw TOSDB_data_block_error(e, "add_item()");
+        throw TOSDB_DataBlockError(e, "add_item()");
     }
 }
 
 template< typename TG, typename TD > 
-void RawDataBlock<TG,TD>::remove_item( std::string sItem )
+void RawDataBlock<TG,TD>::remove_item( std::string item )
 {    
     try{
-        _guardTy _lock_(*_mtxR);
+        _my_lock_guard_type lock(*_mtx);
 
-        if( _itemNames.erase( sItem ) ){
-            _tRowTy * tBlck = _rawBlock.at(sItem).get();
+        if( _item_names.erase( item ) ){
+            _row_type * row = _block.at(item).get();
 
-            if( tBlck ){
-                for(auto & tBpair : *tBlck)
-                    tBpair.second.reset();
+            if( row ){
+                for(auto & elem : *row)
+                    elem.second.reset();
                     
-                _rawBlock.at(sItem).reset();
-                _rawBlock.erase(sItem);            
+                _block.at(item).reset();
+                _block.erase(item);            
             }            
         }       
     }catch( const std::out_of_range& e ){
         TOSDB_LogH( "DataBlock", 
                     "remove_item(): out_of_range exception; probably invalid "
                     "item parameter" );
-        throw TOSDB_data_block_error(e, "remove_item() probably invalid item");    
+        throw TOSDB_DataBlockError(e, "remove_item() probably invalid item");    
     }catch( const std::exception & e ){
-        throw TOSDB_data_block_error(e, "remove_item()");
+        throw TOSDB_DataBlockError(e, "remove_item()");
     }    
 }
 
 template< typename TG, typename TD > 
-void RawDataBlock<TG,TD>::add_topic( TOS_Topics::TOPICS tTopic) 
+void RawDataBlock<TG,TD>::add_topic( TOS_Topics::TOPICS topic) 
 {    
     try{
-        _guardTy _lock_(*_mtxR);
+        _my_lock_guard_type lock(*_mtx);
 
-        if( _topicEnums.insert( tTopic ).second ) 
-            for (auto & i : _rawBlock)
-                insertTopic( i.second.get(), tTopic );         
+        if( _topic_enums.insert( topic ).second ) 
+            for (auto & elem : _block)
+                insertTopic( elem.second.get(), topic );         
     }catch( const std::exception & e ){
-        throw TOSDB_data_block_error(e, "add_topic()");
+        throw TOSDB_DataBlockError(e, "add_topic()");
     }
 }
 
 template< typename TG, typename TD > 
-void RawDataBlock<TG,TD>::remove_topic( TOS_Topics::TOPICS tTopic)
+void RawDataBlock<TG,TD>::remove_topic( TOS_Topics::TOPICS topic)
 {    
     try{
-        _guardTy _lock_(*_mtxR);
+        _my_lock_guard_type lock(*_mtx);
 
-        if( _topicEnums.erase( tTopic ) ) 
-            for(auto & rBpair : _rawBlock) {
-                _tRowTy *tBlck = rBpair.second.get();
+        if( _topic_enums.erase( topic ) ) 
+            for(auto & elem : _block) {
+                _row_type *row = elem.second.get();
 
-                if( tBlck ){
-                    (tBlck->at(tTopic)).reset();
-                    tBlck->erase(tTopic);
+                if( row ){
+                    (row->at(topic)).reset();
+                    row->erase(topic);
                 }
             }                
     }catch( const std::out_of_range& e ){
         TOSDB_LogH( "DataBlock", 
                     "remove_topic(): out_of_range exception; probably "
                     "invalid topic parameter" );
-        throw TOSDB_data_block_error( e, 
-                                      "remove_item() probably invalid topic ");
+        throw TOSDB_DataBlockError( e, "remove_item() probably invalid topic");
     }catch( const std::exception & e ){
-        throw TOSDB_data_block_error(e, "remove_topic()");        
+        throw TOSDB_DataBlockError(e, "remove_topic()");        
     }    
 }
 
 template< typename TG, typename TD > 
-typename RawDataBlock<TG,TD>::_tRowTy* 
-RawDataBlock<TG,TD>::insertTopic( typename RawDataBlock<TG,TD>::_tRowTy* tBlock, 
+typename RawDataBlock<TG,TD>::_row_type* 
+RawDataBlock<TG,TD>::insertTopic( typename RawDataBlock<TG,TD>::_row_type* row, 
                                   TOS_Topics::TOPICS topic)
 {        
-    _iStreamTy *dataBlock;
+    _stream_type *stream;
 
     switch( TOS_Topics::TypeBits(topic) ){ 
     case TOSDB_STRING_BIT :
-        dataBlock = this->_dtFlag 
+        stream = this->_datetime 
             ? new tosdb_data_stream::Object< std::string, 
                                              datetime_type, 
                                              generic_type, 
-                                             true > ( _blockSize ) 
+                                             true > ( _block_sz ) 
             : new tosdb_data_stream::Object< std::string, 
                                              datetime_type, 
                                              generic_type, 
-                                             false > ( _blockSize );
+                                             false > ( _block_sz );
         break;
     case TOSDB_INTGR_BIT :
-        dataBlock = this->_dtFlag 
+        stream = this->_datetime 
             ? new tosdb_data_stream::Object< def_size_type, 
                                              datetime_type, 
                                              generic_type, 
-                                             true > ( _blockSize ) 
+                                             true > ( _block_sz ) 
             : new tosdb_data_stream::Object< def_size_type, 
                                              datetime_type, 
                                              generic_type, 
-                                             false > ( _blockSize );
+                                             false > ( _block_sz );
         break;
     case TOSDB_QUAD_BIT :
-        dataBlock = this->_dtFlag 
+        stream = this->_datetime 
             ? new tosdb_data_stream::Object< ext_price_type, 
                                              datetime_type, 
                                              generic_type, 
-                                             true > ( _blockSize ) 
+                                             true > ( _block_sz ) 
             : new tosdb_data_stream::Object< ext_price_type, 
                                              datetime_type, 
                                              generic_type, 
-                                             false > ( _blockSize );
+                                             false > ( _block_sz );
         break;
     case TOSDB_INTGR_BIT | TOSDB_QUAD_BIT :
-        dataBlock = this->_dtFlag 
+        stream = this->_datetime 
             ? new tosdb_data_stream::Object< ext_size_type, 
                                              datetime_type, 
                                              generic_type, 
-                                             true > ( _blockSize )
+                                             true > ( _block_sz )
             : new tosdb_data_stream::Object< ext_size_type, 
                                              datetime_type, 
                                              generic_type, 
-                                             false > ( _blockSize );
+                                             false > ( _block_sz );
         break;
     default :
-        dataBlock = this->_dtFlag 
+        stream = this->_datetime 
             ? new tosdb_data_stream::Object< def_price_type, 
                                              datetime_type, 
                                              generic_type, 
-                                             true > ( _blockSize ) 
+                                             true > ( _block_sz ) 
             : new tosdb_data_stream::Object< def_price_type, 
                                              datetime_type, 
                                              generic_type, 
-                                             false > ( _blockSize );
+                                             false > ( _block_sz );
     }
-    tBlock->erase(topic);
+    row->erase(topic);
 
     try{
-        tBlock->insert( _tRowElemTy( topic, 
-                                     _iStreamPtrTy( std::move(dataBlock) )));
+        row->insert( _row_elem_type( topic, 
+                                     _stream_uptr_type( std::move(stream) )));
     }catch( ... ){
         TOSDB_LogH("DataBlock","insertTopic(): Problem inserting t-block");
-        if(dataBlock)
-            delete dataBlock;
+        if(stream)
+            delete stream;
     }
 
-    return tBlock;
+    return row;
 }
 
 template< typename TG, typename TD > 
-typename RawDataBlock<TG,TD>::_tRowPtrTy 
-RawDataBlock<TG,TD>::populateTBlock(_tRowPtrTy tBlock)
+typename RawDataBlock<TG,TD>::_row_uptr_type 
+RawDataBlock<TG,TD>::populateTBlock(_row_uptr_type tBlock)
 {        
-    for(auto e : _topicEnums)
-        insertTopic( tBlock.get(), e );
+    for(auto elem : _topic_enums)
+        insertTopic( tBlock.get(), elem );
 
     return std::move(tBlock);
 }
 
 template< typename TG, typename TD > 
-const typename RawDataBlock<TG,TD>::_iStreamTy*
-RawDataBlock<TG,TD>::raw_stream_ptr( std::string sItem, 
-                                     TOS_Topics::TOPICS tTopic ) const 
+const typename RawDataBlock<TG,TD>::_stream_type*
+RawDataBlock<TG,TD>::raw_stream_ptr( std::string item, 
+                                     TOS_Topics::TOPICS topic ) const 
 {
-    const _iStreamTy * tmpFrame = nullptr;
+    const _stream_type * stream = nullptr;
 
     try{
-        _guardTy _lock_(*_mtxR);
+        _my_lock_guard_type lock(*_mtx);
+        _row_type* row = _block.at(item).get();
 
-        _tRowTy* tBlck = _rawBlock.at(sItem).get();
-        if( tBlck )                                        
-            tmpFrame = (tBlck->at(tTopic)).get();
+        if( row )                                        
+            stream = (row->at(topic)).get();
+
     }catch( const std::out_of_range& e ){
         TOSDB_LogH( "DataBlock", 
-                    "raw_stream_ptr(): out_of_range exception; probably " 
-                    "invalid item and/or topic" );
-        throw TOSDB_data_block_error( e, 
-                                      "DataStream does not exist in block; "
-                                      "probably invalid item and/or topic");
+                    "raw_stream_ptr(): out_of_range exception; "
+                    "probably invalid item and/or topic" );
+        throw TOSDB_DataBlockError( e, "DataStream does not exist in block" );
     }catch(const std::exception & e){
-        throw TOSDB_data_block_error(e, "raw_stream_ptr()");
+        throw TOSDB_DataBlockError(e, "raw_stream_ptr()");
     }
 
-    if( !tmpFrame )
-        throw TOSDB_data_block_error("DataStream does not exist in block");    
+    if( !stream )
+        throw TOSDB_DataBlockError("DataStream does not exist in block");    
 
-    return tmpFrame;
+    return stream;
 }
 
 template< typename TG, typename TD > 
 typename RawDataBlock<TG,TD>::map_type
-RawDataBlock<TG,TD>::map_of_frame_topics( std::string sItem ) const 
+RawDataBlock<TG,TD>::map_of_frame_topics( std::string item ) const 
 {
     map_type map;
 
     try{
-        _guardTy _lock_(*_mtxR);
+        _my_lock_guard_type lock(*_mtx);
+        _row_type * row = _block.at(item).get();        
 
-        _tRowTy * tBlck = _rawBlock.at(sItem).get();        
-        if ( tBlck )
-            for( auto & i : *tBlck)
-                map.insert( 
-                    std::move( pair_type( TOS_Topics::globalTopicMap[i.first], 
-                                          i.second->operator[](0) )));
+        if ( row )
+            for( auto & elem : *row)
+                map.insert( std::move( 
+                    pair_type( TOS_Topics::map[elem.first], 
+                               elem.second->operator[](0) )));
+
     }catch( const std::out_of_range& e ){
         TOSDB_LogH( "DataBlock", 
                     "map_of_frame_topics(): out_of_range exception; "
                     "probably invalid item param" );
-        throw TOSDB_data_block_error( e, 
-                                      "map_of_frame_topics(); probably "
-                                      "invalid item param" );
+        throw TOSDB_DataBlockError( e,
+            "map_of_frame_topics(); probably invalid item param" );
     }catch( const tosdb_data_stream::error& e ){
-        throw TOSDB_data_stream_error( e, 
-                                       "tosdb_data_stream error caught and "
-                                       "encapsulated in "
-                                       "RawDataBlock::map_of_frame_topics()" );
+        throw TOSDB_DataStreamError( e, "tosdb_data_stream error caught and "
+            "encapsulated in RawDataBlock::map_of_frame_topics()" );
     }catch(const std::exception & e){
-        throw TOSDB_data_block_error(e, "map_of_frame_topics()");
+        throw TOSDB_DataBlockError(e, "map_of_frame_topics()");
     }
 
     return map;
@@ -605,31 +587,29 @@ RawDataBlock<TG,TD>::map_of_frame_topics( std::string sItem ) const
 
 template< typename TG, typename TD > 
 typename RawDataBlock<TG,TD>::map_type
-RawDataBlock<TG,TD>::map_of_frame_items(TOS_Topics::TOPICS tTopic) const 
+RawDataBlock<TG,TD>::map_of_frame_items(TOS_Topics::TOPICS topic) const 
 {
     map_type map; 
 
     try{
-        _guardTy _lock_(*_mtxR);
+        _my_lock_guard_type lock(*_mtx);
 
-        for( auto & i : _rawBlock)
-            map.insert( 
-                std::move( pair_type( i.first, 
-                                      i.second->at(tTopic)->operator[](0) )));             
+        for( auto & elem : _block)
+            map.insert( std::move( 
+                pair_type( elem.first, 
+                           elem.second->at(topic)->operator[](0) )));  
+
     }catch( const std::out_of_range& e ){
         TOSDB_LogH( "DataBlock", 
                     "map_of_frame_items(): out_of_range exception; "
                     "probably invalid topic param" );
-        throw TOSDB_data_block_error( e, 
-                                      "map_of_frame_items(); "
-                                      "probably invalid topic" );
+        throw TOSDB_DataBlockError( e, 
+            "map_of_frame_items(); probably invalid topic" );
     }catch( const tosdb_data_stream::error& e ){
-        throw TOSDB_data_stream_error( e, 
-                                       "tosdb_data_stream error caught and "
-                                       "encapsulated in "
-                                       "RawDataBlock::map_of_frame_items()" );
+        throw TOSDB_DataStreamError( e, "tosdb_data_stream error caught and "
+            "encapsulated in RawDataBlock::map_of_frame_items()" );
     }catch( const std::exception & e ){
-        throw TOSDB_data_block_error(e, "map_of_frame_items()");
+        throw TOSDB_DataBlockError(e, "map_of_frame_items()");
     }
 
     return map;
@@ -638,34 +618,32 @@ RawDataBlock<TG,TD>::map_of_frame_items(TOS_Topics::TOPICS tTopic) const
 
 template< typename TG, typename TD > 
 typename RawDataBlock<TG,TD>::map_datetime_type
-RawDataBlock<TG,TD>::pair_map_of_frame_topics( std::string sItem ) const 
+RawDataBlock<TG,TD>::pair_map_of_frame_topics( std::string item ) const 
 {
     map_datetime_type map;
 
     try{
-        _guardTy _lock_(*_mtxR);
+        _my_lock_guard_type lock(*_mtx);
+        _row_type * row = _block.at(item).get();        
 
-        _tRowTy * tBlck = _rawBlock.at(sItem).get();        
-        if ( tBlck )
-            for( auto & i : *tBlck)
-                map.insert( std::move( map_datetime_type::value_type(
-                                           TOS_Topics::globalTopicMap[i.first], 
-                                           i.second->both(0) 
-                                           )));
+        if ( row )
+            for( auto & elem : *row)
+                map.insert( std::move(  
+                    map_datetime_type::value_type(
+                        TOS_Topics::map[elem.first], 
+                        elem.second->both(0) )));
+
     }catch( const std::out_of_range& e ){
         TOSDB_LogH( "DataBlock", 
                     "pair_map_of_frame_topics(): out_of_range exception; "
                     "probably invalid item param" );
-        throw TOSDB_data_block_error( e, 
-                                      "pair_map_of_frame_topics(); "
-                                      "probably invalid item" );
+        throw TOSDB_DataBlockError( e, 
+            "pair_map_of_frame_topics(); probably invalid item" );
     }catch( const tosdb_data_stream::error& e ){
-        throw TOSDB_data_stream_error( e, 
-                                       "tosdb_data_stream error caught and "
-                                       "encapsulated in RawDataBlock::"
-                                       "pair_map_of_frame_topics()" );
+        throw TOSDB_DataStreamError( e, "tosdb_data_stream error caught and "
+            "encapsulated in RawDataBlock::pair_map_of_frame_topics()" );
     }catch(const std::exception & e){
-        throw TOSDB_data_block_error( e, "pair_map_of_frame_topics()" );
+        throw TOSDB_DataBlockError( e, "pair_map_of_frame_topics()" );
     }
 
     return map;
@@ -673,32 +651,29 @@ RawDataBlock<TG,TD>::pair_map_of_frame_topics( std::string sItem ) const
 
 template< typename TG, typename TD > 
 typename RawDataBlock<TG,TD>::map_datetime_type
-RawDataBlock<TG,TD>::pair_map_of_frame_items(TOS_Topics::TOPICS tTopic) const 
+RawDataBlock<TG,TD>::pair_map_of_frame_items(TOS_Topics::TOPICS topic) const 
 {
     map_datetime_type map; 
 
     try{
-        _guardTy _lock_(*_mtxR);
+        _my_lock_guard_type lock(*_mtx);
 
-        for( auto & i : _rawBlock)
-            map.insert( std::move( map_datetime_type::value_type( 
-                                       i.first, 
-                                       i.second->at(tTopic)->both(0) 
-                                       )));             
+        for( auto & elem : _block)
+            map.insert( std::move( 
+                map_datetime_type::value_type( 
+                    elem.first, elem.second->at(topic)->both(0) )));             
+
     }catch( const std::out_of_range& e ){
         TOSDB_LogH( "DataBlock", 
                     "pair_map_of_frame_items(): out_of_range exception; "
                     "probably invalid topic param" );
-        throw TOSDB_data_block_error( e, 
-                                      "pair_map_of_frame_items(); "
-                                      "probably invalid topic");
+        throw TOSDB_DataBlockError( e, 
+            "pair_map_of_frame_items(); probably invalid topic");
     }catch( const tosdb_data_stream::error& e ){
-        throw TOSDB_data_stream_error( e, 
-                                       "tosdb_data_stream error caught and "
-                                       "encapsulated in RawDataBlock::"
-                                       "pair_map_of_frame_items(...)" );
+        throw TOSDB_DataStreamError( e, "tosdb_data_stream error caught and "
+            "encapsulated in RawDataBlock::pair_map_of_frame_items()" );
     }catch( const std::exception & e ){
-        throw TOSDB_data_block_error(e, "pair_map_of_frame_items()");
+        throw TOSDB_DataBlockError(e, "pair_map_of_frame_items()");
     }
 
     return map;
@@ -711,29 +686,24 @@ RawDataBlock<TG,TD>::matrix_of_frame() const
     matrix_type matrix;
 
     try{
-        _guardTy _lock_(*_mtxR);
+        _my_lock_guard_type lock(*_mtx);
 
-        for(auto & items : _rawBlock){            
+        for(auto & items : _block){            
             map_type map; 
             for(auto & tops : *items.second)
-                map.insert( 
-                    std::move( 
-                        map_type::value_type( 
-                           std::move( TOS_Topics::globalTopicMap[tops.first] ),
-                           tops.second->operator[](0) 
-                           ))); 
+                map.insert( std::move( 
+                    map_type::value_type( 
+                        std::move( TOS_Topics::map[tops.first] ),
+                        tops.second->operator[](0) ))); 
 
-            matrix.insert( std::move( matrix_type::value_type( items.first, 
-                                                               std::move(map) 
-                                                               )));
+            matrix.insert( std::move( 
+                matrix_type::value_type( items.first, std::move(map) )));
         }        
     }catch( const tosdb_data_stream::error& e ){
-        throw TOSDB_data_stream_error( e, 
-                                       "tosdb_data_stream error caught and "
-                                       "encapsulated in RawDataBlock::"
-                                       "matrix_of_frame(...)" );
+        throw TOSDB_DataStreamError( e, "tosdb_data_stream error caught and "
+            "encapsulated in RawDataBlock::matrix_of_frame()" );
     }catch( const std::exception & e ){
-        throw TOSDB_data_block_error(e, "matrix_of_frame()");
+        throw TOSDB_DataBlockError(e, "matrix_of_frame()");
     }
 
     return matrix; 
@@ -746,30 +716,24 @@ RawDataBlock<TG,TD>::pair_matrix_of_frame() const
     matrix_datetime_type matrix;
 
     try{
-        _guardTy _lock_(*_mtxR);
+        _my_lock_guard_type lock(*_mtx);
 
-        for(auto & items : _rawBlock){            
+        for(auto & items : _block){            
             map_datetime_type map; 
             for(auto & tops : *items.second)
-                map.insert( 
-                    std::move( 
-                        map_datetime_type::value_type( 
-                            std::move( TOS_Topics::globalTopicMap[tops.first] ),
-                            std::move( tops.second->both(0) )
-                            ))); 
+                map.insert( std::move( 
+                    map_datetime_type::value_type( 
+                        std::move( TOS_Topics::map[tops.first] ),
+                        std::move( tops.second->both(0) )  ))); 
 
             matrix.insert( std::move( 
-                               matrix_datetime_type::value_type( items.first, 
-                                                                 std::move(map) 
-                                                                 )));
+                matrix_datetime_type::value_type(items.first,std::move(map))));
         }        
     }catch( const tosdb_data_stream::error& e ){
-        throw TOSDB_data_stream_error( e, 
-                                       "tosdb_data_stream error caught and "
-                                       "encapsulated in RawDataBlock::"
-                                       "pair_matrix_of_frame(...)" );
+        throw TOSDB_DataStreamError( e, "tosdb_data_stream error caught and "
+            "encapsulated in RawDataBlock::pair_matrix_of_frame()" );
     }catch( const std::exception & e ){
-        throw TOSDB_data_block_error(e, "matrix_of_frame()");
+        throw TOSDB_DataBlockError(e, "matrix_of_frame()");
     }
 
     return matrix; 

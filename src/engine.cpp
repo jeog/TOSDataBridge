@@ -120,7 +120,7 @@ namespace {
 };
 
 const TOS_Topics::topic_map_type& 
-TOS_Topics::globalTopicMap = TOS_Topics::_globalTopicMap;
+TOS_Topics::map = TOS_Topics::_map;
 
 int WINAPI WinMain( HINSTANCE hInst, 
                     HINSTANCE hPrevInst, 
@@ -315,11 +315,11 @@ int AddStream( TOS_Topics::TOPICS tTopic,
         std::string sTopic;
 
         globalInitEvent = CreateEvent( NULL, FALSE, FALSE, NULL);                    
-        sTopic = TOS_Topics::globalTopicMap[ tTopic ];    
+        sTopic = TOS_Topics::map[ tTopic ];    
         aTopic = GlobalAddAtom( sTopic.c_str() );
         aApplication = GlobalAddAtom( TOSDB_APP_NAME );
 
-        globalAckSignals.set_signal_ID( TOS_Topics::globalTopicMap[ tTopic ] ); 
+        globalAckSignals.set_signal_ID( TOS_Topics::map[ tTopic ] ); 
 
         if( aTopic )
             SendMessageTimeout( (HWND)HWND_BROADCAST, WM_DDE_INITIATE,
@@ -333,7 +333,7 @@ int AddStream( TOS_Topics::TOPICS tTopic,
             GlobalDeleteAtom(aTopic);
 
          /* wait for ack from DDE server */
-        if( !globalAckSignals.wait_for( TOS_Topics::globalTopicMap[ tTopic ], 
+        if( !globalAckSignals.wait_for( TOS_Topics::map[ tTopic ], 
                                         timeout ) ){
             errVal = -2;   
         }
@@ -582,7 +582,7 @@ bool CreateBuffer( TOS_Topics::TOPICS tTopic,
     if( globalBuffers.find( id ) != globalBuffers.end() )
         return false;
 
-    sBuf = CreateBufferName( TOS_Topics::globalTopicMap[tTopic], sItem );
+    sBuf = CreateBufferName( TOS_Topics::map[tTopic], sItem );
     buf.rawSz = ( bufSz < sysInfo.dwPageSize ) ? sysInfo.dwPageSize : bufSz;
     buf.hFile = CreateFileMapping( INVALID_HANDLE_VALUE, &secAttr[SHEM1],
                                    PAGE_READWRITE, 0, buf.rawSz, sBuf.c_str() ); 
@@ -826,7 +826,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 break;     
 
             globalConvos.insert( 
-                GlobalConvosTy::pair1_type( TOS_Topics::globalTopicMap[aTopic], 
+                GlobalConvosTy::pair1_type( TOS_Topics::map[aTopic], 
                                             (HWND)wParam) );
             globalAckSignals.signal( aTopic, true );
         }else{    
@@ -953,7 +953,7 @@ void HandleData( UINT msg, WPARAM wparam, LPARAM lparam )
         TOSDB_LogH( "DDE", std::string( e.what() ).append(" Value:: ")
                                                   .append( copdData ).c_str() );
     }catch( ... ){        
-        throw TOSDB_dde_error("unexpected error handling dde data");
+        throw TOSDB_DDE_Error("unexpected error handling dde data");
     }    
     return /* 0 */; 
 }
@@ -984,7 +984,7 @@ void DumpBufferStatus()
         for( const auto & t : globalTopics )
             for( const auto & i : t.second )
                 logOut<< std::setw(logColW[0])<< std::left 
-                      << TOS_Topics::globalTopicMap[t.first]
+                      << TOS_Topics::map[t.first]
                       << std::setw(logColW[1])<< std::left << i.first
                       << std::setw(logColW[2])<< std::left << i.second             
                       << std::endl;    
@@ -999,7 +999,7 @@ void DumpBufferStatus()
 
         for( const auto & b : globalBuffers )
             logOut<< std::setw(logColW[3])<< std::left 
-                  << CreateBufferName(TOS_Topics::globalTopicMap[b.first.second],
+                  << CreateBufferName(TOS_Topics::map[b.first.second],
                                       b.first.first ) 
                   << std::setw(logColW[4]) << std::left 
                   << (size_t)b.second.hFile << std::endl; 

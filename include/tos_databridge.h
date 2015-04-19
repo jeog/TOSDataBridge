@@ -139,10 +139,10 @@ class DLL_SPEC_IMPL_ DynamicIPCSlave;
 #define TOSDB_SIG_BAD ((int)(INT_MAX-1))
 
 /* the core types implemented by the data engine: engine-core.cpp */
-typedef long          def_size_type; 
-typedef long long     ext_size_type;
-typedef float         def_price_type;
-typedef double        ext_price_type;
+typedef long       def_size_type; 
+typedef long long  ext_size_type;
+typedef float      def_price_type;
+typedef double     ext_price_type;
 
 #endif /* XPLATFROM_PYTHON_CONSTS_ONLY */
  
@@ -197,54 +197,53 @@ typedef struct{
     long       micro_second;
 } DateTimeStamp, *pDateTimeStamp;
 
-/* a header that will be placed at the front(offset 0) of the mem mapping */
-typedef struct{ 
+typedef struct{  
     volatile unsigned int loop_seq;   /* # of times buffer has looped around */
     volatile unsigned int elem_size;  /* size of elements in the buffer */
-    volatile unsigned int beg_offset; /* logical location (after header) */
+    volatile unsigned int beg_offset; /* logical location (after header) */  
+    volatile unsigned int end_offset; /* logical location (after header) */ 
+    volatile unsigned int next_offset; /* logical location of next write */
     /* 
-        logical location: beg_offset + ( (raw_size - beg_offset) // elem_size ) 
-    */
-    volatile unsigned int end_offset; 
-    volatile unsigned int  next_offset; /* logical location of next write */
+     * header that will be placed at the front(offset 0) of the mem mapping 
+     * logical location: beg_offset + ( (raw_size - beg_offset) // elem_size )
+     */
 } BufferHead, *pBufferHead; 
 
 #define TOSDB_BIT_SHIFT_LEFT(T,val) (((T)val)<<((sizeof(T)-sizeof(type_bits_type))*8))
 #define TOSDB_BIT_SHIFT_RIGHT(T,val) (((T)val)>>((sizeof(T)-sizeof(type_bits_type))*8))
 
 #ifdef __cplusplus
+
 /* for C code: create a string of form: "TOSDB_[topic name]_[item name]"  
     only alpha-numeric characters (except under-score)                */
 std::string CreateBufferName( std::string sTopic, std::string sItem );
 std::string SysTimeString();
 
-typedef std::chrono::steady_clock                  steady_clock_type;
-typedef std::chrono::system_clock                  system_clock_type;
-typedef std::chrono::microseconds                  micro_sec_type; 
-typedef std::chrono::duration< long, std::milli >  milli_sec_type;
+typedef std::chrono::steady_clock                 steady_clock_type;
+typedef std::chrono::system_clock                 system_clock_type;
+typedef std::chrono::microseconds                 micro_sec_type; 
+typedef std::chrono::duration< long, std::milli > milli_sec_type;
 
 /* Generic STL Types returned by the interface(below) */ 
-typedef JO::Generic                                 generic_type;
-typedef std::pair< generic_type, DateTimeStamp >    generic_dts_type; 
-typedef std::vector< generic_type >                 generic_vector_type;
-typedef std::vector< DateTimeStamp >                dts_vector_type;
+typedef JO::Generic                               generic_type;
+typedef std::pair< generic_type, DateTimeStamp >  generic_dts_type; 
+typedef std::vector< generic_type >               generic_vector_type;
+typedef std::vector< DateTimeStamp >              dts_vector_type;
 typedef std::pair< generic_vector_type, 
-                   dts_vector_type >                generic_dts_vectors_type;    
-typedef std::map< std::string, generic_type >       generic_map_type;
-typedef std::map< std::string, generic_map_type >   generic_matrix_type;    
+                   dts_vector_type >              generic_dts_vectors_type;    
+typedef std::map< std::string, generic_type >     generic_map_type;
+typedef std::map< std::string, generic_map_type > generic_matrix_type;    
 typedef std::map< std::string, 
                   std::pair< generic_type, 
-                             DateTimeStamp> >       generic_dts_map_type;
+                             DateTimeStamp> >     generic_dts_map_type;
 typedef std::map< std::string, 
-                  generic_dts_map_type >            generic_dts_matrix_type;
+                  generic_dts_map_type >          generic_dts_matrix_type;
 
 template< typename T > 
 class Topic_Enum_Wrapper {
 
-    static_assert( 
-        std::is_integral<T>::value && !std::is_same<T,bool>::value, 
-        "Invalid Topic_Enum_Wrapper<T> Type"
-        );
+    static_assert( std::is_integral<T>::value && !std::is_same<T,bool>::value, 
+                   "Invalid Topic_Enum_Wrapper<T> Type" );
 
     Topic_Enum_Wrapper()
     { 
@@ -255,12 +254,15 @@ class Topic_Enum_Wrapper {
     static const T ADJ_STRING_BIT = TOSDB_BIT_SHIFT_LEFT(T,TOSDB_STRING_BIT);
     static const T ADJ_FULL_MASK  = TOSDB_BIT_SHIFT_LEFT(T,TOSDB_TOPIC_BITMASK);
 
-public: /* pack type info into HO nibble of scoped Enum  */   
- 
+public:  
     typedef T enum_type;
 
-    enum class TOPICS /* gaps represent the 'reserved' exported TOS/DDE fields*/ 
-        : T {         /* [ see topics.cpp ] */
+    enum class TOPICS 
+        : T {  /* 
+                * pack type info into HO nibble of scoped Enum
+                * gaps represent the 'reserved' exported TOS/DDE fields
+                * [ see topics.cpp ] 
+                */
         NULL_TOPIC = 0x00, 
         HIGH52 = 0x1,
         LOW52 = 0x2,
@@ -361,7 +363,9 @@ public: /* pack type info into HO nibble of scoped Enum  */
     };
 
     template< TOPICS topic >
-    struct Type{ /* get the type at compile-time */
+    struct Type{ /* 
+                  * get the type at compile-time 
+                  */
         typedef typename std::conditional< 
             ((T)topic & ADJ_STRING_BIT ), 
             std::string, 
@@ -377,17 +381,22 @@ public: /* pack type info into HO nibble of scoped Enum  */
                     def_price_type >::type >::type >::type  type;
     };
     
-    static type_bits_type  /* type bits at run-time */
-    TypeBits( typename Topic_Enum_Wrapper<T>::TOPICS tTopic )
-    { 
+    static type_bits_type  TypeBits( 
+        typename Topic_Enum_Wrapper<T>::TOPICS tTopic )
+    {   /* 
+         * type bits at run-time 
+         */
         return ( (type_bits_type)( TOSDB_BIT_SHIFT_RIGHT(T, (T)tTopic )) 
                  & TOSDB_TOPIC_BITMASK ); 
     }
     
-    static std::string  /* platform-dependent type strings at run-time */
-    TypeString( typename Topic_Enum_Wrapper<T>::TOPICS tTopic )
-    { 
-        switch( TOS_Topics::TypeBits(tTopic) ){
+    static std::string TypeString( 
+        typename Topic_Enum_Wrapper<T>::TOPICS tTopic )
+    {   /* 
+         * platform-dependent type strings at run-time 
+         */
+        switch( TOS_Topics::TypeBits(tTopic) )
+        {
         case TOSDB_STRING_BIT :                 
             return typeid(std::string).name();
         case TOSDB_INTGR_BIT :                  
@@ -401,11 +410,10 @@ public: /* pack type info into HO nibble of scoped Enum  */
         }; 
     }
 
-    struct top_less 
-    { 
+    struct top_less{ 
         bool operator()( const TOPICS& left, const TOPICS& right)
         {
-            return ( globalTopicMap[left] < globalTopicMap[right] );            
+            return ( map[left] < map[right] );            
         }
     };
 
@@ -414,18 +422,18 @@ public: /* pack type info into HO nibble of scoped Enum  */
   
     /* export ref from imported defs */
     /* note: need to define the ref in each module */
-    static DLL_SPEC_IFACE_ const topic_map_type&  globalTopicMap;
+    static DLL_SPEC_IFACE_ const topic_map_type&  map;
 
 private: 
     /* import defs from _tos-databridge.dll */
-    static DLL_SPEC_IMPL_ const topic_map_type   _globalTopicMap; 
+    static DLL_SPEC_IMPL_ const topic_map_type   _map; 
 };
 
 typedef Topic_Enum_Wrapper<unsigned short>  TOS_Topics;
 
 typedef ILSet< std::string >               str_set_type;
 typedef ILSet< const TOS_Topics::TOPICS, 
-               TOS_Topics::top_less >     topic_set_type;
+               TOS_Topics::top_less >      topic_set_type;
 
 #endif
 
@@ -433,33 +441,33 @@ typedef ILSet< const TOS_Topics::TOPICS,
 EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int             TOSDB_Connect();
 EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int             TOSDB_Disconnect();
 EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ unsigned int    TOSDB_IsConnected();
-EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int             TOSDB_CreateBlock( LPCSTR id, size_type sz, BOOL fDTStamp, size_type timeout ) ;
+EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int             TOSDB_CreateBlock( LPCSTR id, size_type sz, BOOL is_datetime, size_type timeout ) ;
 EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int             TOSDB_CloseBlock( LPCSTR id );
 EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int             TOSDB_CloseBlocks();
 EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ size_type       TOSDB_GetBlockLimit();
 EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ size_type       TOSDB_SetBlockLimit( size_type sz );
 EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ size_type       TOSDB_GetBlockCount();
-EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int             TOSDB_GetBlockIDs( LPSTR* dest, size_type arrLen, size_type strLen );
+EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int             TOSDB_GetBlockIDs( LPSTR* dest, size_type array_len, size_type str_len );
 EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int             TOSDB_GetBlockSize( LPCSTR id, size_type* pSize );
 EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int             TOSDB_SetBlockSize( LPCSTR id, size_type sz );
 EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ unsigned short  TOSDB_GetLatency();
 EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ unsigned short  TOSDB_SetLatency( UpdateLatency latency );
-EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int             TOSDB_Add( LPCSTR id, LPCSTR* sItems, size_type szItems, LPCSTR* sTopics , size_type szTopics );
+EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int             TOSDB_Add( LPCSTR id, LPCSTR* sItems, size_type items_len, LPCSTR* sTopics , size_type topics_len );
 EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int             TOSDB_AddTopic( LPCSTR id, LPCSTR sTopic );
 EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int             TOSDB_AddItem( LPCSTR id, LPCSTR sItem );
-EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int             TOSDB_AddTopics( LPCSTR id, LPCSTR* sTopics, size_type szTopics );
-EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int             TOSDB_AddItems( LPCSTR id, LPCSTR* sItems, size_type szItems );
+EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int             TOSDB_AddTopics( LPCSTR id, LPCSTR* sTopics, size_type topics_len );
+EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int             TOSDB_AddItems( LPCSTR id, LPCSTR* sItems, size_type items_len );
 EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int             TOSDB_RemoveTopic( LPCSTR id, LPCSTR sTopic ); 
 EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int             TOSDB_RemoveItem( LPCSTR id, LPCSTR sItem );
-EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int             TOSDB_GetItemCount( LPCSTR id, size_type* pCount );
-EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int             TOSDB_GetTopicCount( LPCSTR id, size_type* pCount );
-EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int             TOSDB_GetTopicNames( LPCSTR id, LPSTR* dest, size_type arrLen, size_type strLen  );
-EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int             TOSDB_GetItemNames( LPCSTR id, LPSTR* dest, size_type arrLen, size_type strLen );
-//EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int           TOSDB_GetPreCachedTopicNames( LPCSTR id, LPSTR* dest, size_type strLen, size_type arrLen );
-//EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int           TOSDB_GetPreCachedItemNames( LPCSTR id, LPSTR* dest, size_type strLen, size_type arrLen );
-EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int             TOSDB_GetTypeBits( LPCSTR sTopic, type_bits_type* pTypeBits );
-EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int             TOSDB_GetTypeString( LPCSTR sTopic, LPSTR dest, size_type strLen );
-EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int             TOSDB_IsUsingDateTime( LPCSTR id, unsigned int* pBoolInt );
+EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int             TOSDB_GetItemCount( LPCSTR id, size_type* count );
+EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int             TOSDB_GetTopicCount( LPCSTR id, size_type* count );
+EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int             TOSDB_GetTopicNames( LPCSTR id, LPSTR* dest, size_type array_len, size_type str_len  );
+EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int             TOSDB_GetItemNames( LPCSTR id, LPSTR* dest, size_type array_len, size_type str_len );
+//EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int           TOSDB_GetPreCachedTopicNames( LPCSTR id, LPSTR* dest, size_type str_len, size_type array_len );
+//EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int           TOSDB_GetPreCachedItemNames( LPCSTR id, LPSTR* dest, size_type str_len, size_type array_len );
+EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int             TOSDB_GetTypeBits( LPCSTR sTopic, type_bits_type* type_bits );
+EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int             TOSDB_GetTypeString( LPCSTR sTopic, LPSTR dest, size_type str_len );
+EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int             TOSDB_IsUsingDateTime( LPCSTR id, unsigned int* is_datetime );
 EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int             TOSDB_GetStreamOccupancy( LPCSTR id,LPCSTR sItem, LPCSTR sTopic, size_type* sz );
 EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int             TOSDB_GetMarkerPosition( LPCSTR id,LPCSTR sItem, LPCSTR sTopic, long long* pos );
 EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int             TOSDB_IsMarkerDirty( LPCSTR id, LPCSTR sItem, LPCSTR sTopic, unsigned int* is_dirty );
@@ -513,7 +521,7 @@ EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int        TOSDB_GetDouble( LPCSTR id, LPCST
 EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int        TOSDB_GetFloat( LPCSTR id, LPCSTR sItem, LPCSTR sTopic, long indx, def_price_type* dest, pDateTimeStamp datetime );
 EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int        TOSDB_GetLongLong( LPCSTR id, LPCSTR sItem, LPCSTR sTopic, long indx, ext_size_type* dest, pDateTimeStamp datetime );
 EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int        TOSDB_GetLong( LPCSTR id, LPCSTR sItem, LPCSTR sTopic, long indx, def_size_type* dest, pDateTimeStamp datetime );
-EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int        TOSDB_GetString( LPCSTR id, LPCSTR sItem, LPCSTR sTopic, long indx, LPSTR dest, size_type strLen, pDateTimeStamp datetime );
+EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int        TOSDB_GetString( LPCSTR id, LPCSTR sItem, LPCSTR sTopic, long indx, LPSTR dest, size_type str_len, pDateTimeStamp datetime );
 #ifdef __cplusplus   
 /* Get multiple, contiguous data points in the stream*/
 template< typename T, bool b > auto                             TOSDB_GetStreamSnapshot( std::string id, std::string sItem, TOS_Topics::TOPICS tTopic, long end = -1, long beg = 0 )
@@ -537,17 +545,17 @@ template DLL_SPEC_IFACE_
 template DLL_SPEC_IFACE_ 
     std::pair< std::vector< std::string >, dts_vector_type >    TOSDB_GetStreamSnapshot< std::string, true >( std::string id, std::string sItem, TOS_Topics::TOPICS tTopic, long end, long beg );
 #endif                                                          // C calls about 30x faster than generic
-EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int                         TOSDB_GetStreamSnapshotDoubles( LPCSTR id,LPCSTR sItem, LPCSTR sTopic, ext_price_type* dest, size_type arrLen, pDateTimeStamp datetime, long end, long beg); 
-EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int                         TOSDB_GetStreamSnapshotFloats( LPCSTR id, LPCSTR sItem, LPCSTR sTopic, def_price_type* dest, size_type arrLen, pDateTimeStamp datetime, long end, long beg); 
-EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int                         TOSDB_GetStreamSnapshotLongLongs( LPCSTR id, LPCSTR sItem, LPCSTR sTopic, ext_size_type* dest, size_type arrLen, pDateTimeStamp datetime, long end, long beg); 
-EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int                         TOSDB_GetStreamSnapshotLongs( LPCSTR id, LPCSTR sItem, LPCSTR sTopic, def_size_type* dest, size_type arrLen, pDateTimeStamp datetime, long end, long beg); 
-EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int                         TOSDB_GetStreamSnapshotStrings( LPCSTR id, LPCSTR sItem, LPCSTR sTopic, LPSTR* dest, size_type arrLen, size_type strLen, pDateTimeStamp datetime, long end, long beg);
+EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int                         TOSDB_GetStreamSnapshotDoubles( LPCSTR id,LPCSTR sItem, LPCSTR sTopic, ext_price_type* dest, size_type array_len, pDateTimeStamp datetime, long end, long beg); 
+EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int                         TOSDB_GetStreamSnapshotFloats( LPCSTR id, LPCSTR sItem, LPCSTR sTopic, def_price_type* dest, size_type array_len, pDateTimeStamp datetime, long end, long beg); 
+EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int                         TOSDB_GetStreamSnapshotLongLongs( LPCSTR id, LPCSTR sItem, LPCSTR sTopic, ext_size_type* dest, size_type array_len, pDateTimeStamp datetime, long end, long beg); 
+EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int                         TOSDB_GetStreamSnapshotLongs( LPCSTR id, LPCSTR sItem, LPCSTR sTopic, def_size_type* dest, size_type array_len, pDateTimeStamp datetime, long end, long beg); 
+EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int                         TOSDB_GetStreamSnapshotStrings( LPCSTR id, LPCSTR sItem, LPCSTR sTopic, LPSTR* dest, size_type array_len, size_type str_len, pDateTimeStamp datetime, long end, long beg);
 /*** data-stream-marker ( C only for now ) ***/
-EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int                         TOSDB_GetStreamSnapshotDoublesFromMarker( LPCSTR id,LPCSTR sItem,LPCSTR sTopic,ext_price_type* dest,size_type arrLen, pDateTimeStamp datetime, long beg, long *get_size);
-EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int                         TOSDB_GetStreamSnapshotFloatsFromMarker( LPCSTR id, LPCSTR sItem, LPCSTR sTopic, def_price_type* dest, size_type arrLen, pDateTimeStamp datetime, long beg, long *get_size);
-EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int                         TOSDB_GetStreamSnapshotLongLongsFromMarker( LPCSTR id, LPCSTR sItem, LPCSTR sTopic, ext_size_type* dest, size_type arrLen, pDateTimeStamp datetime, long beg, long *get_size);
-EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int                         TOSDB_GetStreamSnapshotLongsFromMarker( LPCSTR id, LPCSTR sItem, LPCSTR sTopic, def_size_type* dest, size_type arrLen, pDateTimeStamp datetime, long beg, long *get_size);
-EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int                         TOSDB_GetStreamSnapshotStringsFromMarker( LPCSTR id, LPCSTR sItem, LPCSTR sTopic, LPSTR* dest, size_type arrLen, size_type strLen, pDateTimeStamp datetime, long beg, long *get_size);
+EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int                         TOSDB_GetStreamSnapshotDoublesFromMarker( LPCSTR id,LPCSTR sItem,LPCSTR sTopic,ext_price_type* dest,size_type array_len, pDateTimeStamp datetime, long beg, long *get_size);
+EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int                         TOSDB_GetStreamSnapshotFloatsFromMarker( LPCSTR id, LPCSTR sItem, LPCSTR sTopic, def_price_type* dest, size_type array_len, pDateTimeStamp datetime, long beg, long *get_size);
+EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int                         TOSDB_GetStreamSnapshotLongLongsFromMarker( LPCSTR id, LPCSTR sItem, LPCSTR sTopic, ext_size_type* dest, size_type array_len, pDateTimeStamp datetime, long beg, long *get_size);
+EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int                         TOSDB_GetStreamSnapshotLongsFromMarker( LPCSTR id, LPCSTR sItem, LPCSTR sTopic, def_size_type* dest, size_type array_len, pDateTimeStamp datetime, long beg, long *get_size);
+EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int                         TOSDB_GetStreamSnapshotStringsFromMarker( LPCSTR id, LPCSTR sItem, LPCSTR sTopic, LPSTR* dest, size_type array_len, size_type str_len, pDateTimeStamp datetime, long beg, long *get_size);
 /*** data-stream-marker ( C only for now ) ***/
 #ifdef __cplusplus
 /* Get all the most recent item values for a particular topic */
@@ -555,18 +563,18 @@ template< bool b > auto                             TOSDB_GetItemFrame( std::str
 template<> DLL_SPEC_IFACE_ generic_map_type         TOSDB_GetItemFrame<false>( std::string id, TOS_Topics::TOPICS tTopic);
 template<> DLL_SPEC_IFACE_ generic_dts_map_type     TOSDB_GetItemFrame<true>( std::string id, TOS_Topics::TOPICS tTopic);
 #endif 
-EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int             TOSDB_GetItemFrameDoubles( LPCSTR id, LPCSTR sTopic, ext_price_type* dest, size_type arrLen, LPSTR* labelDest, size_type labelStrLen, pDateTimeStamp datetime);
-EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int             TOSDB_GetItemFrameFloats( LPCSTR id, LPCSTR sTopic, def_price_type* dest, size_type arrLen, LPSTR* labelDest, size_type labelStrLen, pDateTimeStamp datetime);
-EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int             TOSDB_GetItemFrameLongLongs( LPCSTR id, LPCSTR sTopic, ext_size_type* dest, size_type arrLen, LPSTR* labelDest, size_type labelStrLen, pDateTimeStamp datetime); 
-EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int             TOSDB_GetItemFrameLongs( LPCSTR id, LPCSTR sTopic, def_size_type* dest, size_type arrLen, LPSTR* labelDest, size_type labelStrLen, pDateTimeStamp datetime);
-EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int             TOSDB_GetItemFrameStrings( LPCSTR id, LPCSTR sTopic, LPSTR* dest, size_type arrLen, size_type strLen, LPSTR* labelDest, size_type labelStrLen, pDateTimeStamp datetime); 
+EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int             TOSDB_GetItemFrameDoubles( LPCSTR id, LPCSTR sTopic, ext_price_type* dest, size_type array_len, LPSTR* label_dest, size_type label_str_len, pDateTimeStamp datetime);
+EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int             TOSDB_GetItemFrameFloats( LPCSTR id, LPCSTR sTopic, def_price_type* dest, size_type array_len, LPSTR* label_dest, size_type label_str_len, pDateTimeStamp datetime);
+EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int             TOSDB_GetItemFrameLongLongs( LPCSTR id, LPCSTR sTopic, ext_size_type* dest, size_type array_len, LPSTR* label_dest, size_type label_str_len, pDateTimeStamp datetime); 
+EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int             TOSDB_GetItemFrameLongs( LPCSTR id, LPCSTR sTopic, def_size_type* dest, size_type array_len, LPSTR* label_dest, size_type label_str_len, pDateTimeStamp datetime);
+EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int             TOSDB_GetItemFrameStrings( LPCSTR id, LPCSTR sTopic, LPSTR* dest, size_type array_len, size_type str_len, LPSTR* label_dest, size_type label_str_len, pDateTimeStamp datetime); 
 #ifdef __cplusplus  
 /* Get all the most recent topic values for a particular item */
 template< bool b > auto                             TOSDB_GetTopicFrame( std::string id, std::string sItem) -> typename std::conditional< b, generic_dts_map_type, generic_map_type >::type; 
 template<> DLL_SPEC_IFACE_ generic_map_type         TOSDB_GetTopicFrame<false>( std::string id, std::string sItem);
 template<> DLL_SPEC_IFACE_ generic_dts_map_type     TOSDB_GetTopicFrame<true>( std::string id, std::string sItem);
 #endif
-EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int             TOSDB_GetTopicFrameStrings( LPCSTR id, LPCSTR sItem, LPSTR* dest, size_type arrLen, size_type strLen, LPSTR* labelDest, size_type labelStrLen, pDateTimeStamp datetime); 
+EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int             TOSDB_GetTopicFrameStrings( LPCSTR id, LPCSTR sItem, LPSTR* dest, size_type array_len, size_type str_len, LPSTR* label_dest, size_type label_str_len, pDateTimeStamp datetime); 
 #ifdef __cplusplus
 /* Get all the most recent item and topic values */
 template< bool b > auto                             TOSDB_GetTotalFrame( std::string id ) -> typename std::conditional< b, generic_dts_matrix_type, generic_matrix_type >::type; 
@@ -619,7 +627,7 @@ template DLL_SPEC_IFACE_    std::ostream& operator<<(std::ostream&, const std::p
 template DLL_SPEC_IFACE_    std::ostream& operator<<(std::ostream&, const std::pair<std::vector<def_size_type>,dts_vector_type>&);
 template DLL_SPEC_IFACE_    std::ostream& operator<<(std::ostream&, const std::pair<std::vector<std::string>,dts_vector_type>&);
 
-class TOSDB_error : public std::exception {
+class TOSDB_Error : public std::exception {
 
     unsigned long _threadID;
     unsigned long _processID;
@@ -628,7 +636,7 @@ class TOSDB_error : public std::exception {
 
 public:
 
-    TOSDB_error( const char* info, const char* tag )
+    TOSDB_Error( const char* info, const char* tag )
         : 
         std::exception( info ),
         _tag( tag ),
@@ -638,7 +646,7 @@ public:
         {                
         }
 
-    TOSDB_error( const std::exception& e, const char* tag )
+    TOSDB_Error( const std::exception& e, const char* tag )
         : 
         std::exception( e ),
         _tag( tag ),        
@@ -647,7 +655,7 @@ public:
         {                 
         }
 
-    TOSDB_error( const std::exception& e, const char* info, const char* tag )
+    TOSDB_Error( const std::exception& e, const char* info, const char* tag )
         : 
         std::exception( e ),
         _tag( tag ),
@@ -657,7 +665,7 @@ public:
         {                
         }
 
-    virtual ~TOSDB_error()
+    virtual ~TOSDB_Error()
         {
         }
 
@@ -682,69 +690,69 @@ public:
     }
 };
   
-class TOSDB_IPC_error : public TOSDB_error {
+class TOSDB_IPC_Error : public TOSDB_Error {
 public:
 
-    TOSDB_IPC_error( const char* info, const char* tag = "IPC" )
+    TOSDB_IPC_Error( const char* info, const char* tag = "IPC" )
         : 
-        TOSDB_error( info, tag )
+        TOSDB_Error( info, tag )
         {
         }
 };
 
-class TOSDB_buffer_error : public TOSDB_IPC_error {
+class TOSDB_BufferError : public TOSDB_IPC_Error {
 public:
 
-    TOSDB_buffer_error( const char* info, const char* tag = "DATA-BUFFER" )
+    TOSDB_BufferError( const char* info, const char* tag = "DATA-BUFFER" )
         : 
-        TOSDB_IPC_error( info, tag )
+        TOSDB_IPC_Error( info, tag )
         {
         }
 };
 
-class TOSDB_dde_error : public TOSDB_error {
+class TOSDB_DDE_Error : public TOSDB_Error {
 public:
 
-    TOSDB_dde_error( const char* info, const char* tag = "DDE" )
+    TOSDB_DDE_Error( const char* info, const char* tag = "DDE" )
         : 
-        TOSDB_error( info, tag )
+        TOSDB_Error( info, tag )
         {
         }
 
-    TOSDB_dde_error( const std::exception& e, 
+    TOSDB_DDE_Error( const std::exception& e, 
                      const char* info, 
                      const char* tag = "DDE" )
-        : TOSDB_error( e, info, tag )
+        : TOSDB_Error( e, info, tag )
         {
         }
 };        
 
-class TOSDB_data_block_error : public TOSDB_error {
+class TOSDB_DataBlockError : public TOSDB_Error {
 public:
 
-    TOSDB_data_block_error( const char* info, const char* tag = "DataBlock" )
+    TOSDB_DataBlockError( const char* info, const char* tag = "DataBlock" )
         : 
-        TOSDB_error( info, tag )
+        TOSDB_Error( info, tag )
         {
         }
 
-    TOSDB_data_block_error( const std::exception& e, 
+    TOSDB_DataBlockError( const std::exception& e, 
                             const char* info, 
                             const char* tag = "DataBlock" ) 
-        : TOSDB_error( e, info, tag )
+        : TOSDB_Error( e, info, tag )
         {
         }
 };        
 
-class TOSDB_data_block_limit_error :
-    public TOSDB_data_block_error, public std::length_error {
+class TOSDB_DataBlockLimitError :
+    public TOSDB_DataBlockError, public std::length_error {
 public:
 
     const size_t limit;    
 
-    TOSDB_data_block_limit_error( const size_t limit )
+    TOSDB_DataBlockLimitError( const size_t limit )
         : 
-        TOSDB_data_block_error( "Attempt to create TOSDB_RawDataBlock "
+        TOSDB_DataBlockError( "Attempt to create TOSDB_RawDataBlock "
                                 "would exceed limit." ),
         std::length_error( "Attempt to create TOSDB_RawDataBlock "
                            "would exceed limit." ),
@@ -754,22 +762,22 @@ public:
 
     virtual const char* what() const 
         {
-            return TOSDB_data_block_error::what();
+            return TOSDB_DataBlockError::what();
         }    
 };                        
 
-class TOSDB_data_stream_error : public TOSDB_data_block_error {
+class TOSDB_DataStreamError : public TOSDB_DataBlockError {
 public:
 
-    TOSDB_data_stream_error( const char* info, const char* tag = "DataStream" )
-        : TOSDB_data_block_error( info, tag )        
+    TOSDB_DataStreamError( const char* info, const char* tag = "DataStream" )
+        : TOSDB_DataBlockError( info, tag )        
         {
         }
 
-    TOSDB_data_stream_error( const std::exception& e, 
+    TOSDB_DataStreamError( const std::exception& e, 
                              const char* info, 
                              const char* tag = "DataStream" )
-        : TOSDB_data_block_error(e, info, tag )        
+        : TOSDB_DataBlockError(e, info, tag )        
         {
         }
 };

@@ -17,7 +17,7 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 
 #include "tos_databridge.h"
 
-const TOS_Topics::topic_map_entry_type gtmArr[] = {
+const TOS_Topics::topic_map_entry_type topic_array[] = {
     
     TOS_Topics::topic_map_entry_type(
         TOS_Topics::TOPICS::NULL_TOPIC, " "),
@@ -714,9 +714,9 @@ const TOS_Topics::topic_map_entry_type gtmArr[] = {
 };
 
 const TOS_Topics::topic_map_type 
-TOS_Topics::_globalTopicMap = gtmArr;
+TOS_Topics::_map = topic_array;
 
 const TOS_Topics::topic_map_type& 
-TOS_Topics::globalTopicMap = TOS_Topics::_globalTopicMap;
+TOS_Topics::map = TOS_Topics::_map;
 
 

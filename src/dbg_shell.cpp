@@ -419,7 +419,7 @@ int main( int argc, char* argv[])
                 int ret =  TOSDB_Add( 
                             block, 
                             str_set_type(itemArray,nItems), 
-                            topic_set_type(topicArray,nTopics,[=](LPCSTR str){ return TOS_Topics::globalTopicMap[str];}) );
+                            topic_set_type(topicArray,nTopics,[=](LPCSTR str){ return TOS_Topics::map[str];}) );
                 if(ret) std::cout<< "error: "<< ret <<std::endl;
                 else std::cout<< "Success!"<<std::endl;
                 del_cstr_items();
@@ -432,7 +432,7 @@ int main( int argc, char* argv[])
                 prompt>> block;
                 prompt<<"topic: ";
                 prompt>> topic;        
-                int ret =  TOSDB_AddTopic( block, TOS_Topics::globalTopicMap[topic] );
+                int ret =  TOSDB_AddTopic( block, TOS_Topics::map[topic] );
                 if(ret) std::cout<< "error: "<< ret <<std::endl;
                 else std::cout<< "Success!"<<std::endl;
                 continue;
@@ -445,7 +445,7 @@ int main( int argc, char* argv[])
                 int ret = TOSDB_AddTopics( 
                             block, 
                             topic_set_type(topicArray, nTopics, 
-                            [=](LPCSTR str){ return TOS_Topics::globalTopicMap[str]; }) );
+                            [=](LPCSTR str){ return TOS_Topics::map[str]; }) );
                 if(ret) std::cout<< "error: "<< ret <<std::endl;
                 else std::cout<< "Success!"<<std::endl;
                 del_cstr_topics();
@@ -493,7 +493,7 @@ int main( int argc, char* argv[])
                 prompt>> block;
                 prompt<<"topic: ";
                 prompt>> topic;        
-                int ret =  TOSDB_RemoveTopic( block, TOS_Topics::globalTopicMap[topic] );
+                int ret =  TOSDB_RemoveTopic( block, TOS_Topics::map[topic] );
                 if(ret) std::cout<< "error: "<< ret <<std::endl;
                 else std::cout<< "Success!"<<std::endl;
                 continue;
@@ -588,7 +588,7 @@ int main( int argc, char* argv[])
                 prompt>> block;            
                 topic_set_type topSet = TOSDB_GetTopicEnums(block);
                 for( auto & t : topSet)
-                    std::cout<< (TOS_Topics::enum_type)t <<' '<< TOS_Topics::globalTopicMap[t] << std::endl;
+                    std::cout<< (TOS_Topics::enum_type)t <<' '<< TOS_Topics::map[t] << std::endl;
                 continue;
             }
             if( cmmnd == "GetPreCachedTopicNamesCPP" )
@@ -615,7 +615,7 @@ int main( int argc, char* argv[])
                 prompt>> block;            
                 topic_set_type topSet = TOSDB_GetPreCachedTopicEnums(block);
                 for( auto & t : topSet)
-                    std::cout<< (TOS_Topics::enum_type)t << TOS_Topics::globalTopicMap[t] << std::endl;
+                    std::cout<< (TOS_Topics::enum_type)t << TOS_Topics::map[t] << std::endl;
                 continue;
             }        
             if( cmmnd == "GetTypeBits" )
@@ -642,14 +642,14 @@ int main( int argc, char* argv[])
             {
                 prompt<<"topic: ";
                 prompt>> topic;            
-                std::cout<< TOSDB_GetTypeBits( TOS_Topics::globalTopicMap[topic] )<<std::endl;             
+                std::cout<< TOSDB_GetTypeBits( TOS_Topics::map[topic] )<<std::endl;             
                 continue;
             }
             if( cmmnd == "GetTypeStringCPP" )
             {            
                 prompt<<"topic: ";
                 prompt>> topic;
-                std::cout<< TOSDB_GetTypeString( TOS_Topics::globalTopicMap[topic] )<<std::endl;            
+                std::cout<< TOSDB_GetTypeString( TOS_Topics::map[topic] )<<std::endl;            
                 continue;
             }
 
@@ -682,7 +682,7 @@ int main( int argc, char* argv[])
             if( cmmnd == "GetStreamOccupancyCPP" )
             {
                 get_block_item_topic();        
-                std::cout<< TOSDB_GetStreamOccupancy( block, item, TOS_Topics::globalTopicMap[topic] )<<std::endl;        
+                std::cout<< TOSDB_GetStreamOccupancy( block, item, TOS_Topics::map[topic] )<<std::endl;        
                 continue;
             }
             if( cmmnd == "GetMarkerPosition" )
@@ -697,7 +697,7 @@ int main( int argc, char* argv[])
             if( cmmnd == "GetMarkerPositionCPP" )
             {
                 get_block_item_topic();        
-                std::cout<< TOSDB_GetMarkerPosition( block, item, TOS_Topics::globalTopicMap[topic] )<<std::endl;        
+                std::cout<< TOSDB_GetMarkerPosition( block, item, TOS_Topics::map[topic] )<<std::endl;        
                 continue;
             }
             if( cmmnd == "IsMarkerDirty" )
@@ -712,7 +712,7 @@ int main( int argc, char* argv[])
             if( cmmnd == "IsMarkerDirty" )
             {            
                 get_block_item_topic(); 
-                std::cout<< std::boolalpha << TOSDB_IsMarkerDirty(block, item,TOS_Topics::globalTopicMap[topic]) <<std::endl;
+                std::cout<< std::boolalpha << TOSDB_IsMarkerDirty(block, item,TOS_Topics::map[topic]) <<std::endl;
                 continue;
             }
             if( cmmnd == "DumpBufferStatus" )
@@ -913,9 +913,9 @@ int main( int argc, char* argv[])
                 std::cin.get();
                 prompt>> dtsB ;
                 if( dtsB == 'y')
-                    std::cout<< TOSDB_GetItemFrame<true>( block,TOS_Topics::globalTopicMap[topic]);
+                    std::cout<< TOSDB_GetItemFrame<true>( block,TOS_Topics::map[topic]);
                 else
-                    std::cout<< TOSDB_GetItemFrame<false>( block,TOS_Topics::globalTopicMap[topic]);                    
+                    std::cout<< TOSDB_GetItemFrame<false>( block,TOS_Topics::map[topic]);                    
                 std::cout<<std::endl;
                 continue;
             }
@@ -1019,9 +1019,9 @@ int main( int argc, char* argv[])
             }
             std::cout<< "BAD COMMAND!"<<std::endl;
         }
-        catch(const TOSDB_error& e)
+        catch(const TOSDB_Error& e)
         {            
-            std::cerr<< "!!! TOSDB_error caught by shell !!!" << std::endl;
+            std::cerr<< "!!! TOSDB_Error caught by shell !!!" << std::endl;
             std::cerr<< "Process ID: "<< e.processID() <<std::endl;
             std::cerr<< "Thread ID: "<< e.threadID() <<std::endl;
             std::cerr<< "tag: " << e.tag() <<std::endl;
@@ -1141,9 +1141,9 @@ void _get()
     std::cin.get();
     prompt>> dtsB ;    
     if( dtsB == 'y')
-        std::cout<< TOSDB_Get<T,true>( block, item, TOS_Topics::globalTopicMap[topic], indx)<<std::endl;        
+        std::cout<< TOSDB_Get<T,true>( block, item, TOS_Topics::map[topic], indx)<<std::endl;        
     else
-        std::cout<< TOSDB_Get<T,false>( block.c_str(),item.c_str(),TOS_Topics::globalTopicMap[topic],indx)<<std::endl;                        
+        std::cout<< TOSDB_Get<T,false>( block.c_str(),item.c_str(),TOS_Topics::map[topic],indx)<<std::endl;                        
 }
 template<typename T>
 void _get( int(*func)(LPCSTR,LPCSTR,LPCSTR,long,T*,pDateTimeStamp) )
@@ -1182,9 +1182,9 @@ void _getStreamSnapshot()
     std::cin.get();
     prompt>> dtsB ;
     if( dtsB == 'y')            
-        std::cout<<TOSDB_GetStreamSnapshot<T,true>( block.c_str(),item.c_str(),TOS_Topics::globalTopicMap[topic],end,beg);
+        std::cout<<TOSDB_GetStreamSnapshot<T,true>( block.c_str(),item.c_str(),TOS_Topics::map[topic],end,beg);
     else
-        std::cout<<TOSDB_GetStreamSnapshot<T,false>( block.c_str(),item.c_str(),TOS_Topics::globalTopicMap[topic],end,beg);                        
+        std::cout<<TOSDB_GetStreamSnapshot<T,false>( block.c_str(),item.c_str(),TOS_Topics::map[topic],end,beg);                        
     std::cout<<std::endl;
 }
 template<typename T>

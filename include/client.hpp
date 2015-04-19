@@ -21,9 +21,9 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 #include "tos_databridge.h"
 #include  <mutex>
 
-typedef std::lock_guard< std::recursive_mutex > rGuardTy;
+typedef std::lock_guard< std::recursive_mutex > our_rlock_guard_type;
 
-extern std::recursive_mutex* const globalMutex;
+extern std::recursive_mutex* const global_rmutex;
 
 template< typename T,typename T2> class RawDataBlock; 
 
@@ -31,15 +31,15 @@ typedef RawDataBlock< generic_type, DateTimeStamp> TOSDB_RawDataBlock;
 
 typedef struct {
     TOSDB_RawDataBlock*  block;
-    str_set_type         itemPreCache;
-    topic_set_type       topicPreCache;    
+    str_set_type         item_precache;
+    topic_set_type       topic_precache;    
     unsigned long        timeout;
 } TOSDBlock; /* no ptr or const typedefs; force code to state explicitly */
 
 bool                CheckIDLength( LPCSTR id );
 bool                CheckStringLength( LPCSTR str );
 bool                CheckStringLength( LPCSTR str, LPCSTR str2 );
-bool                CheckStringLengths( LPCSTR* str, size_type szItems );
+bool                CheckStringLengths( LPCSTR* str, size_type items_len );
 TOS_Topics::TOPICS  GetTopicEnum( std::string sTopic ); 
 const TOSDBlock*    GetBlockPtr( std::string id );
 const TOSDBlock*    GetBlockOrThrow( std::string id );
