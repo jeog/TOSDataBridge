@@ -79,14 +79,14 @@ def init(dllpath = None, root = "C:\\"):
                 if not rel: # if still nothing throw
                     raise TOSDB_Error(" could not locate DLL")    
             if len(rel) > 1:  # only use the most recent version(s)
-                verVal = _compile('-[\d]{1,2}.[\d]{1,2}-')
+                ver = _compile('-[\d]{1,2}.[\d]{1,2}-')
                 vers = tuple( zip( map( 
-                    lambda x: _search(verVal,x).group().strip('-'),rel), rel ) )
-                versMax = max(vers)[0].split('.')[0]
-                minTup= tuple( (x[0].split('.')[1],x[1]) 
-                               for x in vers if x[0].split('.')[0] == versMax )         
-                minMax = max(minTup)[0]
-                rel = set( x[1] for x in minTup if x[0] == minMax )                      
+                    lambda x: _search(ver,x).group().strip('-'), rel), rel) )
+                vers_max = max(vers)[0].split('.')[0]
+                mtup = tuple( (x[0].split('.')[1],x[1]) 
+                              for x in vers if x[0].split('.')[0] == vers_max)         
+                mtup_max = max(mtup)[0]
+                rel = set( x[1] for x in mtup if x[0] == mtup_max )                      
             # find the most recently updated
             d = dict( zip(map( lambda x : _stat(x).st_mtime, rel), rel ) )
             rec = max(d)

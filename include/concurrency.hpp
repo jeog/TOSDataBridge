@@ -55,48 +55,47 @@ public:
 
 class CyclicCountDownLatch {
 /* 
-    similar concept to a Java CountDownLatch but should provide :
-      1) The ability to increment the latch
-      2) The use of specific strings to check that a 
-          count_down should occur
-      3) The ability to reuse the latch (which may cause
-          problems in non-trivial cases )                            
-*/
-    typedef std::multiset< std::string >  _idsTy;
+ *  similar concept to a Java CountDownLatch but should provide :
+ *    1) The ability to increment the latch
+ *    2) The use of specific strings to check that a 
+ *       count_down should occur
+ *    3) The ability to reuse the latch (which may cause
+ *       problems in non-trivial cases)                            
+ */
+    typedef std::multiset< std::string >  _ids_type;
     
     BoundedSemaphore         _sem;
     std::mutex               _mtx;
     std::condition_variable  _cnd;
     std::atomic< size_t>     _in;
     size_t                   _out;
-    volatile bool            _inFlag;
-    _idsTy                   _ids;    
+    volatile bool            _inflag;
+    _ids_type                _ids;    
 
 public:
-
-    CyclicCountDownLatch( const _idsTy& ms = _idsTy() ) 
+    CyclicCountDownLatch( const _ids_type& ms = _ids_type() ) 
         : 
          _ids( ms ),
          _sem( 0 ),
          _in( 0 ), 
          _out( 0 ),
-         _inFlag(false)        
+         _inflag(false)        
         {
         }
 
     bool wait_for( size_t timeout, size_t delay = 0 );    
     void wait( size_t delay = 0);
-    void count_down( std::string strID );
-    void increment( std::string strID );
+    void count_down( std::string str_id );
+    void increment( std::string str_id );
 };
 
 class SignalManager {  
       
-    typedef std::pair< volatile bool, volatile bool >  _flagPairTy;
+    typedef std::pair< volatile bool, volatile bool >  _flag_pair_type;
     
-    std::mutex                                 _mtx;
-    std::condition_variable                    _cnd; 
-    std::multimap< std::string, _flagPairTy >  _unqFlags; 
+    std::mutex                                     _mtx;
+    std::condition_variable                        _cnd; 
+    std::multimap< std::string, _flag_pair_type >  _unq_flags; 
 
     SignalManager( const SignalManager& );
     SignalManager( SignalManager&& );
@@ -104,15 +103,14 @@ class SignalManager {
     SignalManager& operator=( SignalManager&& );
 
 public:
-
     SignalManager()
         {
         }
 
-    void set_signal_ID( std::string unqID );
-    bool wait( std::string unqID );
-    bool wait_for( std::string unqID, size_t timeout );    
-    bool signal( std::string unqID, bool secondary );
+    void set_signal_ID( std::string unq_id );
+    bool wait( std::string unq_id );
+    bool wait_for( std::string unq_id, size_t timeout );    
+    bool signal( std::string unq_id, bool secondary );
 };
 #else
 #include <Windows.h>
@@ -124,7 +122,6 @@ class LightWeightMutex{
     LightWeightMutex& operator=( const LightWeightMutex& );
 
 public:
-
     LightWeightMutex()
         {
             InitializeCriticalSection( &_cs );
@@ -158,7 +155,6 @@ class WinLockGuard {
     WinLockGuard& operator=( const WinLockGuard& ); 
 
 public:
-
     WinLockGuard( LightWeightMutex& mutex )
         : 
         _mtx( mutex )
@@ -174,7 +170,7 @@ public:
 
 class SignalManager { 
 
-    std::multimap< std::string, volatile bool > _unqFlags; 
+    std::multimap< std::string, volatile bool > _unq_flags; 
     LightWeightMutex                            _mtx;
     HANDLE                                      _event;        
 
@@ -182,7 +178,6 @@ class SignalManager {
     SignalManager& operator=( const SignalManager& );    
 
 public:
-
     SignalManager()
         : 
         _event( CreateEvent( NULL, FALSE, FALSE, NULL) )
@@ -194,10 +189,10 @@ public:
             CloseHandle( _event );        
         }
 
-    void set_signal_ID( std::string unqID );
-    bool wait( std::string unqID );        
-    bool wait_for( std::string unqID, size_type timeout );
-    bool signal( std::string unqID, bool secondary );
+    void set_signal_ID( std::string unq_id );
+    bool wait( std::string unq_id );        
+    bool wait_for( std::string unq_id, size_type timeout );
+    bool signal( std::string unq_id, bool secondary );
 };
 
 #endif 

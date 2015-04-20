@@ -83,6 +83,12 @@ import struct as _struct
 import socket as _socket
 import pickle as _pickle
 
+### TODO ###
+# if a lib call is made immediately after init it's possible an err val
+# of -1 will be returned because the lowlevel flags have not been set
+# to true fast enough... FIX (block until we can comfirm)
+###########
+
 class _TOS_DataBlock(metaclass=_ABCMeta):
     """ The DataBlock interface """
     @_abstractmethod
@@ -456,13 +462,10 @@ class VTOS_DataBlock:
                 return _loadnamedtuple( args[1] )
             else:
                 return _pickle.loads( args[1] )
-       
-       
+
+      
 _TOS_DataBlock.register( VTOS_DataBlock )
 
-###
-debug_buf = b''
-###
    
 def enable_virtualization( address, poll_interval=DEF_TIMEOUT ):
     global _virtual_hub  

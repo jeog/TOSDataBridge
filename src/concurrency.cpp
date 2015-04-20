@@ -28,17 +28,14 @@ void BoundedSemaphore::wait()
             return;
         }
     }
-
     std::unique_lock<std::mutex> lck(_mtx);
-    _cnd.wait( lck, [&]
-                      { 
+    _cnd.wait( lck, [&]{ 
                         if( _count.load() > 0){
                             --_count;
                             return true;
                         }
                         return false;
-                      } 
-              );        
+                    } );        
 }
 
 void BoundedSemaphore::release( size_t num )
@@ -50,7 +47,6 @@ void BoundedSemaphore::release( size_t num )
 
         _count.fetch_add( num );
     }
-
     while( num-- )
         _cnd.notify_one();        
 }
@@ -60,20 +56,16 @@ bool CyclicCountDownLatch::wait_for( size_t timeout, size_t delay )
     if( delay && _ids.empty() )
         std::this_thread::sleep_for( std::chrono::milliseconds(delay) );
 
-    if( !_inFlag && _ids.empty() )
+    if( !_inflag && _ids.empty() )
         return true;
 
     std::unique_lock<std::mutex> lck(_mtx);     
     bool res = _cnd.wait_for( lck, std::chrono::milliseconds(timeout),
-                              [&]
-                                { 
-                                  return _ids.empty(); 
-                                } 
-                             );
+                              [&]{ return _ids.empty(); } );
     if( !res )
         _ids.clear();
                  
-    _inFlag = false;
+    _inflag = false;
 
     return res;
 }
@@ -83,119 +75,105 @@ void CyclicCountDownLatch::wait( size_t delay )
     if( delay && _ids.empty() )
         std::this_thread::sleep_for( std::chrono::milliseconds(delay) );
 
-    if( _inFlag && _ids.empty() )
+    if( _inflag && _ids.empty() )
         return;        
 
     std::unique_lock<std::mutex> lck(_mtx);
-    _cnd.wait( lck, [&]
-                      { 
-                        return _ids.empty(); 
-                      } 
-              );     
-   
+    _cnd.wait( lck, [&]{ return _ids.empty(); } );        
     _ids.clear();
-    _inFlag = false;
+    _inflag = false;
 }
 
-void CyclicCountDownLatch::count_down( std::string strID )
+void CyclicCountDownLatch::count_down( std::string str_id )
 {             
-    _idsTy::const_iterator idIter;
+    _ids_type::const_iterator iter;
 
     _sem.wait(); /* wait until all inc calls have gotten to .insert() */
 
     std::lock_guard<std::mutex> lck(_mtx);         
-    if ( (idIter = _ids.find( strID )) != _ids.cend() ){ /* valid entry ? */    
-        _ids.erase( idIter ); 
+    if ( (iter = _ids.find( str_id )) != _ids.cend() ){ /* valid entry ? */    
+        _ids.erase( iter ); 
 
         if( _ids.empty() ){
-            _inFlag = false;
+            _inflag = false;
             _cnd.notify_all();                
         }
-
     }else{
         _sem.release(); /* re-open the spot */
     }
 }  
   
-void CyclicCountDownLatch::increment( std::string strID )
+void CyclicCountDownLatch::increment( std::string str_id )
 {        
-    _inFlag = true; /* signal we should wait( in wait/wait_for), regardless */
+    _inflag = true; /* signal we should wait( in wait/wait_for), regardless */
     ++_in;          /* tally # of calls this side of lock */
 
     std::lock_guard<std::mutex> lck( _mtx );    
-    _ids.insert( strID );      
+    _ids.insert( str_id );      
  
     if( _in.load() == ++_out ){ /* has everything gotten thru the lock ? */    
         _in.fetch_sub( _out ); /* safely reset the in-count */
         _sem.release( _out );  /* open semaphore being held in count_down */
-
         _out = 0; 
     }        
 }
 
-bool SignalManager::wait( std::string unqID )
+bool SignalManager::wait( std::string unq_id )
 {    
-    std::unique_lock<std::mutex> lck( _mtx );          
-    std::map<std::string,_flagPairTy>::iterator flgIter = _unqFlags.find(unqID);
+    std::unique_lock<std::mutex> lck( _mtx );    
 
-    if( flgIter == _unqFlags.end() )
+    std::map<std::string,_flag_pair_type>::iterator iter = 
+        _unq_flags.find(unq_id);
+
+    if( iter == _unq_flags.end() )
         return false;
 
-    _cnd.wait( lck, [=]
-                      { 
-                        return flgIter->second.first; 
-                      } 
-             );
+    _cnd.wait( lck, [=]{ return iter->second.first; } );
+    _unq_flags.erase( iter );    
 
-    _unqFlags.erase( flgIter );    
-    return flgIter->second.second;
+    return iter->second.second;
 }
 
-bool SignalManager::wait_for( std::string unqID, size_t timeout )
+bool SignalManager::wait_for( std::string unq_id, size_t timeout )
 {
     bool waitRes;
-
     {
         std::unique_lock<std::mutex> lck( _mtx );
-        std::map<std::string,_flagPairTy>::iterator flgIter = 
-            _unqFlags.find( unqID );
+        std::map<std::string,_flag_pair_type>::iterator iter = 
+            _unq_flags.find( unq_id );
 
-        if( flgIter == _unqFlags.end() )
+        if( iter == _unq_flags.end() )
             return false;
 
         waitRes = _cnd.wait_for( lck, std::chrono::milliseconds(timeout), 
-                                 [=]
-                                   { 
-                                     return flgIter->second.first; 
-                                   } 
-                               );
+                                 [=]{ return iter->second.first; } );
 
-        waitRes = waitRes && flgIter->second.second;
-        _unqFlags.erase( flgIter );        
+        waitRes = waitRes && iter->second.second;
+        _unq_flags.erase( iter );        
     }  
     return waitRes;
 }
 
-void SignalManager::set_signal_ID( std::string unqID )
+void SignalManager::set_signal_ID( std::string unq_id )
 {
     std::unique_lock<std::mutex> lck( _mtx );
-    _unqFlags.insert(std::pair<std::string,_flagPairTy>( unqID, 
-                                                         _flagPairTy( false, 
-                                                                      true ) ));
+    _unq_flags.insert( 
+        std::pair<std::string,_flag_pair_type>( unq_id, 
+                                                _flag_pair_type(false,true) ));
 }
 
-bool SignalManager::signal( std::string unqID, bool secondary )
+bool SignalManager::signal( std::string unq_id, bool secondary )
 {
     {            
         std::unique_lock<std::mutex> lck( _mtx );
-        std::map< std::string, _flagPairTy >::iterator flgIter = 
-            _unqFlags.find( unqID );
+        std::map< std::string, _flag_pair_type >::iterator iter = 
+            _unq_flags.find( unq_id );
 
-        if( flgIter == _unqFlags.end() ) 
+        if( iter == _unq_flags.end() ) 
             return false;        
 
-        flgIter->second.first = true;
-        flgIter->second.second = secondary;  
+        iter->second.first = true;
+        iter->second.second = secondary;  
     }    
     _cnd.notify_one();   
     return true;
@@ -203,61 +181,61 @@ bool SignalManager::signal( std::string unqID, bool secondary )
 
 #else
 
-void SignalManager::set_signal_ID( std::string unqID )
+void SignalManager::set_signal_ID( std::string unq_id )
 {        
     WinLockGuard _lock_( _mtx );
-    _unqFlags.insert( std::pair< std::string, volatile bool >(unqID, true ) );    
+    _unq_flags.insert( std::pair< std::string, volatile bool >(unq_id, true) );    
 }
 
-bool SignalManager::wait( std::string unqID )
+bool SignalManager::wait( std::string unq_id )
 {            
-    std::map< std::string, volatile bool >::iterator flgIter;
+    std::map< std::string, volatile bool >::iterator iter;
     {
         WinLockGuard _lock_( _mtx );        
-        flgIter = _unqFlags.find( unqID );
-        if( flgIter == _unqFlags.end() )
+        iter = _unq_flags.find( unq_id );
+        if( iter == _unq_flags.end() )
             return false;
     }
 
-    WaitForSingleObject( _event, INFINITE );   
-    WinLockGuard _lock_( _mtx );
-    _unqFlags.erase( flgIter );        
+    WaitForSingleObject( _event, INFINITE );  
 
-    return flgIter->second;        
+    WinLockGuard _lock_( _mtx );
+    _unq_flags.erase( iter );        
+
+    return iter->second;        
 }        
 
-bool SignalManager::wait_for( std::string unqID, size_type timeout )
+bool SignalManager::wait_for( std::string unq_id, size_type timeout )
 {        
-    std::map< std::string, volatile bool >::iterator flgIter;
+    std::map< std::string, volatile bool >::iterator iter;
     DWORD waitRes; 
     bool bRes;
     {
         WinLockGuard _lock_( _mtx );        
-        flgIter = _unqFlags.find( unqID );
-        if( flgIter == _unqFlags.end() )
+        iter = _unq_flags.find( unq_id );
+        if( iter == _unq_flags.end() )
             return false;            
     }
-
     waitRes = WaitForSingleObject( _event, timeout );  
+
     WinLockGuard _lock_( _mtx );    
-    bRes = flgIter->second;
-    _unqFlags.erase( flgIter );   
+    bRes = iter->second;
+    _unq_flags.erase( iter );   
      
     return (waitRes == WAIT_TIMEOUT) ? false : bRes;
 }
 
-bool SignalManager::signal( std::string unqID, bool secondary )
+bool SignalManager::signal( std::string unq_id, bool secondary )
 {    
     {
         WinLockGuard _lock_( _mtx );
-        std::map< std::string, volatile bool >::iterator flgIter = 
-            _unqFlags.find( unqID );
+        std::map< std::string, volatile bool >::iterator iter = 
+            _unq_flags.find( unq_id );
 
-        if( flgIter == _unqFlags.end() )             
+        if( iter == _unq_flags.end() )             
             return false;    
-        flgIter->second = secondary;
+        iter->second = secondary;
     }
-
     SetEvent( _event ); 
     return true;
 }
