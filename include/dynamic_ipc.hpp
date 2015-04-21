@@ -101,7 +101,7 @@ public:
     
     void*       allocate( size_type size);
     bool        deallocate( void* start );
-    size_type  size( void* start );
+    size_type   size( void* start );
 
     void clear()
     {

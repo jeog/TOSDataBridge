@@ -259,7 +259,7 @@ int TOSDB_GetTypeString( LPCSTR sTopic, LPSTR dest, size_type str_len )
         return -1;
 
     if( (t = GetTopicEnum(sTopic)) == TOS_Topics::TOPICS::NULL_TOPIC )
-        return -1;
+        return -2;
 
     str = TOS_Topics::TypeString( t );
     return strcpy_s( dest, str_len, str.c_str() );

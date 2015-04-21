@@ -287,6 +287,7 @@ bool DynamicIPCMaster::connected() const
 
     obuf[0] = PING;
     obuf[1] = 999;
+
     size_type off = 0;
     DWORD read = 0;
 

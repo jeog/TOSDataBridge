@@ -60,7 +60,9 @@ namespace {
                          std::string sItem, 
                          unsigned long timeout, 
                          unsigned int opcode )
-    { /* this needs exclusivity, but we can't block; calling code must lock */
+    {  /* 
+        * this needs exclusivity, but we can't block; calling code must lock 
+        */
         int ret;
         bool ret_stat;
         unsigned int lcount = 0;
@@ -69,11 +71,10 @@ namespace {
             return -1;     
        
         while( master.grab_pipe() <= 0 ){
-
-            Sleep(TOSDB_DEF_TIMEOUT/10);    
-            if( (lcount+=(TOSDB_DEF_TIMEOUT/10)) > TOSDB_DEF_TIMEOUT ){
-                TOSDB_LogH( "IPC",
-                            "RequestStreamOP timed out trying to grab pipe" );
+            Sleep( TOSDB_DEF_TIMEOUT / 10 );   
+            lcount += ( TOSDB_DEF_TIMEOUT / 10 );
+            if( lcount >= TOSDB_DEF_TIMEOUT ){
+                TOSDB_LogH( "IPC", "timed out trying to grab pipe" );
                 return -2;
             }
         }
@@ -113,11 +114,12 @@ namespace {
 
         buffers_type::key_type buf_key(tTopic, sItem );        
         our_lock_guard_type lock(buffer_mutex);
-        buffers_type::iterator bIter = buffers.find( buf_key );
+        buffers_type::iterator b_iter = buffers.find( buf_key );
 
-        if( bIter != buffers.end() ){    
-            std::get<2>(bIter->second).insert( db );         
-        }else{        
+        if( b_iter != buffers.end() ){    
+            std::get<2>(b_iter->second).insert( db );         
+        }else{      
+
             buf_name = CreateBufferName( TOS_Topics::map[tTopic], sItem );
             fm_hndl = OpenFileMapping( FILE_MAP_READ, 0, buf_name.c_str() );
 
@@ -160,14 +162,14 @@ namespace {
 
         our_lock_guard_type lock(buffer_mutex);
 
-        buffers_type::iterator bIter = buffers.find( buf_key );
+        buffers_type::iterator b_iter = buffers.find( buf_key );
 
-        if( bIter != buffers.end() ){
-            std::get<2>(bIter->second).erase( db );
-            if( std::get<2>(bIter->second).empty() ){
-                UnmapViewOfFile( std::get<3>(bIter->second) );
-                CloseHandle( std::get<4>(bIter->second) );
-                buffers.erase( bIter );        
+        if( b_iter != buffers.end() ){
+            std::get<2>(b_iter->second).erase( db );
+            if( std::get<2>(b_iter->second).empty() ){
+                UnmapViewOfFile( std::get<3>(b_iter->second) );
+                CloseHandle( std::get<4>(b_iter->second) );
+                buffers.erase( b_iter );        
             }
         }    
     }    
@@ -188,73 +190,84 @@ namespace {
     void ExtractFromBuffer( TOS_Topics::TOPICS topic, 
                             std::string item, 
                             buffer_info_type& buf_info )
-    { /* some unecessary comp in here; cache some of the buffer params */
-        long new_pos;
-        long long loop_diff, new_elems;
-        unsigned int data_len;
-        char* daspot;
+    { /* 
+       * some unecessary comp in here; cache some of the buffer params 
+       */
+        long npos;
+        long long loop_diff, nelems;
+        unsigned int dlen, dtsz;
+        char* spot;
 
         pBufferHead head = (pBufferHead)std::get<3>(buf_info);
-        
-        /* attempt to bail early if chance buffer hasn't changed;
-           dont wait for the mutex, move on to the next */
+                
         if( head->next_offset - head->beg_offset == std::get<0>(buf_info) 
             && head->loop_seq == std::get<1>(buf_info) 
             || WaitForSingleObject( std::get<4>(buf_info), 0 ) ){
-         
+            /* 
+             * attempt to bail early if chance buffer hasn't changed;
+             * dont wait for the mutex, move on to the next 
+             */
             return;     
         }
 
         /* get the effective size of the buffer */
-        data_len = head->end_offset - head->beg_offset; 
+        dlen = head->end_offset - head->beg_offset; 
 
-        /* get the relative position since last read 
-           (our begin offset needs to be 0 ) */    
-        new_pos = head->next_offset 
-                    - head->beg_offset 
-                    - std::get<0>(buf_info);
- 
-        /* how many times has the buffer looped around, if any */        
+        /* relative position since last read (begin offset needs to be 0) */    
+        npos = head->next_offset - head->beg_offset - std::get<0>(buf_info); 
+                
         if( (loop_diff = (head->loop_seq - std::get<1>(buf_info))) < 0 ){
- 
+            /* 
+             * how many times has the buffer looped around, if any 
+             */
             loop_diff+=(((long long)UINT_MAX+1)); /* in case of num limit */
         }
 
-        /* how many elems have been written, 'borrow' a data_len if necesary */
-        new_elems = ( new_pos + (loop_diff * data_len) ) / head->elem_size; 
+        /* how many elems have been written, 'borrow' a dlen if necesary */
+        nelems = ( npos + (loop_diff * dlen) ) / head->elem_size; 
        
-        if( !new_elems){ /* if no new elems we're done */
+        if( !nelems){ 
+            /* 
+             * if no new elems we're done 
+             */
             ReleaseMutex( std::get<4>(buf_info) );
             return;
-        }else if( new_elems < 0 ){ /* if something very bad happened */
+        }else if( nelems < 0 ){ 
+            /* 
+             * if something very bad happened 
+             */
             ReleaseMutex( std::get<4>(buf_info) );
             throw TOSDB_BufferError( "numElems < 0" );
         }else{ 
             /* make sure we don't insert more than the max elems */
-            new_elems = ((unsigned long long)new_elems < ( data_len 
-                                                         / head->elem_size) ) 
-                     ? new_elems 
-                     : (data_len / head->elem_size);
+            nelems = ((unsigned long long)nelems < (dlen / head->elem_size) ) 
+                        ? nelems 
+                        : (dlen / head->elem_size);
 
-            do{  /* go through each elem, last first */
-                daspot = (char*)head + 
-                         (( (head->next_offset - (new_elems * head->elem_size)) 
-                             + data_len ) 
-                           % data_len);  
+            dtsz = sizeof(DateTimeStamp);
+
+            do{ /* 
+                 * go through each elem, last first 
+                 */
+                spot = (char*)head + 
+                       (((head->next_offset - (nelems * head->elem_size)) +dlen) 
+                            % dlen );  
           
                 for( const TOSDBlock* block : std::get<2>(buf_info) ){ 
-                    /* insert those elements into each block's raw data block */                    
+                    /* 
+                     * insert those elements into each block's raw data block 
+                     */                    
+                    block->     
                     block->
-                    block->
-                      insertData( topic, item, CastToVal<T>(daspot), 
-                                  std::move( *(pDateTimeStamp)
-                                               ( daspot 
-                                                 + ( (head->elem_size)
-                                                     -sizeof(DateTimeStamp))))); 
+                       insertData( topic, item, CastToVal<T>(spot), std::move( 
+                          *(pDateTimeStamp)(spot + ((head->elem_size) - dtsz)))
+                          ); 
                 }
-            } while( --new_elems );
+            } while( --nelems );
         } 
-        /* adjust our buffer info to the present values */
+        /* 
+         * adjust our buffer info to the present values 
+         */
         std::get<0>(buf_info) = head->next_offset - head->beg_offset;
         std::get<1>(buf_info) = head->loop_seq; 
 
@@ -289,14 +302,19 @@ namespace {
  
         aware_of_connection.store(true);
         while( master.connected() && aware_of_connection.load() ){ 
-            /* the concurrent read loop errs on the side of greedyness */
+            /* 
+             * the concurrent read loop errs on the side of greedyness 
+             */
             tbeg = steady_clock.now(); /* include time waiting for lock */   
-            { 
-            /* make sure we give up this lock each time through the buffers */            
+            {             
                 our_lock_guard_type lock(buffer_mutex);                               
+                /* 
+                 * make sure we give up this lock each time through the buffers 
+                 */ 
                 for( buffers_type::value_type & buf : buffers ){
 
-                    switch( TOS_Topics::TypeBits( buf.first.first ) ){
+                    switch( TOS_Topics::TypeBits( buf.first.first ) )
+                    {
                     case TOSDB_STRING_BIT :  
 
                         ExtractFromBuffer<std::string>( buf.first.first, 
@@ -331,25 +349,21 @@ namespace {
                 }
             }
             tdiff = std::chrono::duration_cast<milli_sec_type>(
-                steady_clock.now() - tbeg ).count();
-
-            /* [ 0, 30000 ] */
-            Sleep( std::min<long>(
+                        steady_clock.now() - tbeg ).count();
+            
+            Sleep( std::min<long>( /* [ 0, 30000 ] */
                        std::max<long>( ((long)buffer_latency - tdiff), 0), 
                        Glacial ) ); 
         }
-
         aware_of_connection.store(false);
         master.disconnect();    
         buffer_thread = NULL;
         buffer_thread_id = 0;
-
         return 0;
     }
 };
 
-const TOS_Topics::topic_map_type& 
-TOS_Topics::map = TOS_Topics::_map;
+const TOS_Topics::topic_map_type& TOS_Topics::map = TOS_Topics::_map;
 
 BOOL WINAPI DllMain(HANDLE mod, DWORD why, LPVOID res)
 {        
@@ -358,10 +372,10 @@ BOOL WINAPI DllMain(HANDLE mod, DWORD why, LPVOID res)
         {              
         TOSDB_StartLogging( std::string( std::string(TOSDB_LOG_PATH) + 
                                          std::string("client-log.log")).c_str());
-
-        /* ! NO AUTO-CONNECT ! need blocking ops deep into ->try_for_slave(); */
-
         // TOSDB_Connect(); 
+        /* 
+         * ! NO AUTO-CONNECT ! need blocking ops deep into ->try_for_slave() 
+         */        
         break; 
         }
     case DLL_THREAD_ATTACH:            
@@ -372,10 +386,11 @@ BOOL WINAPI DllMain(HANDLE mod, DWORD why, LPVOID res)
         if( master.connected() ){
             aware_of_connection.store(false);                
             for( const auto & buffer : buffers ){ 
-               /* signal the service and close the handles */                
+               /* 
+                * signal the service and close the handles 
+                */                
                 RequestStreamOP( buffer.first.first, buffer.first.second, 
                                  TOSDB_DEF_TIMEOUT, TOSDB_SIG_REMOVE );
-
                 UnmapViewOfFile( std::get<3>(buffer.second) );
                 CloseHandle( std::get<4>(buffer.second) );
             }
@@ -389,7 +404,9 @@ BOOL WINAPI DllMain(HANDLE mod, DWORD why, LPVOID res)
 }
 
 int TOSDB_Connect()
-{     
+{    
+    unsigned int lcount = 0;
+
     if( master.connected() && aware_of_connection.load() )
         return 0;
 
@@ -401,12 +418,22 @@ int TOSDB_Connect()
     if( buffer_thread )
         return 0;
 
-    if( !(buffer_thread = CreateThread( 0, 0, Threaded_Init, 0, 0, 
-                                        &buffer_thread_id )) ){
+    buffer_thread = CreateThread( 0, 0, Threaded_Init, 0, 0, &buffer_thread_id);
+    if( !buffer_thread ){
         TOSDB_Log_Raw_("error initializing communication thread");                
         return -2;    
     }
-
+    /* we need a timed wait on aware_of_connection to avoid situations 
+     * where a lib call is made before Threaded_Init sets it to true
+     */      
+    while( !aware_of_connection.load() ){
+        Sleep( TOSDB_DEF_TIMEOUT / 10 );  
+        lcount += ( TOSDB_DEF_TIMEOUT / 10 );
+        if( lcount >= TOSDB_DEF_TIMEOUT ){
+            TOSDB_LogH( "IPC", "timed out waiting for aware_of_connection" );
+            return -3;
+        }
+    }
     return 0;
 }
 
@@ -428,10 +455,15 @@ int TOSDB_CreateBlock( LPCSTR id,
 {    
     TOSDBlock* db;
 
-    if( !master.connected() || !aware_of_connection.load() ){
-        TOSDB_LogH("IPC", "not connected to slave/server");
+    if( !aware_of_connection.load() ){
+        TOSDB_LogH("IPC", "not connected to slave (aware_of_connection)");
         return -1;
     }    
+
+    if( !master.connected() ){
+        TOSDB_LogH("IPC", "not connected to slave (master.connected)");
+        return -1;
+    }
 
     if( !CheckIDLength( id ) )        
         return -2;

@@ -63,6 +63,7 @@ def init(dllpath = None, root = "C:\\"):
     dllpath: string of the exact path of the DLL
     root: string of the directory to start walking/searching to find the DLL
     """
+    print("DEBUG",str(dllpath),root)
     global _dll
     rel = set()
     try:
@@ -95,11 +96,12 @@ def init(dllpath = None, root = "C:\\"):
         print( "+ Using Module ", dllpath )
         print( "+ Last Update ", _asctime(_localtime(_stat(dllpath).st_mtime)))
         if connect():
-            print("+ Succesfully Connected to Service \ Engine")
+            print("+ Succesfully Connected to Service \ Engine")       
         else:
             print("- Failed to Connect to Service \ Engine")
+        return True # indicate the lib was loaded
     except Exception as e:
-        raise TOSDB_CLibError( "unable to initialize library", e )
+        raise TOSDB_CLibError( "unable to initialize library", e )        
 
 def connect():
     """ Attempts to connect to the library """
@@ -147,7 +149,7 @@ def type_bits( topic ):
     ( ex. QUAD_BIT )
     """
     tyBits = _uchar_()
-    err = _lib_call( "TOSDB_GetTypeBits", topic.encode("ascii"), 
+    err = _lib_call( "TOSDB_GetTypeBits", topic.upper().encode("ascii"), 
                      _pointer(tyBits) )
     if err:
        raise TOSDB_CLibError( "error value [ "+ str(err) + " ] returned" +
@@ -160,8 +162,8 @@ def type_string( topic ):
     topic: string representing a TOS data field('LAST','ASK', etc)
     """
     tyStr = _BUF_( MAX_STR_SZ + 1 )
-    err = _lib_call( "TOSDB_GetTypeString", topic.encode("ascii"), tyStr, 
-                     (MAX_STR_SZ + 1) )
+    err = _lib_call( "TOSDB_GetTypeString", topic.upper().encode("ascii"),
+                     tyStr, (MAX_STR_SZ + 1) )
     if err:
         raise TOSDB_CLibError( "error value [ "+ str(err) + " ] returned" +
                                "from library call","TOSDB_GetTypeString" )

@@ -3,7 +3,7 @@ import time
 
 def init():
     intrvl.tosdb.init(root="C:/users/j/documents/github/tosdatabridge")
-    time.sleep(1)
+   # time.sleep(1)
     b = intrvl.tosdb.TOS_DataBlock(1000,date_time=True)    
     b.add_items("xlu","xlv")
     b.add_topics("last")             

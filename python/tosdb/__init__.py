@@ -44,8 +44,9 @@ In order to create a virtual block the 'local' windows implementation must
 do everything it would normally do to instantiate a TOS_DataBlock (i.e connect
 to a running TOSDataBridge service via init/connect) and then call
 enable_virtualization() with an address tuple (addr,port) that the virtual
-hub/servers ( _VTOS_Hub / _VTOS_DataServer ) will used to listen for 'remote'
-virtual blocks.
+hub/servers ( _VTOS_Hub / _VTOS_BlockServer ) will used to listen for 'remote'
+virtual blocks. To use admin calls (those outside the block) call
+admin_init.
 
 tosdb.py will attempt to load the non-portable _win.py if on windows.
 The following are some of the important calls imported from _win.py that
@@ -133,6 +134,9 @@ if _SYS_IS_WIN:
     _TOS_DataBlock.register( TOS_DataBlock ) # register as virtual subclass
 
 _virtual_hub = None
+_virtual_hub_addr = None
+_virtual_admin = False
+_virtual_admin_sock = None
 
 _vCREATE     = 'CREATE'
 _vCALL       = 'CALL'
@@ -140,16 +144,103 @@ _vDESTROY    = 'DESTROY'
 _vFAILURE    = 'FAILURE'
 _vSUCCESS    = 'SUCCESS'
 _vSUCCESS_NT = 'SUCCESS_NT'
-_vPACK_SZ = 512 
-_vTYPES = {'i':int,'s':str,'b':bool}
-## !! _vDELIM MUST NOT HAVE THE SAME VALUE AS _vEEXOR !! ##
-_vDELIM = b'\x7E'
+_vCONN_BLOCK = 'CONN_BLOCK'
+_vCONN_ADMIN = 'CONN_ADMIN'
+_vALLOWED_ADMIN = ( 'init','connect','connected','clean_up',
+                    'get_block_limit', 'set_block_limit',
+                    'get_block_count', 'type_bits', 'type_string' )
+_vTYPES = {'i':int,'s':str,'b':bool,'d':lambda d: d}
+_vDELIM = b'\x7E' ## !! _vDELIM MUST NOT HAVE THE SAME VALUE AS _vEEXOR !! ##
 _vESC = b'\x7D'
 _vDEXOR = chr(ord(_vDELIM) ^ ord(_vESC)).encode()
 _vEEXOR = chr(ord(_vESC) ^ ord(_vESC)).encode() # 0
 
+# deal with bad vals coming into virtual layer ( see vinit )
+
 # move to _tosdb
 _NTUP_TAG_ATTR = "_dont_worry_about_why_this_attribute_has_a_weird_name_"
+
+def vinit(dllpath = None, root = "C:\\"):
+    """ Initialize the underlying tos-databridge Windows DLL
+
+    dllpath: string of the exact path of the DLL
+    root: string of the directory to start walking/searching to find the DLL
+    """
+    return _admin_call( 'init', ('s' if dllpath else 'd',dllpath), ('s',root) )     
+
+def vconnect():
+    """ Attempts to connect the underlying Windows Library/Service """
+    return _admin_call( 'connect' )
+
+def vconnected():
+    """ True if an active connection to the Library/Service exists """
+    return _admin_call( 'connected' )
+                
+def vclean_up():
+    """ Clean up shared resources. ( !! ON THE WINDOWS SIDE !! ) """
+    _admin_call( 'clean_up' )
+
+def vget_block_limit():
+    """ Returns the block limit of C/C++ RawDataBlock factory """
+    return _admin_call( 'get_block_limit' )
+
+def vset_block_limit( new_limit ):
+    """ Changes the block limit of C/C++ RawDataBlock factory """
+    _admin_call( 'set_block_limit', ('i',new_limit) )
+
+def vget_block_count():
+    """ Returns the count of current instantiated blocks """
+    return _admin_call( 'get_block_count' )
+
+def vtype_bits( topic ):
+    """ Returns the type bits for a particular 'topic'
+
+    topic: string representing a TOS data field('LAST','ASK', etc)
+    returns -> value that can be logical &'d with type bit contstants 
+    ( ex. QUAD_BIT )
+    """    
+    return _admin_call( 'type_bits', ('s',topic) )
+
+def vtype_string( topic ):
+    """ Returns a platform-dependent string of the type of a particular 'topic'
+
+    topic: string representing a TOS data field('LAST','ASK', etc)
+    """
+    return _admin_call( 'type_string', ('s',topic) )
+
+
+## what happens to these sockets when we exit the client side ??
+def admin_init( address, poll_interval=DEF_TIMEOUT ):
+    global _virtual_hub_addr, _virtual_admin_sock
+    if _virtual_admin_sock:
+        raise TOS_DataBlock("virtual admin socket already exists")
+    _check_address( address )
+    _virtual_hub_addr = address
+    _virtual_admin_sock = _socket.socket()
+    _virtual_admin_sock.settimeout( poll_interval / 1000 )
+    _virtual_admin_sock.connect( address )
+    _vcall( _pack_msg(_vCONN_ADMIN), _virtual_admin_sock, _virtual_hub_addr )
+
+def _admin_call( method, *arg_buffer ):
+    if not _virtual_admin_sock:
+        raise TOSDB_VirtualizationError("no admin socket, call admin_init")
+    a =  (method,) + ( (_pickle.dumps(arg_buffer),) if arg_buffer else () )    
+    ret_b = _vcall( _pack_msg( *a ), _virtual_admin_sock, _virtual_hub_addr ) 
+    args = _unpack_msg( ret_b )
+    print("return", args)
+    status = args[0].decode()
+    if status == _vFAILURE:
+        #
+        # need to make the error/failure return more robust
+        # more info on what happened
+        #
+        raise TOSDB_VirtualizationError( "failure status returned",                                       
+                                         "method: " + str(method),
+                                         "arg_buffer: " + str(arg_buffer) )    
+  
+    elif len(args) > 1:
+        return _pickle.loads( args[1] )
+  
 
 class VTOS_DataBlock:
     """ The main object for storing TOS data. (VIRTUAL)   
@@ -163,11 +254,12 @@ class VTOS_DataBlock:
     """    
     def __init__( self, address, size = 1000, date_time = False,
                   timeout = DEF_TIMEOUT ):       
-        _chck_address( address )
+        _check_address( address )
         self._hub_addr = address
         self._my_sock = _socket.socket()
         self._my_sock.settimeout( timeout / 1000 )
         self._my_sock.connect( address )
+        _vcall( _pack_msg( _vCONN_BLOCK ), self._my_sock, self._hub_addr)
         # in case __del__ is called during socket op
         if not self._call( _vCREATE, '__init__', ('i',size),
                            ('b',date_time), ('i',timeout) ):
@@ -425,24 +517,11 @@ class VTOS_DataBlock:
         else:
             raise TOSDB_VirtualizationError( "invalid virt_type" )
         
-        try:
-            _send_tcp( self._my_sock, req_b, _vPACK_SZ):        
-            try:
-                ret_b = _recv_tcp( self._my_sock, _vPACK_SZ )
-            except _socket.timeout as e:
-                raise TOSDB_VirtualizationError( "socket timed out",
-                                                 "VTOS_DataBlock._call" )
-        except ConnectionResetError:         
-            try:
-                self._my_sock.connect( self._hub_addr)
-            except:
-                raise TOSDB_VirtualizationError("failed to reconnect to hub",
-                                                "VTOS_DataBlock._call" )       
-        except Exception as e:
-            TOSDB_VirtualizationError( repr(e) )
-    
+        ret_b = _vcall( req_b, self._my_sock, self._hub_addr )
+        print('ret_b',ret_b)
         args = _unpack_msg( ret_b )                 
         status = args[0].decode()
+        print(args)
         if status == _vFAILURE:
             #
             # need to make the error/failure return more robust
@@ -468,7 +547,7 @@ _TOS_DataBlock.register( VTOS_DataBlock )
 def enable_virtualization( address, poll_interval=DEF_TIMEOUT ):
     global _virtual_hub  
        
-    class _VTOS_DataServer( _Thread ):
+    class _VTOS_BlockServer( _Thread ):
         
         def __init__( self, conn, poll_interval, stop_callback):
             super().__init__(daemon=True)
@@ -486,10 +565,11 @@ def enable_virtualization( address, poll_interval=DEF_TIMEOUT ):
             self._rflag = True            
             while self._rflag:                                       
                 try:                   
-                    dat = _recv_tcp( self._my_sock, _vPACK_SZ )                  
+                    dat = _recv_tcp( self._my_sock )                  
                     if not dat:                        
                         break                
-                    args = _unpack_msg( dat )                   
+                    args = _unpack_msg( dat )
+                    print('run',args)
                     msg_t = args[0].decode()
                     r = None
                     if msg_t == _vCREATE:
@@ -498,12 +578,11 @@ def enable_virtualization( address, poll_interval=DEF_TIMEOUT ):
                         r = self._handle_call( args )                      
                     elif msg_t == _vDESTROY:
                         r = self._handle_destroy( args )                   
-                    _send_tcp( self._my_sock, r if r else _pack_msg(_vFAILURE),
-                               _vPACK_SZ )                 
+                    _send_tcp( self._my_sock, r if r else _pack_msg(_vFAILURE))                 
                 except _socket.timeout as e:                
                     pass
                 except Exception as e:                   
-                    print( "Fatal Error in _VTOS_DataServer (TERMINATING) : ",
+                    print( "Fatal Error in _VTOS_BlockServer (TERMINATING) : ",
                            repr(e), ":", msg_t, " from ", str(self._cli_addr),
                            file=_stderr )
                     self._rflag = False
@@ -512,8 +591,10 @@ def enable_virtualization( address, poll_interval=DEF_TIMEOUT ):
         def _handle_create( self, args ):
             try:
                 upargs = _pickle.loads(args[1])                
-                cargs = [ _vTYPES[t](v) for t,v in upargs ]            
+                cargs = [ _vTYPES[t](v) for t,v in upargs ]
+                print( str(cargs) )
                 self._blk = TOS_DataBlock( *cargs )
+                print( str(self._blk) )
                 return _pack_msg( _vSUCCESS )
             except:
                 pass
@@ -533,7 +614,7 @@ def enable_virtualization( address, poll_interval=DEF_TIMEOUT ):
                 cargs = [ _vTYPES[t](v) for t,v in upargs ]
                 print( cargs )
                 ret = meth(*cargs)                
-                if not ret: # None is still a success
+                if ret is None: # None is still a success
                     return _pack_msg( _vSUCCESS )                
                 elif hasattr(ret,_NTUP_TAG_ATTR): #our special namedtuple tag
                     return _pack_msg( _vSUCCESS_NT, _dumpnamedtuple(ret) )
@@ -542,11 +623,63 @@ def enable_virtualization( address, poll_interval=DEF_TIMEOUT ):
             except:
                 pass
 
+    class _VTOS_AdminServer( _Thread ):
+        
+        def __init__( self, conn, poll_interval):
+            super().__init__(daemon=True)
+            self._my_sock = conn[0]
+            self._cli_addr = conn[1]
+            self._poll_interval = poll_interval
+            self._my_sock.settimeout( poll_interval / 1000 )
+            self._rflag = False
+            self._globals = globals()
+            
+        def stop(self):
+            self._rflag = False                      
+
+        def run(self):
+            self._rflag = True            
+            while self._rflag:                                       
+                try:
+                    print('in run')
+                    dat = _recv_tcp( self._my_sock )                  
+                    if not dat:                        
+                        break                    
+                    args = _unpack_msg( dat )
+                    print('run', args)
+                    rmsg = _pack_msg(_vFAILURE)
+                    try:
+                        print('run', 'going into meth')
+                        meth = self._globals[args[0].decode()]
+                        print('run', 'coming out of meth')
+                        upargs = _pickle.loads(args[1]) if len(args) > 1 else ()
+                        cargs = [ _vTYPES[t](v) for t,v in upargs ]
+                        print('cargs', str(cargs) )
+                        r = meth(*cargs)
+                        print( 'returned', str(r))
+                        if r is None:
+                            rmsg = _pack_msg( _vSUCCESS )
+                        else:
+                            rmsg = _pack_msg( _vSUCCESS, _pickle.dumps(r))                          
+                    except BaseException as e:
+                        print( "exc caught in run", repr(e) )
+                        rmsg = _pack_msg(_vFAILURE)
+                    print( 'run-out', args )
+                    print( 'run-out', rmsg )
+                    _send_tcp( self._my_sock, rmsg)                 
+                except _socket.timeout as e:                
+                    pass
+                except Exception as e:                   
+                    print( "Fatal Error in _VTOS_AdminServer (TERMINATING) : ",
+                           repr(e), ":", msg_t, " from ", str(self._cli_addr),
+                           file=_stderr )
+                    self._rflag = False    
+
     class _VTOS_Hub( _Thread ):
 
         def __init__( self, address, poll_interval):
             super().__init__(daemon=True)
-            _chck_address( address )
+            _check_address( address )
             self._my_addr = address     
             self._rflag = False
             self._poll_interval = poll_interval
@@ -555,19 +688,35 @@ def enable_virtualization( address, poll_interval=DEF_TIMEOUT ):
             self._my_sock.bind( address )
             self._my_sock.listen(0)
             self._virtual_data_servers = set()
-
+            self._virtual_admin_server = None
+          
         def stop(self):            
             self._rflag = False         
 
         def run(self):
             self._rflag = True            
             while self._rflag:                
-                try:                   
-                    conn = self._my_sock.accept()
-                    vserv = _VTOS_DataServer( conn, self._poll_interval,
-                                              self._virtual_data_servers.discard )
-                    self._virtual_data_servers.add( vserv )
-                    vserv.start()
+                try:                  
+                    conn = self._my_sock.accept()                
+                    dat = _recv_tcp( conn[0] )                   
+                    dat = _unpack_msg( dat )[0].decode()                  
+                    if dat == _vCONN_BLOCK:
+                        print("IN BLOCK")
+                        vserv = _VTOS_BlockServer( conn, self._poll_interval,
+                                            self._virtual_data_servers.discard )
+                        self._virtual_data_servers.add( vserv )
+                        vserv.start()
+                    elif dat == _vCONN_ADMIN:
+                        print("IN ADMIN")
+                        if self._virtual_admin_server:
+                            self._virtual_admin_server.stop()                        
+                        self._virtual_admin_server = _VTOS_AdminServer( conn,
+                                                            self._poll_interval )
+                        self._virtual_admin_server.start()
+                    else:
+                        raise TOSDB_VirtualizationError( "connection init msg "
+                                                         "must be _vCONN_BLOCK "
+                                                         "or _vCONN_ADMIN" )                                                        
                 except _socket.timeout as e:                   
                     continue                
                 except Exception as e: # anything else... shutdown the hub
@@ -575,6 +724,8 @@ def enable_virtualization( address, poll_interval=DEF_TIMEOUT ):
                     break                
             while self._virtual_data_servers:
                 self._virtual_data_servers.pop().stop()
+            if self._virtual_admin_server:
+                self._virtual_admin_server.stop()
             
             
     try:
@@ -596,6 +747,27 @@ def disable_virtualization():
 #currently uncessary as server is daemon thread, but may be useful later
 _on_exit( disable_virtualization )
 
+def _vcall( msg, my_sock, hub_addr ):
+    try:
+        print(msg)
+        _send_tcp( my_sock, msg )       
+        try:
+            ret_b = _recv_tcp( my_sock )
+        except _socket.timeout as e:
+            raise TOSDB_VirtualizationError( "socket timed out",
+                                             "VTOS_DataBlock._call" )
+        print('v_call,ret_b',ret_b)
+        return ret_b
+    except ConnectionResetError:         
+        try:
+            self._my_sock.connect( hub_addr)
+            _call( msg, my_sock, hub_addr)
+        except:
+            raise TOSDB_VirtualizationError("failed to reconnect to hub",
+                                            "VTOS_DataBlock._call" )      
+    except Exception as e:
+        TOSDB_VirtualizationError( repr(e) )
+                                              
 def _dumpnamedtuple( nt ):
     n = type(nt).__name__
     od = nt.__dict__
@@ -622,7 +794,7 @@ def _recvall_tcp( sock, n ):
         data += p
     return data
 
-def _send_tcp( sock, data, pack_sz ):
+def _send_tcp( sock, data ):
     dl = len(data)
     msg = _struct.pack('Q',len(data)) + data
     return sock.sendall(msg)
@@ -648,12 +820,14 @@ def _pack_msg( *parts ):
 ##    body = tot.rstrip(_vDELIM)
 ##    return _escape_part(_struct.pack('Q', len(body))) + _vDELIM + body
 
-def _unpack_msg( msg ):
+def _unpack_msg( msg ):    
     def _unescape_part( part ):
         #unescape the delim FIRST
         unesc1 = _sub( _vESC + _vDEXOR, _vDELIM, part )
         #unescape the escape SECOND
         return _sub( _vESC + _vEEXOR, _vESC, unesc1 )
+    if not msg:
+        return msg
     return [ _unescape_part(p) for p in msg.strip().split(_vDELIM) ]
     
 ##    def _unescape_part( part ):
@@ -667,7 +841,7 @@ def _unpack_msg( msg ):
 ##        raise TOSDB_UDPMessageError("invalid msg length")
 ##    return [ _unescape_part(p) for p in raw_body.strip().split(_vDELIM) ]
 
-def _chck_address( addr ):
+def _check_address( addr ):
     # make this more thorough
     if not ( type(addr) is tuple and len(addr) == 2 and
              type(addr[0]) is str and type(addr[1]) is int ):
