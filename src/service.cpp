@@ -49,8 +49,8 @@ namespace {
     const unsigned int UPDATE_PERIOD     =  2000;    
     const unsigned int MAX_ARG_SIZE      =  20;
         
-    HINSTANCE hInstance = NULL;
-    SYSTEM_INFO sysInfo;
+    HINSTANCE hinstance = NULL;
+    SYSTEM_INFO sys_info;
         
     volatile bool shutdownFlag  =  false;    
     volatile bool pauseFlag     =  false;
@@ -376,7 +376,7 @@ int WINAPI WinMain( HINSTANCE hInst,
     TOSDB_StartLogging( std::string( std::string(TOSDB_LOG_PATH) 
                                      + std::string(LOG_NAME)).c_str() );
 
-    GetSystemInfo( &sysInfo );  
+    GetSystemInfo( &sys_info );  
   
     size_t sIndx = cmdLnStr.find_first_of(' ');
 

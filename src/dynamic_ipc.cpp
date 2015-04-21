@@ -20,39 +20,42 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 #include <fstream>
 #include <iomanip>
 
-void* ExplicitHeap::allocate( sizeTy size)
+void* ExplicitHeap::allocate( size_type size)
 {    
-    ptrTy blck;    
-    sizeTy rmndr;
+    _ptr_type blck;    
+    size_type rmndr;
 
-    sizeTy width = HEADER + size;
-    sizeTy snglton[1] = {width};
+    size_type width = HEAD_SZ + size;
+    size_type snglton[1] = {width};
     auto free_heap_end = _free_heap.cend();
 
     /* check for space on free heap */
     auto found = std::find_first_of( _free_heap.cbegin(), free_heap_end,
                                      snglton, snglton + 1,
-                                     [&]( heapPairTy elem, sizeTy val)
-                                       { 
+                                     [&]( _heap_pair_type elem, size_type val){ 
                                          return (elem.first >= val); 
-                                       } 
-                                    );   
+                                     } );   
  
     if( found == free_heap_end ) {
-        /* try to grow once we define _grow() */
+        /* 
+         * try to grow once we define _grow() 
+         */
         throw std::bad_alloc();
     }else{                 
         blck = found->second;            
         rmndr = found->first - width;
 
-        if( rmndr ) /* if we are not taking the whole block */
-            _free_heap.insert( heapPairTy(rmndr, found->second + width) );  
+        if( rmndr ) 
+            /* 
+             * if we are not taking the whole block 
+             */
+            _free_heap.insert( _heap_pair_type(rmndr, found->second + width) );  
       
         _free_heap.erase(found); /* remove old block */
-        *(headTy*)blck = size;   /* add header */
-        _allocated_set.insert( blck + HEADER ); /* add to allocated set */
+        *(_head_type*)blck = size;   /* add header */
+        _allocated_set.insert( blck + HEAD_SZ ); /* add to allocated set */
 
-        return (void*)(blck + HEADER); /* return header-adjusted block addr */
+        return (void*)(blck + HEAD_SZ); /* return header-adjusted block addr */
     } 
 }    
 
@@ -61,49 +64,49 @@ bool ExplicitHeap::deallocate( void* start )
     if( !_valid_start( start ) )
         return false;
 
-    ptrTy pHead = (ptrTy)start - HEADER; /* back up to the header */
-    headTy head = *(headTy*)(pHead); /* get the value in the header */    
+    _ptr_type phead = (_ptr_type)start - HEAD_SZ; /* back up to the header */
+    _head_type head = *(_head_type*)(phead); /* get the value in the header */    
     auto free_heap_end = _free_heap.cend();
     
     /* look for contiguous free blocks to right */
-    auto foundR = std::find_if( _free_heap.cbegin(), free_heap_end,
-                               [&]( heapPairTy elem ) 
-                                 {
-                                   return elem.second == ((ptrTy)start + head);
-                                 } 
-                              );  
+    auto rght = std::find_if( _free_heap.cbegin(), free_heap_end,
+                              [&]( _heap_pair_type elem ){
+                                 return ( elem.second 
+                                          == ((_ptr_type)start + head) );
+                              } );  
+
     /* look for contiguous free blocks to left */
-    auto foundL = std::find_if( _free_heap.cbegin(), free_heap_end,
-                                [&]( heapPairTy elem ) 
-                                  {
-                                    return ( (ptrTy)elem.second 
-                                                    + elem.first ) == pHead;
-                                  }
-                               );
+    auto left = std::find_if( _free_heap.cbegin(), free_heap_end,
+                              [&]( _heap_pair_type elem ){
+                                  return ( ((_ptr_type)elem.second 
+                                            + elem.first) == phead );
+                              } );
 
-    if( (foundR != free_heap_end) && (foundL != free_heap_end) ){
 
-        _free_heap.insert( heapPairTy( foundL->first 
-                                           + HEADER + head 
-                                           + foundR->first, 
-                                       foundL->second ) );
-        _free_heap.erase( foundR );
-        _free_heap.erase( foundL );
-    }else if( foundR != free_heap_end){
+    if( (rght != free_heap_end) && (left != free_heap_end) ){
 
-        _free_heap.insert( heapPairTy( head + HEADER + foundR->first, 
-                                       pHead ) );
-        _free_heap.erase( foundR );
-    }else if( foundL != free_heap_end){
+        _free_heap.insert( 
+            _heap_pair_type( left->first + HEAD_SZ + head + rght->first, 
+                             left->second ));
+        _free_heap.erase( rght );
+        _free_heap.erase( left );
 
-        _free_heap.insert( heapPairTy( foundL->first + HEADER + head, 
-                                       foundL->second ) );
-        _free_heap.erase( foundL );
-    }else{
-        _free_heap.insert( heapPairTy( head + HEADER, pHead ) );
-    }
+    }else if( rght != free_heap_end){
 
-    _allocated_set.erase( (ptrTy)start ); /* remove from allocated set */
+        _free_heap.insert(
+            _heap_pair_type( head + HEAD_SZ + rght->first, phead) );
+        _free_heap.erase( rght );
+
+    }else if( left != free_heap_end){
+
+        _free_heap.insert(
+            _heap_pair_type( left->first + HEAD_SZ + head, left->second) );
+        _free_heap.erase( left );
+
+    }else
+        _free_heap.insert( _heap_pair_type( head + HEAD_SZ, phead ) );
+    
+    _allocated_set.erase( (_ptr_type)start ); /* remove from allocated set */
     return true; 
 }
 
@@ -112,8 +115,8 @@ size_type ExplicitHeap::size( void* start )
     if( !_valid_start( start ) )
         return 0;
 
-    ptrTy pHead = (ptrTy)start - HEADER; /* backup to the header */
-    return *(headTy*)(pHead); /* get the value in the header */
+    _ptr_type p = (_ptr_type)start - HEAD_SZ; /* backup to the header */
+    return *(_head_type*)(p); /* get the value in the header */
 }
 
 #ifdef KGBLNS_
@@ -124,75 +127,81 @@ const char* DynamicIPCBase::KMUTEX_NAME = "DynamicIPC_Master_MUTEX1";
 
 void* DynamicIPCBase::_allocate( size_type sz ) const
 {
-    size_type outBuf[2];
+    size_type obuf[2];
 
-    outBuf[0] = ALLOC;
-    outBuf[1] = sz;
-    size_type retOff = 0;
-    DWORD bRead = 0;
+    obuf[0] = ALLOC;
+    obuf[1] = sz;
+
+    size_type off = 0;
+    DWORD read = 0;
     
-    return CallNamedPipe( _intrnlPipeStr.c_str(), (void*)outBuf, sizeof(outBuf),
-                         (void*)&(retOff), sizeof(retOff), &bRead,
-                         TOSDB_DEF_TIMEOUT ) == TRUE 
-                                              ? ptr(retOff) 
-                                              : nullptr;
+    return CallNamedPipe( _intrnl_pipe_str.c_str(), (void*)obuf, sizeof(obuf),
+                          (void*)&(off), sizeof(off), &read, TOSDB_DEF_TIMEOUT ) 
+                            == TRUE 
+                                ? ptr(off) 
+                                : nullptr;
 }
 
 bool DynamicIPCBase::_deallocate( void* start ) const
 {
-    size_type outBuf[2];
+    size_type obuf[2];
 
-    outBuf[0] = DEALLOC;
-    outBuf[1] = offset(start);
-    size_type retVal = 0;
-    DWORD bRead = 0;
+    obuf[0] = DEALLOC;
+    obuf[1] = offset(start);
+
+    size_type val = 0;
+    DWORD read = 0;
    
-    return CallNamedPipe( _intrnlPipeStr.c_str(), (void*)outBuf, sizeof(outBuf),
-                         (void*)&(retVal), sizeof(retVal), &bRead,
-                         TOSDB_DEF_TIMEOUT ) == TRUE 
-                                              ? (retVal == TRUE ? true : false) 
-                                              : false;
+    return CallNamedPipe( _intrnl_pipe_str.c_str(), (void*)obuf, sizeof(obuf),
+                         (void*)&(val), sizeof(val), &read, TOSDB_DEF_TIMEOUT ) 
+                            == TRUE 
+                                ? (val == TRUE ? true : false) 
+                                : false;
 }
 
 bool DynamicIPCBase::_send( const shem_chunk& item ) const
 {
-    unsigned long bDone;   
+    unsigned long d; 
+    unsigned long sz = sizeof(shem_chunk);
  
-    return WriteFile( _pipeHndl, (void*)&item, sizeof(shem_chunk),&bDone, NULL) 
-              ? true 
-              : false;
+    return WriteFile( _xtrnl_pipe_hndl, (void*)&item, sz, &d, NULL) 
+                         ? true 
+                         : false;
 }
     
 bool DynamicIPCBase::_recv( shem_chunk& item ) const 
 {
-    unsigned long bDone;   
+    unsigned long d;  
+    unsigned long sz = sizeof(shem_chunk);
  
-    return ReadFile( _pipeHndl, (void*)&item, sizeof(shem_chunk), &bDone, NULL ) 
-             ? true 
-             : false; 
+    return ReadFile( _xtrnl_pipe_hndl, (void*)&item, sz, &d, NULL ) 
+                        ? true 
+                        : false; 
 }
 
 int DynamicIPCMaster::grab_pipe()
 {
-    int retVal;
+    int ret;
 
-    if( !(_mtx = OpenMutex( SYNCHRONIZE, FALSE, KMUTEX_NAME ) )){
+    _mtx = OpenMutex( SYNCHRONIZE, FALSE, KMUTEX_NAME );
+    if( !_mtx ){
         TOSDB_LogEx( "IPC-Master", "OpenMutex failed in grab_pipe()", 
                      GetLastError() ); 
         return -1; 
     }    
     
-    if( WaitForSingleObject( _mtx, TOSDB_DEF_TIMEOUT ) == WAIT_TIMEOUT ){
+    if( WaitForSingleObject(_mtx,TOSDB_DEF_TIMEOUT) == WAIT_TIMEOUT ){
         TOSDB_LogEx( "IPC-Master", 
                      "WaitForSingleObject() [_mtx] timed out in grab_pipe()", 
-                     GetLastError() );        
-
+                     GetLastError() ); 
         CloseHandle( _mtx );
         return -1;    
     }
     
-    /* does this need timetou ?! */
-    if( !WaitNamedPipe( _pipeStr.c_str(), 0 ) ){    
+    /* 
+     * does this need timeout ?? 
+     */
+    if( !WaitNamedPipe(_xtrnl_pipe_str.c_str(),0) ){    
         TOSDB_LogEx( "IPC-Master", "WaitNamedPipe() failed in grab_pipe()", 
                      GetLastError() );
         ReleaseMutex( _mtx );
@@ -200,11 +209,12 @@ int DynamicIPCMaster::grab_pipe()
         return -1;    
     }  
   
-    _pipeHndl = CreateFile( _pipeStr.c_str(), GENERIC_READ | GENERIC_WRITE,
-                            FILE_SHARE_READ | FILE_SHARE_WRITE, NULL,
-                            OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL );    
+    _xtrnl_pipe_hndl = CreateFile( _xtrnl_pipe_str.c_str(), 
+                                   GENERIC_READ | GENERIC_WRITE,
+                                   FILE_SHARE_READ | FILE_SHARE_WRITE, NULL,
+                                   OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);    
 
-    if( !_pipeHndl || _pipeHndl == INVALID_HANDLE_VALUE ){
+    if( !_xtrnl_pipe_hndl || (_xtrnl_pipe_hndl == INVALID_HANDLE_VALUE) ){
         TOSDB_LogEx( "IPC-Master", 
                      "No pipe handle(or CreateFile() failed) in grab_pipe()", 
                      GetLastError() );
@@ -213,31 +223,31 @@ int DynamicIPCMaster::grab_pipe()
         return -1;
     }
 
-    if( !(this->recv(retVal)) ){
+    if( !(this->recv(ret)) )
         TOSDB_LogEx( "IPC-Master", "->recv() failed in grab_pipe()", 
                      GetLastError() );
-    }
-
-    _pipeHeld = true;
-    return retVal;
+    
+    _pipe_held = true;
+    return ret;
 }
 
 void DynamicIPCMaster::release_pipe()
 {
-    if( _pipeHeld ){
-        CloseHandle( _pipeHndl );
-        _pipeHndl = INVALID_HANDLE_VALUE;
+    if( _pipe_held ){
+        CloseHandle( _xtrnl_pipe_hndl );
+        _xtrnl_pipe_hndl = INVALID_HANDLE_VALUE;
         ReleaseMutex( _mtx );
         CloseHandle( _mtx );
     }
-    _pipeHeld = false;
+    _pipe_held = false;
 }
 
 bool DynamicIPCMaster::try_for_slave()
 {    
     disconnect(); 
    
-    if( (_mMapSz = grab_pipe()) <= 0 ){           
+    _mmap_sz = grab_pipe();
+    if( _mmap_sz <= 0 ){           
         TOSDB_LogEx( "IPC-Master", "grab_pipe() in try_for_slave() failed", 
                      GetLastError() );
         disconnect( 0 );        
@@ -245,11 +255,11 @@ bool DynamicIPCMaster::try_for_slave()
     }
 
     /* 
-       WE HAD A RACE CONDITION HERE WHERE THE SLAVE DELETES SHARED MEM FIRST;  
-       SHOULD BE O.K. NOW 
+     * WE HAD A RACE CONDITION HERE WHERE THE SLAVE DELETES SHARED MEM FIRST;  
+     *  SHOULD BE O.K. NOW 
      */
-    _fMapHndl = OpenFileMapping( FILE_MAP_WRITE, 0, _shemStr.c_str() ); 
-    if( !_fMapHndl){
+    _fmap_hndl = OpenFileMapping( FILE_MAP_WRITE, 0, _shem_str.c_str() ); 
+    if( !_fmap_hndl){
         TOSDB_LogEx("IPC-Master", "OpenFileMapping() in try_for_slave() failed", 
                     GetLastError() );
         release_pipe();
@@ -257,7 +267,8 @@ bool DynamicIPCMaster::try_for_slave()
         return false;
     }
 
-    if( !(_mMapAddr = MapViewOfFile( _fMapHndl, FILE_MAP_WRITE, 0, 0, 0 ))){
+    _mmap_addr = MapViewOfFile( _fmap_hndl, FILE_MAP_WRITE, 0, 0, 0 );
+    if( !_mmap_addr ){
         TOSDB_LogEx( "IPC-Master", "MapViewOfFile() in try_for_slave() failed", 
                      GetLastError() );
         release_pipe();
@@ -272,35 +283,36 @@ bool DynamicIPCMaster::try_for_slave()
 
 bool DynamicIPCMaster::connected() const 
 { 
-    size_type outBuf[2];
+    size_type obuf[2];
 
-    outBuf[0] = PING;
-    outBuf[1] = 999;
-    size_type retOff = 0;
-    DWORD bRead = 0;
+    obuf[0] = PING;
+    obuf[1] = 999;
+    size_type off = 0;
+    DWORD read = 0;
 
-    BOOL res = CallNamedPipe( _intrnlPipeStr.c_str(), (void*)outBuf, 
-                              sizeof(outBuf), (void*)&(retOff), sizeof(retOff),
-                              &bRead, TOSDB_DEF_TIMEOUT );
+    BOOL res = CallNamedPipe( _intrnl_pipe_str.c_str(), (void*)obuf, 
+                              sizeof(obuf), (void*)&(off), sizeof(off), &read, 
+                              TOSDB_DEF_TIMEOUT );
 
-    return ( _mMapAddr && _fMapHndl && res && (retOff == outBuf[1]) );    
+    return ( _mmap_addr && _fmap_hndl && res && (off == obuf[1]) );    
 }
 
 void DynamicIPCMaster::disconnect( int level )
 {    
-    switch( level ){    
+    switch( level )
+    {    
     case 3:
-        if(_mMapAddr){                   
-            if( !UnmapViewOfFile( _mMapAddr )){
+        if(_mmap_addr){                   
+            if( !UnmapViewOfFile( _mmap_addr )){
                 TOSDB_LogEx( "IPC-Master", 
                              "UnmapViewOfFile in DynamicIPCMaster::disconnect()"
                              " failed", GetLastError() ); 
             }       
         }
-        _mMapAddr = NULL;                    
+        _mmap_addr = NULL;                    
     case 2: 
-        CloseHandle( _fMapHndl );        
-        _fMapHndl = NULL;    
+        CloseHandle( _fmap_hndl );        
+        _fmap_hndl = NULL;    
     case 1:
         release_pipe();
     default:    
@@ -310,253 +322,248 @@ void DynamicIPCMaster::disconnect( int level )
 
 DynamicIPCSlave::DynamicIPCSlave( std::string name, int sz )
     :     
-    _allocLoopF(true),
+    _alloc_flag(true),
     DynamicIPCBase( name, sz )
     { 
-        for( int i = 0; i < 3; ++i){ 
-            _secAttr[(Securable)i] = SECURITY_ATTRIBUTES();
-            _secDesc[(Securable)i] = SECURITY_DESCRIPTOR();  
-            _everyoneSIDs[(Securable)i] = 
-                std::move( SmartBuffer<void>(SECURITY_MAX_SID_SIZE) );
-            _everyoneACLs[(Securable)i] = 
-                std::move( SmartBuffer<ACL>(ACL_SIZE) );        
+        for( int i = 0; i < 3; ++i ){ 
+            _sec_attr[(Securable)i] = SECURITY_ATTRIBUTES();
+            _sec_desc[(Securable)i] = SECURITY_DESCRIPTOR();  
+            _sids[(Securable)i] = std::move( 
+                SmartBuffer<void>(SECURITY_MAX_SID_SIZE) );
+            _acls[(Securable)i] = std::move( SmartBuffer<ACL>(ACL_SIZE) );        
         }   
                               
         _set_security();                                        
 
-        if( !(_mtx = CreateMutex( &_secAttr[MUTEX1], FALSE, KMUTEX_NAME )) ){
+        _mtx = CreateMutex( &_sec_attr[MUTEX1], FALSE, KMUTEX_NAME );
+        if( !_mtx )
             TOSDB_LogEx("IPC-Slave","CreateMutex() in slave constructor failed", 
                         GetLastError() );        
-        }
+        
+        _intrnl_pipe_hndl = CreateNamedPipe( _intrnl_pipe_str.c_str(), 
+                                             PIPE_ACCESS_DUPLEX,
+                                             PIPE_TYPE_MESSAGE 
+                                                | PIPE_READMODE_BYTE 
+                                                | PIPE_WAIT,
+                                             PIPE_UNLIMITED_INSTANCES, 0, 0, 
+                                             INFINITE, &_sec_attr[PIPE1] );  
 
-        _intrnlPipeHndl = CreateNamedPipe( _intrnlPipeStr.c_str(), 
-                                           PIPE_ACCESS_DUPLEX,
-                                           PIPE_TYPE_MESSAGE 
-                                             | PIPE_READMODE_BYTE 
-                                             | PIPE_WAIT,
-                                           PIPE_UNLIMITED_INSTANCES, 0, 0, 
-                                           INFINITE, &_secAttr[PIPE1] );            
-        if(!_intrnlPipeHndl){
+        if( !_intrnl_pipe_hndl )
             TOSDB_LogEx( "IPC-Slave", "CreateNamedPipe()[internal] in slave "
                          "constructor failed", GetLastError() );
-        }
+        
 
         /* get handle to page file */
-        _fMapHndl = CreateFileMapping( INVALID_HANDLE_VALUE, &_secAttr[SHEM1],
-                                       PAGE_READWRITE, 
-                                       (unsigned long long)_mMapSz >> 32,
-                                       ((unsigned long long)_mMapSz << 32) >> 32,
-                                       _shemStr.c_str() );
+        _fmap_hndl = CreateFileMapping( INVALID_HANDLE_VALUE, &_sec_attr[SHEM1],
+                                        PAGE_READWRITE, 
+                                        (unsigned long long)_mmap_sz >>32,
+                                        ((unsigned long long)_mmap_sz <<32) >>32,
+                                        _shem_str.c_str() );
         
-        if(!_fMapHndl){
+        if(!_fmap_hndl)
             TOSDB_LogEx( "IPC-Slave", 
                          "CreateFileMapping() in slave constructor failed", 
-                         GetLastError() ); 
-        }
+                         GetLastError() );         
    
-        if( !(_mMapAddr = MapViewOfFile( _fMapHndl, FILE_MAP_WRITE, 0, 0, 0 ))){
-            TOSDB_LogEx( "IPC-Slave", 
+        _mmap_addr = MapViewOfFile( _fmap_hndl, FILE_MAP_WRITE, 0, 0, 0 );
+        if( !_mmap_addr )
+            TOSDB_LogEx( "IPC-Slave",
                          "MapViewOfFile() in slave constructor failed", 
-                         GetLastError() );  
-        }
+                         GetLastError() );        
   
-        /* consturct our heap for managing the mappings allocatable space */
-        _pHeap =  std::unique_ptr<ExplicitHeap>( new ExplicitHeap( _mMapAddr,
-                                                                   _mMapSz ) );
+        /* 
+         * consturct our heap for managing the mappings allocatable space 
+         */
+        _uptr_heap =  std::unique_ptr<ExplicitHeap>( 
+                          new ExplicitHeap( _mmap_addr, _mmap_sz ) );
         
-        std::async( std::launch::async, 
-                    [this]
-                      { 
-                        _listen_for_alloc(); 
-                      } 
-                   ); 
+        std::async( std::launch::async, [this]{ _listen_for_alloc(); } ); 
     }    
 
 DynamicIPCSlave::~DynamicIPCSlave()
     {    
-        _allocLoopF = false;   
+        _alloc_flag = false;   
      
-        /* !! TROUBLE written all over this !! */
-        CloseHandle( CreateFile( _intrnlPipeStr.c_str(), 
+        /* 
+         * !! TROUBLE written all over this !! 
+         */
+        CloseHandle( CreateFile( _intrnl_pipe_str.c_str(), 
                                  GENERIC_READ | GENERIC_WRITE,
                                  FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, 
                                  OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL ) );    
         CloseHandle( _mtx );         
     
-        if( !UnmapViewOfFile( _mMapAddr )){
+        if( !UnmapViewOfFile( _mmap_addr ) )
             TOSDB_LogEx( "IPC-Slave", 
                          "UnmapViewOfFile() in slave destructor failed", 
-                         GetLastError() );    
-        }
+                         GetLastError() );            
 
-        CloseHandle( _fMapHndl );            
-        DisconnectNamedPipe( _pipeHndl );
-        CloseHandle( _pipeHndl );            
+        CloseHandle( _fmap_hndl );            
+        DisconnectNamedPipe( _xtrnl_pipe_hndl );
+        CloseHandle( _xtrnl_pipe_hndl );            
     }
 
 void DynamicIPCSlave::_listen_for_alloc()
 {
     size_type args[2];
 
-    DWORD bDone = 0;    
+    DWORD done = 0;    
     void* start = nullptr;                    
 
-    while( _allocLoopF ){
+    while( _alloc_flag ){
     
-        ConnectNamedPipe( _intrnlPipeHndl, NULL );
-        ReadFile( _intrnlPipeHndl, (void*)&args, sizeof(args), &bDone, NULL );
+        ConnectNamedPipe( _intrnl_pipe_hndl, NULL );
+        ReadFile( _intrnl_pipe_hndl, (void*)&args, sizeof(args), &done, NULL );
 
-        switch( args[0] ){
+        switch( args[0] )
+        {
         case ALLOC:
             {                
-                start = _pHeap->allocate( args[1] );
+                start = _uptr_heap->allocate( args[1] );
                 args[1] = offset(start);
 
-                WriteFile( _intrnlPipeHndl, (void*)&args[1], sizeof(args[1]), 
-                           &bDone, NULL );                
+                WriteFile( _intrnl_pipe_hndl, (void*)&args[1], sizeof(args[1]), 
+                           &done, NULL );                
             }
             break;
         case DEALLOC:
             {                
-                args[1] = _pHeap->deallocate( ptr(args[1]) ) ? TRUE : FALSE;
+                args[1] = _uptr_heap->deallocate( ptr(args[1]) ) ? TRUE : FALSE;
 
-                WriteFile( _intrnlPipeHndl, (void*)&args[1], sizeof(args[1]), 
-                           &bDone, NULL );
+                WriteFile( _intrnl_pipe_hndl, (void*)&args[1], sizeof(args[1]), 
+                           &done, NULL );
             }
             break;
         case PING:
-            {
-                /* no mmap send back a differen val */
-                if( !_mMapAddr || !_fMapHndl )
+            {                
+                if( !_mmap_addr || !_fmap_hndl )
+                    /* 
+                     * no mmap send back a different val 
+                     */
                     --(args[1]); 
 
-                WriteFile( _intrnlPipeHndl, (void*)&args[1], sizeof(args[1]), 
-                           &bDone, NULL );
+                WriteFile( _intrnl_pipe_hndl, (void*)&args[1], sizeof(args[1]), 
+                           &done, NULL );
             }
             break;            
         default:
             TOSDB_LogH( "IPC-Slave", 
                         "Invalid OpCode passed to _listen_for_alloc()" );
             break;
-        }  
-          
-        DisconnectNamedPipe( _intrnlPipeHndl );
+        }           
+        DisconnectNamedPipe( _intrnl_pipe_hndl );
     }    
-    CloseHandle( _intrnlPipeHndl );
+    CloseHandle( _intrnl_pipe_hndl );
 }
 
 bool DynamicIPCSlave::wait_for_master()
 {    
-    if( !_pipeHndl || _pipeHndl == INVALID_HANDLE_VALUE ){
-        _pipeHndl = CreateNamedPipe( _pipeStr.c_str(), PIPE_ACCESS_DUPLEX,
-                                     PIPE_TYPE_MESSAGE      
-                                         | PIPE_READMODE_MESSAGE 
-                                         | PIPE_WAIT,
-                                     1, 0, 0, INFINITE, &_secAttr[PIPE1] ); 
-    }else{
-        DisconnectNamedPipe( _pipeHndl );
-    }
+    if( !_xtrnl_pipe_hndl || _xtrnl_pipe_hndl == INVALID_HANDLE_VALUE ){
+        _xtrnl_pipe_hndl = CreateNamedPipe( _xtrnl_pipe_str.c_str(), 
+                                            PIPE_ACCESS_DUPLEX,
+                                            PIPE_TYPE_MESSAGE      
+                                                | PIPE_READMODE_MESSAGE 
+                                                | PIPE_WAIT,
+                                            1, 0, 0, INFINITE, 
+                                            &_sec_attr[PIPE1] ); 
+    }else
+        DisconnectNamedPipe( _xtrnl_pipe_hndl );
+    
 
-    if( !_pipeHndl || _pipeHndl == INVALID_HANDLE_VALUE ){
+    if( !_xtrnl_pipe_hndl || _xtrnl_pipe_hndl == INVALID_HANDLE_VALUE ){
         TOSDB_LogEx( "IPC-Slave", 
                      "CreateNamedPipe() failed in wait_for_master()", 
                      GetLastError() );            
         return false;
     }    
 
-    ConnectNamedPipe( _pipeHndl, NULL ); 
+    ConnectNamedPipe( _xtrnl_pipe_hndl, NULL ); 
     
-    if( !(this->send(_mMapSz)) ) {
+    if( !(this->send(_mmap_sz)) ) 
         TOSDB_LogEx( "IPC-Slave", "->send() failed in wait_for_master()", 
-                     GetLastError() );  
-    }
+                     GetLastError() );      
   
     return true;
 }
 
 int DynamicIPCSlave::_set_security()
 {    
-    SID_NAME_USE       sidUseDummy;
+    SID_NAME_USE       dummy;
 
-    DWORD              domSz = 128;
-    DWORD              sidSz = SECURITY_MAX_SID_SIZE;
+    DWORD              dom_sz = 128;
+    DWORD              sid_sz = SECURITY_MAX_SID_SIZE;
 
-    SmartBuffer<char>  domBuffer(domSz);
-    SmartBuffer<void>  everyoneSID(sidSz);
+    SmartBuffer<char>  dom_buf(dom_sz);
+    SmartBuffer<void>  sid(sid_sz);
         
-    _secAttr[SHEM1].nLength = 
-        _secAttr[PIPE1].nLength = 
-            _secAttr[MUTEX1].nLength = sizeof(SECURITY_ATTRIBUTES);
+    _sec_attr[SHEM1].nLength = 
+        _sec_attr[PIPE1].nLength = 
+            _sec_attr[MUTEX1].nLength = sizeof(SECURITY_ATTRIBUTES);
 
-    _secAttr[SHEM1].bInheritHandle = 
-        _secAttr[PIPE1].bInheritHandle = 
-            _secAttr[MUTEX1].bInheritHandle = FALSE;
+    _sec_attr[SHEM1].bInheritHandle = 
+        _sec_attr[PIPE1].bInheritHandle = 
+            _sec_attr[MUTEX1].bInheritHandle = FALSE;
 
-    _secAttr[SHEM1].lpSecurityDescriptor = &_secDesc[SHEM1];
-    _secAttr[PIPE1].lpSecurityDescriptor = &_secDesc[PIPE1];
-    _secAttr[MUTEX1].lpSecurityDescriptor = &_secDesc[MUTEX1];
+    _sec_attr[SHEM1].lpSecurityDescriptor = &_sec_desc[SHEM1];
+    _sec_attr[PIPE1].lpSecurityDescriptor = &_sec_desc[PIPE1];
+    _sec_attr[MUTEX1].lpSecurityDescriptor = &_sec_desc[MUTEX1];
 
-    if( !LookupAccountName( NULL, "Everyone", everyoneSID.get(), &sidSz,
-                            domBuffer.get(), &domSz, &sidUseDummy) ){
+    if( !LookupAccountName( NULL, "Everyone", sid.get(), &sid_sz, dom_buf.get(), 
+                            &dom_sz, &dummy) )
         return -1;
-    }
+   
 
-    if( memcpy_s( _everyoneSIDs[SHEM1].get(), SECURITY_MAX_SID_SIZE, 
-                  everyoneSID.get(), SECURITY_MAX_SID_SIZE ) 
-        || memcpy_s( _everyoneSIDs[PIPE1].get(), SECURITY_MAX_SID_SIZE, 
-                     everyoneSID.get(), SECURITY_MAX_SID_SIZE ) 
-        || memcpy_s( _everyoneSIDs[MUTEX1].get(), SECURITY_MAX_SID_SIZE, 
-                     everyoneSID.get(), SECURITY_MAX_SID_SIZE ) ){
-     
+    if( memcpy_s( _sids[SHEM1].get(), SECURITY_MAX_SID_SIZE, sid.get(), 
+                  SECURITY_MAX_SID_SIZE ) 
+        || memcpy_s( _sids[PIPE1].get(), SECURITY_MAX_SID_SIZE, sid.get(), 
+                     SECURITY_MAX_SID_SIZE ) 
+        || memcpy_s( _sids[MUTEX1].get(), SECURITY_MAX_SID_SIZE, sid.get(), 
+                     SECURITY_MAX_SID_SIZE ) ){     
         return -2;
     }
 
-    if( !InitializeSecurityDescriptor( &_secDesc[SHEM1], 
+    if( !InitializeSecurityDescriptor( &_sec_desc[SHEM1], 
                                        SECURITY_DESCRIPTOR_REVISION ) 
-        || !InitializeSecurityDescriptor( &_secDesc[PIPE1], 
+        || !InitializeSecurityDescriptor( &_sec_desc[PIPE1], 
                                           SECURITY_DESCRIPTOR_REVISION ) 
-        || !InitializeSecurityDescriptor( &_secDesc[MUTEX1], 
+        || !InitializeSecurityDescriptor( &_sec_desc[MUTEX1], 
                                           SECURITY_DESCRIPTOR_REVISION ) ){
-
         return -3; 
     }
 
-    if( !SetSecurityDescriptorGroup( &_secDesc[SHEM1],
-                                     _everyoneSIDs[SHEM1].get(), FALSE ) 
-        || !SetSecurityDescriptorGroup( &_secDesc[PIPE1], 
-                                        _everyoneSIDs[PIPE1].get(), FALSE ) 
-        || !SetSecurityDescriptorGroup( &_secDesc[MUTEX1], 
-                                        _everyoneSIDs[MUTEX1].get(), FALSE ) ){
- 
+    if( !SetSecurityDescriptorGroup( &_sec_desc[SHEM1], _sids[SHEM1].get(), 
+                                     FALSE ) 
+        || !SetSecurityDescriptorGroup( &_sec_desc[PIPE1], _sids[PIPE1].get(), 
+                                        FALSE ) 
+        || !SetSecurityDescriptorGroup( &_sec_desc[MUTEX1], _sids[MUTEX1].get(),
+                                        FALSE ) ){ 
         return -4;
     }
 
-    if( !InitializeAcl( _everyoneACLs[SHEM1].get(), ACL_SIZE, ACL_REVISION ) 
-        || !InitializeAcl( _everyoneACLs[PIPE1].get(), ACL_SIZE, ACL_REVISION ) 
-        || !InitializeAcl( _everyoneACLs[MUTEX1].get(), ACL_SIZE, ACL_REVISION))
-    { 
+    if( !InitializeAcl( _acls[SHEM1].get(), ACL_SIZE, ACL_REVISION ) 
+        || !InitializeAcl( _acls[PIPE1].get(), ACL_SIZE, ACL_REVISION ) 
+        || !InitializeAcl( _acls[MUTEX1].get(), ACL_SIZE, ACL_REVISION)){ 
+
             return -5; 
     }
                                                                     
-    if( !AddAccessAllowedAce( _everyoneACLs[SHEM1].get(), ACL_REVISION, 
-                              FILE_MAP_WRITE, _everyoneSIDs[SHEM1].get() ) 
-        || !AddAccessAllowedAce( _everyoneACLs[PIPE1].get(), ACL_REVISION, 
-                                 FILE_GENERIC_WRITE, _everyoneSIDs[PIPE1].get()) 
-        || !AddAccessAllowedAce( _everyoneACLs[PIPE1].get(), ACL_REVISION, 
-                                 FILE_GENERIC_READ, _everyoneSIDs[PIPE1].get()) 
-        || !AddAccessAllowedAce( _everyoneACLs[MUTEX1].get(), ACL_REVISION, 
-                                 SYNCHRONIZE, _everyoneSIDs[MUTEX1].get() ) ){
-
+    if( !AddAccessAllowedAce( _acls[SHEM1].get(), ACL_REVISION, 
+                              FILE_MAP_WRITE, _sids[SHEM1].get() ) 
+        || !AddAccessAllowedAce( _acls[PIPE1].get(), ACL_REVISION, 
+                                 FILE_GENERIC_WRITE, _sids[PIPE1].get()) 
+        || !AddAccessAllowedAce( _acls[PIPE1].get(), ACL_REVISION, 
+                                 FILE_GENERIC_READ, _sids[PIPE1].get()) 
+        || !AddAccessAllowedAce( _acls[MUTEX1].get(), ACL_REVISION, 
+                                 SYNCHRONIZE, _sids[MUTEX1].get() ) ){
         return -6;
     }
 
-    if( !SetSecurityDescriptorDacl( &_secDesc[SHEM1], TRUE, 
-                                    _everyoneACLs[SHEM1].get(), FALSE ) 
-        || !SetSecurityDescriptorDacl( &_secDesc[PIPE1], TRUE, 
-                                       _everyoneACLs[PIPE1].get(), FALSE ) 
-        || !SetSecurityDescriptorDacl( &_secDesc[MUTEX1], TRUE, 
-                                       _everyoneACLs[MUTEX1].get(), FALSE ) ){
-
+    if( !SetSecurityDescriptorDacl( &_sec_desc[SHEM1], TRUE, 
+                                    _acls[SHEM1].get(), FALSE ) 
+        || !SetSecurityDescriptorDacl( &_sec_desc[PIPE1], TRUE, 
+                                       _acls[PIPE1].get(), FALSE ) 
+        || !SetSecurityDescriptorDacl( &_sec_desc[MUTEX1], TRUE, 
+                                       _acls[MUTEX1].get(), FALSE ) ){
         return -7;
     }
 

@@ -864,7 +864,7 @@ auto TOSDB_GetStreamSnapshot( std::string id,
 { /* this should be cleaned up; 
      bound to be a type/cast issue in here somewhere 
    */
-    size_type bSize;
+    size_type sz;
     long diff;    
     long long minDiff;
     const TOSDBlock *db;
@@ -875,11 +875,11 @@ auto TOSDB_GetStreamSnapshot( std::string id,
     db = GetBlockOrThrow( id );    
     dat = db->block->raw_stream_ptr(sItem, tTopic); /* get stream size */
 
-    bSize = (size_type)(dat->bound_size());
+    sz = (size_type)(dat->bound_size());
     if( end < 0 ) 
-        end += bSize;
+        end += sz;
     if( beg < 0 ) 
-        beg += bSize;
+        beg += sz;
 
     diff = end - beg;
     if( diff < 0 )
