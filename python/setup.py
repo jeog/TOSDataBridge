@@ -9,10 +9,10 @@ from io import StringIO
 from platform import system
 import sys
 
-_isWinSys = system() in ["Windows","windows","WINDOWS"]
-_sysArch = "x64" if ( log( sys.maxsize * 2, 2) > 33 ) else "x86"
-_sysArchD = "Win32" if _sysArch == "x86" else "x64"
-_sysMinorV = sys.version_info.minor
+_SYS_IS_WIN = system() in ["Windows","windows","WINDOWS"]
+_SYS_ARCH = "x64" if ( log( sys.maxsize * 2, 2) > 33 ) else "x86"
+_SYS_ARCHD = "Win32" if _SYS_ARCH == "x86" else "x64"
+_SYS_MINOR_V = sys.version_info.minor
 
 setup_dict = {
   "name":'tosdb',
@@ -32,9 +32,9 @@ ext_stub = Extension( "_tosdb",
 ext_win = Extension( **ext_stub.__dict__ )
 
 # add/override for Win
-ext_win.library_dirs       =  [ "../bin/Release/"+_sysArchD ]
-ext_win.libraries          =  [ "_tos-databridge-shared-"+_sysArch,
-                                "_tos-databridge-static-"+_sysArch ]
+ext_win.library_dirs       =  [ "../bin/Release/"+ _SYS_ARCHD ]
+ext_win.libraries          =  [ "_tos-databridge-shared-"+ _SYS_ARCH,
+                                "_tos-databridge-static-"+ _SYS_ARCH ]
 ext_win.define_macros      =  [ ("THIS_IMPORTS_IMPLEMENTATION",None),
                                 ("THIS_DOESNT_IMPORT_INTERFACE",None) ]
 ext_win.extra_compile_args =  ["/EHsc"]
@@ -44,7 +44,7 @@ try: # capture setup errors but allow setup to complete (optional=True)
     sio = StringIO()
     se = sys.stderr
     sys.stderr = sio  
-    setup( ext_modules=[ ext_win if _isWinSys else ext_stub], **setup_dict )  
+    setup( ext_modules=[ ext_win if _SYS_IS_WIN else ext_stub], **setup_dict )  
     sys.stderr = se    
     if sio.getvalue(): 
         print( '\n', "+ Operation 'completed' with errors:\n")
@@ -63,10 +63,10 @@ try: # capture setup errors but allow setup to complete (optional=True)
 except (BaseException) as err:
     print("- fatal error thrown during setup: ",type(err))
     print(err)
-    if _isWinSys:           
+    if _SYS_IS_WIN:           
         print("+ Would you like to try again with a pre-compiled _tosdb.pyd?")         
         if input() in ["y","Y","yes","Yes","YES"]:            
-            pydF = "_tosdb-"+str(_sysArch)+"-"+str(_sysMinorV)+".pyd"
+            pydF = "_tosdb-"+str(_SYS_ARCH)+"-"+str(_SYS_MINOR_V)+".pyd"
             if pydF in listdir():           
                 print("Found _tosdb.pyd, sending it to python root directory")
                 copy2("./"+pydF, "./_tosdb.pyd")

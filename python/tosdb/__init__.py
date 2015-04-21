@@ -126,9 +126,9 @@ class _TOS_DataBlock(metaclass=_ABCMeta):
     #@_abstractmethod
     #def total_frame(): pass
     
-_isWinSys = _system() in ["Windows","windows","WINDOWS"]
+_SYS_IS_WIN = _system() in ["Windows","windows","WINDOWS"]
 
-if _isWinSys: 
+if _SYS_IS_WIN: 
     from ._win import * # import the core implementation
     _TOS_DataBlock.register( TOS_DataBlock ) # register as virtual subclass
 
@@ -426,9 +426,7 @@ class VTOS_DataBlock:
             raise TOSDB_VirtualizationError( "invalid virt_type" )
         
         try:
-            if not _send_tcp( self._my_sock, req_b, _vPACK_SZ):
-                raise TOSDB_VirtualizationError( "_send_tcp() failed",
-                                                 "VTOS_DataBlock._call" )
+            _send_tcp( self._my_sock, req_b, _vPACK_SZ):        
             try:
                 ret_b = _recv_tcp( self._my_sock, _vPACK_SZ )
             except _socket.timeout as e:
@@ -440,7 +438,7 @@ class VTOS_DataBlock:
             except:
                 raise TOSDB_VirtualizationError("failed to reconnect to hub",
                                                 "VTOS_DataBlock._call" )       
-        except ConnectionError as e:
+        except Exception as e:
             TOSDB_VirtualizationError( repr(e) )
     
         args = _unpack_msg( ret_b )                 
@@ -608,23 +606,26 @@ def _loadnamedtuple( nt):
     ty = _namedtuple( name, keys )
     return ty( *vals )
 
-def _recv_tcp( sock, pack_sz ):
-    tot = b''  
-    r = sock.recv( pack_sz )
-    while len(r) == pack_sz:
-        tot += r
-        r = sock.recv( pack_sz )
-    tot += r   
-    return tot  
+def _recv_tcp( sock ):
+    packedlen = _recvall_tcp( sock, 8 )
+    if not packedlen:
+        return None
+    dlen = _struct.unpack( 'Q', packedlen)[0]
+    return _recvall_tcp( sock, dlen )
+
+def _recvall_tcp( sock, n ):
+    data = b''
+    while len(data) < n:
+        p = sock.recv( n - len(data) )
+        if not p:
+            return None
+        data += p
+    return data
 
 def _send_tcp( sock, data, pack_sz ):
     dl = len(data)
-    snt = 0
-    for i in range( 0, dl, pack_sz ):
-        snt += sock.send( data[i:i+pack_sz] )          
-    if dl % pack_sz == 0:
-        sock.send( b'')
-    return snt
+    msg = _struct.pack('Q',len(data)) + data
+    return sock.sendall(msg)
 
 def _pack_msg( *parts ):   
     def _escape_part( part ):
@@ -672,7 +673,7 @@ def _chck_address( addr ):
              type(addr[0]) is str and type(addr[1]) is int ):
         raise TOSDB_TypeError("address must be of type (str,int)")
 
-if __name__ == "__main__" and _isWinSys:
+if __name__ == "__main__" and _SYS_IS_WIN:
     parser = _ArgumentParser()
     parser.add_argument( "--root", 
                          help = "root directory to search for the library" )
