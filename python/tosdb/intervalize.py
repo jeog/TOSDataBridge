@@ -41,23 +41,26 @@ class GetOnTimeInterval( _GetOnInterval ):
 
     @classmethod
     def send_to_file( cls, block, item, topic, file_path,
-                  time_interval=TimeInterval.five_min,
-                  update_seconds=15, use_pre_roll_val=True ):                
+                      time_interval=TimeInterval.five_min,
+                      update_seconds=15, use_pre_roll_val=True ):                
         file = open(file_path,'w')
-        i = cls(block,item,topic)
-        file.seek(0)
-        file.write(str(block.info()))
-        file.write('item: ' + item + '\n')
-        file.write('topic: ' + topic + '\n')
-        file.write('time_interval: ' + str(time_interval.val) + '\n' )
-        file.write('update_seconds: ' + str(update_seconds) + '\n' )
-        file.write('use_pre_roll_val: ' + str(use_pre_roll_val) + '\n' )
-        run_cb = lambda x: file.write( str(x[0]) + ' ' + str(x[1]) + '\n' )
-        stop_cb = lambda : file.close()
-        if cls._check_start_args( run_cb, stop_cb, time_interval,
-                                  update_seconds):
-            i.start( run_cb, stop_cb, time_interval, update_seconds)
-        return i            
+        try:
+            i = cls(block,item,topic)
+            file.seek(0)
+            file.write(str(block.info()))
+            file.write('item: ' + item + '\n')
+            file.write('topic: ' + topic + '\n')
+            file.write('time_interval: ' + str(time_interval.val) + '\n' )
+            file.write('update_seconds: ' + str(update_seconds) + '\n' )
+            file.write('use_pre_roll_val: ' + str(use_pre_roll_val) + '\n' )
+            run_cb = lambda x: file.write( str(x[0]) + ' ' + str(x[1]) + '\n' )
+            stop_cb = lambda : file.close()
+            if cls._check_start_args( run_cb, stop_cb, time_interval,
+                                      update_seconds):
+                i.start( run_cb, stop_cb, time_interval, update_seconds)
+            return i
+        except:
+            file.close()
         
     @staticmethod
     def _check_start_args( run_callback, stop_callback, time_interval,
@@ -110,31 +113,22 @@ class GetOnTimeInterval( _GetOnInterval ):
                 self.stop()
                 
     def _find_last_roll(self, snapshot):
-        last_item = snapshot[0]
-        if self._interval_seconds <= 60:            
-            for this_item in snapshot[1:]:               
-                if last_item[1].min > this_item[1].min:
-                    return (this_item,last_item)
-                else:
-                    last_item = this_item                      
-        elif self._interval_seconds <= 3600:
-            intrvl_min = self._interval_seconds / 60          
-            for this_item in snapshot[1:]:
-                last_mod = last_item[1].min % intrvl_min
-                this_mod = this_item[1].min % intrvl_min
-                if last_mod == 0 and this_mod != 0:
-                    return (this_item,last_item)
-                else:
-                    last_item = this_item           
+        last_item = snapshot[0]        
+        if self._interval_seconds <= 60:
+        elif self._interval_seconds <= 3600:              
+            do_mod = lambda i: i[1].min % (self._interval_seconds / 60) 
         elif self._interval_seconds <= 86400:
-            intrvl_hour = self._interval_seconds / 3600            
-            for this_item in snapshot[1:]:
-                last_mod = last_item[1].hour % intrvl_hour
-                this_mod = this_item[1].hour % intrvl_hour
-                if last_mod == 0 and this_mod != 0:
-                    return (this_item,last_item)
-                else:
-                    last_item = this_item
+            do_mod = lambda i: i[1].hour % (self._interval_seconds / 3600)  
+        else:
+            raise ValueError("invalid TimeInterval")
+        for this_item in snapshot[1:]:
+            last_mod = do_mod(last_item)
+            this_mod = do_mod(this_item)
+            if last_mod == 0 and this_mod != 0:
+                return (this_item,last_item)
+            else:
+                last_item = this_item  
+
   
       
 
