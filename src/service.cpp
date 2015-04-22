@@ -27,62 +27,61 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 #include "concurrency.hpp"
 
 namespace {
-        
-    LPCSTR    LOG_NAME        = "service-log.log";
-#ifdef _WIN64
-    LPCSTR    CORE_PROC_NAME  = "tos-databridge-engine-x64.exe";
-#else
-    LPCSTR    CORE_PROC_NAME  = "tos-databridge-engine-x86.exe";
-#endif
-
-    std::string coreProcPath;
-    std::string integrityLevel;
-    
-    LPSTR serviceName = "TOSDataBridge";  
-  
-    char coreProcCmd[12];
-
-    PROCESS_INFORMATION coreProcInfo;
-         
     const unsigned int COMM_BUFFER_SIZE  =  4;
     const unsigned int ACL_SIZE          =  96;
     const unsigned int UPDATE_PERIOD     =  2000;    
     const unsigned int MAX_ARG_SIZE      =  20;
         
-    HINSTANCE hinstance = NULL;
-    SYSTEM_INFO sys_info;
+    LPSTR     SERVICE_NAME  =  "TOSDataBridge"; 
+    LPCSTR    LOG_NAME      =  "service-log.log";
+#ifdef _WIN64
+    LPCSTR    ENGINE_NAME   =  "tos-databridge-engine-x64.exe";
+#else
+    LPCSTR    ENGINE_NAME   =  "tos-databridge-engine-x86.exe";
+#endif           
+    std::string engine_path;
+    std::string integrity_level; 
+
+    char engine_cmd[12];
+
+    PROCESS_INFORMATION engine_pinfo;            
+    SYSTEM_INFO         sys_info;
+    HINSTANCE           hinstance = NULL;
         
-    volatile bool shutdownFlag  =  false;    
-    volatile bool pauseFlag     =  false;
-    volatile bool isService     =  true;
+    volatile bool shutdown_flag  =  false;    
+    volatile bool pause_flag     =  false;
+    volatile bool is_service     =  true;
 
-    SERVICE_STATUS serviceStatus;
-    SERVICE_STATUS_HANDLE hServiceStatus; 
+    SERVICE_STATUS        service_status;
+    SERVICE_STATUS_HANDLE service_status_hndl; 
 
-    std::unique_ptr<DynamicIPCMaster> globalIPCMaster;
+    std::unique_ptr<DynamicIPCMaster> master;
 
 void UpdateStatus( int status, int check_point )
 {
     if( check_point < 0 )
-        ++serviceStatus.dwCheckPoint;
+        ++service_status.dwCheckPoint;
     else 
-        serviceStatus.dwCheckPoint = check_point;
+        service_status.dwCheckPoint = check_point;
 
     if( status >= 0) 
-        serviceStatus.dwCurrentState = status; 
+        service_status.dwCurrentState = status; 
 
-    if( !SetServiceStatus( hServiceStatus, &serviceStatus ) ){
+    if( !SetServiceStatus( service_status_hndl, &service_status ) )
+    {
         TOSDB_LogH("SERVICE-UPDATE","error setting status");
 
-        serviceStatus.dwCurrentState = SERVICE_STOPPED;
-        serviceStatus.dwWin32ExitCode = ERROR_SERVICE_SPECIFIC_ERROR;
-        serviceStatus.dwServiceSpecificExitCode = 2;
+        service_status.dwCurrentState = SERVICE_STOPPED;
+        service_status.dwWin32ExitCode = ERROR_SERVICE_SPECIFIC_ERROR;
+        service_status.dwServiceSpecificExitCode = 2;
+        ++service_status.dwCheckPoint;
 
-        ++serviceStatus.dwCheckPoint;
-        if( !SetServiceStatus( hServiceStatus, &serviceStatus) ){
+        if( !SetServiceStatus( service_status_hndl, &service_status) )
+        {
             TOSDB_LogH( "SERVICE-UPDATE", "fatal error handling service error,"
                                           " terminating process" );
-            TerminateProcess( coreProcInfo.hProcess, EXIT_FAILURE );            
+
+            TerminateProcess( engine_pinfo.hProcess, EXIT_FAILURE );            
             ExitProcess( EXIT_FAILURE );
         }
     }
@@ -91,98 +90,94 @@ void UpdateStatus( int status, int check_point )
 int SendMsgWaitForResponse( const unsigned int msg )
 {
     int i;
-    unsigned int lCount = 0;
+    unsigned int lcount = 0;
 
-    if( !globalIPCMaster ){
-        globalIPCMaster = 
-            std::unique_ptr<DynamicIPCMaster>( 
-                std::move( new DynamicIPCMaster( TOSDB_COMM_CHANNEL )));
-        globalIPCMaster->try_for_slave();
+    if( !master )
+    {
+        master = std::unique_ptr<DynamicIPCMaster>( 
+                    std::move( new DynamicIPCMaster( TOSDB_COMM_CHANNEL )) );
+        master->try_for_slave();
 
-        while( globalIPCMaster->grab_pipe() <= 0 ){
-
-            Sleep(TOSDB_DEF_TIMEOUT/10);            
-            if( (lCount+=(TOSDB_DEF_TIMEOUT/10)) > TOSDB_DEF_TIMEOUT ){
+        while( master->grab_pipe() <= 0 ){
+            Sleep( TOSDB_DEF_TIMEOUT / 10 );  
+            lcount += ( TOSDB_DEF_TIMEOUT / 10 );
+            if( lcount >= TOSDB_DEF_TIMEOUT ){
                 TOSDB_LogH( "IPC", "SendMsgWaitForResponse timed out "
                                    "trying to grab pipe" );
                 return -1;
             }
         }
     }     
-    globalIPCMaster->send(msg);
-    globalIPCMaster->send(0); 
-    globalIPCMaster->recv(i);
+    master->send(msg);
+    master->send(0); 
+    master->recv(i);
     return i;
 }
 
 VOID WINAPI ServiceController( DWORD cntrl )
 {
-    switch( cntrl ){ 
+    switch( cntrl )
+    { 
     case SERVICE_CONTROL_SHUTDOWN:
     case SERVICE_CONTROL_STOP :
+    {            
+        shutdown_flag = true;
 
-        {            
-            shutdownFlag = true;
+        TOSDB_Log("SERVICE-CNTRL","SERVICE_STOP_PENDING");
+        UpdateStatus( SERVICE_STOP_PENDING, -1); 
 
-            TOSDB_Log("SERVICE-CNTRL","SERVICE_STOP_PENDING");
-            UpdateStatus( SERVICE_STOP_PENDING, -1); 
-
-            if( pauseFlag ){ /* if we're paused */
-                /* get it to continue silently */                
-                if(SendMsgWaitForResponse(TOSDB_SIG_CONTINUE) != TOSDB_SIG_GOOD)
-                    TOSDB_Log( "SERVICE-ADMIN", "error trying to resume paused "
-                                                "thread to stop it" );                
-            }
-            if( SendMsgWaitForResponse( TOSDB_SIG_STOP ) != TOSDB_SIG_GOOD)
-                TOSDB_Log("SERVICE-ADMIN","BAD_SIG returned from core process");   
+        if( pause_flag ){ 
+            /* 
+             * if we're paused... get it to continue silently 
+             */                
+            if( SendMsgWaitForResponse(TOSDB_SIG_CONTINUE) != TOSDB_SIG_GOOD )
+                TOSDB_Log( "SERVICE-ADMIN", "error trying to resume paused "
+                                            "thread to stop it" );                
         }
-
+        if( SendMsgWaitForResponse( TOSDB_SIG_STOP ) != TOSDB_SIG_GOOD )
+            TOSDB_Log("SERVICE-ADMIN","BAD_SIG returned from core process");   
+    }
         break;
     case SERVICE_CONTROL_PAUSE:
+    {        
+        if( pause_flag )
+            break;
 
-        {        
-            if( pauseFlag )
-                break;
+        pause_flag = true;
 
-            pauseFlag = true;
-
-            TOSDB_Log("SERVICE-CNTRL","SERVICE_PAUSE_PENDING");
-            UpdateStatus( SERVICE_PAUSE_PENDING, -1);
+        TOSDB_Log("SERVICE-CNTRL","SERVICE_PAUSE_PENDING");
+        UpdateStatus( SERVICE_PAUSE_PENDING, -1);
            
-            if( SendMsgWaitForResponse( TOSDB_SIG_PAUSE ) == TOSDB_SIG_GOOD ){
-                TOSDB_Log("SERVICE-CNTRL","SERVICE_PAUSED");
-                UpdateStatus( SERVICE_PAUSED, -1);
-            }else            
-                TOSDB_LogH( "SERVICE-ADMIN",
-                            "core process failed to confirm pause request" );                        
-        }
-
+        if( SendMsgWaitForResponse( TOSDB_SIG_PAUSE ) == TOSDB_SIG_GOOD ){
+            TOSDB_Log("SERVICE-CNTRL","SERVICE_PAUSED");
+            UpdateStatus( SERVICE_PAUSED, -1);
+        }else            
+            TOSDB_LogH( "SERVICE-ADMIN", "engine failed to confirm pause msg" );                        
+    }
         break;
     case SERVICE_CONTROL_CONTINUE:
-
-        {
-            if( !pauseFlag )
-                break;    
+    {
+        if( !pause_flag )
+            break;    
         
-            TOSDB_Log("SERVICE-CNTRL","SERVICE_CONTINUE_PENDING");
-            UpdateStatus( SERVICE_CONTINUE_PENDING, -1);
+        TOSDB_Log("SERVICE-CNTRL","SERVICE_CONTINUE_PENDING");
+        UpdateStatus( SERVICE_CONTINUE_PENDING, -1);
 
-            if( !globalIPCMaster ){
-                TOSDB_LogH("SERVICE-ADMIN","we don't own the slave");
-                break;
-            }            
+        if( !master ){
+            TOSDB_LogH("SERVICE-ADMIN","we don't own the slave");
+            break;
+        }            
 
-            if( SendMsgWaitForResponse( TOSDB_SIG_CONTINUE ) == TOSDB_SIG_GOOD){
-                TOSDB_Log("SERVICE-CNTRL","SERVICE_RUNNING");
-                UpdateStatus( SERVICE_RUNNING, -1);
-                pauseFlag = false;
-            }else
-                TOSDB_Log("SERVICE-ADMIN","BAD_SIG returned from core process");
+        if( SendMsgWaitForResponse( TOSDB_SIG_CONTINUE ) == TOSDB_SIG_GOOD ){
+            TOSDB_Log("SERVICE-CNTRL","SERVICE_RUNNING");
+            UpdateStatus( SERVICE_RUNNING, -1);
+            pause_flag = false;
+        }else
+            TOSDB_Log("SERVICE-ADMIN","BAD_SIG returned from core process");
 
-            globalIPCMaster->release_pipe();
-            globalIPCMaster.reset();
-        }
-
+        master->release_pipe();
+        master.reset();
+    }
         break;
     default:
         break;
@@ -191,168 +186,184 @@ VOID WINAPI ServiceController( DWORD cntrl )
 
 bool SpawnRestrictedProcess()
 {            
-    STARTUPINFO  stupInfo;            
-    SID_NAME_USE sidUseDummy;
-    HANDLE       hToken      = NULL; 
-    HANDLE       hChildToken = NULL;
-    DWORD        sessionID   = 0;
-    bool         retVal      = false;
-    DWORD        sidSz       = SECURITY_MAX_SID_SIZE;
-    DWORD        domSz       = 256;
+    STARTUPINFO  startup_info;            
+    SID_NAME_USE dummy;
+    HANDLE       tkn_hndl   = NULL; 
+    HANDLE       ctkn_hndl  = NULL;
+    DWORD        session_id = 0;
+    bool         ret        = false;
+    DWORD        sid_sz     = SECURITY_MAX_SID_SIZE;
+    DWORD        dom_sz     = 256;
 
-    SmartBuffer<VOID>  sidBuffer(sidSz);
-    SmartBuffer<CHAR>  domBuffer(domSz);            
+    SmartBuffer<VOID>  sid_buf(sid_sz);
+    SmartBuffer<CHAR>  dom_buf(dom_sz);            
 
-    if( !OpenProcessToken( GetCurrentProcess(), TOKEN_ALL_ACCESS, &hToken) ){
+    if( !OpenProcessToken( GetCurrentProcess(), TOKEN_ALL_ACCESS, &tkn_hndl) )
+    {
         TOSDB_LogEx( "SpawnRestrictedProcess","(1) failed to open token handle", 
                      GetLastError() );
         return false;     
     }
 
-    if( !DuplicateTokenEx( hToken, 0, NULL, SecurityImpersonation, 
-                           TokenPrimary, &hChildToken ) ){        
-        if( hToken ) 
-             CloseHandle(hToken);  
+    if( !DuplicateTokenEx( tkn_hndl, 0, NULL, SecurityImpersonation, 
+                           TokenPrimary, &ctkn_hndl ) ){        
+        if( tkn_hndl ) 
+             CloseHandle(tkn_hndl);  
         
         TOSDB_LogEx( "SpawnRestrictedProcess", "(2) failed to duplicate token", 
                      GetLastError() );
         return false; 
     }  
    
-    /* try to drop our integrity level from System */
-    if( LookupAccountName( NULL, integrityLevel.c_str(), sidBuffer.get(), 
-                           &sidSz, domBuffer.get(), &domSz, &sidUseDummy) ){     
-
+    
+    if( LookupAccountName( NULL, integrity_level.c_str(), sid_buf.get(), 
+                           &sid_sz, dom_buf.get(), &dom_sz, &dummy) )
+    {  /* 
+        * try to drop our integrity level from System 
+        */
         TOKEN_MANDATORY_LABEL tl;
 
         tl.Label.Attributes = SE_GROUP_INTEGRITY;
-        tl.Label.Sid = sidBuffer.get();
-        DWORD sz = sizeof(TOKEN_MANDATORY_LABEL) 
-                   + GetLengthSid( sidBuffer.get() );
+        tl.Label.Sid = sid_buf.get();
+        DWORD sz = sizeof(TOKEN_MANDATORY_LABEL) + GetLengthSid(sid_buf.get());
 
-        if( !SetTokenInformation( hChildToken, TokenIntegrityLevel, &tl, sz ) )
+        if( !SetTokenInformation( ctkn_hndl, TokenIntegrityLevel, &tl, sz ) )
             TOSDB_LogEx( "SpawnRestrictedProcess", 
                          "(3) failed to set Integrity Level", GetLastError() );
+
     }else{ 
         TOSDB_LogEx("SpawnRestrictedProcess", 
                     "(3) failed to lookup Mandatory Level group", 
                     GetLastError() );
     }
 
-    sessionID = WTSGetActiveConsoleSessionId();  
+    session_id = WTSGetActiveConsoleSessionId();  
       
-    /* try to get out of Session 0 isolation if we need to */
-    if( isService && 
-        !SetTokenInformation( hChildToken, TokenSessionId, &sessionID,  
-                              sizeof(DWORD) ) ){
+    
+    if( is_service && !SetTokenInformation( ctkn_hndl, TokenSessionId, 
+                                            &session_id,  sizeof(DWORD) ) )
+    {  /* 
+        * try to get out of Session 0 isolation if we need to 
+        */
         TOSDB_LogEx( "SpawnRestrictedProcess", "(4) failed to set session ID", 
                      GetLastError() );    
-    }else{
-        /* remove privileges */
-        DWORD retLen;
-        PTOKEN_PRIVILEGES pTpriv;         
-        LUID cgID;        /*  THE PRIVILEGE(S) WE NEED TO RETAIN  */
+    }else{ 
+       /* 
+        * now remove privileges 
+        */
+        DWORD ret_len;
+        PTOKEN_PRIVILEGES tpriv;         
+        LUID cg_id;  /*  <-- THE PRIVILEGE(S) WE NEED TO RETAIN  */
 
-        LookupPrivilegeValue( NULL, SE_CREATE_GLOBAL_NAME, &cgID );                       
-        GetTokenInformation( hChildToken, TokenPrivileges, NULL, 0, &retLen);
+        LookupPrivilegeValue( NULL, SE_CREATE_GLOBAL_NAME, &cg_id );                       
+        GetTokenInformation( ctkn_hndl, TokenPrivileges, NULL, 0, &ret_len);
 
-        SmartBuffer<TOKEN_PRIVILEGES> privBuf(retLen);    
+        SmartBuffer<TOKEN_PRIVILEGES> priv_buf(ret_len);  
 
-        GetTokenInformation( hChildToken, TokenPrivileges, privBuf.get(), 
-                             retLen, &retLen );                
-        pTpriv = privBuf.get();
-
-        /* set the removed attribute on all but the one(s) to retain */
-        for( DWORD i = 0; i < pTpriv->PrivilegeCount; ++i ) 
-            if( pTpriv->Privileges[i].Luid.LowPart != cgID.LowPart 
-                || pTpriv->Privileges[i].Luid.HighPart != cgID.HighPart ){
-             
-                   pTpriv->Privileges[i].Attributes = SE_PRIVILEGE_REMOVED;             
+        GetTokenInformation( ctkn_hndl, TokenPrivileges, priv_buf.get(), 
+                             ret_len, &ret_len );                
+        tpriv = priv_buf.get();
+        
+        for( DWORD i = 0; i < tpriv->PrivilegeCount; ++i ) 
+           /* 
+            * set the removed attribute on all but the one(s) to retain 
+            */
+            if( tpriv->Privileges[i].Luid.LowPart != cg_id.LowPart 
+                || tpriv->Privileges[i].Luid.HighPart != cg_id.HighPart )
+            {             
+                   tpriv->Privileges[i].Attributes = SE_PRIVILEGE_REMOVED;             
             }
         
-        if( !AdjustTokenPrivileges( hChildToken, FALSE, privBuf.get(), 0, 
-                                    NULL, NULL ) ){
+        if( !AdjustTokenPrivileges( ctkn_hndl, FALSE, priv_buf.get(), 
+                                    0, NULL, NULL ) )
+        {
             TOSDB_LogEx( "SpawnRestrictedProcess", 
                          "(5) failed to adjust token privileges", 
                          GetLastError() );    
         }
 
-        GetStartupInfo(&stupInfo);
-
-        /* try to create the process with the new token */        
-        if( !CreateProcessAsUser( hChildToken, coreProcPath.c_str(), 
-                                  coreProcCmd, NULL, NULL, FALSE, 0, NULL, NULL, 
-                                  &stupInfo, &coreProcInfo) ){
+        GetStartupInfo(&startup_info);
+               
+        if( !CreateProcessAsUser( ctkn_hndl, engine_path.c_str(), 
+                                  engine_cmd, NULL, NULL, FALSE, 0, NULL, NULL, 
+                                  &startup_info, &engine_pinfo) )
+        {  /* 
+            * try to create the process with the new token 
+            */ 
             TOSDB_LogEx( "SpawnRestrictedProcess", 
                          "(6) failed to create core process",  GetLastError() );
         }else 
-           retVal = true; 
-
+           ret = true; 
     }
             
-    if( hToken ) 
-        CloseHandle(hToken);
+    if( tkn_hndl ) 
+        CloseHandle(tkn_hndl);
 
-    if( hChildToken ) 
-        CloseHandle(hChildToken); 
+    if( ctkn_hndl ) 
+        CloseHandle(ctkn_hndl); 
     
-    return retVal;
+    return ret;
 }    
 };
 
 void WINAPI ServiceMain( DWORD argc, LPSTR argv[] )
 {
-    serviceStatus.dwServiceType             = SERVICE_WIN32_OWN_PROCESS;
-    serviceStatus.dwCurrentState            = SERVICE_START_PENDING;
-    serviceStatus.dwControlsAccepted        = SERVICE_ACCEPT_STOP 
-                                              | SERVICE_ACCEPT_PAUSE_CONTINUE 
-                                              | SERVICE_ACCEPT_SHUTDOWN;
-    serviceStatus.dwWin32ExitCode           = NO_ERROR; 
-    serviceStatus.dwServiceSpecificExitCode = 0;
-    serviceStatus.dwCheckPoint              = 0;
-    serviceStatus.dwWaitHint                = (DWORD)(2.5 * UPDATE_PERIOD); 
+    service_status.dwServiceType             = SERVICE_WIN32_OWN_PROCESS;
+    service_status.dwCurrentState            = SERVICE_START_PENDING;
+    service_status.dwControlsAccepted        = SERVICE_ACCEPT_STOP 
+                                               | SERVICE_ACCEPT_PAUSE_CONTINUE 
+                                               | SERVICE_ACCEPT_SHUTDOWN;
+    service_status.dwWin32ExitCode           = NO_ERROR; 
+    service_status.dwServiceSpecificExitCode = 0;
+    service_status.dwCheckPoint              = 0;
+    service_status.dwWaitHint                = (DWORD)(2.5 * UPDATE_PERIOD); 
 
-    hServiceStatus = RegisterServiceCtrlHandler( serviceName, 
-                                                 ServiceController ); 
-    if( !hServiceStatus ){
+    service_status_hndl = RegisterServiceCtrlHandler( SERVICE_NAME, 
+                                                      ServiceController ); 
+    if( !service_status_hndl )
+    {
         TOSDB_LogH( "SERVICE-ADMIN",
                     "failed to register control handler, exiting" );
 
-        serviceStatus.dwCurrentState = SERVICE_STOPPED;
-        serviceStatus.dwWin32ExitCode = ERROR_SERVICE_SPECIFIC_ERROR;
-        serviceStatus.dwServiceSpecificExitCode = 1;
-
+        service_status.dwCurrentState = SERVICE_STOPPED;
+        service_status.dwWin32ExitCode = ERROR_SERVICE_SPECIFIC_ERROR;
+        service_status.dwServiceSpecificExitCode = 1;
         UpdateStatus( SERVICE_STOPPED, -1);
         return;
     }
 
     TOSDB_Log("SERVICE-ADMIN","successfully registered control handler");
-
-    SetServiceStatus(hServiceStatus, &serviceStatus);
-
+    SetServiceStatus(service_status_hndl, &service_status);
     TOSDB_Log("SERVICE-CNTRL","SERVICE_START_PENDING");
     TOSDB_Log("SERVICE-ADMIN","starting service update loop on its own thread");
 
-    /* simply spin off the basic service update loop */
-    std::async( std::launch::async, 
-                [&]{
-                    while( !shutdownFlag ) {
-                        Sleep(UPDATE_PERIOD);
-                        UpdateStatus( -1, -1); 
-                    }   
-                } );
-
-    /* create new process that can communicate with our interface */
+    /* 
+     * simply spin off the basic service update loop 
+     */
+    std::async( std::launch::async, [&]{
+                                        while( !shutdown_flag ){
+                                            Sleep(UPDATE_PERIOD);
+                                            UpdateStatus( -1, -1); 
+                                        } } );
+    
     if( !SpawnRestrictedProcess() ){
+        /* 
+         * create new process that can communicate with our interface 
+         */
         TOSDB_LogH( "SERVICE-ADMIN", std::string("failed to fork ")
-                                     .append(CORE_PROC_NAME).c_str() );       
+                                     .append(ENGINE_NAME).c_str() );       
     }else{
+        /* 
+         * on success, update and block
+         */
         UpdateStatus( SERVICE_RUNNING, -1 );
         TOSDB_Log("SERVICE-CNTRL","SERVICE_RUNNING");
-        WaitForSingleObject( coreProcInfo.hProcess, INFINITE);
+        WaitForSingleObject( engine_pinfo.hProcess, INFINITE);
     }
 
-    /* if we get here we are shutting down*/
+    /* 
+     * !! IF WE GET HERE WE WILL SHUTDOWN !!
+     */
     UpdateStatus( SERVICE_STOPPED, 0 );
     TOSDB_Log("SERVICE-CNTRL","SERVICE_STOPPED");  
 }
@@ -362,51 +373,56 @@ int WINAPI WinMain( HINSTANCE hInst,
                     LPSTR lpCmdLn, 
                     int nShowCmd )
 {     
-    std::string cmdLnStr(lpCmdLn);
+    std::string cmd_str(lpCmdLn);
     std::string arg1, arg2;
-    SmartBuffer<CHAR> modBuf(MAX_PATH);
+    SmartBuffer<CHAR> module_buf(MAX_PATH);
 
-    GetModuleFileName(NULL,modBuf.get(),MAX_PATH);
+    GetModuleFileName( NULL, module_buf.get(), MAX_PATH);
 
-    std::string path( modBuf.get() );
-
+    std::string path( module_buf.get() );
     path.erase( path.find_last_of("\\") );
-    coreProcPath.append(path).append("\\").append( CORE_PROC_NAME );
+    engine_path.append(path).append("\\").append( ENGINE_NAME );
 
     TOSDB_StartLogging( std::string( std::string(TOSDB_LOG_PATH) 
                                      + std::string(LOG_NAME)).c_str() );
 
     GetSystemInfo( &sys_info );  
   
-    size_t sIndx = cmdLnStr.find_first_of(' ');
+    size_t indx = cmd_str.find_first_of(' ');
 
-    if( sIndx < cmdLnStr.size() ){
-        arg1 = cmdLnStr.substr(0, sIndx);
-        arg2 = cmdLnStr.substr(++sIndx, cmdLnStr.size());
+    if( indx < cmd_str.size() ){
+        arg1 = cmd_str.substr(0, indx);
+        arg2 = cmd_str.substr(++indx, cmd_str.size());
     }else{
-        arg1 = cmdLnStr;
+        arg1 = cmd_str;
         arg2 = "";
     }
 
     if( arg1 == "--admin" || arg2 == "--admin" )    
-        integrityLevel = "High Mandatory Level";
+        integrity_level = "High Mandatory Level";
     else
-        integrityLevel = "Medium Mandatory Level";
+        integrity_level = "Medium Mandatory Level";
     
-    if( arg1 == "--noservice" || arg2 == "--noservice" ){
-        strcpy_s(coreProcCmd,"--noservice");
-        isService = false;
+    if( arg1 == "--noservice" || arg2 == "--noservice" )
+    {
+        strcpy_s(engine_cmd,"--noservice");
+        is_service = false;
+
         TOSDB_Log( "STARTUP", 
                    "tos-databridge-engine.exe starting - NOT A WINDOWS SERVICE");
         SpawnRestrictedProcess(); 
-    }else{
-        strcpy_s(coreProcCmd,"--service");
+
+    }else
+    {
+        strcpy_s(engine_cmd,"--service");
         SERVICE_TABLE_ENTRY dTable[] = {
-            {serviceName,ServiceMain},
+            {SERVICE_NAME,ServiceMain},
             {NULL,NULL}
         };
+
         TOSDB_Log( "STARTUP", 
                    "tos-databridge-engine.exe starting - WINDOWS SERVICE");
+
         if( !StartServiceCtrlDispatcher( dTable ) )
             TOSDB_LogH("STARTUP", "StartServiceCtrlDispatcher() failed");
     }

@@ -92,27 +92,25 @@ class GetOnTimeInterval( _GetOnInterval ):
         self._stop_callback()
 
     def _update(self):
-        carry = None
+        carry = []
+        get_next_seg = getattr(self._block,'stream_snapshot_from_marker')
         while self._rflag:
             try:
-                dat = self._block.stream_snapshot_from_marker( self._item,
-                                                               self._topic,
-                                                               True)
+                dat = get_next_seg( self._item, self._topic, True)
                 if dat and len(dat) >= 1:
-                    roll = self._find_last_roll( dat +
-                                                 ([carry] if carry else []) )
-                    if roll:
-                        self._run_callback( roll )
-                    carry = dat[0] # carry to the back of next snapshot
+                    rp = self._find_roll_point( dat + carry )
+                    if rp:
+                        self._run_callback( rp )
+                    carry = [dat[0]] # carry to the back of next snapshot
                 for i in range(self._update_seconds):
                     _time.sleep( 1 )
                     if not self._rflag:
                         break
             except:
-                print("error in GetOnTimeInterval._update loop")
+                print("error in GetOnTimeInterval._update loop, stopping.")
                 self.stop()
                 
-    def _find_last_roll(self, snapshot):
+    def _find_roll_point(self, snapshot):
         last_item = snapshot[0]        
         if self._interval_seconds <= 60:
             do_mod = lambda i: i[1].sec % self._interval_seconds 

@@ -74,7 +74,8 @@ namespace {
             Sleep( TOSDB_DEF_TIMEOUT / 10 );   
             lcount += ( TOSDB_DEF_TIMEOUT / 10 );
             if( lcount >= TOSDB_DEF_TIMEOUT ){
-                TOSDB_LogH( "IPC", "timed out trying to grab pipe" );
+                TOSDB_LogH( "IPC", "RequestStreamOP timed out "
+                                   "trying to grab pipe" );
                 return -2;
             }
         }
@@ -279,7 +280,6 @@ namespace {
         try{                
             return dde_blocks.at(id);
         }catch(...){ 
-
             TOSDB_Log("TOSDBlock", "TOSDBlock does not exist.");
             return NULL; 
         }
@@ -490,12 +490,11 @@ int TOSDB_CreateBlock( LPCSTR id,
     return 0;
 }
 
-/* 
-    for adding sets of topics and strings, dealing with pre-cache; 
-    all add methods end up here 
-*/
 int TOSDB_Add( std::string id, str_set_type sItems, topic_set_type tTopics )
-{
+{  /* 
+    * for adding sets of topics and strings, dealing with pre-cache; 
+    * all add methods end up here 
+    */
     topic_set_type  tdiff, old_topics, tot_topics;
     str_set_type    idiff, old_items, iunion, tot_items;
 
@@ -520,27 +519,39 @@ int TOSDB_Add( std::string id, str_set_type sItems, topic_set_type tTopics )
 
     
     if( !db->item_precache.empty() ){           
-    /* if we have pre-cached items, include them */
+       /* 
+        * if we have pre-cached items, include them 
+        */
         std::set_union( sItems.cbegin(), sItems.cend(),
                         db->item_precache.cbegin(), db->item_precache.cend(),
                         std::insert_iterator<str_set_type>( tot_items,
                                                             tot_items.begin()) ); 
-    }else{ /* 'copy', keep sItems available for pre-caching */
+    }else{ 
+        /* 
+         * 'copy', keep sItems available for pre-caching 
+         */
         tot_items = sItems;    
     }
 
     if( !db->topic_precache.empty() ){    
-    /* if we have pre-cached topics, include them */
+        /* 
+         * if we have pre-cached topics, include them 
+         */
         std::set_union( tTopics.cbegin(), tTopics.cend(),
                         db->topic_precache.cbegin(), db->topic_precache.cend(),
                         std::insert_iterator<topic_set_type>(tot_topics,
                                                              tot_topics.begin()),
                         TOS_Topics::top_less() ); 
-    }else{ /* move, we don't need tTopics anymore */
+    }else{ 
+        /* 
+         * move, we don't need tTopics anymore 
+         */
         tot_topics = std::move(tTopics); 
     }
 
-    /* find new items and topics to add */
+    /* 
+     * find new items and topics to add 
+     */
     std::set_difference( tot_topics.cbegin(), tot_topics.cend(),
                          old_topics.cbegin(), old_topics.cend(),
                          std::insert_iterator<topic_set_type>( tdiff,
@@ -553,10 +564,11 @@ int TOSDB_Add( std::string id, str_set_type sItems, topic_set_type tTopics )
                                                              idiff.begin()) );
 
     if (!tdiff.empty() ){ 
-    /*  if new topics; 
-        if atleast one item add them to the block; 
-        add ALL the items (new and old) for each 
-     */
+       /* 
+        * if new topics
+        * if atleast one item add them to the block
+        * add ALL the items (new and old) for each 
+        */
         std::set_union( tot_items.cbegin(), tot_items.cend(),
                         old_items.cbegin(), old_items.cend(),
                         std::insert_iterator<str_set_type>( iunion,
@@ -564,8 +576,8 @@ int TOSDB_Add( std::string id, str_set_type sItems, topic_set_type tTopics )
 
         is_empty = iunion.empty();
 
-        for(auto & topic : tdiff){               
-
+        for(auto & topic : tdiff)
+        {            
             if( is_empty )
                 db->topic_precache.insert( topic );
 
@@ -576,28 +588,29 @@ int TOSDB_Add( std::string id, str_set_type sItems, topic_set_type tTopics )
                     db->item_precache.clear();
                     db->topic_precache.clear();
                     CaptureBuffer( topic, item, db );    
-                }else{
-                    ++err;
-                }
-            }  
-                  
-        }            
-
-    }else if( old_topics.empty() ){ /* don't ignore items if no topics yet.. */
+                }else
+                    ++err;                
+            }                    
+        }      
+    }else if( old_topics.empty() ){ 
+        /* 
+         * don't ignore items if no topics yet.. 
+         */
         for( auto & i : sItems)
             db->item_precache.insert( i ); /* ...pre-cache them */       
     }
       
-    for(auto & topic : old_topics) /* add new items to the old topics */
+    for(auto & topic : old_topics) 
+        /* 
+         * add new items to the old topics 
+         */
         for( auto & item : idiff){ 
             if( !RequestStreamOP( topic, item, db->timeout, TOSDB_SIG_ADD ) ){
                 db->block->add_item( item );                    
                 CaptureBuffer( topic, item, db );   
             }
-            else{
-                ++err;
-            }
-
+            else
+                ++err; 
         }
 
     return err;
@@ -626,13 +639,11 @@ int TOSDB_AddTopics( LPCSTR id, LPCSTR* sTopics, size_type topics_len )
     if( !CheckIDLength(id) || !CheckStringLengths(sTopics, topics_len) ) 
         return -1;  
        
-    return TOSDB_Add( id, str_set_type(), std::move( 
-                      topic_set_type( sTopics, topics_len, 
-                                      [=](LPCSTR str)
-                                        { 
-                                         return TOS_Topics::map[str]; 
-                                        } 
-                                     )));
+    return TOSDB_Add( id, str_set_type(), 
+                      std::move( topic_set_type( sTopics, topics_len, 
+                                                 [=](LPCSTR str){ 
+                                                    return TOS_Topics::map[str]; 
+                                                 } ) ) );
 }
 
 int TOSDB_AddItem( LPCSTR id, LPCSTR sItem )
@@ -665,18 +676,16 @@ int TOSDB_Add( LPCSTR id,
 { 
     if( !CheckIDLength(id) 
         || !CheckStringLengths(sItems, items_len) 
-        || !CheckStringLengths(sTopics, topics_len) ){
-    
+        || !CheckStringLengths(sTopics, topics_len) )
+    {    
         return -1;  
     }
   
-    return TOSDB_Add( id, std::move( str_set_type(sItems,items_len) ), std::move( 
-                      topic_set_type( sTopics, topics_len, 
-                                      [=](LPCSTR str)
-                                        { 
-                                         return TOS_Topics::map[str]; 
-                                        } 
-                                     ))); 
+    return TOSDB_Add( id, std::move( str_set_type(sItems,items_len) ), 
+                      std::move( topic_set_type( sTopics, topics_len, 
+                                                 [=](LPCSTR str){ 
+                                                    return TOS_Topics::map[str]; 
+                                                 } ) ) ); 
 }
 
 int TOSDB_RemoveTopic( LPCSTR id, LPCSTR sTopic )
@@ -692,19 +701,23 @@ int TOSDB_RemoveTopic( std::string id, TOS_Topics::TOPICS tTopic )
     TOSDBlock* db;
     int err = 0;
 
-    if( !master.connected() || !aware_of_connection.load() ){
+    if( !master.connected() || !aware_of_connection.load() )
+    {
         TOSDB_LogH("IPC", "not connected to slave/server");
         return -2;
     }
     
     our_rlock_guard_type lock(*global_rmutex);
 
-    if ( !(db = _getBlockPtr(id)) || !(TOS_Topics::enum_type)(tTopic) ){
+    db = _getBlockPtr(id);
+    if ( !db || !(TOS_Topics::enum_type)(tTopic) )
+    {
         TOSDB_LogH("TOSDBlock", "Could not Remove.");
         return -3;
     }        
 
-    if( db->block->has_topic( tTopic) ){
+    if( db->block->has_topic( tTopic) )
+    {
         for( const std::string & item : db->block->items() ){
             ReleaseBuffer( tTopic, item, db ); 
             if( RequestStreamOP( tTopic, item, db->timeout, TOSDB_SIG_REMOVE )){
@@ -720,9 +733,8 @@ int TOSDB_RemoveTopic( std::string id, TOS_Topics::TOPICS tTopic )
                 db->item_precache.insert( item );
                 db->block->remove_item( item ); 
             }  
-    }else{
-        err = -4;
-    }
+    }else
+        err = -4;  
 
     db->topic_precache.erase( tTopic );
     return err;
@@ -733,14 +745,16 @@ int TOSDB_RemoveItem( LPCSTR id, LPCSTR sItem )
     TOSDBlock* db;
     int err = 0;
 
-    if( !master.connected() || !aware_of_connection.load() ){
+    if( !master.connected() || !aware_of_connection.load() )
+    {
         TOSDB_LogH("IPC", "not connected to slave/server");
         return -1;
     }
     
     our_rlock_guard_type lock(*global_rmutex);
 
-    if ( !CheckIDLength( id ) || !(db = _getBlockPtr(id) ) ){
+    if ( !CheckIDLength( id ) || !(db = _getBlockPtr(id) ) )
+    {
         TOSDB_LogH("TOSDBlock", "Could not Remove.");
         return -2;
     }    
@@ -748,7 +762,8 @@ int TOSDB_RemoveItem( LPCSTR id, LPCSTR sItem )
     if( !CheckStringLength( sItem ) )
         return -3;
 
-    if( db->block->has_item( sItem ) ){
+    if( db->block->has_item( sItem ) )
+    {
         for( const TOS_Topics::TOPICS topic : db->block->topics() ){
             ReleaseBuffer( topic, sItem, db ); 
             if( RequestStreamOP( topic, sItem, db->timeout, TOSDB_SIG_REMOVE )){
@@ -765,12 +780,10 @@ int TOSDB_RemoveItem( LPCSTR id, LPCSTR sItem )
                 db->block->remove_topic( topic );
             }
         }
-    }else{
-        err = -4;
-    }
+    }else
+        err = -4;    
 
     db->item_precache.erase( sItem );
-
     return err;
 }
 
@@ -806,9 +819,9 @@ int TOSDB_CloseBlock( LPCSTR id )
 
     dde_blocks.erase( id );          
    
-    if ( !(del_thrd_hndl = CreateThread( NULL, 0, BlockCleanup, 
-                                        (LPVOID)db->block, 
-                                        0, &(del_thrd_id) )) ){
+    del_thrd_hndl = CreateThread( NULL, 0, BlockCleanup, (LPVOID)db->block, 
+                                  0, &(del_thrd_id) );
+    if( !del_thrd_hndl ){
         err = -3;
         TOSDB_LogH( "Threading", 
                     "Error initializing clean-up thrad - using main thread."
@@ -827,18 +840,19 @@ int TOSDB_CloseBlocks()
 
     try{ 
         our_rlock_guard_type lock(*global_rmutex);  
-        /* need a copy, _CloseBlock removes from original */      
-        std::copy(dde_blocks.begin(), dde_blocks.end(),
-                  std::insert_iterator< 
-                    std::map< std::string,TOSDBlock*>>( bcopy, bcopy.begin())); 
+        /* 
+         * need a copy, _CloseBlock removes from original 
+         */      
+        std::copy( dde_blocks.begin(), dde_blocks.end(), 
+                   std::insert_iterator<std::map< std::string,TOSDBlock*>>(
+                       bcopy,bcopy.begin() )); 
+
         for ( const auto& block: bcopy )        
             if( TOSDB_CloseBlock( block.first.c_str() ) )
                 ++err;
-
     }catch(...){
         return -1;
     }
-
     return err;
 }
 
@@ -850,16 +864,14 @@ int TOSDB_DumpSharedBufferStatus()
     our_rlock_guard_type lock(*global_rmutex);
 
     while( master.grab_pipe() <= 0 ){
-
-        Sleep(TOSDB_DEF_TIMEOUT/10);           
-        if( (lcount+=(TOSDB_DEF_TIMEOUT/10)) > TOSDB_DEF_TIMEOUT ){
+        Sleep( TOSDB_DEF_TIMEOUT / 10 );           
+        lcount += ( TOSDB_DEF_TIMEOUT / 10 );
+        if( lcount >= TOSDB_DEF_TIMEOUT ){
             TOSDB_LogH( "IPC", "TOSDB_DumpSharedBufferStatus timed out "
                                "trying to grab pipe" );
             return -1;
         }
-
     }    
-
     master << DynamicIPCMaster::shem_chunk( TOSDB_SIG_DUMP, 0 ) 
            << DynamicIPCMaster::shem_chunk(0,0);
 
@@ -868,7 +880,6 @@ int TOSDB_DumpSharedBufferStatus()
         TOSDB_LogH("IPC","recv failed; problem with connection");
         return -2;
     }
-
     master.release_pipe();
     return ret;
 }
@@ -876,6 +887,7 @@ int TOSDB_DumpSharedBufferStatus()
 int TOSDB_GetBlockIDs( LPSTR* dest, size_type array_len, size_type str_len )
 {    
     our_rlock_guard_type lock(*global_rmutex);
+
     if ( array_len < dde_blocks.size() ) 
         return -1;
 
@@ -894,6 +906,7 @@ str_set_type TOSDB_GetBlockIDs()
     str_set_type tmp;
 
     our_rlock_guard_type lock(*global_rmutex);
+
     for( auto & name : dde_blocks )
         tmp.insert( name.first );
 
@@ -908,8 +921,8 @@ unsigned short inline TOSDB_GetLatency()
 unsigned short TOSDB_SetLatency( UpdateLatency latency ) 
 {
     our_rlock_guard_type lock(*global_rmutex);    
-    unsigned short tmp = buffer_latency;
 
+    unsigned short tmp = buffer_latency;
     switch( latency)
     {
         case Fastest:    
@@ -930,7 +943,7 @@ const TOSDBlock* GetBlockPtr( const std::string id)
 {
     try{            
         return dde_blocks.at(id);
-    }catch ( ... ){ 
+    }catch(...){ 
         TOSDB_Log("TOSDBlock", "TOSDBlock does not exist.");
         return NULL; 
     }
@@ -950,7 +963,8 @@ const TOSDBlock* GetBlockOrThrow( std::string id )
 bool CheckStringLength(LPCSTR str)
 {
 #ifndef SPPRSS_INPT_CHCK_
-    if( strnlen_s(str, TOSDB_MAX_STR_SZ+1) == (TOSDB_MAX_STR_SZ+1) ){
+    if( strnlen_s(str, TOSDB_MAX_STR_SZ+1) == (TOSDB_MAX_STR_SZ+1) )
+    {
         TOSDB_LogH("User Input", "string length > TOSDB_MAX_STR_SZ");
         return false;
     }
@@ -973,8 +987,8 @@ bool CheckStringLengths(LPCSTR* str, size_type items_len)
 {
 #ifndef SPPRSS_INPT_CHCK_
     while( items_len-- )
-        if( strnlen_s( str[items_len],
-                       TOSDB_MAX_STR_SZ+1 ) == (TOSDB_MAX_STR_SZ+1) )
+        if( strnlen_s( str[items_len], TOSDB_MAX_STR_SZ + 1 ) 
+                == (TOSDB_MAX_STR_SZ+1) )
         { 
             TOSDB_LogH("User Input", "string length > TOSDB_MAX_STR_SZ");
             return false;
@@ -987,7 +1001,8 @@ bool CheckStringLengths(LPCSTR* str, size_type items_len)
 bool CheckIDLength(LPCSTR id)
 {
 #ifndef SPPRSS_INPT_CHCK_
-    if( strnlen_s(id, TOSDB_BLOCK_ID_SZ + 1) == (TOSDB_BLOCK_ID_SZ + 1) ){
+    if( strnlen_s(id, TOSDB_BLOCK_ID_SZ + 1) == (TOSDB_BLOCK_ID_SZ + 1) )
+    {
         TOSDB_LogH("Strings", "name/id length > TOSDB_BLOCK_ID_SZ");
         return false;
     }
@@ -999,7 +1014,8 @@ TOS_Topics::TOPICS GetTopicEnum( std::string sTopic)
 {
     TOS_Topics::TOPICS t = TOS_Topics::map[sTopic];
 
-    if ( !(TOS_Topics::enum_type)t ){ 
+    if ( !(TOS_Topics::enum_type)t )
+    { 
         TOSDB_Log("TOS_Topic", "TOS_Topic string does not have a corresponding "
                                "enum type in map" );
     }
