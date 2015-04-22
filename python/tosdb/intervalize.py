@@ -115,6 +115,7 @@ class GetOnTimeInterval( _GetOnInterval ):
     def _find_last_roll(self, snapshot):
         last_item = snapshot[0]        
         if self._interval_seconds <= 60:
+            do_mod = lambda i: i[1].sec % self._interval_seconds 
         elif self._interval_seconds <= 3600:              
             do_mod = lambda i: i[1].min % (self._interval_seconds / 60) 
         elif self._interval_seconds <= 86400:
