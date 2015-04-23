@@ -14,6 +14,8 @@
 #   'LICENSE.txt', along with this program.  If not, see 
 #   <http://www.gnu.org/licenses/>.
 
+import sys as _sys
+
 class TOSDB_Error( Exception ):
     """ Base exception for tosdb.py """    
     def __init__(self,  *messages ):        
@@ -53,6 +55,30 @@ class TOSDB_IndexError( TOSDB_Error, IndexError ):
 class TOSDB_VirtualizationError( TOSDB_Error ):
     def __init__( self, *messages ):
         TOSDB_Error( *messages )
+
+_wrap_def = """\
+from tosdb.datetime import *
+
+class TOSDB_ImplErrorWrapper( {clss} ):
+    def __init__( self, error ):
+        {clss}( error )
+"""
+
+def wrap_impl_error( clss ):
+    if not isinstance( clss, TOSDB_Error):
+        raise TypeError( "clss must be instance of TOSDB_Error" )    
+    our_def = _wrap_def.format(clss=(type(clss).__name__))   
+    exec(our_def)
+    our_obj = eval("TOSDB_ImplErrorWrapper")(clss)
+    try:
+        our_obj.__module__ = _sys._getframe(1).f_globals.get('__name__')
+    except:
+        pass
+    return our_obj
+
+
+    
+        
 
 
 

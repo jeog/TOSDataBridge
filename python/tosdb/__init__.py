@@ -84,12 +84,6 @@ import struct as _struct
 import socket as _socket
 import pickle as _pickle
 
-### TODO ###
-# if a lib call is made immediately after init it's possible an err val
-# of -1 will be returned because the lowlevel flags have not been set
-# to true fast enough... FIX (block until we can comfirm)
-###########
-
 class _TOS_DataBlock(metaclass=_ABCMeta):
     """ The DataBlock interface """
     @_abstractmethod
@@ -142,6 +136,7 @@ _vCREATE     = 'CREATE'
 _vCALL       = 'CALL'
 _vDESTROY    = 'DESTROY'
 _vFAILURE    = 'FAILURE'
+_vFAIL_EXC   = '1'
 _vSUCCESS    = 'SUCCESS'
 _vSUCCESS_NT = 'SUCCESS_NT'
 _vCONN_BLOCK = 'CONN_BLOCK'
@@ -149,7 +144,6 @@ _vCONN_ADMIN = 'CONN_ADMIN'
 _vALLOWED_ADMIN = ( 'init','connect','connected','clean_up',
                     'get_block_limit', 'set_block_limit',
                     'get_block_count', 'type_bits', 'type_string' )
-_vTYPES = {'i':int,'s':str,'b':bool,'d':lambda d: d}
 _vDELIM = b'\x7E' ## !! _vDELIM MUST NOT HAVE THE SAME VALUE AS _vEEXOR !! ##
 _vESC = b'\x7D'
 _vDEXOR = chr(ord(_vDELIM) ^ ord(_vESC)).encode()
@@ -160,13 +154,19 @@ _vEEXOR = chr(ord(_vESC) ^ ord(_vESC)).encode() # 0
 # move to _tosdb
 _NTUP_TAG_ATTR = "_dont_worry_about_why_this_attribute_has_a_weird_name_"
 
+#
+# note: for tim being preface virtual calls and objects with 'v' so
+# we can load both on the windows side for easier debugging,
+# later we can use same name and load the appropriate version 
+#
+
 def vinit(dllpath = None, root = "C:\\"):
     """ Initialize the underlying tos-databridge Windows DLL
 
     dllpath: string of the exact path of the DLL
     root: string of the directory to start walking/searching to find the DLL
-    """
-    return _admin_call( 'init', ('s' if dllpath else 'd',dllpath), ('s',root) )     
+    """   
+    return _admin_call( 'init', dllpath, root )
 
 def vconnect():
     """ Attempts to connect the underlying Windows Library/Service """
@@ -186,7 +186,7 @@ def vget_block_limit():
 
 def vset_block_limit( new_limit ):
     """ Changes the block limit of C/C++ RawDataBlock factory """
-    _admin_call( 'set_block_limit', ('i',new_limit) )
+    _admin_call( 'set_block_limit', new_limit ) 
 
 def vget_block_count():
     """ Returns the count of current instantiated blocks """
@@ -199,47 +199,47 @@ def vtype_bits( topic ):
     returns -> value that can be logical &'d with type bit contstants 
     ( ex. QUAD_BIT )
     """    
-    return _admin_call( 'type_bits', ('s',topic) )
+    return _admin_call( 'type_bits', topic )
 
 def vtype_string( topic ):
     """ Returns a platform-dependent string of the type of a particular 'topic'
 
     topic: string representing a TOS data field('LAST','ASK', etc)
     """
-    return _admin_call( 'type_string', ('s',topic) )
+    return _admin_call( 'type_string', topic ) 
 
 
 ## what happens to these sockets when we exit the client side ??
 def admin_init( address, poll_interval=DEF_TIMEOUT ):
     global _virtual_hub_addr, _virtual_admin_sock
     if _virtual_admin_sock:
-        raise TOS_DataBlock("virtual admin socket already exists")
+        raise TOSDB_VirtualizationError("virtual admin socket already exists")
     _check_address( address )
     _virtual_hub_addr = address
     _virtual_admin_sock = _socket.socket()
     _virtual_admin_sock.settimeout( poll_interval / 1000 )
-    _virtual_admin_sock.connect( address )
-    _vcall( _pack_msg(_vCONN_ADMIN), _virtual_admin_sock, _virtual_hub_addr )
+    try:
+        _virtual_admin_sock.connect( address )
+        _vcall( _pack_msg(_vCONN_ADMIN), _virtual_admin_sock, _virtual_hub_addr )
+    except:
+        _virtual_hub_addr = ''
+        _virtual_admin_sock = None
+        raise
 
 def _admin_call( method, *arg_buffer ):
     if not _virtual_admin_sock:
         raise TOSDB_VirtualizationError("no admin socket, call admin_init")
-    a =  (method,) + ( (_pickle.dumps(arg_buffer),) if arg_buffer else () )    
-    ret_b = _vcall( _pack_msg( *a ), _virtual_admin_sock, _virtual_hub_addr ) 
-    args = _unpack_msg( ret_b )
-    print("return", args)
-    status = args[0].decode()
-    if status == _vFAILURE:
-        #
-        # need to make the error/failure return more robust
-        # more info on what happened
-        #
-        raise TOSDB_VirtualizationError( "failure status returned",                                       
-                                         "method: " + str(method),
-                                         "arg_buffer: " + str(arg_buffer) )    
-  
-    elif len(args) > 1:
-        return _pickle.loads( args[1] )
+    if method not in _vALLOWED_ADMIN:
+        raise TOSDB_VirtualizationError("this method call is not allowed")
+    a = (method,)
+    if arg_buffer:
+        a += (_pickle.dumps(arg_buffer),)
+    try:
+        ret_b = _vcall( _pack_msg( *a ), _virtual_admin_sock, _virtual_hub_addr) 
+        if ret_b:
+            return _pickle.loads( ret_b )
+    except:
+        raise
   
 
 class VTOS_DataBlock:
@@ -259,18 +259,25 @@ class VTOS_DataBlock:
         self._my_sock = _socket.socket()
         self._my_sock.settimeout( timeout / 1000 )
         self._my_sock.connect( address )
-        _vcall( _pack_msg( _vCONN_BLOCK ), self._my_sock, self._hub_addr)
-        # in case __del__ is called during socket op
-        if not self._call( _vCREATE, '__init__', ('i',size),
-                           ('b',date_time), ('i',timeout) ):
-            raise TOSDB_VirtualizationError("CREATE failed")
+        self._connected = False
+        try:
+            _vcall( _pack_msg( _vCONN_BLOCK ), self._my_sock, self._hub_addr)          
+            # in case __del__ is called during socket op
+            self._call( _vCREATE, '__init__', size, date_time, timeout )
+            self._connected = True
+        except:
+            raise
+        
         
     def __del__( self ):
         try:
-            self._call( _vDESTROY )
-            self._my_sock.close()
-        except TOSDB_Error as e:
-            print( "Error closing virtual block:", repr(e) )          
+            if self._connected:
+                self._call( _vDESTROY )
+            if self._my_sock:
+                self._my_sock.close()
+        except:
+            print( "Error closing virtual block:", file=_stderr )
+            raise
 
     def __str__( self ):
         s = self._call( _vCALL, '__str__' )    
@@ -286,10 +293,10 @@ class VTOS_DataBlock:
     
     def set_block_size( self, sz ):
         """ Changes the amount of historical data stored in the block """
-        self._call( _vCALL, 'set_block_size', ('i',sz) )
+        self._call( _vCALL, 'set_block_size', sz )
             
     def stream_occupancy( self, item, topic ):
-        return self._call( _vCALL, 'stream_occupancy', ('s',item), ('s',topic))
+        return self._call( _vCALL, 'stream_occupancy', item, topic )
     
     def items( self, str_max = MAX_STR_SZ ):
         """ Returns the items currently in the block (and not pre-cached).
@@ -297,7 +304,7 @@ class VTOS_DataBlock:
         str_max: the maximum length of item strings returned
         returns -> list of strings 
         """
-        return self._call( _vCALL, 'items', ('i',str_max) )          
+        return self._call( _vCALL, 'items', str_max ) 
               
     def topics( self,  str_max = MAX_STR_SZ ):
         """ Returns the topics currently in the block (and not pre-cached).
@@ -305,7 +312,7 @@ class VTOS_DataBlock:
         str_max: the maximum length of topic strings returned  
         returns -> list of strings 
         """
-        return self._call( _vCALL, 'topics', ('i',str_max) ) 
+        return self._call( _vCALL, 'topics', str_max )
       
     
     def add_items( self, *items ):
@@ -316,7 +323,7 @@ class VTOS_DataBlock:
 
         *items: any numer of item strings
         """               
-        self._call( _vCALL, 'add_items', *zip('s'*len(items), items) )
+        self._call( _vCALL, 'add_items', *items )
        
 
     def add_topics( self, *topics ):
@@ -327,7 +334,7 @@ class VTOS_DataBlock:
 
         *topics: any numer of topic strings
         """               
-        self._call( _vCALL, 'add_topics', *zip('s'*len(topics), topics) )
+        self._call( _vCALL, 'add_topics', *topics )
 
     def remove_items( self, *items ):
         """ Remove items ( ex. 'IBM', 'SPY' ) from the block.
@@ -338,7 +345,7 @@ class VTOS_DataBlock:
 
         *items: any numer of item strings
         """
-        self._call( _vCALL, 'remove_items', *zip('s'*len(items), items) )
+        self._call( _vCALL, 'remove_items', *items )
 
     def remove_topics( self, *topics ):
         """ Remove topics ( ex. 'LAST', 'ASK' ) from the block.
@@ -349,7 +356,7 @@ class VTOS_DataBlock:
 
         *topics: any numer of topic strings
         """
-        self._call( _vCALL, 'remove_topics', *zip('s'*len(topics), topics) )
+        self._call( _vCALL, 'remove_topics', *topics )
         
     def get( self, item, topic, date_time = False, indx = 0, 
              check_indx = True, data_str_max = STR_DATA_SZ ):
@@ -362,9 +369,8 @@ class VTOS_DataBlock:
         check_indx: throw if datum doesn't exist at that particular index
         data_str_max: the maximum size of string data returned
         """
-        return self._call( _vCALL, 'get', ('s',item), ('s',topic),
-                           ('b',date_time), ('i',indx), ('b',check_indx),
-                           ('i', data_str_max) )
+        return self._call( _vCALL, 'get', item, topic, date_time, indx,
+                           check_indx, data_str_max ) 
 
     def stream_snapshot( self, item, topic, date_time = False, 
                          end = -1, beg = 0, smart_size = True, 
@@ -382,9 +388,8 @@ class VTOS_DataBlock:
         if date_time is True: returns-> list of 2tuple
         else: returns -> list              
         """
-        return self._call( _vCALL, 'stream_snapshot', ('s',item),
-                           ('s',topic), ('b',date_time), ('i',end), ('i',beg),
-                           ('b',smart_size), ('i', data_str_max) )
+        return self._call( _vCALL, 'stream_snapshot', item, topic, date_time,
+                           end, beg, smart_size, data_str_max ) 
 
     def stream_snapshot_from_marker( self, item, topic, date_time = False, 
                                      beg = 0, margin_of_safety = 100,
@@ -438,10 +443,9 @@ class VTOS_DataBlock:
         if date_time is True: returns-> list of 2tuple
         else: returns -> list              
         """
-        return self._call( _vCALL, 'stream_snapshot_from_marker', ('s',item),
-                          ('s',topic), ('b',date_time), ('i',beg),
-                          ('i',margin_of_safety), ('b',throw_if_data_lost),
-                          ('i', data_str_max) )
+        return self._call( _vCALL, 'stream_snapshot_from_marker', item, topic,
+                           date_time, beg, margin_of_safety, throw_if_data_lost,
+                           data_str_max ) 
     
     def item_frame( self, topic, date_time = False, labels = True, 
                     data_str_max = STR_DATA_SZ,
@@ -459,9 +463,8 @@ class VTOS_DataBlock:
         if date_time is True: returns -> list of 2tuple
         else returns-> list
         """
-        return self._call( _vCALL, 'item_frame', ('s',topic), ('b',date_time),
-                           ('b',labels), ('i', data_str_max),
-                           ('i', label_str_max) )   
+        return self._call( _vCALL, 'item_frame', topic, date_time, labels,
+                           data_str_max, label_str_max )   
 
     def topic_frame( self, item, date_time = False, labels = True, 
                      data_str_max = STR_DATA_SZ,
@@ -479,11 +482,10 @@ class VTOS_DataBlock:
         if date_time is True: returns -> list of 2tuple
         else returns-> list
         """
-        return self._call( _vCALL, 'topic_frame', ('s',item), ('b',date_time),
-                           ('b',labels), ('i', data_str_max),
-                           ('i', label_str_max) )
+        return self._call( _vCALL, 'topic_frame', item, date_time, labels,
+                           data_str_max, label_str_max )
 ##
-##  !! need to find a way to pickle an iterable of namedtuples !!
+##  !! CREATE A WAY TO PICKLE AN ITERABLE OF DIFFERENT NAMEDTUPLES !!
 ##
 ##    def total_frame( self, date_time = False, labels = True, 
 ##                     data_str_max = STR_DATA_SZ,
@@ -500,9 +502,8 @@ class VTOS_DataBlock:
 ##        if date_time is True: returns -> list of 2tuple
 ##        else returns-> list
 ##        """
-##        return self._call( _vCALL, 'total_frame', ('b',date_time),
-##                           ('b',labels), ('i', data_str_max),
-##                           ('i', label_str_max) )
+##        return self._call( _vCALL, 'total_frame', date_time, labels,
+##                           data_str_max, label_str_max ) 
    
     def _call( self, virt_type, method='', *arg_buffer ):
             
@@ -516,29 +517,18 @@ class VTOS_DataBlock:
             req_b = _pack_msg( _vDESTROY )
         else:
             raise TOSDB_VirtualizationError( "invalid virt_type" )
-        
-        ret_b = _vcall( req_b, self._my_sock, self._hub_addr )
-        print('ret_b',ret_b)
-        args = _unpack_msg( ret_b )                 
-        status = args[0].decode()
-        print(args)
-        if status == _vFAILURE:
-            #
-            # need to make the error/failure return more robust
-            # more info on what happened
-            #
-            raise TOSDB_VirtualizationError( "failure status returned",
-                                             "virt_type: " + str(virt_type),
-                                             "method: " + str(method),
-                                             "arg_buffer: " + str(arg_buffer) )
-        
-        if virt_type in [_vCREATE, _vDESTROY]:
-            return True
-        elif virt_type == _vCALL and len(args) > 1:
-            if status == _vSUCCESS_NT:
-                return _loadnamedtuple( args[1] )
-            else:
-                return _pickle.loads( args[1] )
+
+        try:
+            ret_b = _vcall( req_b, self._my_sock, self._hub_addr )
+            if virt_type in [_vCREATE, _vDESTROY]:
+                return True
+            elif virt_type == _vCALL and ret_b:
+                if status == _vSUCCESS_NT:
+                    return _loadnamedtuple( ret_b )
+                else:
+                    return _pickle.loads( ret_b )
+        except:
+            raise # how do we want to handle this        
 
       
 _TOS_DataBlock.register( VTOS_DataBlock )
@@ -555,6 +545,7 @@ def enable_virtualization( address, poll_interval=DEF_TIMEOUT ):
             self._cli_addr = conn[1]
             self._poll_interval = poll_interval
             self._my_sock.settimeout( poll_interval / 1000 )
+            self._blk = None
             self._rflag = False
             self._stop_callback = stop_callback
             
@@ -569,59 +560,53 @@ def enable_virtualization( address, poll_interval=DEF_TIMEOUT ):
                     if not dat:                        
                         break                
                     args = _unpack_msg( dat )
-                    print('run',args)
+                    print('block-run',args)
                     msg_t = args[0].decode()
                     r = None
-                    if msg_t == _vCREATE:
-                        r = self._handle_create( args )                    
-                    elif msg_t == _vCALL:
-                        r = self._handle_call( args )                      
-                    elif msg_t == _vDESTROY:
-                        r = self._handle_destroy( args )                   
-                    _send_tcp( self._my_sock, r if r else _pack_msg(_vFAILURE))                 
+                    kill = True
+                    try:
+                        if msg_t == _vCREATE:
+                            uargs = _pickle.loads(args[1])               
+                            self._blk = TOS_DataBlock( *uargs )
+                            r = _pack_msg( _vSUCCESS )
+                            kill = False if r else True                                         
+                        elif msg_t == _vDESTROY:
+                            if self._blk:
+                                del self._blk
+                            r = _pack_msg( _vSUCCESS )                          
+                        elif msg_t == _vCALL:
+                            kill = False
+                            r = self._handle_call( args ) 
+                    except Exception as e:
+                        r = _pack_msg( _vFAILURE, _vFAIL_EXC, repr(e))                      
+                    _send_tcp( self._my_sock, r )
+                    if kill:
+                        self.stop()
                 except _socket.timeout as e:                
                     pass
-                except Exception as e:                   
-                    print( "Fatal Error in _VTOS_BlockServer (TERMINATING) : ",
-                           repr(e), ":", msg_t, " from ", str(self._cli_addr),
-                           file=_stderr )
+                except:
+                    print("Unhandled exception in _VTOS_BlockServer, terminated",
+                          file=_stderr )
                     self._rflag = False
+                    self._stop_callback( self )
+                    raise                
             self._stop_callback( self )
-        
-        def _handle_create( self, args ):
-            try:
-                upargs = _pickle.loads(args[1])                
-                cargs = [ _vTYPES[t](v) for t,v in upargs ]
-                print( str(cargs) )
-                self._blk = TOS_DataBlock( *cargs )
-                print( str(self._blk) )
-                return _pack_msg( _vSUCCESS )
-            except:
-                pass
-
-        def _handle_destroy( self, args ):
-            try:                
-                del self._blk
-                return _pack_msg( _vSUCCESS )
-            except:
-                pass                        
-            
+    
         def _handle_call( self, args ):
-            print("DEBUG",args)
+            print("block-call",args)
             try:
                 meth = getattr(self._blk, args[1].decode())
-                upargs = _pickle.loads( args[2]) if len(args) > 2 else ()
-                cargs = [ _vTYPES[t](v) for t,v in upargs ]
-                print( cargs )
-                ret = meth(*cargs)                
+                uargs = _pickle.loads( args[2]) if len(args) > 2 else ()                      
+                ret = meth(*uargs)                
                 if ret is None: # None is still a success
                     return _pack_msg( _vSUCCESS )                
                 elif hasattr(ret,_NTUP_TAG_ATTR): #our special namedtuple tag
                     return _pack_msg( _vSUCCESS_NT, _dumpnamedtuple(ret) )
                 else:
                     return _pack_msg( _vSUCCESS, _pickle.dumps(ret) )   
-            except:
-                pass
+            except Exception as e:
+                return _pack_msg( _vFAILURE, _vFAIL_EXC, repr(e))
+
 
     class _VTOS_AdminServer( _Thread ):
         
@@ -640,40 +625,29 @@ def enable_virtualization( address, poll_interval=DEF_TIMEOUT ):
         def run(self):
             self._rflag = True            
             while self._rflag:                                       
-                try:
-                    print('in run')
-                    dat = _recv_tcp( self._my_sock )                  
+                try:                  
+                    dat = _recv_tcp( self._my_sock )                 
                     if not dat:                        
                         break                    
-                    args = _unpack_msg( dat )
-                    print('run', args)
+                    args = _unpack_msg( dat )                 
                     rmsg = _pack_msg(_vFAILURE)
-                    try:
-                        print('run', 'going into meth')
-                        meth = self._globals[args[0].decode()]
-                        print('run', 'coming out of meth')
-                        upargs = _pickle.loads(args[1]) if len(args) > 1 else ()
-                        cargs = [ _vTYPES[t](v) for t,v in upargs ]
-                        print('cargs', str(cargs) )
-                        r = meth(*cargs)
-                        print( 'returned', str(r))
-                        if r is None:
-                            rmsg = _pack_msg( _vSUCCESS )
-                        else:
-                            rmsg = _pack_msg( _vSUCCESS, _pickle.dumps(r))                          
-                    except BaseException as e:
-                        print( "exc caught in run", repr(e) )
-                        rmsg = _pack_msg(_vFAILURE)
-                    print( 'run-out', args )
-                    print( 'run-out', rmsg )
+                    try:                  
+                        meth = self._globals[args[0].decode()]                       
+                        uargs = _pickle.loads(args[1]) if len(args) > 1 else ()                       
+                        print('cargs', str(uargs) )
+                        r = meth(*uargs)                                            
+                        rmsg = _pack_msg( _vSUCCESS ) if r is None else \
+                               _pack_msg( _vSUCCESS, _pickle.dumps(r) )                          
+                    except Exception as e:                      
+                        rmsg = _pack_msg( _vFAILURE, _vFAIL_EXC, repr(e))                   
                     _send_tcp( self._my_sock, rmsg)                 
                 except _socket.timeout as e:                
                     pass
-                except Exception as e:                   
-                    print( "Fatal Error in _VTOS_AdminServer (TERMINATING) : ",
-                           repr(e), ":", msg_t, " from ", str(self._cli_addr),
-                           file=_stderr )
-                    self._rflag = False    
+                except:
+                    print("Unhandled exception in _VTOS_AdminServer, terminated",
+                          file=_stderr )
+                    self._rflag = False
+                    raise
 
     class _VTOS_Hub( _Thread ):
 
@@ -687,46 +661,57 @@ def enable_virtualization( address, poll_interval=DEF_TIMEOUT ):
             self._my_sock.settimeout( poll_interval / 1000 )
             self._my_sock.bind( address )
             self._my_sock.listen(0)
-            self._virtual_data_servers = set()
+            self._virtual_block_servers = set()
             self._virtual_admin_server = None
           
         def stop(self):            
-            self._rflag = False         
+            self._rflag = False           
 
         def run(self):
+            
+            def _shutdown_servers(self):
+                while self._virtual_block_servers:
+                    self._virtual_block_servers.pop().stop()
+                if self._virtual_admin_server:
+                    self._virtual_admin_server.stop()
+                    
             self._rflag = True            
             while self._rflag:                
                 try:                  
                     conn = self._my_sock.accept()                
-                    dat = _recv_tcp( conn[0] )                   
-                    dat = _unpack_msg( dat )[0].decode()                  
-                    if dat == _vCONN_BLOCK:
-                        print("IN BLOCK")
-                        vserv = _VTOS_BlockServer( conn, self._poll_interval,
-                                            self._virtual_data_servers.discard )
-                        self._virtual_data_servers.add( vserv )
-                        vserv.start()
-                    elif dat == _vCONN_ADMIN:
-                        print("IN ADMIN")
-                        if self._virtual_admin_server:
-                            self._virtual_admin_server.stop()                        
-                        self._virtual_admin_server = _VTOS_AdminServer( conn,
+                    dat = _recv_tcp( conn[0] )
+                    try:
+                        dat = _unpack_msg( dat )[0].decode()                  
+                        if dat == _vCONN_BLOCK:
+                            print("IN BLOCK")
+                            vserv = _VTOS_BlockServer( conn, self._poll_interval,
+                                            self._virtual_block_servers.discard )
+                            self._virtual_block_servers.add( vserv )
+                            vserv.start()
+                        elif dat == _vCONN_ADMIN:
+                            print("IN ADMIN")
+                            if self._virtual_admin_server:
+                                self._virtual_admin_server.stop()                        
+                            self._virtual_admin_server = _VTOS_AdminServer( conn,
                                                             self._poll_interval )
-                        self._virtual_admin_server.start()
-                    else:
-                        raise TOSDB_VirtualizationError( "connection init msg "
-                                                         "must be _vCONN_BLOCK "
-                                                         "or _vCONN_ADMIN" )                                                        
+                            self._virtual_admin_server.start()
+                        else:
+                            raise TOSDB_VirtualizationError( "connection init"
+                                   " msg must be _vCONN_BLOCK or _vCONN_ADMIN" )
+                        _send_tcp( conn[0], _pack_msg(_vSUCCESS) )
+                    except Exception as e:
+                        rmsg = _pack_msg(_vFAILURE, _vFAIL_EXC, repr(e)) 
+                        _send_tcp( conn[0], rmsg )
+                        raise
                 except _socket.timeout as e:                   
                     continue                
-                except Exception as e: # anything else... shutdown the hub
-                    print("_VTOS_Hub killed: ", repr(e), file=_stderr)
-                    break                
-            while self._virtual_data_servers:
-                self._virtual_data_servers.pop().stop()
-            if self._virtual_admin_server:
-                self._virtual_admin_server.stop()
-            
+                except: ### anything else... shutdown the hub
+                    print( "Unhandled exception in _VTOS_Hub, terminated",
+                           file=_stderr )
+                    self._shutdown_servers()
+                    raise
+            ### end of while ###
+            self._shutdown_servers               
             
     try:
         if _virtual_hub is None:
@@ -755,18 +740,31 @@ def _vcall( msg, my_sock, hub_addr ):
             ret_b = _recv_tcp( my_sock )
         except _socket.timeout as e:
             raise TOSDB_VirtualizationError( "socket timed out",
-                                             "VTOS_DataBlock._call" )
-        print('v_call,ret_b',ret_b)
-        return ret_b
+                                             "VTOS_DataBlock._vcall" )              
+        args = _unpack_msg( ret_b )
+        print('v_call returned args-',args) 
+        status = args[0].decode()    
+        if status == _vFAILURE:
+            is_exc = args[1].decode()
+            desc = args[2].decode()           
+            if is_exc:
+                raise wrap_impl_error( eval(desc) )
+            else:
+                raise TOSDB_VirtualizationError( "failure status returned", desc )
+        else:
+            return args[1] if len(args) > 1 else None
     except ConnectionResetError:         
         try:
-            self._my_sock.connect( hub_addr)
-            _call( msg, my_sock, hub_addr)
+            my_sock.connect( hub_addr)
+            #
+            # ??? INFINITE LOOP ??? this recursive call might be the cauase
+            # 
+            _vcall( msg, my_sock, hub_addr)
         except:
             raise TOSDB_VirtualizationError("failed to reconnect to hub",
-                                            "VTOS_DataBlock._call" )      
-    except Exception as e:
-        TOSDB_VirtualizationError( repr(e) )
+                                            "VTOS_DataBlock._vcall" )      
+    except:
+        raise 
                                               
 def _dumpnamedtuple( nt ):
     n = type(nt).__name__

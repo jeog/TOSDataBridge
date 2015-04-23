@@ -28,20 +28,20 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 */
 
 size_type TOSDB_GetBlockLimit()
-{
+{   
     our_rlock_guard_type _lock_(*global_rmutex);
     return TOSDB_RawDataBlock::max_block_count();
 }
 
 size_type TOSDB_SetBlockLimit( size_type sz )
-{
-    our_rlock_guard_type _lock_(*global_rmutex);
+{    
+    our_rlock_guard_type _lock_(*global_rmutex); 
     return TOSDB_RawDataBlock::max_block_count( sz );
 }
 
 size_type TOSDB_GetBlockCount()
-{
-    our_rlock_guard_type _lock_(*global_rmutex);
+{   
+    our_rlock_guard_type _lock_(*global_rmutex);    
     return TOSDB_RawDataBlock::block_count();
 }
 

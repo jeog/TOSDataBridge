@@ -477,7 +477,14 @@ int TOSDB_CreateBlock( LPCSTR id,
 
     db = new TOSDBlock;     
     db->timeout = std::max<unsigned long>(timeout,TOSDB_MIN_TIMEOUT);
-    db->block = TOSDB_RawDataBlock::CreateBlock( sz, (bool)is_datetime ); 
+    db->block = nullptr;
+    try{
+        db->block = TOSDB_RawDataBlock::CreateBlock( sz, (bool)is_datetime ); 
+    }catch( TOSDB_DataBlockLimitError& e){
+        TOSDB_LogH( "TOSDBlock", "Attempted to exceed Block Limit" );
+    }catch( std::exception& e ){
+        TOSDB_LogH( "TOSDBlock", e.what() );
+    }
    
     if ( !db->block ){
         TOSDB_LogH( "DataBlock", "Error Creating TOSDB_RawDataBlock. "
