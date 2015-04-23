@@ -19,11 +19,9 @@
 Please refer to the tosdb.py docstring for detailed information.
 """
 
-# _tosdb is how we deal with C++ header defined consts, those exported from the
-# back-end libs, and '#define' compile-time consts necessary for C compatibility
-from _tosdb import *  # also allows us to migrate away from ctypes when necessary
-from .errors import *
-from .datetime import TOS_DateTime, _DateTimeStamp
+from ._common import * # a 'library' consisting of c/cpp _tosdb consts,
+# errors/exceptions, datetime objects, and helper/utility functions
+
 from io import StringIO as _StringIO
 from uuid import uuid4 as _uuid4
 from functools import partial as _partial
@@ -52,20 +50,20 @@ _REGEX_NON_ALNUM = _compile("[\W+]")
 _REGEX_DLL_NAME = _compile('^('+DLL_BASE_NAME 
                           + '-)[\d]{1,2}.[\d]{1,2}-'
                           + SYS_ARCH_TYPE +'(.dll)$')
-# move to _tosdb
-_NTUP_TAG_ATTR = "_dont_worry_about_why_this_attribute_has_a_weird_name_"
            
 _dll = None
         
-def init(dllpath = None, root = "C:\\"):
+def init(dllpath = None, root = "C:\\", bypass_check=False):
     """ Initialize the underlying tos-databridge DLL
 
     dllpath: string of the exact path of the DLL
     root: string of the directory to start walking/searching to find the DLL
-    """
-    print("DEBUG",str(dllpath),root)
+    """  
     global _dll
     rel = set()
+    if not bypass_check and dllpath is None and root == "C:\\":
+        if abort_init_after_warn():
+            return
     try:
         if dllpath is None:
             matcher = _partial( _match, _REGEX_DLL_NAME)  # regex match function
@@ -973,19 +971,6 @@ def _lib_call( f, *args, ret_type = _int_, arg_list = None ):
            if connected():
                cStat = " Connected"               
         raise TOSDB_CLibError("Unable to execute library function", f, cStat, e)
-
-# convert typebits to string and ctypes type
-def _type_switch( typeB ):
-    if typeB == INTGR_BIT + QUAD_BIT:
-        return ( "LongLong", _longlong_ )
-    elif typeB == INTGR_BIT:
-        return ( "Long", _long_ )
-    elif typeB == QUAD_BIT:
-        return ( "Double", _double_ )
-    elif typeB == 0:
-        return ( "Float", _float_ )
-    else: # default to string
-        return( "String", _str_ )
 
 # create a custom namedtuple with an i.d tag for special pickling
 def _gen_namedtuple( name, attrs ):

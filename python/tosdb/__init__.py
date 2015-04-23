@@ -67,10 +67,9 @@ control the underlying DLL:
   ********************************* IMPORTANT ********************************
 """
 
-# _tosdb is how we deal with C++ header defined consts, those exported from the
-# back-end libs, and '#define' compile-time consts necessary for C compatibility
-from _tosdb import *  # also allows us to migrate away from ctypes when necessary
-from .errors import *
+from ._common import * # a 'library' consisting of c/cpp _tosdb consts,
+# errors/exceptions, datetime objects, and helper/utility functions
+
 from collections import namedtuple as _namedtuple
 from threading import Thread as _Thread
 from argparse import ArgumentParser as _ArgumentParser
@@ -151,8 +150,6 @@ _vEEXOR = chr(ord(_vESC) ^ ord(_vESC)).encode() # 0
 
 # deal with bad vals coming into virtual layer ( see vinit )
 
-# move to _tosdb
-_NTUP_TAG_ATTR = "_dont_worry_about_why_this_attribute_has_a_weird_name_"
 
 #
 # note: for tim being preface virtual calls and objects with 'v' so
@@ -160,13 +157,16 @@ _NTUP_TAG_ATTR = "_dont_worry_about_why_this_attribute_has_a_weird_name_"
 # later we can use same name and load the appropriate version 
 #
 
-def vinit(dllpath = None, root = "C:\\"):
+def vinit(dllpath = None, root = "C:\\", bypass_check=False):
     """ Initialize the underlying tos-databridge Windows DLL
 
     dllpath: string of the exact path of the DLL
     root: string of the directory to start walking/searching to find the DLL
-    """   
-    return _admin_call( 'init', dllpath, root )
+    """
+    if not bypass_check and dllpath is None and root == "C:\\":
+        if abort_init_after_warn():
+            return
+    return _admin_call( 'init', dllpath, root, True )
 
 def vconnect():
     """ Attempts to connect the underlying Windows Library/Service """
@@ -236,8 +236,8 @@ def _admin_call( method, *arg_buffer ):
         a += (_pickle.dumps(arg_buffer),)
     try:
         ret_b = _vcall( _pack_msg( *a ), _virtual_admin_sock, _virtual_hub_addr) 
-        if ret_b:
-            return _pickle.loads( ret_b )
+        if ret_b[1]:
+            return _pickle.loads( ret_b[1] )
     except:
         raise
   
@@ -276,8 +276,7 @@ class VTOS_DataBlock:
             if self._my_sock:
                 self._my_sock.close()
         except:
-            print( "Error closing virtual block:", file=_stderr )
-            raise
+            pass
 
     def __str__( self ):
         s = self._call( _vCALL, '__str__' )    
@@ -522,11 +521,11 @@ class VTOS_DataBlock:
             ret_b = _vcall( req_b, self._my_sock, self._hub_addr )
             if virt_type in [_vCREATE, _vDESTROY]:
                 return True
-            elif virt_type == _vCALL and ret_b:
-                if status == _vSUCCESS_NT:
-                    return _loadnamedtuple( ret_b )
+            elif virt_type == _vCALL and ret_b[1]:
+                if ret_b[0] == _vSUCCESS_NT:
+                    return _loadnamedtuple( ret_b[1] )
                 else:
-                    return _pickle.loads( ret_b )
+                    return _pickle.loads( ret_b[1] )
         except:
             raise # how do we want to handle this        
 
@@ -708,10 +707,10 @@ def enable_virtualization( address, poll_interval=DEF_TIMEOUT ):
                 except: ### anything else... shutdown the hub
                     print( "Unhandled exception in _VTOS_Hub, terminated",
                            file=_stderr )
-                    self._shutdown_servers()
+                    _shutdown_servers()
                     raise
             ### end of while ###
-            self._shutdown_servers               
+            _shutdown_servers()               
             
     try:
         if _virtual_hub is None:
@@ -741,8 +740,7 @@ def _vcall( msg, my_sock, hub_addr ):
         except _socket.timeout as e:
             raise TOSDB_VirtualizationError( "socket timed out",
                                              "VTOS_DataBlock._vcall" )              
-        args = _unpack_msg( ret_b )
-        print('v_call returned args-',args) 
+        args = _unpack_msg( ret_b )     
         status = args[0].decode()    
         if status == _vFAILURE:
             is_exc = args[1].decode()
@@ -750,16 +748,16 @@ def _vcall( msg, my_sock, hub_addr ):
             if is_exc:
                 raise wrap_impl_error( eval(desc) )
             else:
-                raise TOSDB_VirtualizationError( "failure status returned", desc )
+                raise TOSDB_VirtualizationError( "failure status returned", desc)
         else:
-            return args[1] if len(args) > 1 else None
+            return (args[0],args[1]) if len(args) > 1 else (args[0],None)
     except ConnectionResetError:         
         try:
             my_sock.connect( hub_addr)
             #
             # ??? INFINITE LOOP ??? this recursive call might be the cauase
             # 
-            _vcall( msg, my_sock, hub_addr)
+            return _vcall( msg, my_sock, hub_addr)
         except:
             raise TOSDB_VirtualizationError("failed to reconnect to hub",
                                             "VTOS_DataBlock._vcall" )      
@@ -806,18 +804,6 @@ def _pack_msg( *parts ):
         return _sub(_vDELIM, _vESC + _vDEXOR, esc1)
     return _vDELIM.join( [ _escape_part(p) for p in parts ] )
 
-##    tot = b''
-##    def _escape_part( part ):
-##        enc = part.encode() if type(part) is not bytes else part         
-##        #escape the escape FIRST
-##        esc1 = _sub(_vESC, _vESC + _vEEXOR, enc )
-##        #escape the delim SECOND     
-##        return _sub(_vDELIM, _vESC + _vDEXOR, esc1)
-##    for p in parts:        
-##        tot += ( _escape_part(p) + _vDELIM )
-##    body = tot.rstrip(_vDELIM)
-##    return _escape_part(_struct.pack('Q', len(body))) + _vDELIM + body
-
 def _unpack_msg( msg ):    
     def _unescape_part( part ):
         #unescape the delim FIRST
@@ -827,17 +813,8 @@ def _unpack_msg( msg ):
     if not msg:
         return msg
     return [ _unescape_part(p) for p in msg.strip().split(_vDELIM) ]
-    
-##    def _unescape_part( part ):
-##        #unescape the delim FIRST
-##        unesc1 = _sub( _vESC + _vDEXOR, _vDELIM, part )
-##        #unescape the escape SECOND
-##        return _sub( _vESC + _vEEXOR, _vESC, unesc1 )
-##    raw_head, raw_body = msg.split(_vDELIM,1)
-##    head = _unescape_part(raw_head)
-##    if _struct.unpack('Q',head)[0] != len(raw_body):
-##        raise TOSDB_UDPMessageError("invalid msg length")
-##    return [ _unescape_part(p) for p in raw_body.strip().split(_vDELIM) ]
+
+
 
 def _check_address( addr ):
     # make this more thorough
@@ -859,19 +836,9 @@ if __name__ == "__main__" and _SYS_IS_WIN:
             init( dllpath = args.path )
         elif args.root:
             init( root = args.root )
-        else:
-            print( "*WARNING* by not supplying --root, --path, or " +
-                   "--noinit( -n ) arguments you are opting for a default " +
-                   "search root of 'C:\\'. This will attempt to search " +
-                   "the ENTIRE disk/drive for the tos-databridge library. " +
-                   "It's recommended you restart the program with the " +
-                   "library path (after --path) or a narrower directory " +
-                   "root (after --root)." )                
-            if input( "Do you want to continue anyway? (y/n): ") == 'y':
-                init()
-            else:
-                print("- init(root='C:\\') aborted")
         
+
+
 
 
                 
