@@ -25,7 +25,7 @@ from time import mktime as _mktime, struct_time as _struct_time, \
 from ctypes import Structure as _Structure, c_long as _long_, c_int as _int_
 
 BASE_YR = 1900
-_NTUP_TAG_ATTR = "_dont_worry_about_why_this_attribute_has_a_weird_name_"
+NTUP_TAG_ATTR = "_dont_worry_about_why_this_attribute_has_a_weird_name_"
 
 class TOSDB_Error( Exception ):
     """ Base exception for tosdb.py """    
@@ -68,16 +68,14 @@ class TOSDB_VirtualizationError( TOSDB_Error ):
         TOSDB_Error( *messages )
 
 def wrap_impl_error( clss ):
-    if not isinstance( clss, TOSDB_Error):
-        raise TypeError( "clss must be instance of TOSDB_Error" )
+    if not isinstance( clss, Exception):
+        raise TypeError( "clss must be instance of Exception" )
     
     our_def = """\
-    from tosdb.datetime import *
-
-    class TOSDB_ImplErrorWrapper( {clss} ):
-        def __init__( self, error ):
-            {clss}( error )
-    """.format(clss=(type(clss).__name__))
+class TOSDB_ImplErrorWrapper( {clss} ):
+    def __init__( self, error ):
+        {clss}( error )
+""".format(clss=(type(clss).__name__))
     
     exec(our_def)
     our_obj = eval("TOSDB_ImplErrorWrapper")(clss)

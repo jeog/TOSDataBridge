@@ -975,7 +975,7 @@ def _lib_call( f, *args, ret_type = _int_, arg_list = None ):
 # create a custom namedtuple with an i.d tag for special pickling
 def _gen_namedtuple( name, attrs ):
     nt = _namedtuple( name, attrs )
-    setattr(nt, _NTUP_TAG_ATTR, True)
+    setattr(nt, NTUP_TAG_ATTR, True)
     return nt
 
 # clean strings for namedtuple fields

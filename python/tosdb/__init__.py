@@ -577,6 +577,7 @@ def enable_virtualization( address, poll_interval=DEF_TIMEOUT ):
                             kill = False
                             r = self._handle_call( args ) 
                     except Exception as e:
+                        print( 'exc', repr(e))
                         r = _pack_msg( _vFAILURE, _vFAIL_EXC, repr(e))                      
                     _send_tcp( self._my_sock, r )
                     if kill:
@@ -599,11 +600,12 @@ def enable_virtualization( address, poll_interval=DEF_TIMEOUT ):
                 ret = meth(*uargs)                
                 if ret is None: # None is still a success
                     return _pack_msg( _vSUCCESS )                
-                elif hasattr(ret,_NTUP_TAG_ATTR): #our special namedtuple tag
+                elif hasattr(ret,NTUP_TAG_ATTR): #our special namedtuple tag
                     return _pack_msg( _vSUCCESS_NT, _dumpnamedtuple(ret) )
                 else:
                     return _pack_msg( _vSUCCESS, _pickle.dumps(ret) )   
             except Exception as e:
+                print( 'exc', repr(e))
                 return _pack_msg( _vFAILURE, _vFAIL_EXC, repr(e))
 
 
