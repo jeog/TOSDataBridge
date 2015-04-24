@@ -1,0 +1,7 @@
+{'DateTime': 'Enabled', 'Timeout': 2000, 'Size': 1000, 'Name': '14aa435fbc994f4791dfbbbe6a7d3692', 'Items': ['SPY'], 'Topics': ['LAST']}
+item: spy
+topic: last
+time_interval(sec): 60
+update_seconds: 10
+
+04/24/15 15:55:00 9887                            (211.64, 211.65, 211.63, 211.6343)

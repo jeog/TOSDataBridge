@@ -69,6 +69,7 @@ control the underlying DLL:
 
 from ._common import * # a 'library' consisting of c/cpp _tosdb consts,
 # errors/exceptions, datetime objects, and helper/utility functions
+from ._common import _DateTimeStamp, _type_switch
 
 from collections import namedtuple as _namedtuple
 from threading import Thread as _Thread

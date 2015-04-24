@@ -21,6 +21,7 @@ Please refer to the tosdb.py docstring for detailed information.
 
 from ._common import * # a 'library' consisting of c/cpp _tosdb consts,
 # errors/exceptions, datetime objects, and helper/utility functions
+from ._common import _DateTimeStamp, _type_switch
 
 from io import StringIO as _StringIO
 from uuid import uuid4 as _uuid4
