@@ -31,8 +31,6 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 
 namespace {
 
-    //unsigned long long counter = 0;
-    
     LPCSTR  CLASS_NAME = "DDE_CLIENT_WINDOW";
     LPCSTR  LOG_NAME   = "engine-log.log";    
     
@@ -61,16 +59,14 @@ namespace {
         SmartBuffer<ACL>(ACL_SIZE) 
     };     
     
-    buffers_type     buffers;    
-    topics_type      topics; 
-    convos_types     convos;    
-    LightWeightMutex topic_mtx;
-    LightWeightMutex buffer_mtx;
-    SignalManager    ack_signals;
+    buffers_type      buffers;    
+    topics_type       topics; 
+    convos_types      convos;    
+    LightWeightMutex  topic_mtx;
+    LightWeightMutex  buffer_mtx;
+    SignalManager     ack_signals;
 
     HANDLE init_event      =  NULL;
-    HANDLE continue_event  =  NULL;
-
     HANDLE msg_thrd        =  NULL;
     HWND   msg_window      =  NULL;
     DWORD  msg_thrd_id     =  0;
@@ -81,7 +77,7 @@ namespace {
     volatile bool is_service     =  true;
 
     template< typename T > 
-    int   RouteToBuffer( DDE_Data<T>&& data );    
+    int   RouteToBuffer( DDE_Data<T>&& data );  
     int   MainCommLoop(); 
     void  TearDownTopic( TOS_Topics::TOPICS tTopic, size_type timeout );
     bool  DestroyBuffer( TOS_Topics::TOPICS tTopic, std::string sItem );
@@ -90,29 +86,22 @@ namespace {
     int   CleanUpMain( int ret_code );
     void  DumpBufferStatus();
     void  CloseAllStreams( size_type timeout );
-    int   SetSecurityPolicy();
-   
+    int   SetSecurityPolicy();   
     int   AddStream( TOS_Topics::TOPICS tTopic, 
                      std::string sItem, 
                      size_type timeout );
-
     bool  RemoveStream( TOS_Topics::TOPICS tTopic, 
                         std::string sItem, 
                         size_type timeout );
-
     bool  PostItem( std::string sItem, 
                     TOS_Topics::TOPICS tTopic, 
                     size_type timeout );
-
     bool  PostCloseItem( std::string sItem, 
                          TOS_Topics::TOPICS tTopic, 
-                         size_type timeout );
-   
+                         size_type timeout );   
     bool  CreateBuffer( TOS_Topics::TOPICS tTopic, 
                         std::string sItem, 
                         unsigned int buffer_sz = TOSDB_SHEM_BUF_SZ );
-
-
 
     DWORD WINAPI      Threaded_Init( LPVOID lParam );
     LRESULT CALLBACK  WndProc(HWND, UINT, WPARAM, LPARAM);     
@@ -133,9 +122,9 @@ int WINAPI WinMain( HINSTANCE hInst,
    
     int err       =  0;
     size_t indx   =  0;  
-    void *p_arg1  =  nullptr;
-    void *p_arg2  =  nullptr;
-    void *p_arg3  =  nullptr;
+    void *parg1  =  nullptr;
+    void *parg2  =  nullptr;
+    void *parg3  =  nullptr;
     WNDCLASS clss =  {};
 
     DynamicIPCSlave slave( TOSDB_COMM_CHANNEL, TOSDB_SHEM_BUF_SZ );
@@ -194,31 +183,31 @@ int WINAPI WinMain( HINSTANCE hInst,
                 {
                 case TOSDB_SIG_ADD:
                 {
-                    if( !(p_arg1 = slave.shem_ptr( shem_buf[1] )) 
-                        || !(p_arg2 = slave.shem_ptr( shem_buf[2] )) 
-                        || !(p_arg3 = slave.shem_ptr( shem_buf[3] )) )
+                    if( !(parg1 = slave.shem_ptr( shem_buf[1] )) 
+                        || !(parg2 = slave.shem_ptr( shem_buf[2] )) 
+                        || !(parg3 = slave.shem_ptr( shem_buf[3] )) )
                         {                        
                         TOSDB_LogH("IPC","invalid shem_chunk passed to slave");
                         break;
                         }                 
-                    i = AddStream( *(TOS_Topics::TOPICS*)p_arg1, 
-                                   std::string((char*)p_arg2),
-                                   *(size_type*)p_arg3 );                     
+                    i = AddStream( *(TOS_Topics::TOPICS*)parg1, 
+                                   std::string((char*)parg2),
+                                   *(size_type*)parg3 );                     
                     slave.send( i );          
                 }
                     break;
                 case TOSDB_SIG_REMOVE:
                 {
-                    if( !(p_arg1 = slave.shem_ptr( shem_buf[1] )) 
-                        || !(p_arg2 = slave.shem_ptr( shem_buf[2] )) 
-                        || !(p_arg3 = slave.shem_ptr( shem_buf[3] )) )
+                    if( !(parg1 = slave.shem_ptr( shem_buf[1] )) 
+                        || !(parg2 = slave.shem_ptr( shem_buf[2] )) 
+                        || !(parg3 = slave.shem_ptr( shem_buf[3] )) )
                         {
                         TOSDB_LogH("IPC","invalid shem_chunk passed to slave");
                         break;
                         }
-                    i = RemoveStream( *(TOS_Topics::TOPICS*)p_arg1, 
-                                      std::string((char*)p_arg2), 
-                                      *(size_type*)p_arg3 ) ? 0 : 1;
+                    i = RemoveStream( *(TOS_Topics::TOPICS*)parg1, 
+                                      std::string((char*)parg2), 
+                                      *(size_type*)parg3 ) ? 0 : 1;
                     slave.send( i );                        
                 } 
                     break;
@@ -262,7 +251,7 @@ int WINAPI WinMain( HINSTANCE hInst,
                 }
 
                 indx = 0;        
-                p_arg1 = p_arg2 = p_arg3 = nullptr;
+                parg1 = parg2 = parg3 = nullptr;
 
             }else if( ++indx >= COMM_BUFFER_SIZE ){
                 TOSDB_LogH("IPC","shem_chunk buffer full, reseting msg loop");

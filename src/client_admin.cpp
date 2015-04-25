@@ -468,7 +468,7 @@ int TOSDB_CreateBlock( LPCSTR id,
     if( !CheckIDLength( id ) )        
         return -2;
 
-    our_rlock_guard_type lock(*global_rmutex);
+    GLOBAL_RLOCK_GUARD;
 
     if( GetBlockPtr(id) ){
         TOSDB_LogH("TOSDBlock", "TOSDBlock with this ID already exists");
@@ -478,6 +478,7 @@ int TOSDB_CreateBlock( LPCSTR id,
     db = new TOSDBlock;     
     db->timeout = std::max<unsigned long>(timeout,TOSDB_MIN_TIMEOUT);
     db->block = nullptr;
+
     try{
         db->block = TOSDB_RawDataBlock::CreateBlock( sz, (bool)is_datetime ); 
     }catch( TOSDB_DataBlockLimitError& e){
@@ -516,7 +517,7 @@ int TOSDB_Add( std::string id, str_set_type sItems, topic_set_type tTopics )
         return -2;
     }    
 
-    our_rlock_guard_type lock(*global_rmutex);
+    GLOBAL_RLOCK_GUARD;
 
     if( !(db = _getBlockPtr(id) ) )
         return -3;
@@ -714,7 +715,7 @@ int TOSDB_RemoveTopic( std::string id, TOS_Topics::TOPICS tTopic )
         return -2;
     }
     
-    our_rlock_guard_type lock(*global_rmutex);
+    GLOBAL_RLOCK_GUARD;
 
     db = _getBlockPtr(id);
     if ( !db || !(TOS_Topics::enum_type)(tTopic) )
@@ -758,7 +759,7 @@ int TOSDB_RemoveItem( LPCSTR id, LPCSTR sItem )
         return -1;
     }
     
-    our_rlock_guard_type lock(*global_rmutex);
+    GLOBAL_RLOCK_GUARD;
 
     if ( !CheckIDLength( id ) || !(db = _getBlockPtr(id) ) )
     {
@@ -807,7 +808,7 @@ int TOSDB_CloseBlock( LPCSTR id )
         return -1;
     }
 
-    our_rlock_guard_type lock(*global_rmutex);
+    GLOBAL_RLOCK_GUARD;
 
     if ( !CheckIDLength( id ) || !(db = _getBlockPtr(id) ) ){
         TOSDB_LogH("TOSDBlock", "Could not close.");
@@ -846,7 +847,7 @@ int TOSDB_CloseBlocks()
     int err = 0;
 
     try{ 
-        our_rlock_guard_type lock(*global_rmutex);  
+        GLOBAL_RLOCK_GUARD;  
         /* 
          * need a copy, _CloseBlock removes from original 
          */      
@@ -868,7 +869,7 @@ int TOSDB_DumpSharedBufferStatus()
     int ret;    
     unsigned int lcount = 0;
 
-    our_rlock_guard_type lock(*global_rmutex);
+    GLOBAL_RLOCK_GUARD;
 
     while( master.grab_pipe() <= 0 ){
         Sleep( TOSDB_DEF_TIMEOUT / 10 );           
@@ -893,7 +894,7 @@ int TOSDB_DumpSharedBufferStatus()
 
 int TOSDB_GetBlockIDs( LPSTR* dest, size_type array_len, size_type str_len )
 {    
-    our_rlock_guard_type lock(*global_rmutex);
+    GLOBAL_RLOCK_GUARD;
 
     if ( array_len < dde_blocks.size() ) 
         return -1;
@@ -912,7 +913,7 @@ str_set_type TOSDB_GetBlockIDs()
 {
     str_set_type tmp;
 
-    our_rlock_guard_type lock(*global_rmutex);
+    GLOBAL_RLOCK_GUARD;
 
     for( auto & name : dde_blocks )
         tmp.insert( name.first );
@@ -927,7 +928,7 @@ unsigned short inline TOSDB_GetLatency()
 
 unsigned short TOSDB_SetLatency( UpdateLatency latency ) 
 {
-    our_rlock_guard_type lock(*global_rmutex);    
+    GLOBAL_RLOCK_GUARD;    
 
     unsigned short tmp = buffer_latency;
     switch( latency)

@@ -415,10 +415,7 @@ int WINAPI WinMain( HINSTANCE hInst,
     }else
     {
         strcpy_s(engine_cmd,"--service");
-        SERVICE_TABLE_ENTRY dTable[] = {
-            {SERVICE_NAME,ServiceMain},
-            {NULL,NULL}
-        };
+        SERVICE_TABLE_ENTRY dTable[] = {{SERVICE_NAME,ServiceMain},{NULL,NULL}};
 
         TOSDB_Log( "STARTUP", 
                    "tos-databridge-engine.exe starting - WINDOWS SERVICE");

@@ -22,8 +22,8 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 #include  <mutex>
 
 typedef std::lock_guard< std::recursive_mutex > our_rlock_guard_type;
-
 extern std::recursive_mutex* const global_rmutex;
+#define GLOBAL_RLOCK_GUARD our_rlock_guard_type our_rlock_guard(*global_rmutex);
 
 template< typename T,typename T2> class RawDataBlock; 
 
