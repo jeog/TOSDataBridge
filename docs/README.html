@@ -122,12 +122,6 @@
     }
 
 
-    .auto-style1
-    {
-        font-size: large;
-    }
-
-
     </style>
 
 <h1 id = "header1" > TOSDataBridge&nbsp; :::&nbsp; README <br /><span id = "sub_header1" > 
@@ -138,9 +132,7 @@
 <p> 
     &nbsp;&nbsp;&nbsp;&nbsp; TOSDatabridge (TOSDB) is an open-source collection of resources for 'scraping' 
     real-time streaming data off of TDAmeritrade's ThinkOrSwim(TOS) platform, providing C, C++, and Python 
-    interfaces. It was initially created as an in-house tool to provide free, extensible, real-time 
-    financial data for testing other code.  It was not written as production quality and should not be 
-    expected to perform as such - it &quot;works&quot; but is not stable.  Users of the TOS platform - with 
+    interfaces. Users of the TOS platform - with 
     some basic programming/scripting knowledge -  can use this tool to populate their own databases with
     market data; perform specialized, low-level, and efficient analysis on large data-sets 
     in real-time; test and debug other financial apps; or even build extensions on top of it .</p>
@@ -149,10 +141,13 @@
     Windows API. The C / C++ interfaces are implemented as a shared library(DLL) that communicates with a back-end
     Windows Service. This allows any number of instances loaded into client code to run, sharing this 
     Service. The Python interface wraps this library in a more object-oriented, user-friendly format 
-    providing an interactive environment for easy access to the low(er)-level calls. This design - although 
-    a bit over-kill - allows interested parties the option of separating and interacting with the modules 
-    as they see fit. If you don&#39;t like the Python library, for instance, it&#39;s relatively 
-    straightforward to build your own, or extend the C/C++ library.</p>
+    providing an interactive environment for easy access to the low(er)-level calls. </p>
+<p> 
+    &nbsp;&nbsp;&nbsp;&nbsp;  
+    Obviously the core implementation is not portable, but the python interface does 
+    provides a thin virtualization layer over TCP. A user running Windows in a 
+    Virtual Machine, for instance, can expose the exact same python interface to a 
+    different host system running python3.</p>
 <p><i>
     &nbsp;&nbsp;&nbsp;&nbsp; TOSDB is released under the<strong> GNU General Public License(GPL);</strong> 
     a copy (LICENSE.txt) should be included. If not, see 
@@ -252,8 +247,9 @@
     builds for ALL modules. The python library will search for the underlying DLL (-x64 vs. -x86) that 
     matches the bit size returned by the log2 of its sys.maxsize() call, so check that its the correct 
     build if you get a dll error during the init() call.</li>
-    <li class = "listitem2 basictext">  TOSDB is, necessarily, built for Windows; It has been tested on 
-    Windows 7 SP1 and Vista SP2 - predominantly the former.</li>
+    <li class = "listitem2 basictext">  The core implementation has been tested on 
+    Windows 7 SP1 and Vista SP2 - predominantly the former. The virtual python 
+        layer/interface has been tested on Windows 7 and Debian/Linux-3.2</li>
 </ul>
 </div>
 
@@ -406,6 +402,7 @@ using the x64 binaries.
 <div class = "subheader1" > C/C++ Interface Calls ::: Part I - Administrative Calls </div> 
 <div class = subblock1 ">
 <p class = "subpara1 basictext">
+    &nbsp;&nbsp;&nbsp;&nbsp;
     Once the Service is running start by calling <span class = "func_stub"> 
     TOSDB_Connect() </span> which will return 0 if successful. Call the Library function 
     <span class = "func_stub"> TOSDB_IsConnected() </span> to see if you are &#39;connected&#39; to the 
@@ -427,6 +424,7 @@ using the x64 binaries.
     If it is of type char** you need to specify a char buffer length just as you do for the initial char**.
 </div>
 <p class = "subpara1 basictext">
+    &nbsp;&nbsp;&nbsp;&nbsp;
     TOSDB's main organizational unit is the 'block'( struct TOSDBlock in client.hpp ) 
     - it's important functionally and conceptually. The first thing client code does is call 
     <span class = "func_stub"> TOSDB_CreateBlock() </span> passing it a unique ID(<= TOSDB_BLOCK_ID_SZ) that 
@@ -440,6 +438,7 @@ using the x64 binaries.
     (see below), but this should always be the same as the number of TOSDBlocks.
 </p>
 <p class = "subpara1 basictext">
+    &nbsp;&nbsp;&nbsp;&nbsp;
     Within each &#39;block&#39; is a pointer to a RawDataBlock object (something of 
     a data-layer abstraction) which relies on an internal factory to return a constant pointer to a 
     RawDataBlock object. Internally the factory has a limit ( the default is 10 ) which can be adjusted with 
@@ -447,6 +446,7 @@ using the x64 binaries.
     <span class = "func_stub"> TOSDB_SetBlockLimit() </span> 
 </p>
 <p class = "subpara1 basictext">
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
     Once a block is created, items and topics are added. As mentioned earlier 
     topics are the TOS fields (e.g. LAST, VOLUME, BID ) and items are the individual symbols 
     (e.g. IBM, GE, SPY). <span class = "func_stub"> TOSDB_Add() </span>
@@ -467,12 +467,14 @@ using the x64 binaries.
     <span class = "func_stub"> TOSDB_GetPreCachedTopicEnums() </span> 
 </div>
 <p class = "subpara1 basictext">
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
     Currently its only possible to remove individual items
     <span class = "func_stub"> TOSDB_RemoveItem() </span> and topics 
     <span class = "func_stub"> TOSDB_RemoveTopic() </span> or close the whole block. 
     <span class = "func_stub"> TOSDB_CloseBlock() </span>
 </p>
 <p class = "subpara1 basictext">
+    &nbsp;&nbsp;&nbsp;&nbsp;
     As mentioned, the size of the block represents how large the data-streams are, 
     i.e. how much historical data is saved for each item-topic (each entry in the block has the same size; 
     if you prefer different sizes create a new block). Call 
@@ -489,18 +491,19 @@ using the x64 binaries.
     call <span class = "func_stub"> TOSDB_GetStreamOccupancy() </span>.
 </div>
 <p class = "subpara1 basictext">
+    &nbsp;&nbsp;&nbsp;&nbsp;
     To find out the the items / topics currently in the block call the C or C++ 
     versions of <span class = "func_stub"> TOSDB_GetItemNames() </span>  
     <span class = "func_stub"> TOSDB_GetTopicNames() </span> 
     <span class = "func_stub"> TOSDB_GetTopicEnums() </span> or if you just need the number 
     <span class = "func_stub"> TOSDB_GetItemCount() </span> 
-    <span class = "func_stub"> TOSDB_GetTopicCount() </span> 
-</p>
-<p class = "subpara1 basictext">
+    <span class = "func_stub"> TOSDB_GetTopicCount() </span>.
     To find out if the block is saving DateTime call the C or C++ versions of 
-    <span class = "func_stub"> TOSDB_IsUsingDateTime() </span>. 
+    TOSDB_IsUsingDateTime().     
 </p>
+
 <p class = "subpara1 basictext">
+    &nbsp;&nbsp;&nbsp;&nbsp;
     Because the data-engine behind the blocks handles a number of types it's 
     necessary to pack the type info inside the topic enum. Get the type bits at compile-time with 
     TOS_Topics::Type< ...topic enum... >::type or at run-time with
@@ -533,13 +536,15 @@ using the x64 binaries.
 <div class = "subheader1" > C/C++ Interface Calls ::: Part 2 - Get Calls </div> 
 <div class = subblock1 ">
 <p class = "subpara1 basictext">
+    &nbsp;&nbsp;&nbsp;&nbsp;
     Once you've created a block with valid items and topics, at some point you'll 
     want to extract the data that is collected. This is done via the non-administrative TOSDB_Get... calls 
     and is where things can get a little tricky.&nbsp; The two basic techniques are pulling data as: 1) a 
     segment of a data-stream and 2) a frame. 
 </p>
 <p class = "subpara1 basictext">
-    emember a data-stream is all the historical data of the block for a particular 
+    &nbsp;&nbsp;&nbsp;&nbsp;
+    Remember a data-stream is all the historical data of the block for a particular 
     item-topic entry.  A block with 3 topics and 4 items has 12 different data-streams each of the size 
     passed to TOSDB_CreateBlock(). The data-stream is indexed thusly: 0 or -(block size) is the most recent 
     value, -1 or (block size - 1) is the least recent.
@@ -551,6 +556,7 @@ using the x64 binaries.
     when passing index values as the C++ versions will throw std::invalid_argument() if you pass an ending 
     index of 100 to a stream of size 100.</div>
 <p class = "subpara1 basictext">
+    &nbsp;&nbsp;&nbsp;&nbsp;
     A frame on the other hand does not look at a specific data-stream, rather it 
     spans ALL the topics, or items, or both. Think of all the data-streams as the 3rd dimension of 
     2-dimensional frames. In theory there can be a frame for each index( for example a frame of all the most 
@@ -560,6 +566,7 @@ using the x64 binaries.
     be a way to adjust this chronological dependency of the block to store data in a number of different ways.)  
 </p>
 <p class = "subpara1 basictext">
+    &nbsp;&nbsp;&nbsp;&nbsp;
     Now that we have a basic understanding let's drill down a bit on some specific 
     calls. First are the single value <span class = "func_stub"> TOSDB_Get&lt; , &gt;() </span> and 
     <span class = "func_stub"> TOSDB_Get[Type]() </span> calls; the former a templatized C++ version, the 
@@ -577,6 +584,7 @@ using the x64 binaries.
     (pass a NULL value otherwise).
 </p>
 <p class = "subpara1 basictext">
+    &nbsp;&nbsp;&nbsp;&nbsp;
     In most cases you&#39;ll want more than a single value - use the 
     <span class = "func_stub"> TOSDB_GetStreamSnapshot&lt; , &gt;() </span> and 
     <span class = "func_stub"> TOSDB_GetStreamSnapshot[Type]s() </span> calls. The concept is similar to 
@@ -603,6 +611,27 @@ using the x64 binaries.
     data-stream and the value of those elements should be assumed undefined.
 </div>
 <p class = "subpara1 basictext">
+    &nbsp;&nbsp;&nbsp;&nbsp;
+    It&#39;s likely the stream will grow between consecutive calls. The
+    <span class = "func_stub"> TOSDB_GetStreamSnapshot[Type]sFromMarker() </span> calls 
+    guarantee to pick up where the last TOSDB_Get, TOSDB_GetStreamSnanpshot, or 
+    TOSDB_GetStreamSnapshotFromMarker call ended (under a few assumptions).&nbsp; 
+    Internally the stream maintains a &#39;marker&#39; that tracks the position of the last 
+    value pulled; the act of retreiving data and moving the marker can be thought of 
+    as a single, &#39;atomic&#39; operation. The *get_size arg will return the size of the 
+    data copied, it&#39;s up to the caller to supply a large enough buffer. A negative 
+    value indicates the buffer was to small to fit all the data, or the stream is 
+    &#39;dirty&#39; . A &#39;dirty&#39; stream means the marker has hit the back of the stream and 
+    data between the beginning of the last call and the end of the next will be 
+    dropped. To avoid this be sure you use a big enough stream and/or keep the 
+    marker moving foward (by using the get calls mentioned above). To determine if 
+    the stream is &#39;dirty&#39; use the <span class = "func_stub"> TOSDB_IsMarkerDirty() 
+    call</span>. There is no guarantee that a &#39;clean&#39; stream will not become dirty 
+    between the call<br />
+    to TOSDB_IsMarkerDirty and the retrieval of stream data, although can look for a 
+    negative *get_size value to indicate this rare state has occured.</p>
+<p class = "subpara1 basictext">
+    &nbsp;&nbsp;&nbsp;&nbsp;
     Now let&#39;s look at the TOSDB_Get...[Frame] calls. The three main calls are 
     GetItemFrame, GetTopicFrame, GetTotalFrame( C++ only ). 
     <span class = "func_stub"> TOSDB_GetItemFrame&lt;&gt;() </span> and
@@ -624,6 +653,7 @@ using the x64 binaries.
     the same as the primary value array(arg 'dest').
 </p>
 <p class = "subpara1 basictext">
+    &nbsp;&nbsp;&nbsp;&nbsp;
     <span class = "func_stub"> TOSDB_GetTopicFrame<>() </span> and 
     <span class = "func_stub"> TOSDB_GetTopicFrameStringss() </span> are used to retrieve the most recent 
     values for all the topics of a particular item. Think of it as finding the specific item on its axis, 
@@ -633,6 +663,7 @@ using the x64 binaries.
     different type, it's necessary to return strings(C) or generic_types(C++).
 </p>
 <p class = "subpara1 basictext">
+    &nbsp;&nbsp;&nbsp;&nbsp;
     <span class = "func_stub"> TOSDB_GetTotalFrame<>() </span> is the last type 
     of frame call that returns the total frame(the recent values for ALL items AND topics) as a matrix, 
     with the labels mapped to values and  DateTimeStamps if true is passed as the template argument. 
@@ -663,6 +694,7 @@ using the x64 binaries.
 <div class = "subheader1" > C/C++ Interface Calls ::: Part 3 - Logging, Exceptions &amp; Stream Overloads</div> 
 <div class = subblock1 "> 
 <p class = "subpara1 basictext"> 
+    &nbsp;&nbsp;&nbsp;&nbsp; 
     The library exports some logging functions that dovetail with its use of 
     custom exception classes. Pass a file-name to <span class = "func_stub"> TOSDB_StartLogging() </span> 
     to begin. <span class = "func_stub"> TOSDB_LogH() </span> and 
@@ -677,6 +709,7 @@ using the x64 binaries.
     <span class = "func_stub"> TOSDB_StopLogging() </span> have the expected effects.  
 </p>
 <p class = "subpara1 basictext">  
+    &nbsp;&nbsp;&nbsp;&nbsp;  
     Most of the modules use these logging functions internally.  The files are sent 
     to appropriately named .log files that reside in a /tos-databridge folder in the 'appdata' path for the 
     particular user(the path string returned from the APPDATA environment variable). The service and engine 
@@ -684,6 +717,7 @@ using the x64 binaries.
     (&quot;C:/Windows/System32/config/systemprofile/appdata...&quot;) than the modules run by the user.
 </p>
 <p class = "subpara1 basictext">  
+    &nbsp;&nbsp;&nbsp;&nbsp;  
     The library also defines an exception hierarchy, derived from TOSDB_error and 
     std::exception - categorizing some of the serious errors that may be encountered.  C++ code can catch 
     them and respond accordingly; the base class provides threadID(), [rocessID(), tag(), and info() 
@@ -692,6 +726,7 @@ using the x64 binaries.
     are caught internally and wrapped in TOSDB_error.
 </p>
 <p class = "subpara1 basictext"> 
+    &nbsp;&nbsp;&nbsp;&nbsp; 
     There are operator<< overloads for most of the custom objects and containers 
     returned by the TOSDB_Get... calls; although the output might not be formatted in the most intuitive, 
     easy-to-read way.</p>
@@ -826,6 +861,7 @@ using the x64 binaries.
 <div class = "subheader1" > Clean... Exit... Close... Stop... </div> 
 <div class = subblock1 "> 
 <p class = "subpara1 basictext"> 
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
     Still in flux is the best protocol(s) for exiting some or all of the TOSDB 
     modules. One complicating factor is the myriad states the entire TOSDB system can be in. The TOS 
     platform can re running, the client code can be running but not connected, and the Service can be 
@@ -834,12 +870,14 @@ using the x64 binaries.
     is trouble, and what parts of the implementation can be tweaked to promote stability.
 </p>
 <p class = "subpara1 basictext"> 
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
     Assuming everything is up and running you really want to avoid shutting down the  
     TOS platform and/or the Service while your client code is running. The former is particularly troubling 
     because, as it stands, the Service has not implemented a mechanism for handling a server induced shutdown, 
     it won't deallocate the resources held for the particular conversations initiated. The latter will free the 
     resources but leave the client-code stranded. </p>
 <p class = "subpara1 basictext"> 
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
     As a general rule follow this order: 1) Clean up: close blocks, call clean_up etc. 
     2) Exit your program. 3) Stop the Service 4) Close TOS platform. Once you've done #1 the order of 2-4 is 
     much less important. To avoid having to restart the service it can be left running. If step #1 is not 
@@ -860,7 +898,7 @@ using the x64 binaries.
    mentioned above, and you&#39;ll need to create and start the Windows Service mentioned in &#39;
    Getting Started&#39; as well. (tosdb.py was only written to be compatible with the &#39;new&#39; 
    python ( v3.0 + ) and it&#39;s only been tested on v3.3.0 64bit.&nbsp; If you want backward 
-   compatibility you&#39;ll have to make the necessary changes. ) 
+   compatibility you&#39;ll have to make the necessary changes. ). 
 </p>
 <div class = "note_block basictext"> 
     <strong>IMPLEMENTATION NOTE</strong> tosdb.py uses a library called ctypes.py to load the 
@@ -868,31 +906,26 @@ using the x64 binaries.
      to be loaded (_tos-databridge-shared[].dll ) which it expects to be in one of a number of locations; 
      that's why we manually copied it to your %WINDIR% directory earlier.                
 </div>
-<ul>
-    <li class = "listitems3">  First, it's important you make sure the version of the binary running 
+
+    <div class = "listitems3">  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;  First, it's important if 
+        installing on a windows system, you make sure the version of the binary running 
     in the windows services is the same as the one python is going to run. Python is going to pick 
     the version for you that matches its own build.  Before you create/run the service described in 
     the 'Getting Started' section open a python shell and look to see if it says 32 bit or 64 bit on 
     the top. If it says 32 you want to use the binaries that end like this ...blah-blah-x86.dll 
     (NOT the -x86_d.dll version).  After you get the service up and running open up task manager 
     or some such program that lets you view the image name of the exe's and make sure its the 
-    correct version. </li>
+    correct version. </div>
 
-    <li class = "listitems3"> From a command prompt navigate to the tos-databridge/python directory. 
-    There should be two .py files here: tosdb.py and setup.py. The setup script builds and installs the 
-    necessary modules to the default location for imported python modules, probably 
-    '...[your python root]\Lib\site-packages'. Please read the '_tosdb.cpp/pyd TROUBLESHOOTING' section 
-    below before running <em>python setup.py install</em> at the prompt.</li>        
+    <div class = "listitems3"> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; From a command prompt navigate to the 
+        tos-databridge/python directory. The command <em>&#39;python setup.py install</em>&#39; 
+        builds and installs the necessary package/modules depending on the platform 
+        you&#39;re installing it on. Remeber, if installing on a non-windows system to 
+        utilize the virtual interface you&#39;ll still need to install on a (physically or 
+        virtually) networked windows sytem. </div>
 
-    <li class = "listitems3"> There are a couple of ways to start tosdb.py. You can run it directly in 
-    interactive mode passing the appropriate arguments or open a shell or GUI and import it 
-    like a regular library. However you start it eventually you'll have to initialize it, which 
-    requires the path or general location of the underlying library it&#39;s going to load
-    (the tos-databridge[].dll) or the root directory it&#39;s going to search in for the latest 
-    version. <strong> Please see the tutorial in /docs for a walk-through with screen-shots.</strong></li>
-   </ul>
-<div class = "note_block basictext"> 
-    <strong>_tosdb.cpp/pyd TROUBLESHOOTING</strong> As mentioned in the above implementation note 
+    <div class = "note_block basictext"> 
+    <strong>TROUBLESHOOTING</strong> As mentioned in the above implementation note 
     tosdb.py uses ctypes.py to access the underlying library. But, because of how some of the constants
     are necessarily defined in the underlying library, and because at some point we might want to
     migrate some of the low-level functionality away from ctypes, we created a C (really C++) extension 
@@ -909,42 +942,55 @@ using the x64 binaries.
     <br /><br />
     A number of things outside of our control may create issues with this step. A few suggestions, 
     followed by some alternatives: 
-    <br />1) Make sure you have the necessary VisualStudio build tools, typically found in a folder 
-    stored in an environment variable like %VS100COMNTOOLS%.
+        <br />
+    <br />1) If compiling on/for windows be sure you have the necessary VisualStudio build tools, typically found in a folder 
+    stored in an environment variable like %VS100COMNTOOLS%.<br />
     <br /> 2) If using VisualStudio2012 your tools will be found in %VS110COMNTOOLS% but distutils 
     will look for variable %VS100COMNTOOLS% (python 3.3 and 3.4) or variable %VS90COMNTOOLS% 
     (earlier versions) so we need to trick it by entering 'SET VS100COMNTOOLS=%VS110COMNTOOLS%' 
     (or SET VS90... depending on the version) at a command prompt. 
+        <br />
     <br /> 3) If compiling 64-bit, setup may raise a ValueError when distutils tries to pass the 
     'amd64' arg to vcvarsall.bat; it needs the 'x86_amd64' arg instead. A simple hack: 
     open msvc9compiler.py in the distutils package, go down the the function query_vcvarsall() 
-    ~ line# 250 and hard-code ' arch = "x86_amd64" if arch == "amd64" else arch ' before Popen is called.
+    ~ line# 250 and hard-code <em>'arch = "x86_amd64" if arch == "amd64" else arch'</em> before Popen is called.
+        <br />
      <br />4) Initially when trying to build I kept running into an error that simply returned "error: " 
     (which, in the history of bad error messages, is one of my favorites). It turns out the 'auto-sandbox' 
     feature of COMODO firewall was causing a suprocess.Popen() call to fail. If you run into similar 
     problems check your firewall/AV settings or privilege level.
-    <br /><br />
+        The same is true if you get TOSDB_VirtualizationErrors while try to use the the 
+        virtual interface.<br /><br />
     If there is a problem the setup script should output some information on what it is and, if 
     _tosdb.pyd wasn't built, ask if you want to try installing a pre-compiled _tosdb.pyd binary to avoid 
-    the whole build process. (This was something that just got thrown together so don't expect much.) 
-    In the /python directory we've include some pre-compiled files(mentioned above) that the setup 
-    script will try to match with your python version, rename to _tosdb.pyd, and move to the python 
-    root directory. You can do this manually just remember to rename the file '_tosdb.pyd'. We've 
-    included 32 and 64 bit versions for python 3.3 and 3.4. If you're using a different version you'll 
-    have to build your own or if you've had enough try:
-    <br /><br />
-    THE NUCLEAR OPTION: you can get away with not using _tosdb.pyd by following these steps 1) comment 
-    out or remove the 'from _tosdb import*' at the top of tosdb.py, 2) open _tosdb.cpp and find the 
+    the whole build process. In the /python directory we&#39;ve include some pre-compiled 
+        files(mentioned above) that the setup script will try to match with your python 
+        version, rename to _tosdb.pyd, and move to the python root directory. You can do 
+        this manually just remember to rename the file &#39;_tosdb.pyd&#39;. We&#39;ve included 32 
+        and 64 bit versions for python 3.3 and 3.4. If you&#39;re using a different version 
+        you&#39;ll have to build your own.<br /><br />
+        <b><strong>THE NUCLEAR OPTION</strong></b>: you can get away with not using _tosdb.pyd by following these steps 1) comment 
+    out or remove the 'from _tosdb import*' at the top of tosdb/_common.py, 2) open _tosdb.cpp and find the 
     global const char* definitions (INTGR_BIT, DEF_TIMEOUT etc.), 3) for all those strings, except TOPICS, 
     declare variables of the same name in the global scope, right after all the import statements, in 
-    tosdb.py, and 4) open the tos_databridge.h header to find what those variables you just declared 
+        tosdb/_common.py, and 4) open the tos_databridge.h header to find what those variables you just declared 
     should be defined as. In the header they all have a TOSDB_ prefix. For example, the first variable 
     would be INTGR_BIT; go to tos_databridge.h and see that TOSDB_INTGR_BIT is #defined as 0x80, go to 
     the top of tosdb.py and enter 'INTGR_BIT = 0x80'. Do the same for all the others, except TOPICS - 
     you won't have access to the TOPICS tuple.
-    <br /> <br />
-    (At some point, while writing this, I realized this is no longer "in a nuthsell", sorry...)
 </div>
+<div class = "listitems3"> tosdb is structured as a package with the bulk of its 
+    code in __init__.py and _win.py , the latter holding the non-portable parts that 
+    __init__.py will import if it determines it&#39;s being run on a windows sytem. This 
+    structure allows you to simply import the package (import tosdb) or, if needed, 
+    extensions like intervalize.py (from tosdb import intervalize). There are a couple of ways to start tosdb. You can run it directly in 
+    interactive mode passing the appropriate arguments or open a shell or GUI and import it 
+    like a regular library. However you start it eventually you'll have to initialize it, which 
+    requires the path or general location of the underlying library it&#39;s going to load
+    (the tos-databridge[].dll) or the root directory it&#39;s going to search in for the latest 
+    version. ersion. <strong> Please see the tutorial in /docs for a walk-through with screen-shots.</strong></li>
+   </div>
+
 <div class = "note_block basictext"> 
     <strong>IMPORTANT</strong>&nbsp;  There is a minor issue with how python uses the underlying library 
     to deallocate shared resources used by it and the Service. Generally calls like TOSDB_CloseBlock and 
@@ -1116,75 +1162,8 @@ using the x64 binaries.
 </div>
 </div>
 
-<div class = "block1 basictext" >
-<div class = "subheader1" > Future Features, Fixes, and Enhancements </div> 
-<div class = subblock1 ">
-<ul >      
-        <li class = "listitem2"> A simpler IPC mechanism. Probably something like dual duplexed pipes 
-        where we can transmit messages and streams of args/return values separately.</li>
-        <li class = "listitem2"> Alternative stream types. The ability to organize data not just in 
-        tick-order but in time-segments(how a typical stock chart does it) and possibly aggregate 
-        volume segments. Currently users, with a little motivation, can organize their own 
-        segments/streams on top of ours to accomplish this. </li>
-        <li class = "listitem2"> Some cleaner and more user-friendly ways to handle large option 
-        chains, not just on a price dimension but also an expiration one. </li>
-        <li class = "listitem2"> An ad hoc, non-stream set of calls for data. If you just want a 
-        quick, one time quote for say a DESCRIPTION topic you don't need a stream.  Currently a user can
-        just create a block of size 1 and use the appropriate Get/get methods to extract that value. </li>
-        <li class = "listitem2"> Provide a Topics Enum and utilities to C version of library.</li>
-        <li class = "listitem2"> Make the system of error return values more intuitive, consistent, 
-        and universal. </li>
-</ul>
-</div>
 </div>
 
-<div class = "block1 basictext" >
-<div class = "subheader1" > Bugs, Issues, Screw-Ups & (hopefully) Fixes </div> 
-<div class = subblock1 ">
-<div class = "subpara1 basictext"> 
-<ul >      
-    <li class = "listitems1"><i> <b>-BUG- </b> std::condition_variable randomly throwing access 
-    violation from ntdll.dll </i>
-        <ul>
-            <li class = "listitems2 smalltext"> FIXED! Implementation issue w/ VS12, re-wrote some of the 
-            synch primitives with Windows Critical Sections and Events </li>
-        </ul>
-    </li>
-    <li class = "listitems1"><i> <b>-ISSUE- </b> Massive memory leak coming out of HandleData() - 
-    looks like part of the DDE message isn't being freed.  </i> 
-        <ul>
-            <li class = "listitems2 smalltext"> FIXED! Even though MSDN doesn't mention it(or maybe it's 
-            the server's fault) we have to use FreeDDElparam() after GlobalFree() </li>
-        </ul>
-    </li>
-    <li class = "listitems1"><i> <b>-ISSUE- </b> TOSDB_GetStreamSnapshot&lt; Type, true &gt; 
-    returns pair of vectors rather than (the more intuitive) vector of pairs  </i>
-        <ul>
-            <li class = "listitems2 smalltext"> Because data_stream is necessarily implemented as a 
-            virtual hierarchy w/ an interface, it limits our ability to use some creative methods that 
-            don't force the client to take data they don't want and do provide a relatively efficient 
-            means of copying large amounts of data without separating the vector-copy operations. </li>
-        </ul>
-    </li>
-    <li class = "listitems1"><i> <b>-SCREW-UPS- </b> </i>
-        <ul>
-            <li class = "listitems2 smalltext"> Not enough hours in the day to list them all. Stay Tuned.</li>
-        </ul>
-    </li>                 
-</ul>
-</div>
-</div>
-</div>
-
-<div class = "block1 basictext" >
-<div class = "subheader1" > Contact Us </div> 
-<div class = subblock1 ">
-<div class = "subpara1 basictext"> 
-    &nbsp;&nbsp;&nbsp;&nbsp;If you have any comments, questions, concerns, suggestions, or interest in 
-    contributing send a message to jeog.dev@gmail or through whatever means the hosting site/repository 
-    this eventually gets uploaded to provides. 
-</div>
-</div>
 </div>
 
 <footer style="text-align:center" > Copyright (C) 2014 Jonathon Ogden </footer>

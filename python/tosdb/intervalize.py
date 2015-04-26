@@ -20,8 +20,8 @@ class TimeInterval:
         
 class _GetOnInterval:       
     def __init__(self,block,item,topic):      
-        if not isinstance(block, tosdb._TOS_DataBlock):
-            raise TypeError("block must be of type tosdb.TOS_DataBlock")
+        if not isinstance(block, tosdb._TOSDB_DateTime):
+            raise TypeError("block must be of type tosdb._TOSDB_DateTime")
         self._block = block
         if topic.upper() not in block.topics():
             raise ValueError("block does not have topic: " + str(topic) )
@@ -89,14 +89,7 @@ class GetOnTimeInterval( _GetOnInterval ):
                 
     def _find_roll_points(self, snapshot):
         last_item = snapshot[-1]        
-        if self._interval_seconds <= 60:
-            do_mod = lambda i: i[1].sec % self._interval_seconds       
-        elif self._interval_seconds <= 3600:              
-            do_mod = lambda i: i[1].min % (self._interval_seconds / 60)          
-        elif self._interval_seconds <= 86400:
-            do_mod = lambda i: i[1].hour % (self._interval_seconds / 3600)            
-        else:
-            raise ValueError("invalid TimeInterval")
+        do_mod = self._get_do_mod()
         gapd = lambda t,l: (t[1].mktime - l[1].mktime) > self._interval_seconds
         riter = reversed(snapshot[:-1])
         rmndr = [last_item]       
@@ -116,7 +109,16 @@ class GetOnTimeInterval( _GetOnInterval ):
         # dont need all the rmndr, but will be useful for more advanced ops
         return rmndr
 
-
+    def _get_do_mod(self):
+        if self._interval_seconds <= 60:
+            return lambda i: i[1].sec % self._interval_seconds       
+        elif self._interval_seconds <= 3600:              
+            return lambda i: i[1].min % (self._interval_seconds / 60)          
+        elif self._interval_seconds <= 86400:
+            return = lambda i: i[1].hour % (self._interval_seconds / 3600)            
+        else:
+            raise ValueError("invalid TimeInterval") 
+    
     @staticmethod
     def _write_header( block, item, topic, file, time_interval, update_seconds):
         file.seek(0)
@@ -193,14 +195,7 @@ class GetOnTimeInterval_OHLC( GetOnTimeInterval ):
         last_item = snapshot[-1]
         if self._o is None:
             self._o = self._h = self._l = last_item[0]                
-        if self._interval_seconds <= 60:
-            do_mod = lambda i: i[1].sec % self._interval_seconds       
-        elif self._interval_seconds <= 3600:              
-            do_mod = lambda i: i[1].min % (self._interval_seconds / 60)          
-        elif self._interval_seconds <= 86400:
-            do_mod = lambda i: i[1].hour % (self._interval_seconds / 3600)            
-        else:
-            raise ValueError("invalid TimeInterval")
+        do_mod = self._get_do_mod()
         gapd = lambda t,l: (t[1].mktime - l[1].mktime) > self._interval_seconds
         riter = reversed(snapshot[:-1])
         rmndr = [last_item]       

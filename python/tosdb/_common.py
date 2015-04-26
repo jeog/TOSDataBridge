@@ -20,16 +20,63 @@
 from _tosdb import *  # also allows us to migrate away from ctypes when necessary
 import sys as _sys
 from collections import namedtuple as _namedtuple
+from abc import ABCMeta as _ABCMeta, abstractmethod as _abstractmethod
 from time import mktime as _mktime, struct_time as _struct_time, \
      asctime as _asctime, localtime as _localtime, strftime as _strftime
 from ctypes import Structure as _Structure, c_long as _long_, c_int as _int_, \
-        c_double as _double_, c_float as _float_, c_longlong as _longlong_
+     c_double as _double_, c_float as _float_, c_longlong as _longlong_, \
+     c_char_p as _str_   
 
 BASE_YR = 1900
 NTUP_TAG_ATTR = "_dont_worry_about_why_this_attribute_has_a_weird_name_"
 
+class _TOSDB_DataBlock(metaclass=_ABCMeta):
+    """ The DataBlock interface """
+    @classmethod
+    def __subclasshook__(cls, C):
+        if cls is _TOSDB_DataBlock:
+            for ameth in cls.__abstractmethods__:
+                if not any(ameth in b.__dict__ for b in C.__mro__):
+                    return False         
+            return True
+        return NotImplemented
+    @_abstractmethod
+    def __str__(): pass
+    @_abstractmethod
+    def info(): pass
+    @_abstractmethod
+    def get_block_size(): pass
+    @_abstractmethod
+    def set_block_size(): pass
+    @_abstractmethod
+    def stream_occupancy(): pass
+    @_abstractmethod
+    def items(): pass
+    @_abstractmethod
+    def topics(): pass
+    @_abstractmethod
+    def add_items(): pass
+    @_abstractmethod
+    def add_topics(): pass
+    @_abstractmethod
+    def remove_items(): pass
+    @_abstractmethod
+    def remove_topics(): pass
+    @_abstractmethod
+    def get(): pass
+    @_abstractmethod
+    def stream_snapshot(): pass
+    @_abstractmethod
+    def stream_snapshot_from_marker(): pass
+    @_abstractmethod
+    def item_frame(): pass
+    @_abstractmethod
+    def topic_frame(): pass
+    #@_abstractmethod
+    #def total_frame(): pass       
+
 class TOSDB_Error( Exception ):
-    """ Base exception for tosdb.py """    
+    """ Base exception for tosdb """    
     def __init__(self,  *messages ):        
         Exception( *messages )
 
@@ -100,11 +147,11 @@ class _DateTimeStamp(_Structure):
             
     _fields_ =  [ ("ctime_struct", _CTime), ("micro_second", _long_) ]
 
-class TOS_DateTime( _namedtuple( "DateTime",
+class TOSDB_DateTime( _namedtuple( "DateTime",
                     ["micro","sec","min","hour","day","month","year"])):
     """ The object used for handling DateTime values
 
-        TOS_DateTime is built on top of a simplified named tuple. It can be 
+        TOSDB_DateTime is built on top of a simplified named tuple. It can be 
         constructed from _DateTimeStamp, _struct_time from the time.py library,
         or itself (copy construction). It can be pickled (serialized); allows
         for basic addition and subtraction returning a new object or a
@@ -112,31 +159,15 @@ class TOS_DateTime( _namedtuple( "DateTime",
         and provides static utility functions to convert betwen DateTimeDiff
         objects and microseconds.       
 
-        object: either a _DateTimeStamp( ideally from the impl. ), a 
-        time._struct_time           
+        obj: either a _DateTimeStamp( ideally from the impl. ), 
+             time._struct_time, or TOSDB_DateTime object           
         micro_second: optional if adding a time._struct_time that lacks a 
-        micro_second field
+                      micro_second field
     """
     dtd_tuple = _namedtuple( "DateTimeDiff",
                             ["micro","sec","min","hour","day","sign"] )
     # cache total sec from epoch to make ops easier
     _mktime = None 
- 
-    @property
-    def mktime(self):
-        return self._mktime
-    
-    @staticmethod
-    def _to_struct_time( obj ):
-        return _struct_time( [ obj.ctime_struct.tm_year + BASE_YR,
-                              obj.ctime_struct.tm_mon +1,
-                              obj.ctime_struct.tm_mday,
-                              obj.ctime_struct.tm_hour,
-                              obj.ctime_struct.tm_min,
-                              obj.ctime_struct.tm_sec,
-                              obj.ctime_struct.tm_wday + 1,
-                              obj.ctime_struct.tm_yday + 1,
-                              obj.ctime_struct.tm_isdst ] )
 
     def __getnewargs__(self):        
         return ( (self.sec,self.min,self.hour,self.day,self.month,self.year),
@@ -154,27 +185,27 @@ class TOS_DateTime( _namedtuple( "DateTime",
               micro_second = obj.micro_second
         elif isinstance( obj, _struct_time ):
             _stime = obj
-        elif isinstance( obj, TOS_DateTime):
-            return super(TOS_DateTime, cls).__new__( cls, obj.micro,
+        elif isinstance( obj, TOSDB_DateTime):
+            return super(TOSDB_DateTime, cls).__new__( cls, obj.micro,
                                                      obj.sec, obj.min,
                                                      obj.hour, obj.day,
                                                      obj.month, obj.year )
         elif isinstance( obj, tuple ):
-            return super(TOS_DateTime, cls).__new__( cls, micro_second, *obj)
+            return super(TOSDB_DateTime, cls).__new__( cls, micro_second, *obj)
         else:
             raise TOSDB_DateTimeError( "invalid 'object' passed to __new__" )
         
-        return super(TOS_DateTime, cls).__new__( cls, micro_second,
+        return super(TOSDB_DateTime, cls).__new__( cls, micro_second,
                                                  _stime.tm_sec, _stime.tm_min,
                                                  _stime.tm_hour, _stime.tm_mday,
                                                  _stime.tm_mon, _stime.tm_year )
 
     def __init__(self, obj, micro_second=0):
         if isinstance( obj, _DateTimeStamp ):
-            self._mktime = _mktime( TOS_DateTime._to_struct_time( obj ) )          
+            self._mktime = _mktime( TOSDB_DateTime._to_struct_time( obj ) )          
         elif isinstance( obj, _struct_time ):
             self._mktime = _mktime(obj)
-        elif isinstance( obj, TOS_DateTime):
+        elif isinstance( obj, TOSDB_DateTime):
             self._mktime = obj._mktime
         else:
             raise TOSDB_DateTimeError( "invalid 'object' passed to __init__" )
@@ -195,8 +226,8 @@ class TOS_DateTime( _namedtuple( "DateTime",
         mk_time = self._mktime 
         mk_time += incr_sec       
         new_time = _localtime( mk_time ) 
-        # return a new TOS_DateTime 
-        return TOS_DateTime( new_time, micro_second = ms_new )                
+        # return a new TOSDB_DateTime 
+        return TOSDB_DateTime( new_time, micro_second = ms_new )                
         
     def __sub__(self, other_or_micro_sec ):
         other = other_or_micro_sec
@@ -213,20 +244,20 @@ class TOS_DateTime( _namedtuple( "DateTime",
             mk_time = self._mktime
             mk_time -= other_sec
             new_time = _localtime( mk_time )
-            # return a new TOS_DateTime 
-            return TOS_DateTime( new_time, micro_second = ms_diff )            
-        # if we are subtracting another TOS_DateTime
-        elif isinstance( other, TOS_DateTime):
+            # return a new TOSDB_DateTime 
+            return TOSDB_DateTime( new_time, micro_second = ms_diff )            
+        # if we are subtracting another TOSDB_DateTime
+        elif isinstance( other, TOSDB_DateTime):
             try: # try to get other's time in seconds                                         
                 sec_diff = self._mktime - other._mktime         
                 ms_diff = self.micro - other.micro
                 # convert the diff in micro_seconds to the diff-tuple
-                return TOS_DateTime.micro_to_dtd( sec_diff * 1000000 + ms_diff )     
+                return TOSDB_DateTime.micro_to_dtd( sec_diff * 1000000 + ms_diff )     
             except Exception as e:
-                raise TOSDB_DateTimeError( "invalid TOS_DateTime object", e )
+                raise TOSDB_DateTimeError( "invalid TOSDB_DateTime object", e )
         else:
             raise TOSDB_DateTimeError( "other_or_micro_sec must be " +
-                                       "TOS_DateTime or int" )
+                                       "TOSDB_DateTime or int" )
 
     def __lt__( self, other ):
         return (self._compare( other ) < 0)
@@ -247,13 +278,28 @@ class TOS_DateTime( _namedtuple( "DateTime",
         return (self._compare( other ))
     
     def _compare( self, other ):
-        if not isinstance( other, TOS_DateTime ):
+        if not isinstance( other, TOSDB_DateTime ):
             raise TOSDB_DateTimeError("unable to compare; unorderable types") 
         diff = self._mktime - other._mktime
         if diff == 0:            
             diff = self.micro - other.micro   
         return (-1 if diff < 0 else 1) if diff else 0
 
+    @property
+    def mktime(self):
+        return self._mktime
+    
+    @staticmethod
+    def _to_struct_time( obj ):
+        return _struct_time( [ obj.ctime_struct.tm_year + BASE_YR,
+                              obj.ctime_struct.tm_mon +1,
+                              obj.ctime_struct.tm_mday,
+                              obj.ctime_struct.tm_hour,
+                              obj.ctime_struct.tm_min,
+                              obj.ctime_struct.tm_sec,
+                              obj.ctime_struct.tm_wday + 1,
+                              obj.ctime_struct.tm_yday + 1,
+                              obj.ctime_struct.tm_isdst ] )
     @staticmethod
     def micro_to_dtd( micro_seconds ):
         """ Converts micro_seconds to DateTimeDiff  """
@@ -269,7 +315,7 @@ class TOS_DateTime( _namedtuple( "DateTime",
         micro_seconds //= 60
         new_hour = int(micro_seconds % 24)
         new_day = int(micro_seconds // 24)        
-        return TOS_DateTime.dtd_tuple( new_ms, new_sec, new_min, new_hour,
+        return TOSDB_DateTime.dtd_tuple( new_ms, new_sec, new_min, new_hour,
                                        new_day, ('+' if pos else '-') )        
         
     @staticmethod

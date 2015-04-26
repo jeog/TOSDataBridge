@@ -1,14 +1,17 @@
 TOSDataBridge (TOSDB) is an open-source collection of resources for 'scraping' real-time streaming data off of TDAmeritrade's ThinkOrSwim(TOS) platform, providing C, C++, and Python interfaces. Users of the TOS platform - with some basic programming/scripting knowledge - can use these tools to populate their own databases with market data; perform specialized, low-level, and efficient analysis on large data-sets in real-time; test and debug other financial apps; or even build extensions on top of it.
 
-TOSDB uses TOS's antiquated, yet still useful, DDE feature, directly through the Windows API. The C / C++ interfaces are implemented as a shared library(DLL) that communicates with a back-end Windows Service. The Python interface wraps this library in a more object-oriented, user-friendly format, providing an interactive environment for easy access to the low(er)-level calls. 
+TOSDB uses TOS's antiquated, yet still useful, DDE feature, directly through the Windows API. The C / C++ interfaces are implemented as a shared library(DLL) that communicates with a back-end Windows Service. The Python interface wraps this library in a more object-oriented, user-friendly format, providing an interactive environment for easy access to the low(er)-level calls.
+
+Obviously the core implementation is not portable, but the python interface does provides a thin virtualization layer over TCP. A user running Windows in a Virtual Machine, for instance, can expose the exact same python interface to a different host system running python3. 
 
 [Complete Documentation ( docs/README.html ) ](https://raw.githubusercontent.com/jeog/TOSDataBridge/master/docs/README.html)
 
 ###+ Requirements
-- Windows (this has been lightly tested on Windows 7 SP1 and Vista SP2)
-- TDAmeritrade's ThinkOrSwim(TOS) platform that exposes DDE functionality (it should)
+- Windows to run the core implementation. The python interface
+is available to any system running python3. 
+- TDAmeritrade's ThinkOrSwim(TOS) platform that exposes DDE functionality (the Window's verion)
 - VC++ 2012 Redistributable (included)
-- Some basic Windows knowledge; some basic C, C++, or Python programming knowledge
+- Some basic Windows knowledge; some basic C, C++, or Python3 programming knowledge
   
 ###+ Installation
 - tosdb-setup.bat will attempt to install the necessary modules/dependencies for you but you should refer to README.html for a more detailed explanation.

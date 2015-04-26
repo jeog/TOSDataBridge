@@ -23,9 +23,9 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 #include <iomanip>
 
 /* 
-    there is alot of redundancy here in order to support 
-    both C and C++ interfaces, and string versions
-*/
+ *  there is alot of redundancy here in order to support 
+ *  both C and C++ interfaces, and string versions
+ */
 
 size_type TOSDB_GetBlockLimit()
 {   
@@ -74,8 +74,6 @@ int TOSDB_SetBlockSize( LPCSTR id, size_type sz )
         return -2;
     }
 }
-
-
 
 int TOSDB_GetItemCount( LPCSTR id, size_type* count )
 {
@@ -1362,7 +1360,6 @@ int TOSDB_GetItemFrameStrings( LPCSTR id,
                         if( err) 
                             return err;                    
                     }
-
             }else{         
                 for( size_type i = 0; 
                      ( i < array_len ) && (b_iter != e_iter); 
@@ -1377,13 +1374,10 @@ int TOSDB_GetItemFrameStrings( LPCSTR id,
                         err = strcpy_s( label_dest[i], label_str_len, 
                                         (b_iter->first).c_str() );
                         if( err )                          
-                            return err;
-                           
+                            return err;                           
                     }
             }
-
         }else{
-
             generic_map_type::const_iterator b_iter, e_iter;           
             generic_map_type m = db->block->map_of_frame_items(tTopic);
             b_iter = m.cbegin();
@@ -1399,7 +1393,6 @@ int TOSDB_GetItemFrameStrings( LPCSTR id,
                         if( err )
                             return err;
                     }
-
             }else{            
                 for( size_type i = 0; 
                      ( i < array_len ) && (b_iter != e_iter); 
@@ -1417,14 +1410,12 @@ int TOSDB_GetItemFrameStrings( LPCSTR id,
                     }                    
             }
         };
-
     }catch( const std::exception& e ){
         TOSDB_LogH( "TOSDB_GetItemFrameStrings()", e.what() );
         return -2;
     }catch( ... ){
         return -2;    
     }
-
     return 0;        
 } 
 

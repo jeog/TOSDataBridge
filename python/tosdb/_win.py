@@ -21,7 +21,7 @@ Please refer to the tosdb.py docstring for detailed information.
 
 from ._common import * # a 'library' consisting of c/cpp _tosdb consts,
 # errors/exceptions, datetime objects, and helper/utility functions
-from ._common import _DateTimeStamp, _type_switch
+from ._common import _DateTimeStamp, _TOSDB_DataBlock, _type_switch
 
 from io import StringIO as _StringIO
 from uuid import uuid4 as _uuid4
@@ -172,7 +172,7 @@ def type_string( topic ):
 ###
 ###
 
-class TOS_DataBlock:
+class TOSDB_DataBlock:
     """ The main object for storing TOS data.    
 
     size: how much historical data to save
@@ -436,7 +436,7 @@ class TOS_DataBlock:
         
         item: any item string in the block
         topic: any topic string in the block
-        date_time: (True/False) attempt to retrieve a TOS_DateTime object   
+        date_time: (True/False) attempt to retrieve a TOSDB_DateTime object   
         indx: index of data-points [0 to block_size), [-block_size to -1]
         check_indx: throw if datum doesn't exist at that particular index
         data_str_max: the maximum size of string data returned
@@ -475,7 +475,7 @@ class TOS_DataBlock:
                                        "returned from library call", 
                                        "TOSDB_GetString" ) 
             if date_time :
-                return (ret_str.value.decode(), TOS_DateTime( dts ))
+                return (ret_str.value.decode(), TOSDB_DateTime( dts ))
             else:
                 return ret_str.value.decode()
         else:
@@ -496,7 +496,7 @@ class TOS_DataBlock:
                                        "returned from library call",
                                        "TOSDB_Get"+typeTup[0] )  
             if date_time:
-                return (val.value, TOS_DateTime( dts ))
+                return (val.value, TOSDB_DateTime( dts ))
             else:
                 return val.value
 
@@ -507,7 +507,7 @@ class TOS_DataBlock:
         
         item: any item string in the block
         topic: any topic string in the block
-        date_time: (True/False) attempt to retrieve a TOS_DateTime object              
+        date_time: (True/False) attempt to retrieve a TOSDB_DateTime object              
         end: index of least recent data-point ( end of the snapshot )
         beg: index of most recent data-point ( beginning of the snapshot )        
         smart_size: limits amount of returned data by data-stream's occupancy
@@ -559,7 +559,7 @@ class TOS_DataBlock:
                                        "returned from library call",                
                                        "TOSDB_GetStreamSnapshotStrings" ) 
             if date_time:
-                adj_dts = [ TOS_DateTime(x) for x in dtss ]
+                adj_dts = [ TOSDB_DateTime(x) for x in dtss ]
                 return [ _ for _ in \
                          zip( map(lambda x: _cast(x,_str_).value.decode(),
                               strs_array ), adj_dts ) ]        
@@ -584,7 +584,7 @@ class TOS_DataBlock:
                                       "returned from library call",
                                       "TOSDB_GetStreamSnapshot"+typeTup[0]+"s") 
             if date_time:
-                adj_dts = [ TOS_DateTime(x) for x in dtss ]
+                adj_dts = [ TOSDB_DateTime(x) for x in dtss ]
                 return [ _ for _ in zip(num_array,adj_dts) ]       
             else:
                 return [ _ for _ in num_array ]
@@ -631,7 +631,7 @@ class TOS_DataBlock:
         
         item: any item string in the block
         topic: any topic string in the block
-        date_time: (True/False) attempt to retrieve a TOS_DateTime object                      
+        date_time: (True/False) attempt to retrieve a TOSDB_DateTime object                      
         beg: index of most recent data-point ( beginning of the snapshot )        
         margin_of_safety: (True/False) error margin for async stream growth
         throw_if_data_loss: (True/False) how to handle error states (see above)
@@ -726,7 +726,7 @@ class TOS_DataBlock:
                     get_size *= -1               
             
             if date_time:
-                adj_dts = [ TOS_DateTime( x ) for x in dtss[:get_size] ]
+                adj_dts = [ TOSDB_DateTime( x ) for x in dtss[:get_size] ]
                 return [ _ for _ in \
                          zip( map( lambda x : cast(x, _str_).value.decode(), 
                                    strs_array[:get_size] ), adj_dts ) ]        
@@ -766,7 +766,7 @@ class TOS_DataBlock:
                     get_size *= -1
             
             if date_time:
-                adj_dts = [ TOS_DateTime( x ) for x in dtss[:get_size] ]
+                adj_dts = [ TOSDB_DateTime( x ) for x in dtss[:get_size] ]
                 return [ _ for _ in zip( num_array[:get_size], adj_dts ) ]       
             else:
                 return [ _ for _ in num_array[:get_size] ]    
@@ -777,7 +777,7 @@ class TOS_DataBlock:
         """ Return all the most recent item values for a particular topic.
 
         topic: any topic string in the block
-        date_time: (True/False) attempt to retrieve a TOS_DateTime object       
+        date_time: (True/False) attempt to retrieve a TOSDB_DateTime object       
         labels: (True/False) pull the item labels with the values 
         data_str_max: the maximum length of string data returned
         label_str_max: the maximum length of item label strings returned
@@ -825,13 +825,13 @@ class TOS_DataBlock:
                 l_map = map(lambda x: _cast(x, _str_).value.decode(),labs_array)
                 _nt_ = _gen_namedtuple(_str_clean(topic)[0], _str_clean(*l_map))             
                 if date_time:
-                    adj_dts = [ TOS_DateTime(x) for x in dtss ]
+                    adj_dts = [ TOSDB_DateTime(x) for x in dtss ]
                     return _nt_( *zip(s_map,adj_dts) )                        
                 else:
                     return _nt_( *s_map )             
             else:
                 if date_time:
-                    adj_dts = [ TOS_DateTime(x) for x in dtss ]
+                    adj_dts = [ TOSDB_DateTime(x) for x in dtss ]
                     return list( zip(s_map,adj_dts) )
                 else:
                     return list( s_map )                  
@@ -856,13 +856,13 @@ class TOS_DataBlock:
                 l_map = map(lambda x: _cast(x,_str_).value.decode(), labs_array)
                 _nt_ = _gen_namedtuple(_str_clean(topic)[0], _str_clean(*l_map))              
                 if date_time:
-                    adj_dts = [ TOS_DateTime(x) for x in dtss ]
+                    adj_dts = [ TOSDB_DateTime(x) for x in dtss ]
                     return _nt_( *zip(num_array,adj_dts) )                        
                 else:
                     return _nt_( *num_array )                            
             else:
                 if date_time:
-                    adj_dts = [ TOS_DateTime(x) for x in dtss ]
+                    adj_dts = [ TOSDB_DateTime(x) for x in dtss ]
                     return list( zip(num_array,adj_dts) )
                 else:
                     return [ _ for _ in num_array ]    
@@ -872,7 +872,7 @@ class TOS_DataBlock:
         """ Return all the most recent topic values for a particular item:
   
         item: any item string in the block
-        date_time: (True/False) attempt to retrieve a TOS_DateTime object       
+        date_time: (True/False) attempt to retrieve a TOSDB_DateTime object       
         labels: (True/False) pull the topic labels with the values 
         data_str_max: the maximum length of string data returned
         label_str_max: the maximum length of topic label strings returned
@@ -914,13 +914,13 @@ class TOS_DataBlock:
             l_map = map( lambda x: _cast(x, _str_).value.decode(), labs_array )
             _nt_ = _gen_namedtuple( _str_clean(item)[0], _str_clean( *l_map ) )            
             if date_time:
-                adj_dts = [TOS_DateTime( x ) for x in dtss]
+                adj_dts = [TOSDB_DateTime( x ) for x in dtss]
                 return _nt_( *zip( s_map, adj_dts ) )                        
             else:
                 return _nt_( *s_map )                
         else:
             if date_time:
-                adj_dts = [TOS_DateTime( x ) for x in dtss]
+                adj_dts = [TOSDB_DateTime( x ) for x in dtss]
                 return list( zip(s_map, adj_dts) )             
             else:
                 return list( s_map )
@@ -929,7 +929,7 @@ class TOS_DataBlock:
                      data_str_max = STR_DATA_SZ, label_str_max = MAX_STR_SZ ):
         """ Return a matrix of the most recent values:  
         
-        date_time: (True/False) attempt to retrieve a TOS_DateTime object        
+        date_time: (True/False) attempt to retrieve a TOSDB_DateTime object        
         labels: (True/False) pull the item and topic labels with the values 
         data_str_max: the maximum length of string data returned
         label_str_max: the maximum length of label strings returned
