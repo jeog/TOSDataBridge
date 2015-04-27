@@ -507,24 +507,21 @@ def enable_virtualization( address, poll_interval=DEF_TIMEOUT ):
             self._rflag = False                      
 
         def run(self):
-            self._rflag = True            
-            while self._rflag:                                       
-                try:                   
-                    dat = _recv_tcp( self._my_sock )                  
-                    if not dat:                        
-                        break                
-                    _handle_msg( dat )
-                except _socket.timeout as e:                
-                    pass
-                except:
-                    print("Unhandled exception in _VTOS_BlockServer, terminated",
-                          file=_stderr )
-                    self._rflag = False
-                    self._stop_callback( self )
-                    raise                
-            self._stop_callback( self )
-
+            ### defs ###
             def _handle_msg( dat ):
+                def _handle_call( args ):           
+                    try:
+                        meth = getattr(self._blk, args[1].decode())
+                        uargs = _pickle.loads( args[2]) if len(args) > 2 else ()                      
+                        ret = meth(*uargs)                
+                        if ret is None: # None is still a success
+                            return _pack_msg( _vSUCCESS )                
+                        elif hasattr(ret,NTUP_TAG_ATTR): #special namedtuple tag
+                            return _pack_msg( _vSUCCESS_NT, _dumpnamedtuple(ret))
+                        else:
+                            return _pack_msg( _vSUCCESS, _pickle.dumps(ret) )   
+                    except Exception as e:               
+                        return _pack_msg( _vFAILURE, _vFAIL_EXC, repr(e))            
                 r = None
                 kill = True
                 args = _unpack_msg( dat )              
@@ -541,7 +538,7 @@ def enable_virtualization( address, poll_interval=DEF_TIMEOUT ):
                         r = _pack_msg( _vSUCCESS )                          
                     elif msg_t == _vCALL:
                         kill = False
-                        r = self._handle_call( args )
+                        r = _handle_call( args )
                     else:
                         raise TOSDB_ValueError("invalid msg type")
                 except Exception as e:                  
@@ -553,20 +550,25 @@ def enable_virtualization( address, poll_interval=DEF_TIMEOUT ):
                 finally:
                     if kill:
                         self.stop()
-    
-        def _handle_call( self, args ):           
-            try:
-                meth = getattr(self._blk, args[1].decode())
-                uargs = _pickle.loads( args[2]) if len(args) > 2 else ()                      
-                ret = meth(*uargs)                
-                if ret is None: # None is still a success
-                    return _pack_msg( _vSUCCESS )                
-                elif hasattr(ret,NTUP_TAG_ATTR): #our special namedtuple tag
-                    return _pack_msg( _vSUCCESS_NT, _dumpnamedtuple(ret) )
-                else:
-                    return _pack_msg( _vSUCCESS, _pickle.dumps(ret) )   
-            except Exception as e:               
-                return _pack_msg( _vFAILURE, _vFAIL_EXC, repr(e))
+            ### defs ###
+            ### run loop ###             
+            self._rflag = True            
+            while self._rflag:                                       
+                try:                   
+                    dat = _recv_tcp( self._my_sock )                  
+                    if not dat:                        
+                        break                
+                    _handle_msg( dat )
+                except _socket.timeout as e:                
+                    pass
+                except:
+                    print("Unhandled exception in _VTOS_BlockServer, terminated",
+                          file=_stderr )
+                    self._rflag = False
+                    self._stop_callback( self )
+                    raise                
+            self._stop_callback( self )        
+            ### run loop ### 
 
 
     class _VTOS_AdminServer( _Thread ):
@@ -628,27 +630,12 @@ def enable_virtualization( address, poll_interval=DEF_TIMEOUT ):
             self._rflag = False           
 
         def run(self):
-            self._rflag = True            
-            while self._rflag:                
-                try:                  
-                    conn = self._my_sock.accept()                
-                    dat = _recv_tcp( conn[0] )
-                    _handle_msg(dat, conn)
-                except _socket.timeout as e:                   
-                    continue                
-                except: ### anything else... shutdown the hub
-                    print( "Unhandled exception in _VTOS_Hub, terminated",
-                           file=_stderr )
-                    _shutdown_servers()
-                    raise           
-            _shutdown_servers()
-            
+            ### defs ###
             def _shutdown_servers():
                 while self._virtual_block_servers:
                     self._virtual_block_servers.pop().stop()
                 if self._virtual_admin_server:
                     self._virtual_admin_server.stop()
-
             def _handle_msg(dat,conn):
                 try:
                     dat = _unpack_msg( dat )[0].decode()                  
@@ -670,8 +657,24 @@ def enable_virtualization( address, poll_interval=DEF_TIMEOUT ):
                 except Exception as e:
                     rmsg = _pack_msg(_vFAILURE, _vFAIL_EXC, repr(e)) 
                     _send_tcp( conn[0], rmsg )
+                    raise
+            ### defs ###
+            ### run loop ###
+            self._rflag = True            
+            while self._rflag:                
+                try:                  
+                    conn = self._my_sock.accept()                
+                    dat = _recv_tcp( conn[0] )
+                    _handle_msg(dat, conn)
+                except _socket.timeout as e:                   
+                    continue                
+                except: ### anything else... shutdown the hub
+                    print( "Unhandled exception in _VTOS_Hub, terminated",
+                           file=_stderr )
+                    _shutdown_servers()
                     raise           
-                           
+            _shutdown_servers()                     
+            ### run loop ###             
             
     try:
         if _virtual_hub is None:

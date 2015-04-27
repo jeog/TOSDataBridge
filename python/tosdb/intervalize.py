@@ -20,8 +20,8 @@ class TimeInterval:
         
 class _GetOnInterval:       
     def __init__(self,block,item,topic):      
-        if not isinstance(block, tosdb._TOSDB_DateTime):
-            raise TypeError("block must be of type tosdb._TOSDB_DateTime")
+        if not isinstance(block, tosdb._TOSDB_DataBlock):
+            raise TypeError("block must be of type tosdb._TOSDB_DateBlock")
         self._block = block
         if topic.upper() not in block.topics():
             raise ValueError("block does not have topic: " + str(topic) )
