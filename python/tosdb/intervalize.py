@@ -115,7 +115,7 @@ class GetOnTimeInterval( _GetOnInterval ):
         elif self._interval_seconds <= 3600:              
             return lambda i: i[1].min % (self._interval_seconds / 60)          
         elif self._interval_seconds <= 86400:
-            return = lambda i: i[1].hour % (self._interval_seconds / 3600)            
+            return lambda i: i[1].hour % (self._interval_seconds / 3600)            
         else:
             raise ValueError("invalid TimeInterval") 
     
