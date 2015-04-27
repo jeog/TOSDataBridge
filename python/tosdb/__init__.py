@@ -49,8 +49,8 @@ virtual blocks. To use admin calls (those outside the block) call
 admin_init.
 
 tosdb.py will attempt to load the non-portable _win.py if on windows.
-The following are some of the important calls imported from _win.py that
-control the underlying DLL:
+The following are some of the important calls imported from _win.py that - along
+with their virtual 'cousins' (prefixed with a 'v') - control the underlying DLL:
 
   init() initializes the underlying library
   connect() connects to the library (init attemps this for you)
@@ -703,10 +703,9 @@ def _vcall( msg, my_sock, hub_addr ):
                                              "VTOSDB_DataBlock._vcall" )              
         args = _unpack_msg( ret_b )     
         status = args[0].decode()    
-        if status == _vFAILURE:
-            is_exc = args[1].decode()
+        if status == _vFAILURE:           
             desc = args[2].decode()           
-            if is_exc:
+            if args[1].decode() == _vFAIL_EXC:
                 raise wrap_impl_error( eval(desc) )
             else:
                 raise TOSDB_VirtualizationError( "failure status returned", desc)
@@ -775,13 +774,12 @@ def _unpack_msg( msg ):
         return msg
     return [ _unescape_part(p) for p in msg.strip().split(_vDELIM) ]
 
-
-
 def _check_address( addr ):
     # make this more thorough
     if not ( type(addr) is tuple and len(addr) == 2 and
              type(addr[0]) is str and type(addr[1]) is int ):
         raise TOSDB_TypeError("address must be of type (str,int)")
+
 
 if __name__ == "__main__" and _SYS_IS_WIN:
     parser = _ArgumentParser()

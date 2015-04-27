@@ -252,7 +252,7 @@ class TOSDB_DateTime( _namedtuple( "DateTime",
                 sec_diff = self._mktime - other._mktime         
                 ms_diff = self.micro - other.micro
                 # convert the diff in micro_seconds to the diff-tuple
-                return TOSDB_DateTime.micro_to_dtd( sec_diff * 1000000 + ms_diff )     
+                return TOSDB_DateTime.micro_to_dtd( sec_diff * 1000000 + ms_diff)     
             except Exception as e:
                 raise TOSDB_DateTimeError( "invalid TOSDB_DateTime object", e )
         else:
@@ -292,14 +292,14 @@ class TOSDB_DateTime( _namedtuple( "DateTime",
     @staticmethod
     def _to_struct_time( obj ):
         return _struct_time( [ obj.ctime_struct.tm_year + BASE_YR,
-                              obj.ctime_struct.tm_mon +1,
-                              obj.ctime_struct.tm_mday,
-                              obj.ctime_struct.tm_hour,
-                              obj.ctime_struct.tm_min,
-                              obj.ctime_struct.tm_sec,
-                              obj.ctime_struct.tm_wday + 1,
-                              obj.ctime_struct.tm_yday + 1,
-                              obj.ctime_struct.tm_isdst ] )
+                               obj.ctime_struct.tm_mon +1,
+                               obj.ctime_struct.tm_mday,
+                               obj.ctime_struct.tm_hour,
+                               obj.ctime_struct.tm_min,
+                               obj.ctime_struct.tm_sec,
+                               obj.ctime_struct.tm_wday + 1,
+                               obj.ctime_struct.tm_yday + 1,
+                               obj.ctime_struct.tm_isdst ] )
     @staticmethod
     def micro_to_dtd( micro_seconds ):
         """ Converts micro_seconds to DateTimeDiff  """
@@ -348,15 +348,15 @@ def abort_init_after_warn():
         print("- init(root='C:\\') aborted")
         return True
         
-# convert typebits to string and ctypes type
-def _type_switch( typeB ):
-    if typeB == INTGR_BIT + QUAD_BIT:
+# convert type_bits to string and ctypes type
+def _type_switch( type_bits ):
+    if type_bits == INTGR_BIT + QUAD_BIT:
         return ( "LongLong", _longlong_ )
-    elif typeB == INTGR_BIT:
+    elif type_bits == INTGR_BIT:
         return ( "Long", _long_ )
-    elif typeB == QUAD_BIT:
+    elif type_bits == QUAD_BIT:
         return ( "Double", _double_ )
-    elif typeB == 0:
+    elif type_bits == 0:
         return ( "Float", _float_ )
     else: # default to string
         return( "String", _str_ )
