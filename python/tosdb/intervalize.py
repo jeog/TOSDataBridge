@@ -38,7 +38,26 @@ class GetOnTimeInterval( _GetOnInterval ):
         if block.info()['DateTime'] == 'Disabled':
             raise ValueError("block does not have datetime enabled")
 
-    # active_interval storage/functionality
+    @classmethod
+    def send_to_file( cls, block, item, topic, file_path,
+                      time_interval=TimeInterval.five_min,
+                      update_seconds=15, use_pre_roll_val=True ):                
+        file = open(file_path,'w')
+        try:
+            i = cls(block,item,topic)
+            cls._write_header( block, item, topic, file, time_interval,
+                               update_seconds)          
+            def run_cb(x):
+                x = x[0] if use_pre_roll_val else x[1]          
+                file.write( str(x[1]).ljust(50) + str(x[0]) + '\n' )               
+            stop_cb = lambda : file.close()
+            if cls._check_start_args( run_cb, stop_cb, time_interval,
+                                      update_seconds):
+                i.start( run_cb, stop_cb, time_interval, update_seconds)
+            return i
+        except Exception as e:
+            print( repr(e) )
+            file.close()
                  
     def start( self, run_callback, stop_callback,
                time_interval=TimeInterval.five_min, update_seconds=15 ):        
@@ -72,7 +91,8 @@ class GetOnTimeInterval( _GetOnInterval ):
             # less robust, strategies can be employed to fill in missing data.
             #
             try:                
-                dat = get_next_seg( self._item, self._topic, True)                       
+                dat = get_next_seg( self._item, self._topic, True,
+                                    throw_if_data_lost = False )                       
                 if dat and len(dat) >= 1:
                     dat += carry
                     carry = self._find_roll_points( dat )                                  
@@ -80,12 +100,10 @@ class GetOnTimeInterval( _GetOnInterval ):
                     _time.sleep( 1 )
                     if not self._rflag:
                         break
-            except Exception as e:
-                print( repr(e) )
+            except Exception as e:          
                 print("error in GetOnTimeInterval._update loop, stopping.")
                 self.stop()
-                raise
- 
+                raise 
                 
     def _find_roll_points(self, snapshot):
         last_item = snapshot[-1]        
@@ -95,12 +113,9 @@ class GetOnTimeInterval( _GetOnInterval ):
         rmndr = [last_item]       
         for this_item in riter:
             last_mod = do_mod(last_item)
-            this_mod = do_mod(this_item)
-            print("item", str((last_item[1].min,last_item[1].sec)),
-                  ((this_item[1].min,this_item[1].sec)) )
+            this_mod = do_mod(this_item)            
             if last_mod > this_mod or gapd(this_item,last_item):
-                # if we break into coniguous interval or 'gap' it
-                print("hit", str((last_item,this_item)) )
+                # if we break into coniguous interval or 'gap' it           
                 self._run_callback((last_item,this_item)) # (older,newer)                
                 rmndr = [this_item]          
             else:                
@@ -118,7 +133,7 @@ class GetOnTimeInterval( _GetOnInterval ):
             return lambda i: i[1].hour % (self._interval_seconds / 3600)            
         else:
             raise ValueError("invalid TimeInterval") 
-    
+            
     @staticmethod
     def _write_header( block, item, topic, file, time_interval, update_seconds):
         file.seek(0)
@@ -127,28 +142,6 @@ class GetOnTimeInterval( _GetOnInterval ):
         file.write('topic: ' + topic + '\n')
         file.write('time_interval(sec): ' + str(time_interval.val) + '\n' )
         file.write('update_seconds: ' + str(update_seconds) + '\n\n' )       
-
-    @classmethod
-    def send_to_file( cls, block, item, topic, file_path,
-                      time_interval=TimeInterval.five_min,
-                      update_seconds=15, use_pre_roll_val=True ):                
-        file = open(file_path,'w')
-        try:
-            i = cls(block,item,topic)
-            cls._write_header( block, item, topic, file, time_interval,
-                               update_seconds)          
-            def run_cb(x):
-                x = x[0] if use_pre_roll_val else x[1]          
-                file.write( str(x[1]).ljust(50) + str(x[0]) + '\n' )
-                #file.write( str(x[0][1]).ljust(40) + str(x[1][1]).ljust(40) + '\n' )
-            stop_cb = lambda : file.close()
-            if cls._check_start_args( run_cb, stop_cb, time_interval,
-                                      update_seconds):
-                i.start( run_cb, stop_cb, time_interval, update_seconds)
-            return i
-        except Exception as e:
-            print( repr(e) )
-            file.close()
         
     @staticmethod
     def _check_start_args( run_callback, stop_callback, time_interval,
@@ -164,6 +157,7 @@ class GetOnTimeInterval( _GetOnInterval ):
         if divmod(time_interval.val,update_seconds)[1] != 0:
             raise ValueError( "time_interval not divisible by update_seconds")
         return True
+
 
 class GetOnTimeInterval_OHLC( GetOnTimeInterval ):
     def __init__(self,block,item):
@@ -207,8 +201,8 @@ class GetOnTimeInterval_OHLC( GetOnTimeInterval ):
                 self._l = p
             last_mod = do_mod(last_item)
             this_mod = do_mod(this_item)
-            print("item", str((last_item[1].min,last_item[1].sec)),
-                  ((this_item[1].min,this_item[1].sec)) )
+            #print("item", str((last_item[1].min,last_item[1].sec)),
+            #      ((this_item[1].min,this_item[1].sec)) )
             if last_mod > this_mod or gapd(this_item,last_item):    
                 # if we break into coniguous interval or 'gap' it
                 ohlc = (self._o,self._h,self._l,this_item[0])

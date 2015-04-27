@@ -443,10 +443,13 @@ class TOSDB_DataBlock:
         """       
         item = item.upper()
         topic = topic.upper()
+        
         if date_time and not self._date_time:
             raise TOSDB_DateTimeError("date_time not available for this block")
+
         self._valid_item(item)
         self._valid_topic(topic)
+        
         if indx < 0:
             indx += self._block_size
         if indx >= self._block_size:
@@ -454,9 +457,11 @@ class TOSDB_DataBlock:
         if check_indx and indx >= self.stream_occupancy( item, topic ):
             raise TOSDB_DataError( "data not available at this index yet " +
                                    "(disable check_indx to avoid this error)" )
+
         dts = _DateTimeStamp()      
         tbits = type_bits( topic )
-        tytup = _type_switch( tbits )        
+        tytup = _type_switch( tbits )
+        
         if tytup[0] == "String":
             ret_str = _BUF_( data_str_max + 1 )
             err =_lib_call( "TOSDB_GetString", 
@@ -473,7 +478,8 @@ class TOSDB_DataBlock:
             if err:
                 raise TOSDB_CLibError( "error value [ "+ str(err) + " ] " +
                                        "returned from library call", 
-                                       "TOSDB_GetString" ) 
+                                       "TOSDB_GetString" )
+            
             if date_time :
                 return (ret_str.value.decode(), TOSDB_DateTime( dts ))
             else:
@@ -494,7 +500,8 @@ class TOSDB_DataBlock:
             if err:
                 raise TOSDB_CLibError( "error value [ "+ str(err) + " ] " +
                                        "returned from library call",
-                                       "TOSDB_Get"+tytup[0] )  
+                                       "TOSDB_Get"+tytup[0] )
+            
             if date_time:
                 return (val.value, TOSDB_DateTime( dts ))
             else:
@@ -518,10 +525,13 @@ class TOSDB_DataBlock:
         """     
         item = item.upper()
         topic = topic.upper()
+        
         if date_time and not self._date_time:
             raise TOSDB_DateTimeError("date_time not available for this block")
+        
         self._valid_item(item)
         self._valid_topic(topic)
+        
         if end < 0:
             end += self._block_size
         if beg < 0:
@@ -532,10 +542,12 @@ class TOSDB_DataBlock:
         if beg < 0 or end < 0 \
            or beg >= self._block_size or end >= self._block_size \
            or size <= 0:
-            raise TOSDB_IndexError("invalid 'beg' and/or 'end' index value(s)")           
+            raise TOSDB_IndexError("invalid 'beg' and/or 'end' index value(s)")
+        
         dtss = (_DateTimeStamp * size)()
         tbits = type_bits( topic )
-        tytup = _type_switch( tbits )   
+        tytup = _type_switch( tbits )
+        
         if tytup[0] == "String":
             # store char buffers
             strs = [ _BUF_(  data_str_max +1 ) for _ in range(size)]   
@@ -557,7 +569,8 @@ class TOSDB_DataBlock:
             if err:
                 raise TOSDB_CLibError( "error value [ "+ str(err) + " ] " +
                                        "returned from library call",                
-                                       "TOSDB_GetStreamSnapshotStrings" ) 
+                                       "TOSDB_GetStreamSnapshotStrings" )
+            
             if date_time:
                 adj_dts = [ TOSDB_DateTime(x) for x in dtss ]
                 return [ _ for _ in \
@@ -582,7 +595,8 @@ class TOSDB_DataBlock:
             if err:
                 raise TOSDB_CLibError("error value [ "+ str(err) + " ] " +
                                       "returned from library call",
-                                      "TOSDB_GetStreamSnapshot"+tytup[0]+"s") 
+                                      "TOSDB_GetStreamSnapshot"+tytup[0]+"s")
+            
             if date_time:
                 adj_dts = [ TOSDB_DateTime(x) for x in dtss ]
                 return [ _ for _ in zip(num_array,adj_dts) ]       
@@ -644,18 +658,21 @@ class TOSDB_DataBlock:
         
         item = item.upper()
         topic = topic.upper()
+        
         if date_time and not self._date_time:
             raise TOSDB_DateTimeError("date_time not available for this block")
-        self._valid_item(item)
-        self._valid_topic(topic)      
+
+        self._valid_item(item)        
+        self._valid_topic(topic)
+        
         if beg < 0:
             beg += self._block_size   
         if beg < 0 or beg >= self._block_size:
             raise TOSDB_IndexError("invalid 'beg' index value")
-
+        
         if margin_of_safety < MIN_MARGIN_OF_SAFETY:
             raise TOSDB_ValueError("margin_of_safety < MIN_MARGIN_OF_SAFETY")
-
+        
         is_dirty = _uint_()
         err = _lib_call( "TOSDB_IsMarkerDirty",
                          self._name,
@@ -682,14 +699,17 @@ class TOSDB_DataBlock:
            raise TOSDB_CLibError( "error value [ "+ str(err2) + " ] " +
                                   "returned from library call",
                                   "TOSDB_GetMarkerPosition" )
+        
         cur_sz = mpos.value - beg + 1
         if cur_sz < 0:
             return None
+        
         safe_sz = cur_sz + margin_of_safety
         dtss = (_DateTimeStamp * safe_sz)()
         tbits = type_bits( topic )
         tytup = _type_switch( tbits )
         get_size = _long_()
+        
         if tytup[0] == "String":
             # store char buffers
             strs = [ _BUF_(  data_str_max +1 ) for _ in range(safe_sz) ]   
@@ -714,8 +734,7 @@ class TOSDB_DataBlock:
                                        " ] returned from library call",
                                        "TOSDB_GetStreamSnapshotStrings" \
                                            + "FromMarker")
-
-            print("DEBUG, get_size: ", str(get_size) )
+            
             get_size = get_size.value
             if get_size == 0:
                 return None
@@ -723,8 +742,8 @@ class TOSDB_DataBlock:
                 if throw_if_data_lost:
                     raise TOSDB_DataError("data lost behind the 'marker'")
                 else:
-                    get_size *= -1               
-            
+                    get_size *= -1
+                    
             if date_time:
                 adj_dts = [ TOSDB_DateTime( x ) for x in dtss[:get_size] ]
                 return [ _ for _ in \
@@ -754,8 +773,7 @@ class TOSDB_DataBlock:
                                        " ] returned from library call",
                                        "TOSDB_GetStreamSnapshot" \
                                            + tytup[0] + "sFromMarker" )
-
-            print("DEBUG, get_size: ", str(get_size) )
+            
             get_size = get_size.value
             if get_size == 0:
                 return None
@@ -764,7 +782,7 @@ class TOSDB_DataBlock:
                     raise TOSDB_DataError("data lost behind the 'marker'")
                 else:
                     get_size *= -1
-            
+                    
             if date_time:
                 adj_dts = [ TOSDB_DateTime( x ) for x in dtss[:get_size] ]
                 return [ _ for _ in zip( num_array[:get_size], adj_dts ) ]       
@@ -788,9 +806,12 @@ class TOSDB_DataBlock:
         else returns-> list
         """      
         topic = topic.upper()
+        
         if date_time and not self._date_time:
             raise TOSDB_DateTimeError("date_time not available for this block")
+        
         self._valid_topic(topic)
+        
         size = self._item_count()
         dtss = (_DateTimeStamp * size)()
         # store char buffers
@@ -798,7 +819,8 @@ class TOSDB_DataBlock:
         # cast char buffers int (char*)[ ]
         labs_array = ( _pchar_ * size)( *[ _cast(s, _pchar_) for s in labs] )  
         tbits = type_bits( topic )
-        tytup = _type_switch( tbits )       
+        tytup = _type_switch( tbits )
+        
         if tytup[0] is "String":                     
             # store char buffers 
             strs = [ _BUF_(  data_str_max + 1 ) for _ in range(size)]               
@@ -820,7 +842,9 @@ class TOSDB_DataBlock:
                 raise TOSDB_CLibError( "error value [ "+ str(err) + " ] " +
                                        "returned from library call",
                                        "TOSDB_GetItemFrameStrings" )
-            s_map = map( lambda x: _cast(x, _str_).value.decode(), strs_array )           
+            
+            s_map = map( lambda x: _cast(x, _str_).value.decode(), strs_array )
+            
             if labels:
                 l_map = map(lambda x: _cast(x, _str_).value.decode(),labs_array)
                 _nt_ = _gen_namedtuple(_str_clean(topic)[0], _str_clean(*l_map))             
@@ -851,7 +875,8 @@ class TOSDB_DataBlock:
             if err:
                 raise TOSDB_CLibError( "error value [ "+ str(err) + " ] " +
                                        "returned from library call",
-                                       "TOSDB_GetItemFrame" + tytup[0] + "s" ) 
+                                       "TOSDB_GetItemFrame" + tytup[0] + "s" )
+            
             if labels:                                
                 l_map = map(lambda x: _cast(x,_str_).value.decode(), labs_array)
                 _nt_ = _gen_namedtuple(_str_clean(topic)[0], _str_clean(*l_map))              
@@ -866,6 +891,7 @@ class TOSDB_DataBlock:
                     return list( zip(num_array,adj_dts) )
                 else:
                     return [ _ for _ in num_array ]    
+
 
     def topic_frame( self, item, date_time = False, labels = True, 
                      data_str_max = STR_DATA_SZ, label_str_max = MAX_STR_SZ ):
@@ -883,17 +909,23 @@ class TOSDB_DataBlock:
         else returns-> list
         """      
         item = item.upper()
+        
         if date_time and not self._date_time:
             raise TOSDB_DateTimeError("date_time not available for this block")
+        
         self._valid_item(  item )
+        
         size = self._topic_count()
         dtss = (_DateTimeStamp * size)()
+        
         # cast char buffers int (char*)[ ]                
         labs = [ _BUF_( label_str_max + 1 ) for _ in range(size)] 
-        strs = [ _BUF_( data_str_max + 1 ) for _ in range(size)] 
+        strs = [ _BUF_( data_str_max + 1 ) for _ in range(size)]
+        
         # cast char buffers int (char*)[ ]                      
         labs_array = ( _pchar_ * size)( *[ _cast(s, _pchar_) for s in labs] ) 
-        strs_array = ( _pchar_ * size)( *[ _cast(s, _pchar_) for s in strs] )  
+        strs_array = ( _pchar_ * size)( *[ _cast(s, _pchar_) for s in strs] )
+        
         err = _lib_call( "TOSDB_GetTopicFrameStrings", 
                          self._name,
                          item.encode("ascii"),
@@ -908,8 +940,10 @@ class TOSDB_DataBlock:
         if err:
             raise TOSDB_CLibError( "error value [ "+ str(err) + " ] " +
                                    "returned from library call",
-                                   "TOSDB_GetTopicFrameStrings" ) 
+                                   "TOSDB_GetTopicFrameStrings" )
+        
         s_map = map( lambda x: _cast(x, _str_).value.decode(), strs_array )
+        
         if labels:
             l_map = map( lambda x: _cast(x, _str_).value.decode(), labs_array )
             _nt_ = _gen_namedtuple( _str_clean(item)[0], _str_clean( *l_map ) )            
@@ -924,6 +958,7 @@ class TOSDB_DataBlock:
                 return list( zip(s_map, adj_dts) )             
             else:
                 return list( s_map )
+
 
     def total_frame( self, date_time = False, labels = True, 
                      data_str_max = STR_DATA_SZ, label_str_max = MAX_STR_SZ ):
