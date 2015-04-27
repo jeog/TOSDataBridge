@@ -73,7 +73,6 @@ from ._common import _DateTimeStamp, _TOSDB_DataBlock, _type_switch
 
 from collections import namedtuple as _namedtuple
 from threading import Thread as _Thread
-from argparse import ArgumentParser as _ArgumentParser
 from functools import partial as _partial
 from platform import system as _system
 from sys import stderr as _stderr
@@ -490,7 +489,7 @@ class VTOSDB_DataBlock:
    
 def enable_virtualization( address, poll_interval=DEF_TIMEOUT ):
     global _virtual_hub  
-       
+        
     class _VTOS_BlockServer( _Thread ):
         
         def __init__( self, conn, poll_interval, stop_callback):
@@ -676,7 +675,7 @@ def enable_virtualization( address, poll_interval=DEF_TIMEOUT ):
             _shutdown_servers()                     
             ### run loop ###             
             
-    try:
+    try:      
         if _virtual_hub is None:
             _virtual_hub = _VTOS_Hub( address, poll_interval )
             _virtual_hub.start()      
@@ -693,11 +692,10 @@ def disable_virtualization():
         raise TOSDB_VirtualizationError( "(disable) virtualization error", e )    
 
 #currently uncessary as server is daemon thread, but may be useful later
-_on_exit( disable_virtualization )
+#_on_exit( disable_virtualization )
 
 def _vcall( msg, my_sock, hub_addr ):
-    try:
-        print(msg)
+    try:       
         _send_tcp( my_sock, msg )       
         try:
             ret_b = _recv_tcp( my_sock )
@@ -784,20 +782,7 @@ def _check_address( addr ):
         raise TOSDB_TypeError("address must be of type (str,int)")
 
 
-if __name__ == "__main__" and _SYS_IS_WIN:
-    parser = _ArgumentParser()
-    parser.add_argument( "--root", 
-                         help = "root directory to search for the library" )
-    parser.add_argument( "--path", help="the exact path of the library" )
-    parser.add_argument( "-n", "--noinit", 
-                         help="don't initialize the library automatically",
-                         action="store_true" )
-    args = parser.parse_args()   
-    if not args.noinit:       
-        if args.path:
-            init( dllpath = args.path )
-        elif args.root:
-            init( root = args.root )
+
         
 
 
