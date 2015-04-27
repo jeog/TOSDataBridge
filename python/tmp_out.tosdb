@@ -1,9 +1,0 @@
-{'DateTime': 'Enabled', 'Topics': ['LAST'], 'Name': 'b07f1aa346f641709d8589a28f1b00b3', 'Timeout': 2000, 'Items': ['SPY'], 'Size': 1000}
-item: spy
-topic: last
-time_interval(sec): 60
-update_seconds: 10
-
-04/24/15 11:57:58 745661                          211.57
-04/24/15 11:58:59 858942                          211.62
-04/24/15 11:59:59 930813                          211.62
