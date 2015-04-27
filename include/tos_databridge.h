@@ -584,7 +584,7 @@ template<> DLL_SPEC_IFACE_ generic_dts_matrix_type  TOSDB_GetTotalFrame<true>( s
 /* if logging is not enabled high severity events will be sent to std::cerr */ 
 typedef enum{ low = 0, high }Severity;    
 /* note: these _tos-databridge-static.lib imports must use /export:[func name] during link */ 
-EXT_SPEC_ DLL_SPEC_IFACE_ void         TOSDB_StartLogging( LPCSTR fName );
+EXT_SPEC_ DLL_SPEC_IFACE_ void         TOSDB_StartLogging( LPCSTR fname );
 EXT_SPEC_ DLL_SPEC_IFACE_ void         TOSDB_StopLogging();
 EXT_SPEC_ DLL_SPEC_IFACE_ void         TOSDB_ClearLog();
 #define TOSDB_LogH(tag, desc)          TOSDB_Log_( GetCurrentProcessId(), GetCurrentThreadId(), high, tag, desc)
@@ -593,8 +593,8 @@ EXT_SPEC_ DLL_SPEC_IFACE_ void         TOSDB_ClearLog();
 EXT_SPEC_ DLL_SPEC_IFACE_ void         TOSDB_Log_( DWORD , DWORD, Severity, LPCSTR, LPCSTR); 
 EXT_SPEC_ DLL_SPEC_IFACE_ void         TOSDB_LogEx_( DWORD , DWORD, Severity, LPCSTR, LPCSTR, DWORD); 
 void                                   TOSDB_Log_Raw_( LPCSTR );
-EXT_SPEC_ DLL_SPEC_IFACE_ char**       AllocStrArray( size_t numStrs, size_t szStrs );
-EXT_SPEC_ DLL_SPEC_IFACE_ void         DeallocStrArray( const char* const* strArray, size_t numStrs );
+EXT_SPEC_ DLL_SPEC_IFACE_ char**       AllocStrArray( size_t num_strs, size_t strs_len );
+EXT_SPEC_ DLL_SPEC_IFACE_ void         DeallocStrArray( const char* const* str_array, size_t num_strs );
 
 #ifdef __cplusplus
 DLL_SPEC_IFACE_             std::ostream& operator<<(std::ostream&, const generic_type&); 

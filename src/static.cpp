@@ -89,12 +89,12 @@ std::string SysTimeString()
     return tmpStr;
 }
 
-void TOSDB_StartLogging( LPCSTR fName )
+void TOSDB_StartLogging( LPCSTR fname )
 {
     if( lout.is_open() )
         return;
 
-    lout.open( fName , std::ios::out | std::ios::app);        
+    lout.open( fname , std::ios::out | std::ios::app);        
 
     if( lout.seekp(0,std::ios::end).tellp() == std::ios::pos_type(0)){  
 
