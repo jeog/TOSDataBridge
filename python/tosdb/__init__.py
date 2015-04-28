@@ -72,7 +72,7 @@ from ._common import * # a 'library' consisting of c/cpp _tosdb consts,
 from ._common import _DateTimeStamp, _TOSDB_DataBlock, _type_switch
 
 from collections import namedtuple as _namedtuple
-from threading import Thread as _Thread
+from threading import Thread as _Thread, Lock as _Lock
 from functools import partial as _partial
 from platform import system as _system
 from sys import stderr as _stderr
@@ -218,6 +218,7 @@ class VTOSDB_DataBlock:
         self._my_sock.settimeout( timeout / 1000 )
         self._my_sock.connect( address )
         self._connected = False
+        self._call_LOCK = _Lock()
         try:
             _vcall( _pack_msg( _vCONN_BLOCK ), self._my_sock, self._hub_addr)          
             # in case __del__ is called during socket op
@@ -476,6 +477,7 @@ class VTOSDB_DataBlock:
             raise TOSDB_VirtualizationError( "invalid virt_type" )
 
         try:
+            self._call_LOCK.acquire()
             ret_b = _vcall( req_b, self._my_sock, self._hub_addr )
             if virt_type in [_vCREATE, _vDESTROY]:
                 return True
@@ -485,7 +487,9 @@ class VTOSDB_DataBlock:
                 else:
                     return _pickle.loads( ret_b[1] )
         except:
-            raise # how do we want to handle this        
+            raise # how do we want to handle this    
+        finally:
+            self._call_LOCK.release()    
    
 def enable_virtualization( address, poll_interval=DEF_TIMEOUT ):
     global _virtual_hub  

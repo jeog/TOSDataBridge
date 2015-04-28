@@ -53,6 +53,9 @@ _REGEX_DLL_NAME = _compile('^('+DLL_BASE_NAME
                           + SYS_ARCH_TYPE +'(.dll)$')
            
 _dll = None
+
+### we added a lock to the _call from VTOSDB_DataBlock
+### how do we want to handle concurrent calls at this level ???
         
 def init(dllpath = None, root = "C:\\", bypass_check=False):
     """ Initialize the underlying tos-databridge DLL

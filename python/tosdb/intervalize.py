@@ -1,4 +1,5 @@
 from threading import Thread as _Thread
+from sys import stderr as _stderr
 import tosdb
 import time as _time
 
@@ -11,12 +12,14 @@ def _bind_class_fields_late_for_time_interval(cls):
     cls.hour        = cls(3600)
     cls.two_hour    = cls(7200)
     cls.four_hour   = cls(14400) 
+    cls.vals = { getattr(cls,_).val : getattr(cls,_) 
+                 for _ in dir(cls) if _[0] != '_' }
     return cls    
 @_bind_class_fields_late_for_time_interval
 class TimeInterval:
     def __init__(self,val):
-        self.val = val
-
+        self.val = val    
+ 
         
 class _GetOnInterval:       
     def __init__(self,block,item,topic):      
@@ -38,26 +41,29 @@ class GetOnTimeInterval( _GetOnInterval ):
         if block.info()['DateTime'] == 'Disabled':
             raise ValueError("block does not have datetime enabled")
 
+    def __del__(self):
+        self.stop()
+
     @classmethod
     def send_to_file( cls, block, item, topic, file_path,
                       time_interval=TimeInterval.five_min,
-                      update_seconds=15, use_pre_roll_val=True ):                
-        file = open(file_path,'w')
+                      update_seconds=15, use_pre_roll_val=True ):                     
         try:
             i = cls(block,item,topic)
-            cls._write_header( block, item, topic, file, time_interval,
+            i._file = open(file_path,'w',1)
+            cls._write_header( block, item, topic, i._file, time_interval,
                                update_seconds)          
             def run_cb(x):
                 x = x[0] if use_pre_roll_val else x[1]          
-                file.write( str(x[1]).ljust(50) + str(x[0]) + '\n' )               
-            stop_cb = lambda : file.close()
+                i._file.write( str(x[1]).ljust(50) + str(x[0]) + '\n' )               
+            stop_cb = lambda : i._file.close()
             if cls._check_start_args( run_cb, stop_cb, time_interval,
                                       update_seconds):
                 i.start( run_cb, stop_cb, time_interval, update_seconds)
             return i
         except Exception as e:
-            print( repr(e) )
-            file.close()
+            print( "ohlc_daemon.py", repr(e), file=_stderr )
+            i._file.close()
                  
     def start( self, run_callback, stop_callback,
                time_interval=TimeInterval.five_min, update_seconds=15 ):        
@@ -65,8 +71,8 @@ class GetOnTimeInterval( _GetOnInterval ):
                                 update_seconds )
         self._run_callback = run_callback
         self._stop_callback = stop_callback
-        self._interval_seconds = time_interval.val        
-        self._update_seconds = update_seconds
+        self._interval_seconds = int(time_interval.val)        
+        self._update_seconds = int(update_seconds)
         self._rflag = True
         self._thread = _Thread( target=self._update, daemon=True )
         self._thread.start()        
@@ -74,6 +80,10 @@ class GetOnTimeInterval( _GetOnInterval ):
     def stop(self):
         self._rflag = False
         self._stop_callback()
+
+    def join(self):
+        if self._thread:
+            self._thread.join()
 
     def _update(self):
         carry = []
@@ -91,8 +101,8 @@ class GetOnTimeInterval( _GetOnInterval ):
             # less robust, strategies can be employed to fill in missing data.
             #
             try:                
-                dat = get_next_seg( self._item, self._topic, True,
-                                    throw_if_data_lost = False )                       
+                dat = get_next_seg( self._item, self._topic, date_time=True,
+                                    throw_if_data_lost = False )                                     
                 if dat and len(dat) >= 1:
                     dat += carry
                     carry = self._find_roll_points( dat )                                  
@@ -101,7 +111,9 @@ class GetOnTimeInterval( _GetOnInterval ):
                     if not self._rflag:
                         break
             except Exception as e:          
-                print("error in GetOnTimeInterval._update loop, stopping.")
+                print( "error in GetOnTimeInterval._update loop, stopping.",
+                       file=_stderr)
+                print( "ohlc_daemon.py", repr(e), file=_stderr )              
                 self.stop()
                 raise 
                 
@@ -167,22 +179,22 @@ class GetOnTimeInterval_OHLC( GetOnTimeInterval ):
     @classmethod
     def send_to_file( cls, block, item, file_path,
                       time_interval=TimeInterval.five_min,
-                      update_seconds=15, use_pre_roll_val=True ):
-        file = open(file_path,'w')
+                      update_seconds=15, use_pre_roll_val=True ):     
         try:
             i = cls(block,item)
-            GetOnTimeInterval._write_header( block, item, 'last', file,
-                                             time_interval, update_seconds )          
+            i._file = open(file_path,'w',1)
+            GetOnTimeInterval._write_header( block, item, 'last', i._file,
+                                             time_interval, update_seconds )             
             def run_cb(x):                          
-                file.write( str(x[1]).ljust(50) + str(x[0]) + '\n' )                
-            stop_cb = lambda : file.close()
+                i._file.write( str(x[1]).ljust(50) + str(x[0]) + '\n' )                
+            stop_cb = lambda : i._file.close()
             if cls._check_start_args( run_cb, stop_cb, time_interval,
                                       update_seconds):
                 i.start( run_cb, stop_cb, time_interval, update_seconds)
             return i
         except Exception  as e:
-            print( repr(e) )
-            file.close()    
+            print( "ohlc_daemon.py", repr(e), file=_stderr )
+            i._file.close()    
 
 
     def _find_roll_points(self, snapshot):
@@ -198,7 +210,7 @@ class GetOnTimeInterval_OHLC( GetOnTimeInterval ):
             if p > self._h:
                 self._h = p
             elif p < self._l:
-                self._l = p
+                self._l = p           
             last_mod = do_mod(last_item)
             this_mod = do_mod(this_item)
             #print("item", str((last_item[1].min,last_item[1].sec)),
@@ -207,8 +219,8 @@ class GetOnTimeInterval_OHLC( GetOnTimeInterval ):
                 # if we break into coniguous interval or 'gap' it
                 ohlc = (self._o,self._h,self._l,this_item[0])
                 self._o = self._h = self._l = this_item[0]
-                print("hit", str(ohlc) )
-                self._run_callback((ohlc,this_item[1])) # (older,newer)                
+                #print("hit", str(ohlc) )
+                self._run_callback((ohlc,this_item[1]))                 
                 rmndr = [this_item]          
             else:                
                 rmndr.insert(0,this_item)

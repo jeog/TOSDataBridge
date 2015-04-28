@@ -1,7 +1,6 @@
 from tosdb import *
 from tosdb import _SYS_IS_WIN, _Thread
 from argparse import ArgumentParser as _ArgumentParser
-from time import sleep
 
 parser = _ArgumentParser()
 parser.add_argument( '--virtual-client', type=str,
