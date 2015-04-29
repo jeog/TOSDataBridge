@@ -40,6 +40,8 @@ class GetOnTimeInterval( _GetOnInterval ):
         _GetOnInterval.__init__(self,block,item,topic)
         if block.info()['DateTime'] == 'Disabled':
             raise ValueError("block does not have datetime enabled")
+        self._run_callback = None
+        self._stop_callback = None
 
     def __del__(self):
         self.stop()
@@ -49,11 +51,12 @@ class GetOnTimeInterval( _GetOnInterval ):
                       time_interval=TimeInterval.five_min,
                       update_seconds=15, use_pre_roll_val=True ):                     
         try:
-            i = cls(block,item,topic)
+            #i = cls(block,item,topic)
+            i = GetOnTimeInterval( block, item, topic )
             i._file = open(file_path,'w',1)
             cls._write_header( block, item, topic, i._file, time_interval,
                                update_seconds)          
-            def run_cb(x):
+            def run_cb(self,x):
                 x = x[0] if use_pre_roll_val else x[1]          
                 i._file.write( str(x[1]).ljust(50) + str(x[0]) + '\n' )               
             stop_cb = lambda : i._file.close()
@@ -79,7 +82,8 @@ class GetOnTimeInterval( _GetOnInterval ):
         
     def stop(self):
         self._rflag = False
-        self._stop_callback()
+        if self._stop_callback:
+            self._stop_callback()
 
     def join(self):
         if self._thread:
@@ -128,7 +132,7 @@ class GetOnTimeInterval( _GetOnInterval ):
             this_mod = do_mod(this_item)            
             if last_mod > this_mod or gapd(this_item,last_item):
                 # if we break into coniguous interval or 'gap' it           
-                self._run_callback((last_item,this_item)) # (older,newer)                
+                self._run_callback(self,(last_item,this_item)) # (older,newer)                
                 rmndr = [this_item]          
             else:                
                 rmndr.insert(0,this_item)
@@ -172,14 +176,15 @@ class GetOnTimeInterval( _GetOnInterval ):
 
 class GetOnTimeInterval_C( GetOnTimeInterval ):
     def __init__(self,block,item):
-        _GetOnInterval.__init__(self,block,item,'last')
+        GetOnTimeInterval.__init__(self,block,item,'last')
 
     @classmethod
     def send_to_file( cls, block, item, file_path,
                       time_interval=TimeInterval.five_min,
                       update_seconds=15, use_pre_roll_val=True ):   
-        super().send_to_file( block, item, 'last', file_path, time_interval,
-                              update_seconds, use_pre_roll_val )                         
+        return super().send_to_file( block, item, 'last', file_path, 
+                                     time_interval, update_seconds, 
+                                     use_pre_roll_val )                         
 
 
 class GetOnTimeInterval_OHLC( GetOnTimeInterval ):
@@ -196,7 +201,7 @@ class GetOnTimeInterval_OHLC( GetOnTimeInterval ):
             i._file = open(file_path,'w',1)
             GetOnTimeInterval._write_header( block, item, 'last', i._file,
                                              time_interval, update_seconds )             
-            def run_cb(x):                          
+            def run_cb(self, x):                          
                 i._file.write( str(x[1]).ljust(50) + str(x[0]) + '\n' )                
             stop_cb = lambda : i._file.close()
             if cls._check_start_args( run_cb, stop_cb, time_interval,
@@ -231,7 +236,7 @@ class GetOnTimeInterval_OHLC( GetOnTimeInterval ):
                 ohlc = (self._o,self._h,self._l,this_item[0])
                 self._o = self._h = self._l = this_item[0]
                 #print("hit", str(ohlc) )
-                self._run_callback((ohlc,this_item[1]))                 
+                self._run_callback(self,(ohlc,this_item[1]))                 
                 rmndr = [this_item]          
             else:                
                 rmndr.insert(0,this_item)
@@ -243,7 +248,7 @@ class GetOnTimeInterval_OHLC( GetOnTimeInterval ):
 class GetOnTimeInterval_OHLCV( GetOnTimeInterval_OHLC ):
  
     def __init__(self,block,item):
-        if 'volume' not in block.topics():
+        if 'VOLUME' not in block.topics():
             raise ValueError("block does not have topic: volume" )
         GetOnTimeInterval_OHLC.__init__(self,block,item)
         self._o = self._h = self._l = self._c = None
@@ -256,13 +261,16 @@ class GetOnTimeInterval_OHLCV( GetOnTimeInterval_OHLC ):
         try:
             i = cls(block,item)
             i._file = open(file_path,'w',1)
-            GetOnTimeInterval._write_header( block, item, i._file,
-                                             time_interval, update_seconds )             
-            def run_cb(x):                          
+            GetOnTimeInterval_OHLC._write_header( block, item, "last, volume", 
+                                             i._file, time_interval, 
+                                             update_seconds )             
+            def run_cb(self,x):                          
                 i._file.write( str(x[1]).ljust(50) + str(x[0]) + ' ' ) 
                 v = block.get(item,'volume')
                 if self._last_vol:                    
                     i._file.write( str(int(v - self._last_vol)) + '\n' )
+                else:
+                    i._file.write( 'N/A \n' )
                 self._last_vol = v
                                
             stop_cb = lambda : i._file.close()
@@ -275,17 +283,13 @@ class GetOnTimeInterval_OHLCV( GetOnTimeInterval_OHLC ):
             print( "ohlc_daemon.py", repr(e), file=_stderr )
             i._file.close()    
 
-    @staticmethod
-    def _write_header( block, item, file, time_interval, update_seconds):
-        super()._write_header( block, item, "last, volume", file,
-                               time_interval, update_seconds )
 
-class GetOnTimeInterval_V( GetOnTimeInterval ):
+class GetOnTimeInterval_CV( GetOnTimeInterval_C ):
  
     def __init__(self,block,item):
-        if 'volume' not in block.topics():
+        if 'VOLUME' not in block.topics():
             raise ValueError("block does not have topic: volume" )
-        GetOnTimeInterval.__init__(self,block,item,'last')     
+        GetOnTimeInterval_C.__init__(self,block,item)     
         self._last_vol = None
 
     @classmethod
@@ -295,14 +299,17 @@ class GetOnTimeInterval_V( GetOnTimeInterval ):
         try:
             i = cls(block,item)
             i._file = open(file_path,'w',1)
-            GetOnTimeInterval._write_header( block, item, i._file,
-                                             time_interval, update_seconds )             
-            def run_cb(x):                          
+            GetOnTimeInterval_C._write_header( block, item, "last, volume", 
+                                                i._file, time_interval, 
+                                                update_seconds )             
+            def run_cb(self,x):                          
                 x = x[0] if use_pre_roll_val else x[1]          
                 i._file.write( str(x[1]).ljust(50) + str(x[0]) + ' ' )
                 v = block.get(item,'volume')
                 if self._last_vol:                    
                     i._file.write( str(int(v - self._last_vol)) + '\n' )
+                else:
+                    i._file.write( 'N/A \n' )
                 self._last_vol = v
                                
             stop_cb = lambda : i._file.close()
@@ -314,8 +321,5 @@ class GetOnTimeInterval_V( GetOnTimeInterval ):
             print( "ohlc_daemon.py", repr(e), file=_stderr )
             i._file.close()    
 
-    @staticmethod
-    def _write_header( block, item, file, time_interval, update_seconds):
-        super()._write_header( block, item, "last, volume", file,
-                               time_interval, update_seconds )
+
   

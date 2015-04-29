@@ -1,20 +1,24 @@
+
+<tosdb.intervalize.GetOnTimeInterval_OHLCV object at 0x7f96870f0e10>
+<tosdb.intervalize.GetOnTimeInterval_OHLCV object at 0x7f96870f07b8>
+<tosdb.intervalize.GetOnTimeInterval_OHLCV object at 0x7f9687102630>
+ohlc_daemon.py FileNotFoundError(2, 'No such file or directory')
 Traceback (most recent call last):
-  File "cli_scripts/ohlcv_daemon.py", line 80, in <module>
+  File "/usr/local/lib/python3.4/site-packages/tosdb/intervalize.py", line 263, in send_to_file
+    i._file = open(file_path,'w',1)
+FileNotFoundError: [Errno 2] No such file or directory: '/home/jon/dev/TOSDataBridge/python/cli_scripts/data/2015429_/es_OHLCV_1min.tosdb'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "cli_scripts/ohlcv_daemon.py", line 85, in <module>
     MyDaemon( addr, args.dllroot, args.outdir, args.intrvl, args.vars).start()
   File "/home/jon/dev/TOSDataBridge/python/cli_scripts/daemon.py", line 94, in start
     self.run()
-  File "cli_scripts/ohlcv_daemon.py", line 25, in run
-    tosdb.admin_init( self._addr )   
-  File "/usr/local/lib/python3.4/site-packages/tosdb/__init__.py", line 180, in admin_init
-    _virtual_admin_sock.connect( address )
-socket.timeout: timed out
-Traceback (most recent call last):
-  File "cli_scripts/ohlcv_daemon.py", line 79, in <module>
-    MyDaemon( addr, args.dllroot, args.outdir, args.intrvl, args.vars).start()
-  File "/home/jon/dev/TOSDataBridge/python/cli_scripts/daemon.py", line 94, in start
-    self.run()
-  File "cli_scripts/ohlcv_daemon.py", line 25, in run
-    tosdb.admin_init( self._addr )   
-  File "/usr/local/lib/python3.4/site-packages/tosdb/__init__.py", line 180, in admin_init
-    _virtual_admin_sock.connect( address )
-socket.timeout: timed out
+  File "cli_scripts/ohlcv_daemon.py", line 45, in run
+    iobj = _Goti.send_to_file( blk, s, p, _TI.vals[ isec ], isec/10)
+  File "/usr/local/lib/python3.4/site-packages/tosdb/intervalize.py", line 284, in send_to_file
+    i._file.close()    
+AttributeError: 'GetOnTimeInterval_OHLCV' object has no attribute '_file'
+<tosdb.intervalize.GetOnTimeInterval_OHLCV object at 0x7fdbc9ebcdd8>
+<tosdb.intervalize.GetOnTimeInterval_OHLCV object at 0x7fdbc9ebc588>
