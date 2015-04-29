@@ -1,0 +1,20 @@
+Traceback (most recent call last):
+  File "cli_scripts/ohlcv_daemon.py", line 80, in <module>
+    MyDaemon( addr, args.dllroot, args.outdir, args.intrvl, args.vars).start()
+  File "/home/jon/dev/TOSDataBridge/python/cli_scripts/daemon.py", line 94, in start
+    self.run()
+  File "cli_scripts/ohlcv_daemon.py", line 25, in run
+    tosdb.admin_init( self._addr )   
+  File "/usr/local/lib/python3.4/site-packages/tosdb/__init__.py", line 180, in admin_init
+    _virtual_admin_sock.connect( address )
+socket.timeout: timed out
+Traceback (most recent call last):
+  File "cli_scripts/ohlcv_daemon.py", line 79, in <module>
+    MyDaemon( addr, args.dllroot, args.outdir, args.intrvl, args.vars).start()
+  File "/home/jon/dev/TOSDataBridge/python/cli_scripts/daemon.py", line 94, in start
+    self.run()
+  File "cli_scripts/ohlcv_daemon.py", line 25, in run
+    tosdb.admin_init( self._addr )   
+  File "/usr/local/lib/python3.4/site-packages/tosdb/__init__.py", line 180, in admin_init
+    _virtual_admin_sock.connect( address )
+socket.timeout: timed out
