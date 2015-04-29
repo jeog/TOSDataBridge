@@ -296,21 +296,17 @@
             and utility functions shared between the modules.</li>
         </ul>
     </li>
-    <li class = "listitems1"> <i>:: tosdb.py & _tosdb.pyd :: </i>
+    <li class = "listitems1"> <i>:: tosdb/ :: </i>
         <ul>
             <li class = "listitems2 smalltext">The python wrapper built on <i>tos-databridge-0.1-x86.dll 
-            / -x64.dll</i>. It provides a slightly more object oriented, simplified means of accessing the 
-            core functionality. This is probably the most user-friendly way to get started. Please read the 
-            associated docstrings, &#39;Python in a Nutshell&#39; section, and the tutorial in /python/docs 
-            for more information. _tosdb.pyd is a small C++ extension used for importing constants and 
-            migrating future functionality.</li>
+            / -x64.dll</i>. It provides a slightly more object oriented, simplified means of 
+                accessing the core functionality. </li>
         </ul>
     </li>
     <li class = "listitems1"> <i>:: tos-databridge-shell-x86.exe / -x64 :: </i> &nbsp 
         <ul>
-            <li class = "listitems2 smalltext">This is a crass 'shell' used to interact directly with the 
-            library calls for testing and debugging. It definitely could use some attention but it&#39;s 
-            currently towards the bottom of the priorities list.</li>
+            <li class = "listitems2 smalltext">This is a crass &#39;shell&#39; used to interact directly 
+                with the library calls for testing and debugging. </li>
         </ul>
     </li>
 </ul>
@@ -324,9 +320,8 @@ Unless stated explicitly, if sensible, assume that both builds apply.</div>
 <div class = "subheader1" > Getting Started </div>
 <div class = subblock1 ">
 <div class = "subpara1 basictext"> &nbsp&nbsp;&nbsp;&nbsp; The following sections will outline how to setup 
-and use TOSDB's basic functionality. If you only plan to use the python wrapper read #1 through #4 then skip 
-down to the section 'The Python Wrapper In A Nutshell'.  If you plan to use Python make sure to find out which 
-build it is(#1 in 'The Python Wrapper In A Nutshell') and use the same build version of the tos-databridge 
+and use TOSDB's basic functionality. If you plan to use the Python wrapper make sure to find out which 
+build it is and use the same build version of the tos-databridge 
 modules in the steps to follow. At the end of this section is a screen-shot of all the relevant commands for 
 using the x64 binaries.
 <ul>
@@ -355,10 +350,9 @@ using the x64 binaries.
     fails you can do this manually by downloading the most recent VC++ Redistributable from Microsoft); 
     and 3) create the Windows Service.</li>
 
-    <li class = "listitems3 "> Before we continue to step #4 it&#39;s a good idea, possibly necessary, to 
-    add the tos-databridge binaries, or the whole directory, to your anti-virus&#39;s &#39;white-list&#39;, 
-    excluding them from scans, analysis etc. Because the files haven't been seen before and they access 
-    system resources they tend to get flagged.<strong> There&#39;s a good chance that if you don&#39;t do 
+    <li class = "listitems3 "> Before we continue it&#39;s a good idea, possibly 
+        necessary, to add the tos-databridge binaries, or the whole directory, to your 
+        anti-virus&#39;s &#39;white-list&#39;.<strong> There&#39;s a good chance that if you don&#39;t do 
     this tos-databridge-engine[].exe, at the very least, may be stopped and/or deleted for 
     &#39;suspicious&#39; behavior (the latter happened while trying to test on a Vista system running Norton.) </strong></li>
 
@@ -385,11 +379,11 @@ using the x64 binaries.
     </ul>
 
     </li>
-    <li class = "listitems3 ">Include the tos_databridge.h header in your code ( if its C++ make sure the 
+    <li class = "listitems3 "><b>(SKIP IF ONLY USING PYTHON) </b>Include the tos_databridge.h header in your code ( if its C++ make sure the 
     compiler can find containers.hpp and generic.hpp ) and adjust the link settings to import the 
     tos-databridge-0.1-[].lib stub. (If you run into trouble review the VisualStudio settings for 
     tos-databridge-shell[].exe as they should resemble what you&#39;re trying to do.)</li> 
-    <li class = "listitems3 ">Jump down to the next section for some of the basic library calls to add to 
+    <li class = "listitems3 "><b>(SKIP IF ONLY USING PYTHON) </b>Jump down to the next section for some of the basic library calls to add to 
     your program. </li>
     <li class = "listitems3 ">Make sure the TOS Platform is running, execute your program. </li>
 </ul>
@@ -415,12 +409,12 @@ using the x64 binaries.
 <div class = "note_block basictext"> 
     <strong>NOTABLE CONVENTIONS </strong>The C calls, except in a few cases, don't return values but populate 
     variables, arrays/buffers, and arrays of pointers to char buffers. The 'dest' argument is for primary 
-    data, and is a pointer to a variable or an array/buffer when followed by argument 'arrLen' - which 
+    data, and is a pointer to a variable or an array/buffer when followed by argument 'arr_len' - which 
     takes its size in array elements. The String versions of the calls take a char** argument, followed by 
-    arrLen for the number of char*s, and strLen for the size of the buffer each char* points to (obviously 
-    they should all be &gt;= to this value). NOTE: the poorly named strLen arg is the size of the total char 
+    arr_len for the number of char*s, and str_len for the size of the buffer each char* points to (obviously 
+    they should all be &gt;= to this value). NOTE: the poorly named str_len arg is the size of the total char 
     buffer you are passing.  If the call requires more than one array/buffer besides &#39;dest&#39; 
-    (the Get...Frame... calls for instance) it assumes an array length equal to that of &#39;arrLen&#39;.  
+    (the Get...Frame... calls for instance) it assumes an array length equal to that of &#39;arr_len&#39;.  
     If it is of type char** you need to specify a char buffer length just as you do for the initial char**.
 </div>
 <p class = "subpara1 basictext">
@@ -439,8 +433,7 @@ using the x64 binaries.
 </p>
 <p class = "subpara1 basictext">
     &nbsp;&nbsp;&nbsp;&nbsp;
-    Within each &#39;block&#39; is a pointer to a RawDataBlock object (something of 
-    a data-layer abstraction) which relies on an internal factory to return a constant pointer to a 
+    Within each &#39;block&#39; is a pointer to a RawDataBlock object which relies on an internal factory to return a constant pointer to a 
     RawDataBlock object. Internally the factory has a limit ( the default is 10 ) which can be adjusted with 
     the appropriately named admin calls <span class = "func_stub"> TOSDB_GetBlockLimit() </span> 
     <span class = "func_stub"> TOSDB_SetBlockLimit() </span> 
@@ -484,8 +477,7 @@ using the x64 binaries.
 <div class = "note_block basictext">
     <b> IMPLEMENTATION NOTE </b> The use of the term size may be misleading when getting into implementation 
     details.  This is the size from the block's perspective and the bound from the data-stream's perspective. 
-    The block doesn't need to worry about the occupancy of the stream (its size) just how much space has 
-    been allocated (its bound) so the size of the block is really the bound of the stream. For all intents 
+    For all intents 
     and purposes the client can think of size as the maximum number of elements that can be in the block and 
     the maximum range that can be indexed. To get the occupancy (how much valid data has come into the stream) 
     call <span class = "func_stub"> TOSDB_GetStreamOccupancy() </span>.
@@ -556,18 +548,18 @@ using the x64 binaries.
     when passing index values as the C++ versions will throw std::invalid_argument() if you pass an ending 
     index of 100 to a stream of size 100.</div>
 <p class = "subpara1 basictext">
-    &nbsp;&nbsp;&nbsp;&nbsp;
-    A frame on the other hand does not look at a specific data-stream, rather it 
-    spans ALL the topics, or items, or both. Think of all the data-streams as the 3rd dimension of 
-    2-dimensional frames. In theory there can be a frame for each index( for example a frame of all the most 
-    recent values or of all the oldest ) but in practice we've only implemented the retrieval of the most 
-    recent frame because the data is currently structured in a 'tick-dependent' rather than a 'time-dependent' 
-    chronological order, making an index of frames mostly useless. (At some point in the future there should 
-    be a way to adjust this chronological dependency of the block to store data in a number of different ways.)  
+    &nbsp;&nbsp;&nbsp;&nbsp; A frame on the other hand does not look at a specific 
+    data-stream, rather it spans ALL the topics, or items, or both. Think of all the 
+    data-streams as the 3rd dimension of 2-dimensional frames. In theory there can 
+    be a frame for each index( for example a frame of all the most recent values or 
+    of all the oldest ) but in practice we&#39;ve only implemented the retrieval of the 
+    most recent frame because the data is currently structured in a &#39;tick-dependent&#39; 
+    rather than a &#39;time-dependent&#39; chronological order, making an index of frames 
+    mostly useless.  
 </p>
 <p class = "subpara1 basictext">
     &nbsp;&nbsp;&nbsp;&nbsp;
-    Now that we have a basic understanding let's drill down a bit on some specific 
+    Let's drill down a bit on some specific 
     calls. First are the single value <span class = "func_stub"> TOSDB_Get&lt; , &gt;() </span> and 
     <span class = "func_stub"> TOSDB_Get[Type]() </span> calls; the former a templatized C++ version, the 
     latter a C version with the required type stated explicitly in the call (e.g. TOSDB_GetDouble() ). The 
@@ -614,7 +606,7 @@ using the x64 binaries.
     &nbsp;&nbsp;&nbsp;&nbsp;
     It&#39;s likely the stream will grow between consecutive calls. The
     <span class = "func_stub"> TOSDB_GetStreamSnapshot[Type]sFromMarker() </span> calls 
-    guarantee to pick up where the last TOSDB_Get, TOSDB_GetStreamSnanpshot, or 
+    (C only) guarantee to pick up where the last TOSDB_Get, TOSDB_GetStreamSnanpshot, or 
     TOSDB_GetStreamSnapshotFromMarker call ended (under a few assumptions).&nbsp; 
     Internally the stream maintains a &#39;marker&#39; that tracks the position of the last 
     value pulled; the act of retreiving data and moving the marker can be thought of 
@@ -627,12 +619,12 @@ using the x64 binaries.
     marker moving foward (by using the get calls mentioned above). To determine if 
     the stream is &#39;dirty&#39; use the <span class = "func_stub"> TOSDB_IsMarkerDirty() 
     call</span>. There is no guarantee that a &#39;clean&#39; stream will not become dirty 
-    between the call<br />
-    to TOSDB_IsMarkerDirty and the retrieval of stream data, although can look for a 
+    between the call to TOSDB_IsMarkerDirty and the retrieval of stream data, although 
+    you can look for a 
     negative *get_size value to indicate this rare state has occured.</p>
 <p class = "subpara1 basictext">
     &nbsp;&nbsp;&nbsp;&nbsp;
-    Now let&#39;s look at the TOSDB_Get...[Frame] calls. The three main calls are 
+    The three main &#39;frame&#39; calls are 
     GetItemFrame, GetTopicFrame, GetTotalFrame( C++ only ). 
     <span class = "func_stub"> TOSDB_GetItemFrame&lt;&gt;() </span> and
     <span class = "func_stub"> TOSDB_GetItemFrame[Type]s() </span> are used to retrieve the most recent 
@@ -676,16 +668,18 @@ using the x64 binaries.
     convenience by allowing both a generic type and strings to be returned; 2) not make the client pay 
     for features that they don't want to use.(i.e. genericism or DateTimeStamps); 3) take advantage of 
     a type-correcting feature of the underlying data-stream(see the comments and macros in data_stream.hpp);
-    5) throw derived exceptions or return error codes depending on the context and language; and 6) 
+    4) throw derived exceptions or return error codes depending on the context and language; and 
+    5) 
     provide at least one very efficient, 'stream-lined' call for large data requests.<br /><br />
-    In order to comply with #6 we violate the abstraction of the data block for all the Get.. calls and 
-    the interface of the data-stream for the non-generic versions of those same calls.  For the former
-    we allow the return of a const pointer to the stream, to allow the client-side back-end to operate 
+    In order to comply with #5 
+    we violate the abstraction of the data block for all the Get.. calls and the 
+    interface of the data-stream for the non-generic versions of those same calls. 
+    For the former we allow the return of a const pointer to the stream, allowing the client-side back-end to operate 
     directly on the stream. For the latter we provide 'copy(...)' virtual methods of the data-stream that 
     take raw pointer(s) to be populated directly, bypassing generic_type construction and STL overhead.
     <br /><br />
-    When n is very large the the non-string TOSDB_GetStreamSnapshot[Type]s C calls are the fastest, with 
-    the non-generic, not-string TOSDB_GetStreamSnapshot&lt;Type,false&gt; C++ calls just behind.
+    Not suprisingly, when n is very large the the non-string TOSDB_GetStreamSnapshot[Type]s C calls are the fastest, with 
+    the non-generic, non-string TOSDB_GetStreamSnapshot&lt;Type,false&gt; C++ calls just behind.
 </div>
 </div>
 </div>
@@ -718,18 +712,16 @@ using the x64 binaries.
 </p>
 <p class = "subpara1 basictext">  
     &nbsp;&nbsp;&nbsp;&nbsp;  
-    The library also defines an exception hierarchy, derived from TOSDB_error and 
+    The library also defines an exception hierarchy, derived from TOSDB_Error and 
     std::exception - categorizing some of the serious errors that may be encountered.  C++ code can catch 
-    them and respond accordingly; the base class provides threadID(), [rocessID(), tag(), and info() 
+    them and respond accordingly; the base class provides threadID(), processID(), tag(), and info() 
     methods as well as the inherited what() from std::exception. Namespace data_stream 
-    (see data_stream.cpp for the implementation details) also provides some exceptions that, when possible, 
-    are caught internally and wrapped in TOSDB_error.
+    (see data_stream.hpp for the implementation details) also provides some exceptions that, when possible, 
+    are caught internally and wrapped in TOSDB_Error.
 </p>
 <p class = "subpara1 basictext"> 
-    &nbsp;&nbsp;&nbsp;&nbsp; 
-    There are operator<< overloads for most of the custom objects and containers 
-    returned by the TOSDB_Get... calls; although the output might not be formatted in the most intuitive, 
-    easy-to-read way.</p>
+    &nbsp;&nbsp;&nbsp;&nbsp; There are operator&lt;&lt; overloads for most of the custom 
+    objects and containers returned by the TOSDB_Get... calls.</p>
 </div>
 </div>
 
@@ -861,13 +853,9 @@ using the x64 binaries.
 <div class = "subheader1" > Clean... Exit... Close... Stop... </div> 
 <div class = subblock1 "> 
 <p class = "subpara1 basictext"> 
-    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
-    Still in flux is the best protocol(s) for exiting some or all of the TOSDB 
-    modules. One complicating factor is the myriad states the entire TOSDB system can be in. The TOS 
-    platform can re running, the client code can be running but not connected, and the Service can be 
-    running; or, TOS can be off, client code can be running and connected, while the Service is Paused; 
-    or... you get the idea.  This is something that will be resolved over time: seeing what works best, what 
-    is trouble, and what parts of the implementation can be tweaked to promote stability.
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Still in flux is the best protocol(s) for exiting some or all of the TOSDB 
+    modules. One complicating factor is the myriad states the entire TOSDB system 
+    can be in.
 </p>
 <p class = "subpara1 basictext"> 
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
@@ -979,7 +967,7 @@ using the x64 binaries.
     the top of tosdb.py and enter 'INTGR_BIT = 0x80'. Do the same for all the others, except TOPICS - 
     you won't have access to the TOPICS tuple.
 </div>
-<div class = "listitems3"> tosdb is structured as a package with the bulk of its 
+<div class = "listitems3"> tosdb/ is structured as a package with the bulk of its 
     code in __init__.py and _win.py , the latter holding the non-portable parts that 
     __init__.py will import if it determines it&#39;s being run on a windows sytem. This 
     structure allows you to simply import the package (import tosdb) or, if needed, 
@@ -1026,13 +1014,9 @@ using the x64 binaries.
     implementation of it. DDE has been replaced by a number of better Windows technologies but it&#39;s 
     the public interface that TOS exposes so it&#39;s what we&#39;re using. You may notice the streams 
     of data - particularly on symbols with very high trading volume - will not match the Time &amp; 
-    Sales perfectly. TOS&#39;s DDE server won&#39;t, or can&#39;t, keep up with. This is not a huge 
-    issue unless you are looking for perfect sub millisecond accuracy. (But let&#39;s be honest, if 
-    that&#39;s what you&#39;re looking for you probably aren&#39;t using TOS in the first place.) 
+    Sales perfectly.&nbsp; 
     If you take a step back and aggregate the data in more usable forms this really shouldn&#39;t be 
-    an issue. The somewhat ironic thing is if you compare TOS&#39;s streaming data with others they 
-    won&#39;t match, and even if you compare TOS&#39;s with itself(e.g. add up a bunch of T&amp;S 
-    volume prints and compare it to the change in total volume) there are inconsistencies. Another 
+    an issue.&nbsp; Another 
     way we are at the mercy of the DDE server is that fields like last price and last size are two
     different topics.  That means they are changing at slightly different times with slightly different 
     time-stamps even if they are the correct pairing. To get around this we can write (python) code 
@@ -1077,40 +1061,35 @@ using the x64 binaries.
     and space improvement and not worth worth the inconvenience. </li>    
 
     <li class = "listitem2"> <strong>Inter-Process Communication(IPC):</strong> The current means of 
-    IPC is a complicated, excessive, clumsy attemptt to do all things, many of which don&#39;t really 
-    need to be done in this project. It uses a pair of master/slave objects that share two duplexed 
-    named pipes and a shared memory segment.  It was originally setup to provide a flexible means to expand 
-    on what could be marshaled between the modules but as it currently stands is completely unnecessary.  
-    Because of all the moving parts, and the waiting and blocking involved there will be connection
-    issues while trying to debug as one thread hits a break-point causing part of the IPC mechanism's 
-    wait to expire. Internally the client library continually calls the masters ->connected() method 
-    which is built to fail easily, for any number of reasons. Debugging certain areas of code will make 
-    this connected call fail, shuting down communication between master and slave. In certain cases, 
-    where one side of the connection is waiting on a message via a pipe you'll get a deadlock.  In the 
-    future this  will need to be redone but it's not practical to tear it all down at this time. </li>
+    IPC is a complicated mess. It uses a pair of master/slave objects that share two duplexed 
+    named pipes and a shared memory segment.&nbsp;  
+    Because of all the moving parts and the waiting / blocking involved there will be 
+        connection issues while trying to debug as one thread hits a break-point causing 
+        part of the IPC mechanism&#39;s wait to expire. Internally the client library 
+        continually calls the masters -&gt;connected() method which is built to fail 
+        easily, for any number of reasons. Debugging certain areas of code will make 
+        this connected call fail, shuting down communication between master and slave. 
+        In certain cases, where one side of the connection is waiting on a message via a 
+        pipe you&#39;ll get a deadlock. </li>
 
     <li class = "listitem2"> <strong>Asymmetric Responsibilities &amp; Leaks:</strong> An issue related 
     to the previous is the fact that the connection probing only works one way, from master to slave. The 
     slave(which is owned by the Service) therefore may know that one of the clients isn&#39;t there and 
     handle a disconnection, it just doesn&#39;t know what stream objects they are responsible for. 
     Internally all it does st keep a ref-count to the streams it&#39;s been asked to create and 
-    obviously write the necessary data into the appropriate shared memory segments. Ideally the client 
-    code should clean up its streams with the appropriate calls or at the very least let DllMain deal 
-    with it; but this can't be guaranteed and it's possible if client code doesn't fail gracefully there 
-    could be leaks of streams. To see the status of the service and if there are stranded or dangling 
+    obviously write the necessary data into the appropriate shared memory segments. To see the status of the service and if there are stranded or dangling 
     streams open up the debug shell and use <span class = "func_stub">TOSDB_DumpSharedBufferStatus</span> 
-    to dump all the current stream information to a file in the same directly as the internal 
-    logs(see above) for debugging. Until a number of these issues are worked out it's recommended to stop 
-    and re-start the Service whenever a client executable that has active blocks and streams fails in a 
-    way that may not allow it to send TOSDB_SIG_REMOVE messages to the Service and/or when you're done using 
-    it for any extended period. (At some point, when all is stable, it probably can be started on boot 
-    and forgotten about.) </li>
+        to dump all the current stream information to a file in the same directly as the 
+        internal logs(see above) for debugging. Until a number of these issues are 
+        worked out it&#39;s recommended to stop and re-start the Service whenever a client 
+        executable that has active blocks and streams fails in a way that may not allow 
+        it to send TOSDB_SIG_REMOVE messages to the Service.</li>
 
     <li class = "listitem2"> <strong>DateTimeStamp:</strong> There are some issues with the DateTimeStamps 
     attached to data. The first and most important is THESE ARE NOT OFFICIAL STAMPS FROM THE EXCHANGE, they 
     are manually created once the TOS DDE server returns the data. Secondly they use the system clock to 
     assure high_resolution( the micro-seconds field) and therefore there is no guarantee that the clock 
-    won't change between stamps, as is made by the STL's std::steady_clock.  We've also had some issues 
+        is accurate or won't change between stamps, as is made by the STL's std::steady_clock.  We've also had some issues 
     converting high resolution time-points to C time when micro_seconds are close to 0 that we think is 
     solved by casting the micro_seconds duration to seconds and adding that back to the epoch before 
     converting to C time. </li>
