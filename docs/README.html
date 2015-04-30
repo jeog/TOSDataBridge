@@ -332,8 +332,8 @@ using the x64 binaries.
     pre-compiled versions in the /bin folder). There are two pieces of info you&#39;ll need to pass to 
     the setup script. The first is the build version you are going to use 32-bit(x86) or 64-bit(x64). Make 
     sure you don&#39;t mix and match in future steps, especially when using the python wrapper because it 
-    will choose a version that matches its own build. (You may want to jump down to #1 in 'The Python 
-    Wrapper In a Nutshell' now if unsure how to find this info.) The second is whether your TOS platform is 
+    will choose a version that matches its own build. (You may want to jump down to 'The Python 
+    Wrapper In a Nutshell' section now if unsure how to find this info.) The second is whether your TOS platform is 
     running under elevated privileges: does it ask for an admin password before starting or can you simply 
     run it from your standard (non-admin) user account ?
 
@@ -919,8 +919,8 @@ using the x64 binaries.
     migrate some of the low-level functionality away from ctypes, we created a C (really C++) extension 
     module called _tosdb.cpp/pyd to provide some of these constants as well as a tuple named TOPICS, 
     that provides all the currently valid topics that can be passed to the TOS DDE Server. When you run 
-    the install command from #2 above python's distutils library will attemptt to build _tosdb.pyd from 
-    _tosdb.cpp, installing it alongside tosdb.py.  
+    the install command python's distutils library will attempt to build _tosdb.pyd from 
+    _tosdb.cpp, installing it alongside the tosdb package.  
     <br /><br />
     ** If you are not comfortable with VisualStudio or building python modules, and you are using 
     Python 3.3 or 3.4, you can simply copy the tosdb.py file and the _tosdb... file that matches
@@ -964,7 +964,7 @@ using the x64 binaries.
         tosdb/_common.py, and 4) open the tos_databridge.h header to find what those variables you just declared 
     should be defined as. In the header they all have a TOSDB_ prefix. For example, the first variable 
     would be INTGR_BIT; go to tos_databridge.h and see that TOSDB_INTGR_BIT is #defined as 0x80, go to 
-    the top of tosdb.py and enter 'INTGR_BIT = 0x80'. Do the same for all the others, except TOPICS - 
+    the top of tosdb/_common.py and enter 'INTGR_BIT = 0x80'. Do the same for all the others, except TOPICS - 
     you won't have access to the TOPICS tuple.
 </div>
 <div class = "listitems3"> tosdb/ is structured as a package with the bulk of its 
