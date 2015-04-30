@@ -8,12 +8,12 @@ from sys import stderr as _stderr
 
 _val_type = ''
 _cls_base = 'GetOnTimeInterval_'
+_TIMEOUT = 5000
     
 class MyDaemon(_Daemon):
-    def __init__(self, addr, dll_root, out_dir, intrvl , symbols):
-        _Daemon.__init__( self,"/tmp/ohlcv_daemon.pid", 
-                          stderr = '/home/jon/dev/TOSDataBridge/python/' +
-                                   'cli_scripts/err_file.txt')
+    def __init__( self, addr, dll_root, out_dir, pid_file, error_file, intrvl, 
+                  symbols ):
+        _Daemon.__init__( self, pid_file, stderr = error_file)
         self._addr = addr
         self._dll_root = dll_root
         self._out_dir = _path(out_dir)
@@ -23,7 +23,7 @@ class MyDaemon(_Daemon):
 
     def run(self):  
         # initialize windows side     
-        tosdb.admin_init( self._addr )   
+        tosdb.admin_init( self._addr, _TIMEOUT )   
         tosdb.vinit( root=self._dll_root )
         # create block
         blk = tosdb.VTOSDB_DataBlock( self._addr, 10000, date_time=True)
@@ -40,8 +40,9 @@ class MyDaemon(_Daemon):
             #
             # create GetOnTimeInterval object for each symbol
             # 
-            p = self._out_dir + '/' + dprfx + '_' + s.replace('/','-') + '_' + \
-                _val_type + '_' + str(self._intrvl) + 'min.tosdb'           
+            p = self._out_dir + '/' + dprfx + '_' + \
+                    s.replace('/','-').replace('$','-') + '_' + \
+                    _val_type + '_' + str(self._intrvl) + 'min.tosdb'           
             iobj = _Goti.send_to_file( blk, s, p, _TI.vals[ isec ], isec/10)
             print( repr(iobj) , file=_stderr )
             self._iobjs.append( iobj )
@@ -62,6 +63,8 @@ if __name__ == '__main__':
                          '(Windows) implementation DLL' )
     parser.add_argument( 'outdir', type=str, help = 'directory to output ' +
                          ' data/files to' )
+    parser.add_argument( 'pidfile', type=str, help = 'path of pid file' )
+    parser.add_argument( 'errorfile', type=str, help = 'path of error file' )
     parser.add_argument( 'intrvl', type=int, 
                          choices=tuple (map( lambda x: int(x/60), 
                                              sorted(_TI.vals) ) ),
@@ -82,7 +85,8 @@ if __name__ == '__main__':
 
     exec("from tosdb.intervalize import " + _cls_base + _val_type + " as _Goti")    
 
-    MyDaemon( addr, args.dllroot, args.outdir, args.intrvl, args.vars).start()
+    MyDaemon( addr, args.dllroot, args.outdir, args.pidfile, args.errorfile,
+              args.intrvl, args.vars).start()
 
 
 
