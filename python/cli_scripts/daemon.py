@@ -51,7 +51,8 @@ class Daemon:
             # exit from second parent
                 sys.exit(0)
         except OSError as e:            
-            print("fork #2 failed: %d (%s)\n" % (e.errno, e.strerror), file=sys.stderr)
+            print( "fork #2 failed: %d (%s)\n" % (e.errno, e.strerror), 
+                   file=sys.stderr )
             sys.exit(1)
            
         #redirect standard file descriptors
@@ -117,7 +118,7 @@ class Daemon:
                 time.sleep(0.1)
         except OSError as e:
             e = str(e)
-            if e.find("No such process") > 0:
+            if "No such process" in e:
                 if os.path.exists(self.pidfile):
                     os.remove(self.pidfile)
             else:
