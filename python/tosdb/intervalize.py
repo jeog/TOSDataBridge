@@ -1,24 +1,20 @@
 from threading import Thread as _Thread
 from sys import stderr as _stderr
+from enum import Enum
 import tosdb
 import time as _time
 
-def _bind_class_fields_late_for_time_interval(cls):
-    cls.min         = cls(60)
-    cls.three_min   = cls(180)
-    cls.five_min    = cls(300)
-    cls.ten_min     = cls(600)
-    cls.thirty_min  = cls(1800)
-    cls.hour        = cls(3600)
-    cls.two_hour    = cls(7200)
-    cls.four_hour   = cls(14400) 
-    cls.vals = { getattr(cls,_).val : getattr(cls,_) 
-                 for _ in dir(cls) if _[0] != '_' }
-    return cls    
-@_bind_class_fields_late_for_time_interval
-class TimeInterval:
-    def __init__(self,val):
-        self.val = val    
+@Enum
+class TimeInterval:      
+  fields = { 
+     'min' : 60,
+     'three_min' : 180,
+     'five_min' : 300,
+     'ten_min' : 600,
+     'fifteen_min' : 900,
+     'thirty_min' : 1800,
+     'hour' : 3600 
+  }   
  
         
 class _GetOnInterval:       
@@ -164,7 +160,7 @@ class GetOnTimeInterval( _GetOnInterval ):
                            update_seconds):
         if not callable(run_callback) or not callable(stop_callback):                    
             raise TypeError( "callback must be callable")
-        if type(time_interval) is not TimeInterval:
+        if time_interval not in TimeInterval:
             raise TypeError( "time_interval must be of type TimeInterval")
         if divmod(time_interval.val,60)[1] != 0:
             raise ValueError( "time_interval not divisible by 60")
