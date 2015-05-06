@@ -5,7 +5,7 @@ import tosdb
 import time as _time
 
 @Enum
-class TimeInterval:      
+class TimeInterval(metaclass=Enum):      
   fields = { 
      'min' : 60,
      'three_min' : 180,
