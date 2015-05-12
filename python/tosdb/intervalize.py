@@ -1,11 +1,11 @@
 from threading import Thread as _Thread
 from sys import stderr as _stderr
-from enum import Enum
+from meta_enum import MetaEnum
 import tosdb
 import time as _time
 
-@Enum
-class TimeInterval(metaclass=Enum):      
+@MetaEnum
+class TimeInterval(metaclass=MetaEnum):      
   fields = { 
      'min' : 60,
      'three_min' : 180,

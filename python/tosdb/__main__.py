@@ -33,3 +33,9 @@ def _main_init():
 #global namespace already cluttered, lets do our part
 _main_init()
 globals().pop('_main_init')
+
+exit_commands = ('q','Q','quit','QUIT','Quit','Exit','EXIT','exit')
+#make interactive
+print('\n', str(exit_commands) + " to terminate")
+while input() not in exit_commands:
+    pass
