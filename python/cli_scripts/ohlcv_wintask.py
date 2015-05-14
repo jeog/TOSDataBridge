@@ -5,23 +5,21 @@ from time import localtime as _localtime, sleep as _sleep
 from os.path import realpath as _path
 from sys import stderr as _stderr
 
-_cls_base = 'GetOnTimeInterval_'
-_TIMEOUT = 5000
-TI_VALS = ( _TI.min.val, _TI.three_min.val, _TI.five_min.val, _TI.ten_min.val,
-            _TI.fifteen_min.val, _TI.thirty_min.val, _TI.hour.val )
+CLS_BASE = 'GetOnTimeInterval_'
+BLOCK_SIZE = 1000
 
 def spawn(dllroot,outdir,intrvl,val_type,*symbols):
    
     if val_type not in ['OHLCV','OHLC','CV','C']:
          raise ValueError("invalid val_type (OHLCV,OHLC,CV or C)")
 
-    exec( "from tosdb.intervalize import " + _cls_base + val_type + " as _Goti",
+    exec( "from tosdb.intervalize import " + CLS_BASE + val_type + " as _Goti",
           globals() )
     
     tosdb.init( root=dllroot )
     
     # create block
-    blk = tosdb.TOSDB_DataBlock( 10000, date_time=True)
+    blk = tosdb.TOSDB_DataBlock( BLOCK_SIZE, date_time=True)
     blk.add_items( *(symbols) )
     blk.add_topics( 'last' )
     if 'V' in val_type:

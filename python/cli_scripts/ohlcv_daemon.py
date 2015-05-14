@@ -7,8 +7,10 @@ from daemon import Daemon as _Daemon
 from sys import stderr as _stderr
 
 _val_type = ''
-_cls_base = 'GetOnTimeInterval_'
-_TIMEOUT = 5000
+
+CLS_BASE = 'GetOnTimeInterval_'
+AINIT_TIMEOUT = 5000
+BLOCK_SIZE = 1000
     
 class MyDaemon(_Daemon):
     def __init__( self, addr, dll_root, out_dir, pid_file, error_file, intrvl, 
@@ -23,10 +25,10 @@ class MyDaemon(_Daemon):
 
     def run(self):  
         # initialize windows side     
-        tosdb.admin_init( self._addr, _TIMEOUT )   
+        tosdb.admin_init( self._addr, AINIT_TIMEOUT )   
         tosdb.vinit( root=self._dll_root )
         # create block
-        blk = tosdb.VTOSDB_DataBlock( self._addr, 10000, date_time=True)
+        blk = tosdb.VTOSDB_DataBlock( self._addr, BLOCK_SIZE, date_time=True)
         blk.add_items( *(self._symbols) )
         blk.add_topics( 'last' )
         if args.vol:
@@ -83,7 +85,7 @@ if __name__ == '__main__':
     else:
         _val_type = 'CV' if args.vol else 'C'
 
-    exec("from tosdb.intervalize import " + _cls_base + _val_type + " as _Goti")    
+    exec("from tosdb.intervalize import " + CLS_BASE + _val_type + " as _Goti")    
 
     MyDaemon( addr, args.dllroot, args.outdir, args.pidfile, args.errorfile,
               args.intrvl, args.vars).start()
