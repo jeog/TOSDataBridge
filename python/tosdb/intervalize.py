@@ -1,10 +1,9 @@
 from threading import Thread as _Thread
 from sys import stderr as _stderr
-from meta_enum import MetaEnum
+from .meta_enum import MetaEnum
 import tosdb
 import time as _time
 
-@MetaEnum
 class TimeInterval(metaclass=MetaEnum):      
   fields = { 
      'min' : 60,
@@ -73,7 +72,10 @@ class GetOnTimeInterval( _GetOnInterval ):
         self._interval_seconds = int(time_interval.val)        
         self._update_seconds = int(update_seconds)
         self._rflag = True
-        self._thread = _Thread( target=self._update, daemon=True )
+        try:
+            self._thread = _Thread( target=self._update, daemon=True )
+        except:
+            self._thread = _Thread( target=self._update )
         self._thread.start()        
         
     def stop(self):

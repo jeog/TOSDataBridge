@@ -1,4 +1,4 @@
-class Enum(type):
+class MetaEnum(type):
     """ metaclass that creates an enum object w/ user-defined values
     
     class Color(metaclass=Enum):      
@@ -32,14 +32,14 @@ class Enum(type):
             
         # restrict subclassing
         for b in bases:              
-            if isinstance(b,Enum):        
-                raise Enum.EnumError(b.__name__ + ' can not be subclassed')
+            if isinstance(b,MetaEnum):        
+                raise MetaEnum.EnumError(b.__name__ + ' can not be subclassed')
   
         # cls needs a fields attribute that defines '__iter__'
         if 'fields' not in d:
-            raise Enum.EnumError('class using metaclass Enum must define fields')
+            raise MetaEnum.EnumError('class using metaclass Enum must define fields')
         if not hasattr(d['fields'], '__iter__'):
-            raise Enum.EnumError( str(cls) + '.fields must define __iter__' )   
+            raise MetaEnum.EnumError( str(cls) + '.fields must define __iter__' )   
 
         def _field_eq(self, other):          
             try:
@@ -57,7 +57,7 @@ class Enum(type):
         our_field_clss = type('EnumField',(), our_field_dict)
 
         def _field_prop_no_set(self,obj,value):        
-           raise Enum.EnumError("can't set constant enum field")
+           raise MetaEnum.EnumError("can't set constant enum field")
 
         # our 'property' descriptor to protect the field
         our_field_prop_dict = {
@@ -73,7 +73,7 @@ class Enum(type):
 
         for n in fields:           
             if not isinstance(n,str):
-                raise Enum.EnumError( 'Enum names must be strings' ) 
+                raise MetaEnum.EnumError( 'Enum names must be strings' ) 
             # create an EnumField instance for each name
             obj = our_field_clss()  
             obj._name = n             
@@ -81,7 +81,7 @@ class Enum(type):
                 # attach a val if fields provides a mapping to one                       
                 obj._val = fields[n]
                 if not hasattr( obj._val, '__str__'):
-                     raise Enum.EnumError( 'Enum value must define __str__') 
+                     raise MetaEnum.EnumError( 'Enum value must define __str__') 
             else:
                 obj._val = None 
             # bind stateful descriptors of same object in metaclass and class                
@@ -94,7 +94,7 @@ class Enum(type):
 
         # no need to instantiate the class
         def _no_init(self,*val): 
-            raise Enum.EnumError('Enum ' + name + ' can not be instantiated')
+            raise MetaEnum.EnumError('Enum ' + name + ' can not be instantiated')
         d['__init__'] = _no_init    
     
         # return an iter of the EnumFields to support 'in' built-in
@@ -110,14 +110,17 @@ class Enum(type):
                   delattr(cls,f)
         d['_del'] = classmethod(_del)
 
+        # reattach a reverse lookup for convenience
+        d['val_dict'] = { fields[k]:k for k in fields }
+        
         # the finished class object
-        clss = super(Enum,cls).__new__(cls,name,bases,d)
+        clss = super(MetaEnum,cls).__new__(cls,name,bases,d)
 
         # bind a reference to it, in each EnumField, for compare ops
         for n in fields:           
             d[n]._set_enum_class(clss)
-            getattr(cls,n)._enum_class = clss
-
+            getattr(cls,n)._enum_class = clss        
+        
         return clss         
 
     def __iter__(self):

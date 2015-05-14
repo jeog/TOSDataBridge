@@ -67,7 +67,7 @@ if __name__ == '__main__':
     parser.add_argument( 'errorfile', type=str, help = 'path of error file' )
     parser.add_argument( 'intrvl', type=int, 
                          choices=tuple (map( lambda x: int(x/60), 
-                                             sorted(_TI.vals) ) ),
+                                             sorted(_TI.val_dict.keys()) ) ),
                          help="interval size(minutes)" )
     parser.add_argument( '--ohlc', action="store_true", 
                          help="use open,high,low,close instead of close" )
