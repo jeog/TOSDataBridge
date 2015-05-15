@@ -20,7 +20,7 @@ setup_dict = {
   "description": "Python Front-End / Wrapper for TOS-DataBridge (C/C++)",
   "author":"Jonathon Ogden",
   "author_email":"jeog.dev@gmail.com",
-  "packages": ['tosdb'] 
+  "packages": ['tosdb','tosdb/cli_scripts'] 
 }      
          
 # the cross platfrom stub

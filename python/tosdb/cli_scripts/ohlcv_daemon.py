@@ -3,7 +3,7 @@ from tosdb.intervalize import TimeInterval as _TI
 from argparse import ArgumentParser as _ArgumentParser
 from time import localtime as _localtime, sleep as _sleep
 from os.path import realpath as _path
-from daemon import Daemon as _Daemon
+from .daemon import Daemon as _Daemon
 from sys import stderr as _stderr
 
 _val_type = ''
