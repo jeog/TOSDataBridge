@@ -7,11 +7,15 @@ Obviously the core implementation is not portable, but the python interface does
 [Complete Documentation ( docs/README.html ) ](https://raw.githubusercontent.com/jeog/TOSDataBridge/master/docs/README.html)
 
 ###+ Requirements
-- Windows to run the core implementation. The python interface
-is available to any system running python3. 
+- Windows to run the core implementation. The python interface is available to any system running python3. 
 - TDAmeritrade's ThinkOrSwim(TOS) platform that exposes DDE functionality (the Window's verion)
 - VC++ 2012 Redistributable (included)
 - Some basic Windows knowledge; some basic C, C++, or Python3 programming knowledge
+
+###+ Platform Notes
+- The core implementation has been tested, and 'works', on Windows 7 SP1, Windows Server 2008 R2, and Vista SP2. 
+- The virtual python layer/interface has been tested on Windows 7 and Debian/Linux-3.2
+- There was a problem running the TOS platform itself on Windows Server 2012 R2: crashing with the Java VM throwing an EXCEPTION_ACCESS_VIOLATION from glass.dll. (Attempts to fiddle with permissions, use different versions of jre etc. were fruitless.)
   
 ###+ Installation
 - tosdb-setup.bat will attempt to install the necessary modules/dependencies for you but you should refer to README.html for a more detailed explanation.
@@ -19,10 +23,11 @@ is available to any system running python3.
 
  ####++ Core C/C++ Libraries
  ```
-(Admin) C:\[...TOSDataBridge]\tosdb-setup.bat   [x86|x64]   [admin]
+(Admin) C:\[...TOSDataBridge]\tosdb-setup.bat   [x86|x64]   [admin]   [session]
 ```
  - [x86|x64] : the version to build (required)
- - [admin] : does your TOS platform require elevation? (leave blank if no)
+ - [admin] : does your TOS platform require elevation? (optional)
+ - [session] : override the service's attempt to determine the session id when exiting from session-0 isolation (this may be necessary with remote access, e.x an EC2 instance; tos-databridge-engine.exe[] session id must match ThinkOrSwim's) (optional)
 
  ####++ Python Wrapper/Front-End (optional)
  ```

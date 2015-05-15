@@ -247,9 +247,11 @@
     builds for ALL modules. The python library will search for the underlying DLL (-x64 vs. -x86) that 
     matches the bit size returned by the log2 of its sys.maxsize() call, so check that its the correct 
     build if you get a dll error during the init() call.</li>
-    <li class = "listitem2 basictext">  The core implementation has been tested on 
-    Windows 7 SP1 and Vista SP2 - predominantly the former. The virtual python 
-        layer/interface has been tested on Windows 7 and Debian/Linux-3.2</li>
+    <li class = "listitem2 basictext">  The core implementation has been tested, and 'works', on 
+    Windows 7 SP1, Windows Server 2008 R2, and Vista SP2. The virtual python layer/interface has been 
+    tested on Windows 7 and Debian/Linux-3.2. There was a problem running the TOS platform itself on 
+    Windows Server 2012 R2: crashing with the Java VM throwing an EXCEPTION_ACCESS_VIOLATION from 
+    glass.dll. (Attempts to fiddle with permissions, use different versions of jre etc. were fruitless.)</li>
 </ul>
 </div>
 
@@ -335,13 +337,18 @@ using the x64 binaries.
     will choose a version that matches its own build. (You may want to jump down to 'The Python 
     Wrapper In a Nutshell' section now if unsure how to find this info.) The second is whether your TOS platform is 
     running under elevated privileges: does it ask for an admin password before starting or can you simply 
-    run it from your standard (non-admin) user account ?
+    run it from your standard (non-admin) user account ? </li>
 
     <li class = "listitems3 "> Open a command shell with Admin Privileges (right-click on cmd.exe and click 
-    &#39;run as administrator&#39;). Navigate to the tos-databridge root directory. Enter one of the following 
-    commands that matches your situation: &quot;tosdb-setup.bat x86&quot; or &quot;tosdb-setup.bat x64&quot; 
-    or &quot;tosdb-setup.bat x86 admin&quot; or &quot;tosdb-setup.bat x64 admin&quot;. 
-    (SEE THE SCREEN-SHOT BELOW) The setup script is going to do a few things: 1) move the 
+    &#39;run as administrator&#39;). Navigate to the tos-databridge root directory. (If you don't need a custom 
+    session) enter one of the following commands that matches your situation: &quot;tosdb-setup.bat x86&quot; or 
+    &quot;tosdb-setup.bat x64&quot; or &quot;tosdb-setup.bat x86 admin&quot; or &quot;tosdb-setup.bat x64 admin&quot;. 
+    (SEE THE SCREEN-SHOT BELOW). If you do need a custom session - for instance, you are accessing Windows remotely - 
+    add the session id (probably '2') as the last argument.  Check that tos-databridge-engine.exe[] 
+    - and whatever 'client' code that's been created - is running in the same session as the ThinkOrSwim platform. In 
+    most cases this will is session 1 and won't require this argument. </li>
+
+    <li class = "listitems3 "> The setup script is going to do a few things: 1) move the 
     _tos-databridge-shared[].dll(s) to the Windows Directory. This is generally not the best idea but we 
     don&#39;t know the details of what and where you&#39;ll link from so we are doing this for convenience. 
     If you create your own executables you can update your PATH environment variable or setup application 
