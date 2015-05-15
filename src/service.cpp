@@ -41,6 +41,7 @@ namespace {
 #endif           
     std::string engine_path;
     std::string integrity_level; 
+    int custom_session = -1;
 
     char engine_cmd[12];
 
@@ -184,7 +185,7 @@ VOID WINAPI ServiceController( DWORD cntrl )
     }
 }
 
-bool SpawnRestrictedProcess()
+bool SpawnRestrictedProcess( int session = -1 )
 {            
     STARTUPINFO  startup_info;            
     SID_NAME_USE dummy;
@@ -235,11 +236,10 @@ bool SpawnRestrictedProcess()
         TOSDB_LogEx("SpawnRestrictedProcess", 
                     "(3) failed to lookup Mandatory Level group", 
                     GetLastError() );
-    }
+    }  
 
-    session_id = WTSGetActiveConsoleSessionId();  
-      
-    
+    session_id = (session < 0 ) ? WTSGetActiveConsoleSessionId() : session;         
+
     if( is_service && !SetTokenInformation( ctkn_hndl, TokenSessionId, 
                                             &session_id,  sizeof(DWORD) ) )
     {  /* 
@@ -345,8 +345,8 @@ void WINAPI ServiceMain( DWORD argc, LPSTR argv[] )
                                             Sleep(UPDATE_PERIOD);
                                             UpdateStatus( -1, -1); 
                                         } } );
-    
-    if( !SpawnRestrictedProcess() ){
+
+    if( !SpawnRestrictedProcess( custom_session ) ){
         /* 
          * create new process that can communicate with our interface 
          */
@@ -368,49 +368,87 @@ void WINAPI ServiceMain( DWORD argc, LPSTR argv[] )
     TOSDB_Log("SERVICE-CNTRL","SERVICE_STOPPED");  
 }
 
+void ParseArgs( std::vector<std::string>& vec, std::string str )
+{
+    size_t i = str.find_first_of(' ');
+    std::string arg, rem;
+    if( i == 0 ){
+        ParseArgs(vec,str.substr(1,-1));
+        return;
+    }
+    if( i < str.size() ){
+        arg = str.substr(0,i);
+        rem = str.substr(++i,str.size());
+        vec.push_back(arg);
+        ParseArgs(vec,rem);
+    }else{
+        vec.push_back(str);
+        return ;
+    }
+}
+
 int WINAPI WinMain( HINSTANCE hInst, 
                     HINSTANCE hPrevInst, 
                     LPSTR lpCmdLn, 
                     int nShowCmd )
 {     
     std::string cmd_str(lpCmdLn);
-    std::string arg1, arg2;
+    std::vector<std::string> args;   
     SmartBuffer<CHAR> module_buf(MAX_PATH);
 
     GetModuleFileName( NULL, module_buf.get(), MAX_PATH);
 
-    std::string path( module_buf.get() );
-    path.erase( path.find_last_of("\\") );
-    engine_path.append(path).append("\\").append( ENGINE_NAME );
+    std::string path( module_buf.get() ); 
+    path.erase( path.find_last_of("\\") ); 
+    engine_path.append(path).append("\\").append( ENGINE_NAME ); 
 
     TOSDB_StartLogging( std::string( std::string(TOSDB_LOG_PATH) 
-                                     + std::string(LOG_NAME)).c_str() );
+                                     + std::string(LOG_NAME)).c_str() ); 
 
     GetSystemInfo( &sys_info );  
-  
-    size_t indx = cmd_str.find_first_of(' ');
+    ParseArgs(args,cmd_str);
+	
+	int argc = args.size();
+    int admin_pos = 0;
+    int no_service_pos = 0;
 
-    if( indx < cmd_str.size() ){
-        arg1 = cmd_str.substr(0, indx);
-        arg2 = cmd_str.substr(++indx, cmd_str.size());
-    }else{
-        arg1 = cmd_str;
-        arg2 = "";
-    }
-
-    if( arg1 == "--admin" || arg2 == "--admin" )    
-        integrity_level = "High Mandatory Level";
-    else
-        integrity_level = "Medium Mandatory Level";
+    if( argc > 0 && args[0] == "--admin" )
+        admin_pos = 1;
+    else if( argc > 1 && args[1] == "--admin" )
+        admin_pos = 2;
     
-    if( arg1 == "--noservice" || arg2 == "--noservice" )
+    if( argc > 0 && args[0] == "--noservice" )
+        no_service_pos = 1;
+    else if( argc > 1 && args[1] == "--noservice" )
+        no_service_pos = 2;
+
+    switch(argc){
+    case 1:
+        if( admin_pos == 0 && no_service_pos == 0 )
+            custom_session = std::stoi( args[0] );
+        break;
+    case 2:
+        if( (admin_pos == 1 && no_service_pos != 2 ) || 
+            (no_service_pos == 1 && admin_pos != 2 ) )
+                custom_session = std::stoi( args[1] );
+        break;
+    case 3:
+        if( admin_pos > 0 && no_service_pos > 0 )
+            custom_session = std::stoi( args[2] );
+        break;
+    }   
+    
+    integrity_level = admin_pos > 0 ? "High Mandatory Level" 
+                                    : "Medium Mandatory Level";   
+
+    if( no_service_pos > 0 )
     {
         strcpy_s(engine_cmd,"--noservice");
         is_service = false;
 
         TOSDB_Log( "STARTUP", 
                    "tos-databridge-engine.exe starting - NOT A WINDOWS SERVICE");
-        SpawnRestrictedProcess(); 
+        SpawnRestrictedProcess( custom_session ); 
 
     }else
     {
