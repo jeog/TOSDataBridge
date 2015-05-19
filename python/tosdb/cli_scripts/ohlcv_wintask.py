@@ -1,7 +1,7 @@
 import tosdb
 from tosdb.intervalize import TimeInterval as _TI
 from argparse import ArgumentParser as _ArgumentParser
-from time import localtime as _localtime, sleep as _sleep
+from time import localtime as _localtime, strftime as _strftime, sleep as _sleep
 from os.path import realpath as _path
 from sys import stderr as _stderr
 
@@ -25,9 +25,8 @@ def spawn(dllroot,outdir,intrvl,val_type,*symbols):
     if 'V' in val_type:
         blk.add_topics( 'volume' )
         
-    # generate filename             
-    lt = _localtime()
-    dprfx = str(lt.tm_year) + str(lt.tm_mon) + str(lt.tm_mday) 
+    # generate filename                
+    dprfx = _strftime("%Y%m%d", _localtime())
     isec = int(intrvl * 60)
     
     iobjs = list()

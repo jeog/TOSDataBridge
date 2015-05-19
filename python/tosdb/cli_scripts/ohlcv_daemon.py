@@ -33,9 +33,8 @@ class MyDaemon(_Daemon):
         blk.add_topics( 'last' )
         if args.vol:
             blk.add_topics( 'volume' ) 
-        # generate filename             
-        lt = _localtime()
-        dprfx = str(lt.tm_year) + str(lt.tm_mon) + str(lt.tm_mday) 
+        # generate filename                   
+        dprfx = _strftime("%Y%m%d", _localtime())
         isec = int(self._intrvl * 60)    
         
         for s in self._symbols:
