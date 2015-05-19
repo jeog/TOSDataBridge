@@ -44,7 +44,7 @@ class GetOnTimeInterval( _GetOnInterval ):
     @classmethod
     def send_to_file( cls, block, item, topic, file_path,
                       time_interval=TimeInterval.five_min,
-                      update_seconds=15, use_pre_roll_val=True ):                     
+                      update_seconds=15, use_pre_roll_val=False ):                     
         try:
             #i = cls(block,item,topic)
             i = GetOnTimeInterval( block, item, topic )
@@ -179,7 +179,7 @@ class GetOnTimeInterval_C( GetOnTimeInterval ):
     @classmethod
     def send_to_file( cls, block, item, file_path,
                       time_interval=TimeInterval.five_min,
-                      update_seconds=15, use_pre_roll_val=True ):   
+                      update_seconds=15, use_pre_roll_val=False ):   
         return super().send_to_file( block, item, 'last', file_path, 
                                      time_interval, update_seconds, 
                                      use_pre_roll_val )                         
@@ -193,7 +193,7 @@ class GetOnTimeInterval_OHLC( GetOnTimeInterval ):
     @classmethod
     def send_to_file( cls, block, item, file_path,
                       time_interval=TimeInterval.five_min,
-                      update_seconds=15 ): #, use_pre_roll_val=True ):     
+                      update_seconds=15 ): #, use_pre_roll_val=False ):     
         try:
             i = cls(block,item)
             i._file = open(file_path,'w',1)
@@ -255,7 +255,7 @@ class GetOnTimeInterval_OHLCV( GetOnTimeInterval_OHLC ):
     @classmethod
     def send_to_file( cls, block, item, file_path,
                       time_interval=TimeInterval.five_min,
-                      update_seconds=15 ): #, use_pre_roll_val=True ):     
+                      update_seconds=15 ): #, use_pre_roll_val=False ):     
         try:
             i = cls(block,item)
             i._file = open(file_path,'w',1)
@@ -293,7 +293,7 @@ class GetOnTimeInterval_CV( GetOnTimeInterval_C ):
     @classmethod
     def send_to_file( cls, block, item, file_path,
                       time_interval=TimeInterval.five_min,
-                      update_seconds=15, use_pre_roll_val=True ):     
+                      update_seconds=15, use_pre_roll_val=False ):     
         try:
             i = cls(block,item)
             i._file = open(file_path,'w',1)
