@@ -27,23 +27,24 @@ class MyDaemon(_Daemon):
         # initialize windows side     
         tosdb.admin_init( self._addr, AINIT_TIMEOUT )   
         tosdb.vinit( root=self._dll_root )
+
         # create block
         blk = tosdb.VTOSDB_DataBlock( self._addr, BLOCK_SIZE, date_time=True)
         blk.add_items( *(self._symbols) )
         blk.add_topics( 'last' )
         if args.vol:
-            blk.add_topics( 'volume' ) 
+            blk.add_topics( 'volume' )
+ 
         # generate filename                   
         dprfx = _strftime("%Y%m%d", _localtime())
-        isec = int(self._intrvl * 60)    
-        
+        isec = int(self._intrvl * 60)  
         for s in self._symbols:
             #
             # create GetOnTimeInterval object for each symbol
             # 
             p = self._out_dir + '/' + dprfx + '_' + \
-                    s.replace('/','-').replace('$','-') + '_' + \
-                    _val_type + '_' + str(self._intrvl) + 'min.tosdb'           
+                    s.replace('/','-S-').replace('$','-D-').replace('.','-P-') + \
+                    '_' + _val_type + '_' + str(self._intrvl) + 'min.tosdb'           
             iobj = _Goti.send_to_file( blk, s, p, _TI.vals[ isec ], isec/10)
             print( repr(iobj) , file=_stderr )
             self._iobjs.append( iobj )

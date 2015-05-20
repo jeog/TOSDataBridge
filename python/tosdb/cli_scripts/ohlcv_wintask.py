@@ -27,16 +27,15 @@ def spawn(dllroot,outdir,intrvl,val_type,*symbols):
         
     # generate filename                
     dprfx = _strftime("%Y%m%d", _localtime())
-    isec = int(intrvl * 60)
-    
+    isec = int(intrvl * 60)    
     iobjs = list()
     for s in symbols:
         #
         # create GetOnTimeInterval object for each symbol
         # 
         p = _path(outdir) + '/' + dprfx + '_' + \
-                s.replace('/','-').replace('$','-') + '_' + \
-                val_type + '_' + str(intrvl) + 'min.tosdb'           
+                s.replace('/','-S-').replace('$','-D-').replace('.','-P-') + \
+                '_' + val_type + '_' + str(intrvl) + 'min.tosdb'           
         iobj = _Goti.send_to_file( blk, s, p, getattr(_TI,_TI.val_dict[ isec ]),
                                    isec/10)
         print( repr(iobj) )
