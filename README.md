@@ -45,6 +45,10 @@ C:\[...TOSDataBridge]\python\python setup.py install
 2. Include tos_databridge.h header in your code (if C++ make sure containers.hpp and generic.hpp can be found by the compiler), add the necessary lib calls, build it.
 3. Log on to the TOS platform and start your program or the python wrapper(see the python tutorial in \docs for a walk-through).
 
+###+ Signatures/Checksums
+ - All the binaries are signed with the jeog.dev (jeog.dev@gmail.com) public key
+ - Along with the detached sig files in /sigs are sha256 checksums of everything in /sigs/notes_checksums.txt
+ - Obviously there is a trust issue with the key but the sigs are as much about keeping track of new compilations as verification; it is what it is.
 
 ###LICENSING & WARRANTY
 
