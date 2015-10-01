@@ -1,5 +1,5 @@
 /* 
-Copyright (C) 2014 Jonathon Ogden     < jeog.dev@gmail.com >
+Copyright (C) 2014 Jonathon Ogden   < jeog.dev@gmail.com >
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -47,8 +47,8 @@ along with this program.  If not, see http://www.gnu.org/licenses.
    The sequence of calls by the master are:
    1) grab_pipe()
    2) insert()  : pass raw buffers, sets or vectors of data
-   3) send()    : pass the shem_chunks returned by insert or a scallar
-   4) recv()    : populate a shem_chunk or scalar with what's passed to send
+   3) send()  : pass the shem_chunks returned by insert or a scallar
+   4) recv()  : populate a shem_chunk or scalar with what's passed to send
    5) remove()  : 'deallocate' the shem_chunks created by insert
    6) release_pipe()
 
@@ -63,311 +63,272 @@ along with this program.  If not, see http://www.gnu.org/licenses.
    shem_chunk { 0, 0 } signals the end of a particular set of transmissions.
 */
 
+#define IPC_TIMED_WAIT(cond,log_msg,err_code) do{ \
+  unsigned int lcount = 0; \
+  while(cond){ \
+    Sleep(TOSDB_DEF_TIMEOUT / 10); \
+    lcount += (TOSDB_DEF_TIMEOUT / 10); \
+    if(lcount >= TOSDB_DEF_TIMEOUT){ \
+      TOSDB_LogH("IPC",log_msg); \
+      return err_code; \
+}}}while(0)
+
 class ExplicitHeap{
+  typedef unsigned long _head_type;
+  typedef unsigned char *_ptr_type;  
 
-    typedef unsigned long               _head_type;
-    typedef unsigned char               *_ptr_type;    
-    typedef std::multimap< size_type, 
-                           _ptr_type >  _heap_type;
-    typedef std::set< _ptr_type >       _set_type;
-    typedef std::pair< size_type, 
-                       _ptr_type >      _heap_pair_type;    
+  typedef std::multimap<size_type, _ptr_type> _heap_type;
+  typedef std::set<_ptr_type>                 _set_type;
+  typedef std::pair<size_type, _ptr_type>     _heap_pair_type;  
 
-    static const unsigned short HEAD_SZ = sizeof(_head_type);
+  static const unsigned short HEAD_SZ = sizeof(_head_type);
 
-    _heap_type _free_heap;
-    _set_type  _allocated_set;
+  _heap_type _free_heap;
+  _set_type  _allocated_set;
 
-    bool _valid_start( void* start )
-    {   
-        return ( _allocated_set.find( (_ptr_type)start ) 
-                 != _allocated_set.cend() );
-    }
-
-    // void _grow();     // TODO
-    // void _shrink();   // TODO
-    // void _coalesce(); // TODO
+  inline bool _valid_start(void* start)
+  {   
+    return (_allocated_set.find((_ptr_type)start) != _allocated_set.cend());
+  }
 
 public:   
-    ExplicitHeap( void* beg_addr, size_type sz )
-        {
-            this->_free_heap.insert(  
-                _heap_pair_type( sz, (_ptr_type)beg_addr ) ); 
-        }        
-
-    ~ExplicitHeap()
-        {
-        }
-    
-    void*       allocate( size_type size);
-    bool        deallocate( void* start );
-    size_type   size( void* start );
-
-    void clear()
+  ExplicitHeap(void* beg_addr, size_type sz)
     {
-        _free_heap.clear();
-        _allocated_set.clear();
-    }
+      this->_free_heap.insert(_heap_pair_type(sz, (_ptr_type)beg_addr)); 
+    }    
+
+  ~ExplicitHeap() { }
+  
+  void* allocate(size_type size);
+  bool  deallocate(void* start);
+  size_type   size(void* start);
+
+  void clear()
+  {
+    _free_heap.clear();
+    _allocated_set.clear();
+  }
 };
 
-class DynamicIPCBase{ 
-
+class DynamicIPCBase {
 public:
-    struct shem_chunk
-    {
-        size_type offset;
-        int sz;
-        shem_chunk() 
-            : 
-            offset(0), 
-            sz(0)
-            {
-            }
-        shem_chunk(size_type offset, size_type sz)
-            : 
-            offset(offset), 
-            sz(sz)
-            {
-            }
-        ~shem_chunk(){}
-    };
+  struct shem_chunk{
+    size_type offset;
+    int sz;
+    shem_chunk() 
+      : offset(0), sz(0) {}
+    shem_chunk(shem_chunk&& sc)
+      : offset(sc.offset), sz(sc.sz)
+      { sc.offset = sc.sz = 0; }
+    shem_chunk(size_type offset, size_type sz)
+      : offset(offset), sz(sz) {}
+    ~shem_chunk(){}
+  };
 
-private:    
-    bool  _send( const shem_chunk& item ) const;    
-    bool  _recv( shem_chunk& item ) const;    
-    void* _allocate( size_type sz ) const;
-    bool  _deallocate( void* start ) const;
+private:  
+  bool  _send(const shem_chunk& item) const;  
+  bool  _recv(shem_chunk& item) const;  
+  void* _allocate(size_type sz) const;
+  bool  _deallocate(void* start) const;
 
-    template< typename C >
-    shem_chunk _insert( C cont ) const
-    {
-        void* blk = nullptr;        
-        C::const_iterator iter_b = cont.cbegin();
-        C::const_iterator iter_e = cont.cend();         
-        size_type sz = sizeof(C::value_type) * cont.size();  
-      
-        if( !(blk = _allocate( sz )) )
-            return shem_chunk(0,0);
+  template<typename C>
+  shem_chunk _insert(C cont) const
+  {
+    void* blk = nullptr;    
+    C::const_iterator iter_b = cont.cbegin();
+    C::const_iterator iter_e = cont.cend();     
+    size_type sz = sizeof(C::value_type) * cont.size();  
+    
+    if(!(blk = _allocate(sz)))
+      return shem_chunk(0,0);
 
-        for( int i = 0; iter_b != iter_e; ++i, iter_b++ )
-            ((C::value_type*)blk)[i] = *iter_b; 
+    for(int i = 0; iter_b != iter_e; ++i, iter_b++)
+      ((C::value_type*)blk)[i] = *iter_b; 
 
-        return shem_chunk((size_type)blk - (size_type)_mmap_addr, sz);
-    }
+    return shem_chunk((size_type)blk - (size_type)_mmap_addr, sz);
+  }
 
 protected:
+  static const int   PAUSE = 1000;  
+  static const int   ACL_SIZE = 144;
+  static const char* KMUTEX_NAME;
 
-    static const int           PAUSE = 1000;    
-    static const int           ACL_SIZE = 144;
-    static const char*         KMUTEX_NAME;
-    static const unsigned int  ALLOC = 1;
-    static const unsigned int  DEALLOC = 2;
-    static const unsigned int  PING = 4;
+  static const unsigned int  ALLOC = 1;
+  static const unsigned int  DEALLOC = 2;
+  static const unsigned int  PING = 4;
 
-    std::string                _shem_str;
-    std::string                _xtrnl_pipe_str;
-    std::string                _intrnl_pipe_str;
-    void*                      _fmap_hndl;    
-    void*                      _mmap_addr;
-    void*                      _xtrnl_pipe_hndl;
-    void*                      _intrnl_pipe_hndl;
-    void*                      _mtx;
-    int                        _mmap_sz;
+  std::string _shem_str;
+  std::string _xtrnl_pipe_str;
+  std::string _intrnl_pipe_str;
 
-    DynamicIPCBase( std::string name, int sz = 0 )
-        :
+  void* _fmap_hndl;  
+  void* _mmap_addr;
+  void* _xtrnl_pipe_hndl;
+  void* _intrnl_pipe_hndl;
+  void* _mtx;
+  int   _mmap_sz;
+
+  DynamicIPCBase(std::string name, int sz = 0)
+    :
 #ifdef KGBLNS_
-        _shem_str( std::move( 
-            std::string("Global\\").append( 
-                std::string(name).append("_shem") )) ),
+      _shem_str(std::string("Global\\").append(std::string(name)
+                                       .append("_shem"))),
 #else
-        _shem_str( std::move( std::string(name).append("_shem")) ),
+      _shem_str(std::string(name).append("_shem")),
 #endif
-        _xtrnl_pipe_str( std::move( 
-            std::string("\\\\.\\pipe\\").append( 
-                std::string(name).append("_pipe") )) ),
+      _xtrnl_pipe_str(std::string("\\\\.\\pipe\\").append(std::string(name)
+                                                  .append("_pipe"))),
+      _intrnl_pipe_str(std::string("\\\\.\\pipe\\").append(std::string(name)
+                                                   .append("pipe_intrnl"))), 
+      _fmap_hndl(NULL),
+      _mmap_addr(NULL),
+      _xtrnl_pipe_hndl(INVALID_HANDLE_VALUE),
+      _intrnl_pipe_hndl(INVALID_HANDLE_VALUE),
+      _mmap_sz(sz),
+      _mtx(NULL)
+    {      
+    }
 
-        _intrnl_pipe_str( std::move( 
-            std::string("\\\\.\\pipe\\").append( 
-                std::string(name).append("pipe_intrnl") )) ), 
-
-        _fmap_hndl( NULL ),
-        _mmap_addr( NULL ),
-        _xtrnl_pipe_hndl( INVALID_HANDLE_VALUE ),
-        _intrnl_pipe_hndl( INVALID_HANDLE_VALUE ),
-        _mmap_sz( sz ),
-        _mtx( NULL )
-        {            
-        }
-
-    virtual ~DynamicIPCBase()
-        {            
-        }
+  virtual ~DynamicIPCBase() {}
 
 public:
+  template<typename T>
+  void extract(shem_chunk& chunk, T* dest, size_type buf_len) const
+  {
+    void* ptr = shem_ptr(chunk);
+    if(!ptr){
+      dest = nullptr;
+      return; 
+    }  
+    memcpy_s(dest, sizeof(T) * buf_len, ptr, chunk.sz);    
+  }
+  
+  template<typename T>
+  shem_chunk insert(T* data, size_type data_len = 1)
+  {    
+    size_type sz = sizeof(T) * data_len;
 
-    template< typename T>
-    void extract( shem_chunk& chunk, T* dest, size_type buf_len ) const
-    {
-        void* ptr;
+    void* blk = _allocate(sz); 
+    if(!blk || memcpy_s(blk, sz, data, sz))
+      return shem_chunk(0,0);
 
-        if( !(ptr = shem_ptr( chunk )) ){
-            dest = nullptr;
-            return; 
-        }  
-        memcpy_s( dest, sizeof(T) * buf_len, ptr, chunk.sz );        
-    }
-    
-    template< typename T >
-    shem_chunk insert( T* data, size_type data_len = 1 )
-    {        
-        size_type sz = sizeof(T) * data_len;
-        void* blk = _allocate( sz ); 
+    return shem_chunk((size_type)blk - (size_type)_mmap_addr, sz);    
+  }
 
-        if( !blk || memcpy_s(blk, sz, data, sz ) )
-            return shem_chunk(0,0);
+  template<typename T, typename A>
+  inline shem_chunk insert(std::vector<T,A>& vec) { return _insert(vec); }
 
-        return shem_chunk((size_type)blk - (size_type)_mmap_addr, sz);        
-    }
+  template<typename T, typename E, typename A>
+  inline shem_chunk insert(std::set<T,E,A>& set) { return _insert(set); }
 
-    template< typename T, typename A >
-    shem_chunk inline insert(std::vector<T,A>& vec )
-    {
-        return _insert( vec );
-    }
+  const DynamicIPCBase& remove(const shem_chunk chunk) const // removed rval
+  {    
+    void* start = (void*)((size_type)_mmap_addr + chunk.offset);
+    _deallocate(start);
+    return *this;
+  }
+  
+  void* shem_ptr(shem_chunk& chunk) const
+  {/* 
+    * we check for overflow but NO GUARANTEE shem_chunk points at valid data 
+    */        
+    if(chunk.sz <= 0 
+       || !_mmap_addr 
+       || !((chunk.offset + chunk.sz) <= (size_type)_mmap_sz))
+      { /* if blck is 'abnormal', no mem-map, or a read will overflow it */
+        return nullptr;    
+      }  
+    return (void*)((size_type)_mmap_addr + chunk.offset);
+  }
 
-    template< typename T, typename E, typename A >
-    shem_chunk inline insert(std::set<T,E,A>& set )
-    {
-        return _insert( set );
-    }
+  void* ptr(size_type offset) const
+  {
+    if(offset > (size_type)_mmap_sz || !_mmap_addr)
+      return nullptr;
 
-    const DynamicIPCBase& remove( const shem_chunk&& chunk ) const 
-    {        
-        void* start = (void*)((size_type)_mmap_addr + chunk.offset);
-        _deallocate( start );
-        return *this;
-    }
+    return (void*)((size_type)_mmap_addr + offset);
+  }
 
-    
-    void* shem_ptr( shem_chunk& chunk ) const
-    {  /* we check for overflow but NO GUARANTEE shem_chunk will 
-        * point at valid data 
-        */                
-        if( chunk.sz <= 0 
-            || !_mmap_addr 
-            || !((chunk.offset + chunk.sz) <= (size_type)_mmap_sz ) ){
-              /* if blck is 'abnormal', we don't have mem-map, 
-               * or a read will overflow it 
-               */
-               return nullptr;      
-            }  
-        return (void*)((size_type)_mmap_addr + chunk.offset);
-    }
+  size_type offset(void* start) const  
+  {
+    if(start < _mmap_addr 
+       || (size_type)start >= ((size_type)_mmap_addr + (size_type)_mmap_sz)) 
+      {
+        return 0;      
+      }
 
-    void* ptr( size_type offset ) const
-    {
-        if( offset > (size_type)_mmap_sz || !_mmap_addr )
-            return nullptr;
+    return ((size_type)start - (size_type)_mmap_addr); 
+  }
 
-        return (void*)((size_type)_mmap_addr + offset);
-    }
+  inline bool send(const int val) const { return _send(shem_chunk(val,0)); }
 
-    size_type offset( void* start ) const    
-    {
-        if( start < _mmap_addr 
-            || (size_type)start >= ((size_type)_mmap_addr 
-                                    + (size_type)_mmap_sz))        
-               return 0;          
+  bool recv(int& val) const
+  {
+    shem_chunk tmp;
 
-        return ( (size_type)start - (size_type)_mmap_addr ); 
-    }
+    bool res = _recv(tmp);
+    val = tmp.offset;
+    return res;
+  }
 
-    bool send( const int val ) const
-    {
-        return _send( shem_chunk(val,0) );
-    }
+  inline bool send(const shem_chunk& chunk) const { return _send(chunk); }
+  inline bool recv(shem_chunk& chunk) const { return _recv(chunk); }
 
-    bool recv( int& val ) const
-    {
-        shem_chunk tmp;
+  const DynamicIPCBase& operator<<(const shem_chunk& chunk) const
+  {
+    this->_send(chunk);
+    return *this;
+  }
 
-        bool res = _recv( tmp );
-        val = tmp.offset;
-
-        return res;
-    }
-
-    bool inline send( const shem_chunk& chunk ) const
-    {
-        return _send( chunk );
-    }
-
-    bool inline recv( shem_chunk& chunk ) const
-    {
-        return _recv( chunk );
-    }
-
-    const inline DynamicIPCBase& operator<<( const shem_chunk& chunk ) const
-    {
-        this->_send( chunk );
-        return *this;
-    }
-
-    const inline DynamicIPCBase& operator>>( shem_chunk& chunk ) const 
-    {
-        this->_recv( chunk );            
-        return *this;
-    }    
+  const DynamicIPCBase& operator>>(shem_chunk& chunk) const 
+  {
+    this->_recv(chunk);      
+    return *this;
+  }  
 };
 
 class DynamicIPCMaster
-    : public DynamicIPCBase {    
+    : public DynamicIPCBase {  
+  volatile bool _pipe_held;
 
-    volatile bool _pipe_held;
+public:  
+  DynamicIPCMaster(std::string name)
+    : 
+      DynamicIPCBase(name),
+      _pipe_held(false)
+    {  
+    }
 
-public:    
-    DynamicIPCMaster( std::string name )
-        : 
-        DynamicIPCBase( name ),
-        _pipe_held( false )
-        {    
-        }
-
-    virtual ~DynamicIPCMaster()
-        {
-            disconnect();
-        }
-
-    bool try_for_slave();
-    void disconnect( int level = 3 );
-    int  grab_pipe();
-    void release_pipe();
-    bool connected() const;
-    bool inline pipe_held() const 
+  virtual ~DynamicIPCMaster()
     {
-        return _pipe_held; 
-    } 
-    
+      disconnect();
+    }
+
+  bool try_for_slave();
+  void disconnect(int level = 3);
+  int  grab_pipe();
+  void release_pipe();
+  bool connected() const;
+  inline bool pipe_held() const { return _pipe_held; }  
 };
 
 class DynamicIPCSlave
-    : public DynamicIPCBase { 
-       
-    volatile bool                                        _alloc_flag;
-    std::unique_ptr<ExplicitHeap>                        _uptr_heap;    
-    std::unordered_map< Securable, SECURITY_ATTRIBUTES>  _sec_attr;
-    std::unordered_map< Securable, SECURITY_DESCRIPTOR>  _sec_desc;     
-    std::unordered_map< Securable, SmartBuffer<void> >   _sids; 
-    std::unordered_map< Securable, SmartBuffer<ACL> >    _acls; 
- 
-    int  _set_security();
-    void _listen_for_alloc();
+    : public DynamicIPCBase {      
+  std::unordered_map<Securable, SECURITY_ATTRIBUTES> _sec_attr;
+  std::unordered_map<Securable, SECURITY_DESCRIPTOR> _sec_desc;   
+  std::unordered_map<Securable, SmartBuffer<void>>   _sids; 
+  std::unordered_map<Securable, SmartBuffer<ACL>>    _acls;    
 
-public:       
-    DynamicIPCSlave( std::string name, int sz );
-    virtual ~DynamicIPCSlave();
-    bool    wait_for_master();    
+  std::unique_ptr<ExplicitHeap> _uptr_heap;  
+  volatile bool _alloc_flag;
+
+  int  _set_security();
+  void _listen_for_alloc();
+
+public:     
+  DynamicIPCSlave(std::string name, int sz);
+  virtual ~DynamicIPCSlave();
+  bool  wait_for_master();  
 };
 
 
