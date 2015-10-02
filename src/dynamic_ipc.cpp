@@ -237,12 +237,10 @@ bool DynamicIPCMaster::try_for_slave()
     disconnect(0);    
     return false;
   }
-
   /* 
    * WE HAD A RACE CONDITION HERE WHERE THE SLAVE DELETES SHARED MEM FIRST;  
-   *  SHOULD BE O.K. NOW 
+   * SHOULD BE O.K. NOW 
    */
-
   _fmap_hndl = OpenFileMapping(FILE_MAP_WRITE, 0, _shem_str.c_str()); 
   if(!_fmap_hndl)
   {
@@ -262,7 +260,6 @@ bool DynamicIPCMaster::try_for_slave()
     disconnect(2);
     return false;
   }  
-
   /* release connection AFTER FileMapping calls to avoid race with slave */
   release_pipe();  
   return true;

@@ -28,13 +28,15 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 #include "raw_data_block.hpp"
 #include "dynamic_ipc.hpp"
 
-std::recursive_mutex* const global_rmutex = new std::recursive_mutex;
+std::recursive_mutex global_rmutex;
 
 namespace {    
 
-  typedef std::tuple<unsigned int, unsigned int,  
-            std::set<const TOSDBlock*>, 
-            HANDLE, HANDLE>                           buffer_info_type;
+  typedef std::tuple<unsigned int, 
+                     unsigned int,  
+                     std::set<const TOSDBlock*>, 
+                     HANDLE, 
+                     HANDLE>                          buffer_info_type;
 
   typedef std::pair<TOS_Topics::TOPICS, std::string>  buffer_id_type;
   typedef std::map<buffer_id_type, buffer_info_type>  buffers_type;
@@ -45,28 +47,32 @@ namespace {
   DynamicIPCMaster   master(TOSDB_COMM_CHANNEL);
   std::atomic<bool>  aware_of_connection(false);   
 
-  buffers_type   buffers;
-  std::mutex     buffer_mutex;     
-  unsigned short buffer_latency   = (unsigned short)TOSDB_DEF_LATENCY;
-  HANDLE         buffer_thread    =  NULL;
-  DWORD          buffer_thread_id =  0;   
+  buffers_type buffers;
+  std::mutex   buffer_mtx;
 
-  steady_clock_type  steady_clock;
+  long   buffer_latency   = TOSDB_DEF_LATENCY;
+  HANDLE buffer_thread    = NULL;
+  DWORD  buffer_thread_id = 0;   
+
+  steady_clock_type steady_clock;
 
   TOSDBlock*    _getBlockPtr(std::string id);
   DWORD WINAPI  BlockCleanup(LPVOID lParam);
 
   int RequestStreamOP(TOS_Topics::TOPICS tTopic, 
-             std::string sItem, 
-             unsigned long timeout, 
-             unsigned int opcode)
+                      std::string sItem, 
+                      unsigned long timeout, 
+                      unsigned int opcode)
   {/* needs exclusivity but can't block; calling code must lock */
     int ret;
     bool ret_stat;  
 
-    if(opcode != TOSDB_SIG_ADD && opcode != TOSDB_SIG_REMOVE)
-      return -1;   
-     
+    if(opcode != TOSDB_SIG_ADD 
+       && opcode != TOSDB_SIG_REMOVE)
+      {
+        return -1;   
+      }     
+
     IPC_TIMED_WAIT(master.grab_pipe() <= 0,
                    "RequestStreamOP timed out trying to grab pipe", -2);    
 
@@ -76,9 +82,10 @@ namespace {
     DynamicIPCMaster::shem_chunk arg3 = master.insert(&timeout);
 
     master << DynamicIPCMaster::shem_chunk(opcode, 0) 
-           << arg1 << arg2 << arg3 << DynamicIPCMaster::shem_chunk(0,0);
-    /* don't remove until we get a response ! */
+           << arg1 << arg2 << arg3 
+           << DynamicIPCMaster::shem_chunk(0,0);    
     ret_stat = master.recv(ret); 
+    /* don't remove until we get a response ! */
     master.remove(arg1).remove(arg2).remove(arg3);
 
     if(!ret_stat){
@@ -98,7 +105,7 @@ namespace {
     void *fm_hndl, *mem_addr, *mtx_hndl;
     buffers_type::key_type buf_key(tTopic, sItem); 
 
-    our_lock_guard_type lock(buffer_mutex);
+    our_lock_guard_type lock(buffer_mtx);
     /* --- CRITICAL SECTION --- */
 
     buffers_type::iterator b_iter = buffers.find(buf_key);
@@ -144,7 +151,7 @@ namespace {
   {
     buffers_type::key_type buf_key(tTopic, sItem);
 
-    our_lock_guard_type lock(buffer_mutex);
+    our_lock_guard_type lock(buffer_mtx);
     /* --- CRITICAL SECTION --- */
     buffers_type::iterator b_iter = buffers.find(buf_key);
     if(b_iter != buffers.end())
@@ -261,7 +268,7 @@ namespace {
 
   DWORD WINAPI Threaded_Init(LPVOID lParam)
   {        
-    steady_clock_type::time_point tbeg;
+    steady_clock_type::time_point tbeg, tend;
     long tdiff;   
  
     aware_of_connection.store(true);
@@ -270,7 +277,7 @@ namespace {
       /* the concurrent read loop errs on the side of greedyness */
       tbeg = steady_clock.now(); /* include time waiting for lock */   
       {       
-        our_lock_guard_type lock(buffer_mutex);  
+        our_lock_guard_type lock(buffer_mtx);  
         /* --- CRITICAL SECTION --- */
         /* make sure we give up this lock each time through the buffers */ 
         for(buffers_type::value_type & buf : buffers)
@@ -303,11 +310,9 @@ namespace {
         }
         /* --- CRITICAL SECTION --- */
       }
-      tdiff = std::chrono::duration_cast<milli_sec_type>(
-                steady_clock.now() - tbeg).count();    
-
-      Sleep(std::min<long>(std::max<long>(((long)buffer_latency - tdiff),0),
-                           Glacial)); 
+      tend = steady_clock.now();
+      tdiff = std::chrono::duration_cast<milli_sec_type>(tend - tbeg).count();    
+      Sleep(std::min<long>(std::max<long>((buffer_latency - tdiff),0),Glacial)); 
     }
     aware_of_connection.store(false);
     master.disconnect();  
@@ -864,19 +869,18 @@ unsigned short TOSDB_SetLatency(UpdateLatency latency)
 {
   GLOBAL_RLOCK_GUARD;  
   /* --- CRITICAL SECTION --- */
-  unsigned short tmp = buffer_latency;
-  switch(latency)
-  {
-    case Fastest:  
-    case VeryFast:    
-    case Fast:    
-    case Moderate:
-    case Slow:
-    case Glacial:
-      buffer_latency = latency;
-      break;
-    default:
-      buffer_latency = Moderate;
+  long tmp = buffer_latency;
+  switch(latency){
+  case Fastest:  
+  case VeryFast:    
+  case Fast:    
+  case Moderate:
+  case Slow:
+  case Glacial:
+    buffer_latency = latency;
+    break;
+  default:
+    buffer_latency = Moderate;
   }  
   return tmp;
   /* --- CRITICAL SECTION --- */
