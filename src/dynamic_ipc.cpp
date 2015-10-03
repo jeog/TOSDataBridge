@@ -117,10 +117,7 @@ const char* DynamicIPCBase::KMUTEX_NAME = "DynamicIPC_Master_MUTEX1";
 
 void* DynamicIPCBase::_allocate(size_type sz) const
 {
-  size_type obuf[2];
-  obuf[0] = ALLOC;
-  obuf[1] = sz;
-
+  size_type obuf[2] = {ALLOC, sz};
   size_type off = 0;
   DWORD read = 0;
   
@@ -132,10 +129,7 @@ void* DynamicIPCBase::_allocate(size_type sz) const
 
 bool DynamicIPCBase::_deallocate(void* start) const
 { 
-  size_type obuf[2];
-  obuf[0] = DEALLOC;
-  obuf[1] = offset(start);
-
+  size_type obuf[2] = {DEALLOC, offset(start)};
   size_type val = 0;
   DWORD read = 0;
    
@@ -147,18 +141,14 @@ bool DynamicIPCBase::_deallocate(void* start) const
 
 bool DynamicIPCBase::_send(const shem_chunk& item) const
 {
-  unsigned long d; 
-  unsigned long sz = sizeof(shem_chunk);
- 
-  return WriteFile(_xtrnl_pipe_hndl, (void*)&item, sz, &d, NULL);
+  unsigned long d;  
+  return WriteFile(_xtrnl_pipe_hndl, (void*)&item, sizeof(shem_chunk), &d,NULL);
 }
   
 bool DynamicIPCBase::_recv(shem_chunk& item) const 
 {
-  unsigned long d;  
-  unsigned long sz = sizeof(shem_chunk);
- 
-  return ReadFile(_xtrnl_pipe_hndl, (void*)&item, sz, &d, NULL);
+  unsigned long d;   
+  return ReadFile(_xtrnl_pipe_hndl, (void*)&item, sizeof(shem_chunk), &d, NULL);
 }
 
 int DynamicIPCMaster::grab_pipe()
@@ -267,12 +257,10 @@ bool DynamicIPCMaster::try_for_slave()
 
 bool DynamicIPCMaster::connected() const 
 { 
-  size_type obuf[2];
-  obuf[0] = PING;
-  obuf[1] = 999;
-
+  size_type obuf[2] = {PING, 999};
   size_type off = 0;
   DWORD read = 0;
+
   BOOL res = CallNamedPipe(_intrnl_pipe_str.c_str(), (void*)obuf, sizeof(obuf),
                           (void*)&(off), sizeof(off), &read, TOSDB_DEF_TIMEOUT);
 
@@ -371,7 +359,8 @@ DynamicIPCSlave::~DynamicIPCSlave()
 
     CloseHandle(_mtx);   
   
-    if(!UnmapViewOfFile(_mmap_addr)){
+    if(!UnmapViewOfFile(_mmap_addr))
+    {
       TOSDB_LogEx("IPC-Slave", "UnmapViewOfFile() in slave destructor failed", 
                   GetLastError());      
     }
@@ -383,7 +372,6 @@ DynamicIPCSlave::~DynamicIPCSlave()
 void DynamicIPCSlave::_listen_for_alloc()
 {
   size_type args[2];
-
   DWORD done = 0;  
   void* start = nullptr;          
 

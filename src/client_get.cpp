@@ -118,7 +118,7 @@ int TOSDB_GetPreCachedTopicNames(LPCSTR id,
                   size_type array_len)
 {
   const TOSDBlock *db;
-  topic_set_type topS;
+  topic_set_type topics;
   int i, err;
 
   i = err = 0;
@@ -130,13 +130,13 @@ int TOSDB_GetPreCachedTopicNames(LPCSTR id,
   if (!db) 
     return -1;
 
-  topS = db->topic_precache;  
-  if (array_len < topS.size()) 
+  topics = db->topic_precache;  
+  if (array_len < topics.size()) 
     return -1;  
 
-  for(auto & topic : topS){
+  for(auto & t : topics){
     if(err = strcpy_s(dest[i++], str_len,
-                 TOS_Topics::map[topic].c_str())){
+                 TOS_Topics::map[t].c_str())){
        return err;     
     }
   }
@@ -180,7 +180,7 @@ int TOSDB_GetTopicNames(LPCSTR id,
                         size_type str_len)
 {
   const TOSDBlock *db;
-  topic_set_type topS;
+  topic_set_type topics;
   int i, err;
 
   if(!CheckIDLength(id))
@@ -192,14 +192,14 @@ int TOSDB_GetTopicNames(LPCSTR id,
   if (!db) 
     return -2;
 
-  topS = db->block->topics();  
-  if (array_len < topS.size()) 
+  topics = db->block->topics();  
+  if (array_len < topics.size()) 
     return -3;  
 
   i = err = 0;
-  for(auto & topic : topS)
+  for(auto & t : topics)
   {
-    err = strcpy_s(dest[i++], str_len,TOS_Topics::map[topic].c_str());
+    err = strcpy_s(dest[i++], str_len,TOS_Topics::map[t].c_str());
     if(err)
       return err;     
   }
@@ -213,7 +213,7 @@ int TOSDB_GetItemNames(LPCSTR id,
                        size_type str_len)
 {
   const TOSDBlock *db;
-  str_set_type item_set;
+  str_set_type items;
   int i, err;
 
   if(!CheckIDLength(id))
@@ -225,12 +225,12 @@ int TOSDB_GetItemNames(LPCSTR id,
   if (!db) 
     return -2;
 
-  item_set = db->block->items();   
-  if (array_len < item_set.size()) 
+  items = db->block->items();   
+  if (array_len < items.size()) 
     return -3;   
  
   i = err = 0;
-  for(auto & item : item_set)
+  for(auto & item : items)
   {
     err = strcpy_s(dest[i++], str_len, item.c_str());
     if(err)
@@ -247,7 +247,8 @@ int TOSDB_GetTypeBits(LPCSTR sTopic, type_bits_type* type_bits)
   if(!CheckStringLength(sTopic))
     return -1;
 
-  if((t = GetTopicEnum(sTopic)) == TOS_Topics::TOPICS::NULL_TOPIC)
+  t = GetTopicEnum(sTopic);
+  if(t == TOS_Topics::TOPICS::NULL_TOPIC)
     return -2;
 
   try{
@@ -265,7 +266,8 @@ int TOSDB_GetTypeString(LPCSTR sTopic, LPSTR dest, size_type str_len)
   if(!CheckStringLength(sTopic))
     return -1;
 
-  if((t = GetTopicEnum(sTopic)) == TOS_Topics::TOPICS::NULL_TOPIC)
+  t = GetTopicEnum(sTopic);
+  if(t == TOS_Topics::TOPICS::NULL_TOPIC)
     return -2;
 
   str = TOS_Topics::TypeString(t);
@@ -424,7 +426,6 @@ int TOSDB_GetStreamOccupancy(LPCSTR id,
     return -1;  
 
   t = GetTopicEnum(sTopic);
-
   try{
     GLOBAL_RLOCK_GUARD;
     /* --- CRITICAL SECTION --- */
@@ -477,7 +478,6 @@ int TOSDB_GetMarkerPosition(LPCSTR id,
     return -1;  
 
   t = GetTopicEnum(sTopic);
-
   try{
     GLOBAL_RLOCK_GUARD;
     /* --- CRITICAL SECTION --- */
@@ -529,7 +529,6 @@ int TOSDB_IsMarkerDirty(LPCSTR id,
     return -1;  
 
   t = GetTopicEnum(sTopic);
-
   try{
     GLOBAL_RLOCK_GUARD;
     /* --- CRITICAL SECTION --- */

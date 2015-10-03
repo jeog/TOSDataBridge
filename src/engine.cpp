@@ -130,7 +130,7 @@ int WINAPI WinMain(HINSTANCE hInst,
 
   err = SetSecurityPolicy();
   if(err){
-    TOSDB_LogH("STARTUP", "engine failed to set initialize security objects");
+    TOSDB_LogH("STARTUP", "engine failed to initialize security objects");
     return -1;
   }
   
@@ -147,8 +147,7 @@ int WINAPI WinMain(HINSTANCE hInst,
 
   if(WaitForSingleObject(init_event,TOSDB_DEF_TIMEOUT) == WAIT_TIMEOUT)
   {
-    TOSDB_LogH("STARTUP", 
-               "engine's core thread did not receive signal from msg thread");
+    TOSDB_LogH("STARTUP","core thread did not receive signal from msg thread");
     return CleanUpMain(-1);
   }    
   
