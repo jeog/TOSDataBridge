@@ -347,7 +347,7 @@ int main(int argc, char* argv[])
       }
       if(cmmnd == "SetLatency")
       {
-        int lat;
+        unsigned long lat;
         prompt<<"enter latency value(milleseconds)";
         prompt>> lat;        
         TOSDB_SetLatency((UpdateLatency)lat);

@@ -50,7 +50,8 @@ namespace {
   buffers_type buffers;
   std::mutex   buffer_mtx;
 
-  long   buffer_latency   = TOSDB_DEF_LATENCY;
+  unsigned long buffer_latency = TOSDB_DEF_LATENCY;
+
   HANDLE buffer_thread    = NULL;
   DWORD  buffer_thread_id = 0;   
 
@@ -217,16 +218,17 @@ namespace {
       /* if something very bad happened */
       ReleaseMutex(std::get<4>(buf_info));
       throw TOSDB_BufferError("numElems < 0");
-    }else{ 
-      /* make sure we don't insert more than the max elems */
-      nelems = ((unsigned long long)nelems < (dlen / head->elem_size)) 
-             ? nelems 
-             : (dlen / head->elem_size);
+    }
+    else{ /* extract */  
+
+      if((unsigned long long)nelems >= (dlen / head->elem_size)) 
+        /* make sure we don't insert more than the max elems */
+        nelems = dlen / head->elem_size;
 
       dtsz = sizeof(DateTimeStamp);
-      do{ /* 
-         * go through each elem, last first 
-         */
+      do{/* 
+          * go through each elem, last first 
+          */
         spot = (char*)head + 
              (((head->next_offset - (nelems * head->elem_size)) + dlen) % dlen);  
       
@@ -863,13 +865,13 @@ str_set_type TOSDB_GetBlockIDs()
   /* --- CRITICAL SECTION --- */
 }
 
-unsigned short TOSDB_GetLatency() { return buffer_latency; }
+unsigned long TOSDB_GetLatency() { return buffer_latency; }
 
-unsigned short TOSDB_SetLatency(UpdateLatency latency) 
+unsigned long TOSDB_SetLatency(UpdateLatency latency) 
 {
   GLOBAL_RLOCK_GUARD;  
   /* --- CRITICAL SECTION --- */
-  long tmp = buffer_latency;
+  unsigned long tmp = buffer_latency;
   switch(latency){
   case Fastest:  
   case VeryFast:    

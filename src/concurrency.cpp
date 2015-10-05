@@ -140,7 +140,7 @@ bool SignalManager::wait(std::string unq_id)
 
 bool SignalManager::wait_for(std::string unq_id, size_t timeout)
 {
-  bool waitRes;
+  bool wait_res;
   {
     std::unique_lock<std::mutex> lck(_mtx);  
     std::map<std::string,_flag_pair_type>::iterator iter = 
@@ -149,13 +149,13 @@ bool SignalManager::wait_for(std::string unq_id, size_t timeout)
     if(iter == _unq_flags.end())
       return false;
 
-    waitRes = _cnd.wait_for(lck, std::chrono::milliseconds(timeout), 
+    wait_res = _cnd.wait_for(lck, std::chrono::milliseconds(timeout), 
                             [=]{ return iter->second.first; });
 
-    waitRes = waitRes && iter->second.second;
+    wait_res = wait_res && iter->second.second;
     _unq_flags.erase(iter); 
   } 
-  return waitRes;
+  return wait_res;
 }
 
 void SignalManager::set_signal_ID(std::string unq_id)
@@ -172,7 +172,7 @@ bool SignalManager::signal(std::string unq_id, bool secondary)
   {      
     std::lock_guard<std::mutex> lck(_mtx); // unique_lock -> lock_guard Sep29 15
     /* --- CRITICAL SECTION --- */
-    std::map< std::string, _flag_pair_type >::iterator iter = 
+    std::map<std::string, _flag_pair_type>::iterator iter = 
       _unq_flags.find(unq_id);
 
     if(iter == _unq_flags.end()) 
@@ -198,7 +198,7 @@ void SignalManager::set_signal_ID(std::string unq_id)
 
 bool SignalManager::wait(std::string unq_id)
 {      
-  std::map< std::string, volatile bool >::iterator iter;
+  std::map<std::string, volatile bool>::iterator iter;
   {
     WinLockGuard lock(_mtx);    
     /* --- CRITICAL SECTION --- */
@@ -218,9 +218,9 @@ bool SignalManager::wait(std::string unq_id)
 
 bool SignalManager::wait_for(std::string unq_id, size_type timeout)
 {    
-  std::map< std::string, volatile bool >::iterator iter;
-  DWORD waitRes; 
-  bool bRes;
+  std::map<std::string, volatile bool>::iterator iter;
+  DWORD wait_res; 
+  bool b_res;
   {
     WinLockGuard lock(_mtx);   
     /* --- CRITICAL SECTION --- */
@@ -229,21 +229,21 @@ bool SignalManager::wait_for(std::string unq_id, size_type timeout)
       return false;     
     /* --- CRITICAL SECTION --- */
   }
-  waitRes = WaitForSingleObject(_event, timeout);  
+  wait_res = WaitForSingleObject(_event, timeout);  
 
-  WinLockGuard _lock_(_mtx); 
+  WinLockGuard lock(_mtx); 
   /* --- CRITICAL SECTION --- */
-  bRes = iter->second;
+  b_res = iter->second;
   _unq_flags.erase(iter);   
 
-  return (waitRes == WAIT_TIMEOUT) ? false : bRes;
+  return (wait_res == WAIT_TIMEOUT) ? false : b_res;
   /* --- CRITICAL SECTION --- */
 }
 
 bool SignalManager::signal(std::string unq_id, bool secondary)
 {  
   {
-    WinLockGuard _lock_(_mtx);
+    WinLockGuard lock(_mtx);
     /* --- CRITICAL SECTION --- */
     std::map<std::string,volatile bool>::iterator iter = _unq_flags.find(unq_id);
     if(iter == _unq_flags.end())       

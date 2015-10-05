@@ -233,7 +233,7 @@ int WINAPI WinMain(HINSTANCE hInst,
               default:
                 TOSDB_LogH("IPC","invalid opCode");
               } 
-/* SWITCH */
+              /* SWITCH */
               indx = 0;    
               parg1 = parg2 = parg3 = nullptr;
             }
@@ -389,9 +389,8 @@ void CloseAllStreams(unsigned long timeout)
   {
     std::copy(topic.second.begin(), topic.second.end(),
               std::insert_iterator<refcount_type>(rc_copy,rc_copy.begin()));
-    for(const auto& item : rc_copy){
-      RemoveStream(topic.first, item.first, timeout);
-    }
+    for(const auto& item : rc_copy)
+      RemoveStream(topic.first, item.first, timeout);    
     rc_copy.clear();
   }
 }

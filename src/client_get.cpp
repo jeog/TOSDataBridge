@@ -571,9 +571,9 @@ bool TOSDB_IsMarkerDirty(std::string id,
 
 template<> 
 generic_type TOSDB_Get<generic_type, false>(std::string id, 
-                         std::string sItem, 
-                         TOS_Topics::TOPICS tTopic, 
-                         long indx)
+                                            std::string sItem, 
+                                            TOS_Topics::TOPICS tTopic, 
+                                            long indx)
 {  
   const TOSDBlock *db;  
   TOSDB_RawDataBlock::stream_const_ptr_type dat;
@@ -1203,7 +1203,7 @@ int TOSDB_GetItemFrame_(LPCSTR id,
                         T* dest, 
                         size_type array_len, 
                         LPSTR* dest2, 
-                        size_type strLen2, 
+                        size_type str_len2, 
                         pDateTimeStamp datetime)
 {
   const TOSDBlock *db;
@@ -1216,11 +1216,10 @@ int TOSDB_GetItemFrame_(LPCSTR id,
     GLOBAL_RLOCK_GUARD;
     /* --- CRITICAL SECTION --- */
     db = GetBlockOrThrow(id);
-    if(datetime){
-      generic_dts_map_type::const_iterator b_iter, e_iter;
+    if(datetime){  
       generic_dts_map_type dtsm = db->block->pair_map_of_frame_items(tTopic);
-      b_iter = dtsm.cbegin();
-      e_iter = dtsm.cend();
+      generic_dts_map_type::const_iterator b_iter = dtsm.cbegin();
+      generic_dts_map_type::const_iterator e_iter = dtsm.cend();
       if(!dest2)
       {     
         for(size_type i = 0; 
@@ -1239,16 +1238,15 @@ int TOSDB_GetItemFrame_(LPCSTR id,
           {
             dest[i] = (T)b_iter->second.first;
             datetime[i] = b_iter->second.second;
-            err = strcpy_s(dest2[i], strLen2, (b_iter->first).c_str());
+            err = strcpy_s(dest2[i], str_len2, (b_iter->first).c_str());
             if(err) 
               return err; 
           }
       }
-    }else{
-      generic_map_type::const_iterator b_iter, e_iter;       
+    }else{        
       generic_map_type m = db->block->map_of_frame_items(tTopic);
-      b_iter = m.cbegin();
-      e_iter = m.cend();
+      generic_map_type::const_iterator b_iter = m.cbegin();
+      generic_map_type::const_iterator e_iter = m.cend();
       if(!dest2)
       {        
         for(size_type i = 0; 
@@ -1265,7 +1263,7 @@ int TOSDB_GetItemFrame_(LPCSTR id,
             ++b_iter, ++i)
           {
             dest[i] = (T)b_iter->second;
-            err = strcpy_s(dest2[i], strLen2, (b_iter->first).c_str());
+            err = strcpy_s(dest2[i], str_len2, (b_iter->first).c_str());
             if(err) 
               return err;
           }          
@@ -1289,14 +1287,14 @@ int TOSDB_GetItemFrame_(LPCSTR id,
                         T* dest, 
                         size_type array_len, 
                         LPSTR* dest2, 
-                        size_type strLen2, 
+                        size_type str_len2, 
                         pDateTimeStamp datetime)
 {  
   if(!CheckStringLength(sTopic))
     return -1;   
    
   return TOSDB_GetItemFrame_(id, GetTopicEnum(sTopic), dest, array_len, 
-                             dest2, strLen2, datetime);  
+                             dest2, str_len2, datetime);  
 }
 
 int TOSDB_GetItemFrameDoubles(LPCSTR id, 
@@ -1369,11 +1367,10 @@ int TOSDB_GetItemFrameStrings(LPCSTR id,
     GLOBAL_RLOCK_GUARD;
     /* --- CRITICAL SECTION --- */
     db = GetBlockOrThrow(id);
-    if(datetime){
-      generic_dts_map_type::const_iterator b_iter, e_iter; 
+    if(datetime){      
       generic_dts_map_type dtsm = db->block->pair_map_of_frame_items(tTopic);
-      b_iter = dtsm.cbegin();
-      e_iter = dtsm.cend();
+      generic_dts_map_type::const_iterator b_iter = dtsm.cbegin();
+      generic_dts_map_type::const_iterator e_iter = dtsm.cend();
       if(!label_dest)
       {     
         for(size_type i = 0; 
@@ -1404,11 +1401,10 @@ int TOSDB_GetItemFrameStrings(LPCSTR id,
               return err;               
           }
       }
-    }else{
-      generic_map_type::const_iterator b_iter, e_iter;       
+    }else{          
       generic_map_type m = db->block->map_of_frame_items(tTopic);
-      b_iter = m.cbegin();
-      e_iter = m.cend();
+      generic_map_type::const_iterator b_iter = m.cbegin();
+      generic_map_type::const_iterator e_iter = m.cend();
       if(!label_dest)
       {        
         for(size_type i = 0; 
@@ -1490,11 +1486,10 @@ int TOSDB_GetTopicFrameStrings(LPCSTR id,
     GLOBAL_RLOCK_GUARD;
     /* --- CRITICAL SECTION --- */
     db = GetBlockOrThrow(id);
-    if(datetime){
-      generic_dts_map_type::const_iterator b_iter, e_iter;    
+    if(datetime){       
       generic_dts_map_type dtsm = db->block->pair_map_of_frame_topics(sItem);
-      b_iter = dtsm.cbegin();
-      e_iter = dtsm.cend();
+      generic_dts_map_type::const_iterator b_iter = dtsm.cbegin();
+      generic_dts_map_type::const_iterator e_iter = dtsm.cend();
       if(!label_dest)
       { 
         for(size_type i = 0; 
@@ -1526,11 +1521,10 @@ int TOSDB_GetTopicFrameStrings(LPCSTR id,
                 return err;               
           }
       }
-    }else{
-      generic_map_type::const_iterator b_iter, e_iter;
+    }else{    
       generic_map_type m = db->block->map_of_frame_topics(sItem);
-      b_iter = m.cbegin();
-      e_iter = m.cend();
+      generic_map_type::const_iterator b_iter = m.cbegin();
+      generic_map_type::const_iterator e_iter = m.cend();
       if(!label_dest)
       {
         for(size_type i = 0; 
