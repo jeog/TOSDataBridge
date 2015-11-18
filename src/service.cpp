@@ -229,9 +229,9 @@ bool SpawnRestrictedProcess(int session = -1)
     TOSDB_LogEx("SpawnRestrictedProcess",
                 "(3) failed to lookup Mandatory Level group", GetLastError());
   }  
-
+  
   session_id = (session < 0) ? WTSGetActiveConsoleSessionId() : session;     
-
+  
   if(is_service 
      && !SetTokenInformation(ctkn_hndl,TokenSessionId,&session_id,sizeof(DWORD)))
     { /* try to get out of Session 0 isolation if we need to */
@@ -338,12 +338,17 @@ void WINAPI ServiceMain(DWORD argc, LPSTR argv[])
 
 void ParseArgs(std::vector<std::string>& vec, std::string str)
 {
-  size_t i = str.find_first_of(' ');
   std::string arg, rem;
+  std::string::size_type i = str.find_first_of(' '); 
+
+  if(i == std::string::npos)
+    return;
+
   if(i == 0){
     ParseArgs(vec,str.substr(1,-1));
     return;
   }
+
   if(i < str.size()){
     arg = str.substr(0,i);
     rem = str.substr(++i,str.size());
@@ -375,8 +380,8 @@ int WINAPI WinMain(HINSTANCE hInst,
 
   GetSystemInfo(&sys_info);  
   ParseArgs(args,cmd_str);
-	
-	int argc = args.size();
+  
+  int argc = args.size();
   int admin_pos = 0;
   int no_service_pos = 0;
 
@@ -404,8 +409,8 @@ int WINAPI WinMain(HINSTANCE hInst,
   
   integrity_level = admin_pos > 0 
                   ? "High Mandatory Level" 
-                  : "Medium Mandatory Level";   
-
+                  : "Medium Mandatory Level"; 
+  
   if(no_service_pos > 0)
   {
     strcpy_s(engine_cmd,"--noservice");

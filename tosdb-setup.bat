@@ -23,6 +23,7 @@ IF /I "%2"=="admin" (
     set servCmd=" %2"
 )
 
+
 IF "%1"=="x64" (
     echo + Copying _tos-databridge-shared-x64.dll to %WINDIR% ...
     COPY /-Y .\bin\Release\x64\_tos-databridge-shared-x64.dll %WINDIR%    

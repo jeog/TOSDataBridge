@@ -1,10 +1,10 @@
 class MetaEnum(type):
     """ metaclass that creates an enum object w/ user-defined values
     
-    class Color(metaclass=Enum):      
+    class Color(metaclass=MetaEnum):      
         fields = ( 'Red', 'Blue', 'Green' )
 
-    class Speed(metaclass=Enum):      
+    class Speed(metaclass=MetaEnum):      
         fields = { 'fast':300, 'moderate':200, 'slow':100, 'default':300 }  
     
     >>> Speed.fast.val

@@ -26,14 +26,16 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 #ifndef XPLATFORM_PYTHON_CONSTS_ONLY
 
 const TOS_Topics::topic_map_type& TOS_Topics::map = TOS_Topics::_map;
-const char* TOPICS_NAME    =  "TOPICS";
+const char* TOPICS_NAME = "TOPICS";
+
 #endif
-const char* DEF_TIMEOUT_NAME =  "DEF_TIMEOUT";  
-const char* INTGR_BIT_NAME   =  "INTGR_BIT";
-const char* QUAD_BIT_NAME  =  "QUAD_BIT";
-const char* STRING_BIT_NAME  =  "STRING_BIT";
-const char* MAX_STR_SZ_NAME  =  "MAX_STR_SZ";
-const char* STR_DATA_SZ_NAME =  "STR_DATA_SZ";
+
+const char* DEF_TIMEOUT_NAME = "DEF_TIMEOUT";  
+const char* INTGR_BIT_NAME   = "INTGR_BIT";
+const char* QUAD_BIT_NAME    = "QUAD_BIT";
+const char* STRING_BIT_NAME  = "STRING_BIT";
+const char* MAX_STR_SZ_NAME  = "MAX_STR_SZ";
+const char* STR_DATA_SZ_NAME = "STR_DATA_SZ";
 
 static struct PyModuleDef _tosdb = { 
   PyModuleDef_HEAD_INIT, 
@@ -61,17 +63,16 @@ PyMODINIT_FUNC PyInit__tosdb(void)
     TOS_Topics::map.cbegin();
 
   int count = 0;
-  do
+  do{
     PyTuple_SET_ITEM(topicObj, count++, 
                      PyUnicode_FromString(cbIter->second.c_str()));	
-  while(++cbIter != TOS_Topics::map.cend());	
+  }while(++cbIter != TOS_Topics::map.cend());	
 
   PyObject_SetAttrString(pyMod, TOPICS_NAME, topicObj);    
 
   PyObject* def_timeout = Py_BuildValue("i",TOSDB_DEF_TIMEOUT);
-#else
-  /* hardcode timeout */
-  PyObject* def_timeout = Py_BuildValue("i", 2000);  
+#else  
+  PyObject* def_timeout = Py_BuildValue("i", 2000);  /* hardcode timeout */
 #endif
 
   PyObject_SetAttrString(pyMod, DEF_TIMEOUT_NAME, def_timeout);

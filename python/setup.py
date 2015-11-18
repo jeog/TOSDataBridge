@@ -41,38 +41,41 @@ ext_win.extra_compile_args =  ["/EHsc"]
 ext_win.extra_link_args    =  ["/LTCG"]  
         
 try: # capture setup errors but allow setup to complete (optional=True)   
-    sio = StringIO()
-    se = sys.stderr
-    sys.stderr = sio  
-    setup( ext_modules=[ ext_win if _SYS_IS_WIN else ext_stub], **setup_dict )  
+  sio = StringIO()
+  se = sys.stderr
+  sys.stderr = sio
+  try:
+    setup( ext_modules=[ ext_win if _SYS_IS_WIN else ext_stub], **setup_dict )
+  except:
+    raise
+  finally:
     sys.stderr = se    
-    if sio.getvalue(): 
-        print( '\n', "+ Operation 'completed' with errors:\n")
-        print( sio.getvalue() )
-        print( "+ Checking on the status of the build...")
-        t = None
-        try:
-            import _tosdb as t
-            print( "+ _tosdb.pyd exists (possibly an older version?) ")
-        except:        
-            raise Exception("- error: _tosdb.pyd does not exist" + 
-                            " (can not be imported) ")
-        finally:
-            if t:
-                del t
-except (BaseException) as err:
-    print("- fatal error thrown during setup: ",type(err))
-    print(err)
-    if _SYS_IS_WIN:           
-        print("+ Would you like to try again with a pre-compiled _tosdb.pyd?")         
-        if input() in ["y","Y","yes","Yes","YES"]:            
-            pydF = "_tosdb-"+str(_SYS_ARCH)+"-"+str(_SYS_MINOR_V)+".pyd"
-            if pydF in listdir():           
-                print("Found _tosdb.pyd, sending it to python root directory")
-                copy2("./"+pydF, "./_tosdb.pyd")
-                setup( data_files=[(".",["_tosdb.pyd"]) ], **setup_dict )
-                remove("./_tosdb.pyd")
-            else:
-                print("Sorry, can't find one that matches your python version.")
+  if sio.getvalue(): 
+    print( '\n', "+ Operation 'completed' with errors:\n")
+    print( sio.getvalue() )
+    print( "+ Checking on the status of the build...")
+    t = None
+    try: 
+      import _tosdb as t
+      print( "+ _tosdb.pyd exists (possibly an older version?) ")
+    except:     
+      raise Exception("- error: _tosdb.pyd does not exist(can not be imported) ")
+    finally: 
+      if t:
+        del t
+except BaseException as err:
+  print("- fatal error thrown during setup: ",type(err))
+  print(err)
+  if _SYS_IS_WIN:           
+    print("+ Would you like to try again with a pre-compiled _tosdb.pyd?")         
+    if input() in ["y","Y","yes","Yes","YES"]:            
+      pydF = "_tosdb-"+str(_SYS_ARCH)+"-"+str(_SYS_MINOR_V)+".pyd"
+      if pydF in listdir():           
+        print("Found _tosdb.pyd, sending it to python root directory")
+        copy2("./"+pydF, "./_tosdb.pyd")
+        setup( data_files=[(".",["_tosdb.pyd"]) ], **setup_dict )
+        remove("./_tosdb.pyd")
+      else:
+        print("Sorry, can't find one that matches your python version.")
     
 
