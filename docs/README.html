@@ -188,15 +188,7 @@
             <li class = "listitems2 smalltext">All the source files. If compiling from source simply open 
             the .sln file inside /VisualStudioBuild; select the configuration and platform; and build.</li>          
         </ul>
-    </li>
-    <li class = "listitems1"><i>/symbols </i>
-        <ul>
-            <li class = "listitems2 smalltext"> All the .pdb and .idb files for debugging / disassembly in 
-            the appropriate configuration folder. Add these directories to 
-            DEBUG->Options\Settings->Debugging->Symbols. NOTE: to limit total size we don't include files 
-            for debug builds.</li>
-        </ul>
-    </li>    
+    </li>   
     <li class = "listitems1"><i>/bin </i>
         <ul>
             <li class = "listitems2 smalltext">All the compiled binaries by build type. NOTE: to limit 
@@ -233,10 +225,7 @@
     binaries are sent to a sub-directory of /bin of form /$(Configuration)/$(Platform) and the symbol 
     files are sent to /symbols/$(Configuration). Having all the binaries together is convenient but can 
     cause build dependency issues. If you notice strange file related warnings or linking errors try 
-    clean-solution followed by build-solution to start fresh.</li>
-    <li class = "listitem2 basictext"> Originally there was an option to compile with MinGW but certain 
-    features used in the current code are not implemented so it's suggested to use Visual Studio rather 
-    than re-write the threaded portions et al. </li>
+    clean-solution followed by build-solution to start fresh.</li> 
     <li class = "listitem2 basictext">  A debug build with VLD_ defined will use virtual leak detector 
     (assuming you&#39;ve followed the other instructions for using it.).</li>
     <li class = "listitem2 basictext"> Defining SPPRSS_INPT_CHCK will disable most of the internal 
