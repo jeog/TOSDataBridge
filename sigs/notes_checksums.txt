@@ -1,10 +1,10 @@
 * All the binaries are signed with the jeog.dev.key (jeog.dev@gmail.com) 
-public key. It should be on keyserver.kjsl.org
+public key. It should be on available on a number of key servers.
 
 * Being in a seprate 'sigs' folder you'll have to point the verifier to the 
-corresponding binary file for each signature 
+corresponding binary file for each signature, or use verify.sh on linux
 
-SHA256 checksums:
+SHA256 checksums of all the relevant files:
 
 (THE KEY)
 ff8b814a60c2f8f04cc6fa94b4bb4b338b3a91aee5dee50e542a00b7f1b73b72  jeog.dev.key
