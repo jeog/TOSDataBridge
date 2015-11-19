@@ -16,9 +16,10 @@
 
 """tosdb.py :  A Front-End / Wrapper for the TOS-DataBridge Library
 
-Please refer to README.html for an explanation of the underlying library.
-Please refer to PythonTutorial.html in /python/docs for a (currently out-dated)
-step-by-step walk-through.
+Please refer to docs/README.html for an explanation of the underlying C library
+and docs/PythonTutorial.html for a(currently out-dated) step-by-step walk-through.
+
+                              * * * OBJECTS * * *
 
 class TOSDB_DataBlock(windows only): very similar to the 'block' approach of the
 underlying C library except the interface is explicitly object-oriented. It 
@@ -31,28 +32,64 @@ machine running the core implemenataion.
 
 ABC _TOSDB_DataBlock: abstract base class of TOSDB_DataBlock and VTOSDB_DataBlock
 
-                  * * *   
+                             * * * ADMIN CALLS * * *
 
-In order to create a virtual block the 'local' windows implementation must
-do everything it would normally do to instantiate a TOSDB_DataBlock. It then 
-calls enable_virtualization() with an address tuple (addr,port) that the virtual
-hub / servers (_VTOS_Hub / _VTOS_BlockServer) will use to listen for 'remote'
-virtual blocks. 
+admin_init() : initializes the vitual library calls (e.g vinit(), vconnect())
 
-admin_init() must be called before virtual admin calls (e.g vinit(), vconnect())
+init() / vinit() : tell the windows implementation to initialize the 
+                   underlying library (attempt to connect)
 
-tosdb.py will attempt to load the non-portable _win.py if on windows. The 
-following are the most important calls that control the underlying DLL:
+connect() / vconnect() : tell the windows implementation to connect to the 
+                         underlying C library (init attemps this for you)
 
-  init() / vinit() : initializes the underlying library
+connected() / connected() : is the windows implementation connected
 
-  connect() / vconnect() : connects to the library (init attemps this for you)
+clean_up() / vclean_up() : *** IMPORTANT *** de-allocates shared resources of the 
+                           underlying library and Service. We attempt to clean up 
+                           resources automatically on exit but in certain cases 
+                           it's not guaranteed to happen. HIGHLY RECOMMENDED YOU 
+                           CALL THIS BEFORE EXITING.
 
-  clean_up() / vclean_up() : *** IMPORTANT *** de-allocates shared resources of 
-  the underlying library and Service. We attempt to clean up resources 
-  automatically on exit but in certain cases it's not guaranteed to happen. 
-  It's HIGHLY RECOMMENDED YOU CALL THIS FUNCTION before exiting.
+getblockcount() / vgetblockcount() : number of (created) blocks in the C lib
+getblocklimit() / vgetblocklimit() : get max number of blocks you can create 
+setblocklimit() / vsetblocklimit() : set max number of blocks you can create 
+
+                             * * * INITIALIZATION * * *
+
+--------------------------------------------------------------------------------
+          [ local(windows) side ]        |         [ remote side ]
+--------------------------------------------------------------------------------
+                       Local with no virtualization support: 
+                                         |   
+ 1) init()                               |
+ 2) connect()**                          |
+ 3) use standard calls/objects           |
+                                         |
+--------------------------------------------------------------------------------
+                         Local with virtualization support:
+                                         |    
+ 1) init()                               |
+ 2) connect()**                          |
+ 3) use standard calls/objects...        |
+ 4) enable_virtualization((addr,port))   |
+                                         |   5a) use virtual calls/objects...
+ 5b) use standard calls/objects...       |
+                                         |
+--------------------------------------------------------------------------------
+                         Remote with virtualization support:
+                                         |
+ 1) enable_virtualization((addr,port))   |
+                                         |   2) admin_init()
+                                         |   3) vinit()
+                                         |   4) vconnect()**
+                                         |   5a) use virtual calls/objects...
+ 5b) use standard calls/objects...       |
+                                         |
+--------------------------------------------------------------------------------
+
+ **only needed if init/vinit() fails to call this for us
 """
+
 
 from ._common import * 
 from ._common import _DateTimeStamp, _TOSDB_DataBlock, _type_switch
@@ -64,10 +101,12 @@ from platform import system as _system
 from sys import stderr as _stderr
 from re import sub as _sub
 from atexit import register as _on_exit
+
 import struct as _struct
 import socket as _socket
 import pickle as _pickle
   
+
 _SYS_IS_WIN = _system() in ["Windows","windows","WINDOWS"]
 
 if _SYS_IS_WIN: 
@@ -164,7 +203,7 @@ def admin_init(address, poll_interval=DEF_TIMEOUT):
   _virtual_admin_sock = _socket.socket()
   _virtual_admin_sock.settimeout(poll_interval / 1000)
   try:
-    _virtual_admin_sock.connect(address)
+    _virtual_admin_sock.connect(_virtual_hub_addr)
     _vcall(_pack_msg(_vCONN_ADMIN), _virtual_admin_sock, _virtual_hub_addr)
   except:
     _virtual_hub_addr = ''
@@ -195,11 +234,11 @@ class VTOSDB_DataBlock:
   Please review the attached README.html for details.
   """  
   def __init__(self, address, size=1000, date_time=False, timeout=DEF_TIMEOUT):         
+    self._connected = False
     self._hub_addr = _check_and_resolve_address(address)
     self._my_sock = _socket.socket()
     self._my_sock.settimeout(timeout / 1000)
-    self._my_sock.connect(address)
-    self._connected = False
+    self._my_sock.connect(self._hub_addr)    
     self._call_LOCK = _Lock()
     _vcall(_pack_msg(_vCONN_BLOCK), self._my_sock, self._hub_addr)      
     # in case __del__ is called during socket op
@@ -355,7 +394,7 @@ class VTOSDB_DataBlock:
     bound (block_size); as the oldest data is popped of the back of the
     stream it is lost (the marker can't grow past the end of the stream). 
 
-    State (3) occurs when an inadequately small buffer is used. The call
+    State (3) occurs when an inadequately large buffer is used. The call
     handles buffer sizing for you by calling down to get the marker index,
     adjusting by 'beg' and 'margin_of_safety'. The latter helps assure the
     marker doesn't outgrow the buffer by the time the low-level retrieval
@@ -581,6 +620,7 @@ def enable_virtualization(address, poll_interval=DEF_TIMEOUT):
                 file=_stderr)
           self._rflag = False
           raise
+  ## --- NESTED CLASS _VTOS_AdminServer --- ##
 
   ## --- NESTED CLASS _VTOS_Hub --- ##
   class _VTOS_Hub(_Thread):
@@ -591,7 +631,7 @@ def enable_virtualization(address, poll_interval=DEF_TIMEOUT):
       self._poll_interval = poll_interval
       self._my_sock = _socket.socket()
       self._my_sock.settimeout(poll_interval / 1000)
-      self._my_sock.bind(address)
+      self._my_sock.bind(self._my_addr)
       self._my_sock.listen(0)
       self._virtual_block_servers = set()
       self._virtual_admin_server = None
@@ -611,18 +651,18 @@ def enable_virtualization(address, poll_interval=DEF_TIMEOUT):
           dat = _unpack_msg(dat)[0].decode()          
           if dat == _vCONN_BLOCK:           
             vserv = _VTOS_BlockServer(conn, self._poll_interval,
-                      self._virtual_block_servers.discard)
+                                      self._virtual_block_servers.discard)
             self._virtual_block_servers.add(vserv)
             vserv.start()
           elif dat == _vCONN_ADMIN:           
             if self._virtual_admin_server:
               self._virtual_admin_server.stop()            
-            self._virtual_admin_server = _VTOS_AdminServer(conn,
-                              self._poll_interval)
+            self._virtual_admin_server = 
+              _VTOS_AdminServer(conn, self._poll_interval)
             self._virtual_admin_server.start()
           else:
-            raise TOSDB_VirtualizationError("connection init"
-                 " msg must be _vCONN_BLOCK or _vCONN_ADMIN")
+            raise TOSDB_VirtualizationError("connection init msg must be "
+                                            "_vCONN_BLOCK or _vCONN_ADMIN")
           _send_tcp(conn[0], _pack_msg(_vSUCCESS))
         except Exception as e:
           rmsg = _pack_msg(_vFAILURE, _vFAIL_EXC, repr(e)) 
@@ -638,8 +678,7 @@ def enable_virtualization(address, poll_interval=DEF_TIMEOUT):
         except _socket.timeout:           
           continue        
         except: # anything else... shutdown the hub
-          print("Unhandled exception in _VTOS_Hub, terminated",
-               file=_stderr)
+          print("Unhandled exception in _VTOS_Hub, terminated", file=_stderr)
           _shutdown_servers()
           raise       
       _shutdown_servers()                    
@@ -724,14 +763,14 @@ def _send_tcp(sock, data):
 def _pack_msg(*parts):   
   def _escape_part(part):
     enc = part.encode() if type(part) is not bytes else part         
-    esc1 = _sub(_vESC, _vESC + _vEEXOR, enc) #escape the escape FIRST       
+    esc1 = _sub(_vESC, _vESC + _vEEXOR, enc)    #escape the escape FIRST       
     return _sub(_vDELIM, _vESC + _vDEXOR, esc1) #escape the delim SECOND
   return _vDELIM.join([_escape_part(p) for p in parts])
 
 def _unpack_msg(msg):  
   def _unescape_part(part):    
     unesc1 = _sub(_vESC + _vDEXOR, _vDELIM, part) #unescape the delim FIRST    
-    return _sub(_vESC + _vEEXOR, _vESC, unesc1) #unescape the escape SECOND
+    return _sub(_vESC + _vEEXOR, _vESC, unesc1)   #unescape the escape SECOND
   if not msg:
     return msg
   return [_unescape_part(p) for p in msg.strip().split(_vDELIM)]

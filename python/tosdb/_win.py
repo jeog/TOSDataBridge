@@ -640,7 +640,7 @@ class TOSDB_DataBlock:
         bound (block_size); as the oldest data is popped of the back of the
         stream it is lost (the marker can't grow past the end of the stream). 
 
-        State (3) occurs when an inadequately small buffer is used. The call
+        State (3) occurs when an inadequately large buffer is used. The call
         handles buffer sizing for you by calling down to get the marker index,
         adjusting by 'beg' and 'margin_of_safety'. The latter helps assure the
         marker doesn't outgrow the buffer by the time the low-level retrieval
