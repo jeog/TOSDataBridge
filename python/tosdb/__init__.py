@@ -153,12 +153,14 @@ def vtype_string(topic):
   return _admin_call('type_string', topic) 
 
 def admin_init(address, poll_interval=DEF_TIMEOUT):
-  """ Initialize virtual admin calls (e.g vinit(), vconnect()) """  
+  """ Initialize virtual admin calls (e.g vinit(), vconnect()) 
+
+  address:: tuple(str,int) :: (host/address of the windows implementation, port)
+  """  
   global _virtual_hub_addr, _virtual_admin_sock
   if _virtual_admin_sock:
-    raise TOSDB_VirtualizationError("virtual admin socket already exists")
-  _check_address(address)
-  _virtual_hub_addr = address
+    raise TOSDB_VirtualizationError("virtual admin socket already exists")  
+  _virtual_hub_addr = _check_and_resolve_address(address)
   _virtual_admin_sock = _socket.socket()
   _virtual_admin_sock.settimeout(poll_interval / 1000)
   try:
@@ -185,16 +187,15 @@ def _admin_call(method, *arg_buffer):
 class VTOSDB_DataBlock:
   """ The main object for storing TOS data. (VIRTUAL)   
 
-  address: IPv4 adddress of the windows implementation ('XXX.XXX.XXX.XXX',port)
+  address:: tuple(str,int) :: (host/address of the windows implementation, port)
   size: how much historical data to save
   date_time: should block include date-time stamp with each data-point?
   timeout: how long to wait for responses from TOS-DDE server 
 
   Please review the attached README.html for details.
   """  
-  def __init__(self, address, size=1000, date_time=False, timeout=DEF_TIMEOUT):     
-    _check_address(address)
-    self._hub_addr = address
+  def __init__(self, address, size=1000, date_time=False, timeout=DEF_TIMEOUT):         
+    self._hub_addr = _check_and_resolve_address(address)
     self._my_sock = _socket.socket()
     self._my_sock.settimeout(timeout / 1000)
     self._my_sock.connect(address)
@@ -584,9 +585,8 @@ def enable_virtualization(address, poll_interval=DEF_TIMEOUT):
   ## --- NESTED CLASS _VTOS_Hub --- ##
   class _VTOS_Hub(_Thread):
     def __init__(self, address, poll_interval):
-      super().__init__(daemon=True)
-      _check_address(address)
-      self._my_addr = address   
+      super().__init__(daemon=True)  
+      self._my_addr = _check_and_resolve_address(address)   
       self._rflag = False
       self._poll_interval = poll_interval
       self._my_sock = _socket.socket()
@@ -736,15 +736,12 @@ def _unpack_msg(msg):
     return msg
   return [_unescape_part(p) for p in msg.strip().split(_vDELIM)]
 
-def _check_address(addr): 
+def _check_and_resolve_address(addr): 
   if type(addr) is tuple:
-    return
-  if len(addr) == 2:
-    return
-  if type(addr[0]) is str:
-    return
-  if type(addr[1]) is int:
-    return
+    if len(addr) == 2:    
+      if type(addr[0]) is str:    
+        if type(addr[1]) is int:
+          return (_socket.gethostbyname(addr[0]),addr[1])
   raise TOSDB_TypeError("address must be of type (str,int)")
 
 
