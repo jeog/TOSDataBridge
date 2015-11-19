@@ -293,7 +293,12 @@ class TOSDB_DataBlock:
         else:
             self._block_size = sz
             
-    def stream_occupancy( self, item, topic ):       
+    def stream_occupancy( self, item, topic ):     
+        """ Returns the current number of data-points pushed into the data-stream
+        
+        item: any item string in the block
+        topic: any topic string in the block
+        """           
         item = item.upper()
         topic = topic.upper()
         self._valid_item(item)
