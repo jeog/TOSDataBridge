@@ -42,7 +42,7 @@ def _main_init():
     admin_init(*vc_args)
             
   if args.path:
-    if args.virtual_client
+    if args.virtual_client:
       vinit(dllpath=args.path)  
     else:
       init(dllpath=args.path)
