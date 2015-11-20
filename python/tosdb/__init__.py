@@ -657,7 +657,7 @@ def enable_virtualization(address, poll_interval=DEF_TIMEOUT):
           elif dat == _vCONN_ADMIN:           
             if self._virtual_admin_server:
               self._virtual_admin_server.stop()            
-            self._virtual_admin_server = 
+            self._virtual_admin_server = \
               _VTOS_AdminServer(conn, self._poll_interval)
             self._virtual_admin_server.start()
           else:
