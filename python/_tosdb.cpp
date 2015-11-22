@@ -23,12 +23,13 @@ along with this program.  If not, see http://www.gnu.org/licenses.
  * how we extend non-exported constants to the python library
  * note: have to compile as C++ (on Windows)to access the global Topic Mapping 
 */
+
 #ifndef XPLATFORM_PYTHON_CONSTS_ONLY
-
 const TOS_Topics::topic_map_type& TOS_Topics::map = TOS_Topics::_map;
-const char* TOPICS_NAME = "TOPICS";
-
+#else
+/* don't need to define it since we're linking with topics.o */
 #endif
+const char* TOPICS_NAME = "TOPICS";
 
 const char* DEF_TIMEOUT_NAME = "DEF_TIMEOUT";  
 const char* INTGR_BIT_NAME   = "INTGR_BIT";
@@ -55,7 +56,7 @@ PyMODINIT_FUNC PyInit__tosdb(void)
   PyObject* max_str_sz  = Py_BuildValue("i",TOSDB_MAX_STR_SZ);
   PyObject* str_data_sz = Py_BuildValue("i",TOSDB_STR_DATA_SZ);  
    
-#ifndef XPLATFORM_PYTHON_CONSTS_ONLY
+//#ifndef XPLATFORM_PYTHON_CONSTS_ONLY
   /* Topics enum as an immutable sequence */
   PyObject* topicObj = PyTuple_New(TOS_Topics::map.size()); 
 
@@ -71,9 +72,9 @@ PyMODINIT_FUNC PyInit__tosdb(void)
   PyObject_SetAttrString(pyMod, TOPICS_NAME, topicObj);    
 
   PyObject* def_timeout = Py_BuildValue("i",TOSDB_DEF_TIMEOUT);
-#else  
-  PyObject* def_timeout = Py_BuildValue("i", 2000);  /* hardcode timeout */
-#endif
+//#else  
+//  PyObject* def_timeout = Py_BuildValue("i", 2000);  /* hardcode timeout */
+//#endif
 
   PyObject_SetAttrString(pyMod, DEF_TIMEOUT_NAME, def_timeout);
   PyObject_SetAttrString(pyMod, INTGR_BIT_NAME, i_bit);
