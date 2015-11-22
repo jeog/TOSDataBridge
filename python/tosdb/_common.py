@@ -15,7 +15,9 @@
 #   <http://www.gnu.org/licenses/>.
 
 
+
 from _tosdb import * 
+from .meta_enum import MetaEnum 
 
 import sys as _sys
 from collections import namedtuple as _namedtuple
@@ -31,6 +33,10 @@ from ctypes import Structure as _Structure, \
                    c_float as _float_, \
                    c_longlong as _longlong_, \
                    c_char_p as _str_   
+
+#overwrite the TOPICS tuple(via _tosdb.cpp) with MetaEnum version
+class TOPICS(metaclass=MetaEnum):
+  fields = zip(TOPICS,TOPICS)
 
 BASE_YR = 1900
 NTUP_TAG_ATTR = "_dont_worry_about_why_this_attribute_has_a_weird_name_"

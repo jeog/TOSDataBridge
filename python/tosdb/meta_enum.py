@@ -42,7 +42,7 @@ class MetaEnum(type):
   class EnumError(Exception):
     def __init__(self,*msgs):
       Exception.__init__(self,*msgs)
-  
+
 
   def __new__(cls,name,bases,d):
     from collections import Mapping       
@@ -89,6 +89,10 @@ class MetaEnum(type):
     # remove fields
     fields = d.pop('fields')  
 
+    #convert zipped object
+    if isinstance(fields,zip):
+      fields = dict(fields)
+
     for n in fields:       
       if not isinstance(n,str):
         raise MetaEnum.EnumError( 'Enum names must be strings' ) 
@@ -128,8 +132,9 @@ class MetaEnum(type):
           delattr(cls,f)
     d['_del'] = classmethod(_del)
 
-    # reattach a reverse lookup for convenience
-    d['val_dict'] = { fields[k]:k for k in fields }
+    if isinstance(fields, Mapping):  
+      # reattach a reverse lookup for convenience
+      d['val_dict'] = { fields[k]:k for k in fields }
       
     # the finished class object
     clss = super(MetaEnum,cls).__new__(cls,name,bases,d)

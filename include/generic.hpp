@@ -20,6 +20,7 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 
 #include <sstream>
 #include <string>
+#include <typeinfo>
 #include <math.h>
 
 namespace JO {
@@ -174,7 +175,11 @@ T Generic::_val_switch() const
   }catch(...){
     std::ostringstream msgStrm;
     msgStrm << "error casting generic to < " << typeid(T).name() << " >";
+#ifndef XPLATFORM_PYTHON_CONSTS_ONLY
     throw std::bad_cast(msgStrm.str().c_str());
+#else
+    throw std::bad_cast();
+#endif
   }
 }
 

@@ -652,7 +652,7 @@ int TOSDB_RemoveTopic(std::string id, TOS_Topics::TOPICS tTopic)
   /* --- CRITICAL SECTION --- */
 
   db = _getBlockPtr(id);
-  if (!db || !(TOS_Topics::enum_type)(tTopic))
+  if (!db || !(TOS_Topics::enum_value_type)(tTopic))
   {
     TOSDB_LogH("TOSDBlock", "Could not Remove.");
     return -3;
@@ -961,7 +961,7 @@ bool CheckIDLength(LPCSTR id)
 TOS_Topics::TOPICS GetTopicEnum(std::string sTopic)
 {
   TOS_Topics::TOPICS t = TOS_Topics::map[sTopic];
-  if(!(TOS_Topics::enum_type)t)
+  if(!(TOS_Topics::enum_value_type)t)
     TOSDB_Log("TOS_Topic", "TOS_Topic has no corresponding enum type in map");
  
   return t;

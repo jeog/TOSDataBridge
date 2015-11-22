@@ -1,11 +1,8 @@
-#!/usr/bin/env python
-
 #
 # daemon.py by Sander Marechal : 
 # http://www.jejik.com/articles/2007/02/a_simple_unix_linux_daemon_in_python/
 #
-# made a few tweaks for python3 and tab/spacing size, J.O
-#
+# made a few tweaks for python3 and tab/spacing size - Jonathon Ogden
      
 import sys, os, time, atexit
 from signal import SIGTERM

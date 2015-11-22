@@ -25,8 +25,9 @@ setup_dict = {
          
 # the cross platfrom stub
 ext_stub = Extension( "_tosdb",
-                      sources=[ "_tosdb.cpp" ], 
-                      include_dirs=[ "../include" ],
+                      sources=[ "_tosdb.cpp", "../src/topics.cpp" ], 
+                      include_dirs=[ "../include" ],                 
+                      extra_compile_args = ['--std=c++0x'],
                       optional=True )
 
 ext_win = Extension( **ext_stub.__dict__ )
