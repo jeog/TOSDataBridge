@@ -90,7 +90,7 @@ public:
   template<typename T2, size_t sz, typename Func>
   ILSet(const T2(&arr)[sz], Func func)
     {
-      for(int i = 0; i <sz; ++i)
+      for(size_t i = 0; i <sz; ++i)
         this->insert(func(arr[i])); 
     }
 
@@ -106,7 +106,7 @@ public:
   template<typename T2, size_t sz>
   ILSet(const T2(&arr)[sz])
     {
-      for(int i = 0; i <sz; ++i)
+      for(size_t i = 0; i <sz; ++i)
         this->insert(arr[i]); 
     }
 
@@ -175,7 +175,7 @@ public:
   _my_type& operator=(const T2(&arr)[sz])
   {
     this->clear();
-    for(int i = 0; i <sz; ++i)
+    for(size_t i = 0; i <sz; ++i)
       this->insert(arr[i]); 
     return *this;
   }
@@ -293,7 +293,7 @@ public:
   template<size_t sz>
   TwoWayHashMap(const pair1_type(&arr)[sz])    
     {    
-      for(int i = 0; i <sz; ++i) 
+      for(size_t i = 0; i <sz; ++i) 
         this->_insert(arr[i]);     
     }
 
@@ -317,7 +317,7 @@ public:
   template<size_t sz>
   void insert(const pair1_type(&arr)[sz]) 
   {
-    for(int i = 0; i <sz; ++i)
+    for(size_t i = 0; i <sz; ++i)
       this->_insert(arr[i]); 
   }
 
