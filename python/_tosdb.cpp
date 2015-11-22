@@ -27,10 +27,10 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 #ifndef XPLATFORM_PYTHON_CONSTS_ONLY
 const TOS_Topics::topic_map_type& TOS_Topics::map = TOS_Topics::_map;
 #else
-/* don't need to define it since we're linking with topics.o */
+/* no define since we're linking with topics.o instead of static.lib*/
 #endif
-const char* TOPICS_NAME = "TOPICS";
 
+const char* TOPICS_NAME      = "TOPICS";
 const char* DEF_TIMEOUT_NAME = "DEF_TIMEOUT";  
 const char* INTGR_BIT_NAME   = "INTGR_BIT";
 const char* QUAD_BIT_NAME    = "QUAD_BIT";
@@ -49,14 +49,15 @@ static struct PyModuleDef _tosdb = {
 PyMODINIT_FUNC PyInit__tosdb(void)
 {	
   PyObject* pyMod = PyModule_Create(&_tosdb);	
+
   /* constant scalars */
   PyObject* i_bit       = Py_BuildValue("i",TOSDB_INTGR_BIT);
   PyObject* q_bit       = Py_BuildValue("i",TOSDB_QUAD_BIT);
   PyObject* s_bit       = Py_BuildValue("i",TOSDB_STRING_BIT);
   PyObject* max_str_sz  = Py_BuildValue("i",TOSDB_MAX_STR_SZ);
   PyObject* str_data_sz = Py_BuildValue("i",TOSDB_STR_DATA_SZ);  
-   
-//#ifndef XPLATFORM_PYTHON_CONSTS_ONLY
+  PyObject* def_timeout = Py_BuildValue("i",TOSDB_DEF_TIMEOUT);   
+
   /* Topics enum as an immutable sequence */
   PyObject* topicObj = PyTuple_New(TOS_Topics::map.size()); 
 
@@ -69,13 +70,7 @@ PyMODINIT_FUNC PyInit__tosdb(void)
                      PyUnicode_FromString(cbIter->second.c_str()));	
   }while(++cbIter != TOS_Topics::map.cend());	
 
-  PyObject_SetAttrString(pyMod, TOPICS_NAME, topicObj);    
-
-  PyObject* def_timeout = Py_BuildValue("i",TOSDB_DEF_TIMEOUT);
-//#else  
-//  PyObject* def_timeout = Py_BuildValue("i", 2000);  /* hardcode timeout */
-//#endif
-
+  PyObject_SetAttrString(pyMod, TOPICS_NAME, topicObj); 
   PyObject_SetAttrString(pyMod, DEF_TIMEOUT_NAME, def_timeout);
   PyObject_SetAttrString(pyMod, INTGR_BIT_NAME, i_bit);
   PyObject_SetAttrString(pyMod, QUAD_BIT_NAME, q_bit);

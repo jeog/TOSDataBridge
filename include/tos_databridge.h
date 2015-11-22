@@ -21,6 +21,11 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 /* if not windows only provide the necessary stuff for _tosdb.cpp to compile */
 #ifndef _WIN32
 #define XPLATFORM_PYTHON_CONSTS_ONLY
+#include <string.h> // containers.hpp needs strcmp declr
+#endif
+
+/* just decl the default vals */
+#ifdef XPLATFORM_PYTHON_CONSTS_ONLY
 #define DLL_SPEC_IFACE_
 #define DLL_SPEC_IMPL_
 #ifdef __cplusplus
@@ -28,9 +33,8 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 #else
 #define CDCR_
 #endif
-#endif
 
-#ifndef XPLATFORM_PYTHON_CONSTS_ONLY
+#else /* XPLATFORM_PYTHON_CONSTS_ONLY */
 
 /* internal objects of exported impl classes not exported;
   look here if link errors on change of_tos-databridge... mods */
@@ -130,7 +134,7 @@ class DLL_SPEC_IMPL_ DynamicIPCSlave;
 #include <time.h>
 
 #endif /* XPLATFORM_PYTHON_CONSTS_ONLY */
-#include <string.h>
+
 #ifdef __cplusplus
 #include <map>
 #include <vector>
@@ -232,7 +236,7 @@ typedef struct{
 #ifndef XPLATFORM_PYTHON_CONSTS_ONLY 
 
 /* for C code: create a string of form: "TOSDB_[topic name]_[item name]"  
-  only alpha-numeric characters (except under-score)        */
+   only alpha-numerics */
 std::string CreateBufferName(std::string sTopic, std::string sItem);
 std::string SysTimeString();
 
@@ -396,16 +400,15 @@ public:
   static type_bits_type TypeBits(enum_type tTopic)
   { /* type bits at run-time */
     return ((type_bits_type)(TOSDB_BIT_SHIFT_RIGHT(T, (T)tTopic)) 
-         & TOSDB_TOPIC_BITMASK); 
+           & TOSDB_TOPIC_BITMASK); 
   }
   
   static std::string TypeString(enum_type tTopic)
-  { /* platform-dependent type strings at run-time */
-#ifdef XPLATFORM_PYTHON_CONSTS_ONLY
-    switch(Topic_Enum_Wrapper<T>::TOPICS::TypeBits(tTopic))
-#else
+  { /* 
+     * platform-dependent type strings at run-time 
+     * for convenience/debug only; use TypeBits instead
+     */
     switch(TypeBits(tTopic))
-#endif
     {
     case TOSDB_STRING_BIT: return typeid(std::string).name();
     case TOSDB_INTGR_BIT:  return typeid(def_size_type).name();
@@ -424,17 +427,18 @@ public:
 
 #ifdef XPLATFORM_PYTHON_CONSTS_ONLY
   struct hasher{
-    size_t operator()(const enum_type& t) const{
-      return (T)t;
+    size_t operator()(const enum_type& t) const { 
+      static_assert(std::is_unsigned<enum_value_type>::value,
+                    "hasher only accepts unsigned integral enum_value_types");
+      return (enum_value_type)t; 
     }
   };
-
-  typedef TwoWayHashMap<enum_type, std::string, false,
-                        typename Topic_Enum_Wrapper<T>::hasher,
-                        std::hash<std::string>>                   topic_map_type;
+  typedef TwoWayHashMap<enum_type, std::string, false, hasher> topic_map_type;
 #else
-  typedef TwoWayHashMap<enum_type, std::string>   topic_map_type;
+  /* windows/VS implementation allows default hasher */
+  typedef TwoWayHashMap<enum_type, std::string> topic_map_type;
 #endif
+
   typedef typename topic_map_type::pair1_type  topic_map_entry_type;  
   
   /* export ref from imported defs */

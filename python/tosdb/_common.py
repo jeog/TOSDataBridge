@@ -18,6 +18,7 @@
 # _tosdb is how we deal with C++ header defined consts, those exported from the
 # back-end libs, and '#define' compile-time consts necessary for C compatibility
 from _tosdb import *  # also allows us to migrate away from ctypes when necessary
+from .meta_enum import MetaEnum 
 import sys as _sys
 from collections import namedtuple as _namedtuple
 from abc import ABCMeta as _ABCMeta, abstractmethod as _abstractmethod
@@ -26,6 +27,10 @@ from time import mktime as _mktime, struct_time as _struct_time, \
 from ctypes import Structure as _Structure, c_long as _long_, c_int as _int_, \
      c_double as _double_, c_float as _float_, c_longlong as _longlong_, \
      c_char_p as _str_   
+
+#overwrite the TOPICS tuple(via _tosdb.cpp) with MetaEnum version
+class TOPICS(metaclass=MetaEnum):
+  fields = zip(TOPICS,TOPICS)
 
 BASE_YR = 1900
 NTUP_TAG_ATTR = "_dont_worry_about_why_this_attribute_has_a_weird_name_"

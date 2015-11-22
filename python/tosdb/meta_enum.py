@@ -71,13 +71,17 @@ class MetaEnum(type):
         # remove fields
         fields = d.pop('fields')  
 
+        #convert zipped object
+        if isinstance(fields,zip):
+          fields = dict(fields)
+            
         for n in fields:           
             if not isinstance(n,str):
                 raise MetaEnum.EnumError( 'Enum names must be strings' ) 
             # create an EnumField instance for each name
             obj = our_field_clss()  
             obj._name = n             
-            if isinstance( fields, Mapping):  
+            if isinstance(fields, Mapping):  
                 # attach a val if fields provides a mapping to one                       
                 obj._val = fields[n]
                 if not hasattr( obj._val, '__str__'):
@@ -110,8 +114,9 @@ class MetaEnum(type):
                   delattr(cls,f)
         d['_del'] = classmethod(_del)
 
-        # reattach a reverse lookup for convenience
-        d['val_dict'] = { fields[k]:k for k in fields }
+        if isinstance(fields, Mapping):  
+            # reattach a reverse lookup for convenience
+            d['val_dict'] = { fields[k]:k for k in fields }
         
         # the finished class object
         clss = super(MetaEnum,cls).__new__(cls,name,bases,d)
