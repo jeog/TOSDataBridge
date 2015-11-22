@@ -270,8 +270,7 @@ class Topic_Enum_Wrapper {
   static const T ADJ_STRING_BIT = TOSDB_BIT_SHIFT_LEFT(T,TOSDB_STRING_BIT);
   static const T ADJ_FULL_MASK  = TOSDB_BIT_SHIFT_LEFT(T,TOSDB_TOPIC_BITMASK);
 
-public:  
-  typedef T enum_type;
+public:     
   enum class TOPICS 
       : T { /* 
              * pack type info into HO nibble of scoped Enum
@@ -377,7 +376,10 @@ public:
     YIELD = 0x152  
   };
 
-  template<typename Topic_Enum_Wrapper<T>::TOPICS topic>
+  typedef T enum_value_type; 
+  typedef typename Topic_Enum_Wrapper<T>::TOPICS enum_type;
+
+  template<enum_type topic>
   struct Type{ /* type at compile-time  */
     typedef typename std::conditional<
       ((T)topic & ADJ_STRING_BIT), std::string, 
@@ -391,15 +393,19 @@ public:
           def_price_type>::type>::type>::type  type;
   };
   
-  static type_bits_type TypeBits(typename Topic_Enum_Wrapper<T>::TOPICS tTopic)
+  static type_bits_type TypeBits(enum_type tTopic)
   { /* type bits at run-time */
     return ((type_bits_type)(TOSDB_BIT_SHIFT_RIGHT(T, (T)tTopic)) 
          & TOSDB_TOPIC_BITMASK); 
   }
   
-  static std::string TypeString(typename Topic_Enum_Wrapper<T>::TOPICS tTopic)
+  static std::string TypeString(enum_type tTopic)
   { /* platform-dependent type strings at run-time */
+#ifdef XPLATFORM_PYTHON_CONSTS_ONLY
     switch(Topic_Enum_Wrapper<T>::TOPICS::TypeBits(tTopic))
+#else
+    switch(TypeBits(tTopic))
+#endif
     {
     case TOSDB_STRING_BIT: return typeid(std::string).name();
     case TOSDB_INTGR_BIT:  return typeid(def_size_type).name();
@@ -411,27 +417,23 @@ public:
   }
 
   struct top_less{ 
-    bool operator()(const typename Topic_Enum_Wrapper<T>::TOPICS& left, 
-                    const typename Topic_Enum_Wrapper<T>::TOPICS& right){
+    bool operator()(const enum_type& left, const enum_type& right){
       return (map[left] < map[right]);      
     }
   };
 
 #ifdef XPLATFORM_PYTHON_CONSTS_ONLY
   struct hasher{
-    size_t operator()(const typename Topic_Enum_Wrapper<T>::TOPICS& t) const{
+    size_t operator()(const enum_type& t) const{
       return (T)t;
     }
   };
 
-  typedef TwoWayHashMap<typename Topic_Enum_Wrapper<T>::TOPICS, 
-                        std::string, 
-                        false,
+  typedef TwoWayHashMap<enum_type, std::string, false,
                         typename Topic_Enum_Wrapper<T>::hasher,
                         std::hash<std::string>>                   topic_map_type;
 #else
-  typedef TwoWayHashMap<typename Topic_Enum_Wrapper<T>::TOPICS, 
-                                                   std::string>   topic_map_type;
+  typedef TwoWayHashMap<enum_type, std::string>   topic_map_type;
 #endif
   typedef typename topic_map_type::pair1_type  topic_map_entry_type;  
   

@@ -272,7 +272,7 @@ int AddStream(TOS_Topics::TOPICS tTopic,
 {    
   int err = 0;
 
-  if(!(TOS_Topics::enum_type)tTopic)
+  if(!(TOS_Topics::enum_value_type)tTopic)
     return -1;
 
   topics_type::iterator topic_iter = topics.find(tTopic);  
@@ -351,7 +351,7 @@ bool RemoveStream(TOS_Topics::TOPICS tTopic,
                   std::string sItem, 
                   unsigned long timeout)
 {  
-  if(!(TOS_Topics::enum_type)tTopic)
+  if(!(TOS_Topics::enum_value_type)tTopic)
     return false;
 
   topics_type::iterator topic_iter = topics.find(tTopic);  

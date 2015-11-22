@@ -588,7 +588,7 @@ int main(int argc, char* argv[])
         prompt>> block;      
         topic_set_type topSet = TOSDB_GetTopicEnums(block);
         for(auto & t : topSet)
-          std::cout<< (TOS_Topics::enum_type)t <<' '<< TOS_Topics::map[t] << std::endl;
+          std::cout<< (TOS_Topics::enum_value_type)t <<' '<< TOS_Topics::map[t] << std::endl;
         continue;
       }
       if(cmmnd == "GetPreCachedTopicNamesCPP")
@@ -615,7 +615,7 @@ int main(int argc, char* argv[])
         prompt>> block;      
         topic_set_type topSet = TOSDB_GetPreCachedTopicEnums(block);
         for(auto & t : topSet)
-          std::cout<< (TOS_Topics::enum_type)t << TOS_Topics::map[t] << std::endl;
+          std::cout<< (TOS_Topics::enum_value_type)t << TOS_Topics::map[t] << std::endl;
         continue;
       }    
       if(cmmnd == "GetTypeBits")
