@@ -45,7 +45,7 @@ Obviously the core implementation is not portable, but the python interface does
     - Log on to the TOS platform and either:
         - Include tos_databridge.h header in your code (if C++ make sure containers.hpp and generic.hpp can be found by the compiler), add the necessary lib calls, build and run
         - \- or \-
-        - Start python and import python tosdb to use the python wrapper
+        - 'import tosdb' into a script or interactive shell to use the python wrapper
 
 ### Contents
 - - -
