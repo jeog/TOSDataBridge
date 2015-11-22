@@ -442,7 +442,7 @@ public:
     _my_base_type::insert(keyVal1, keyVal2);
   }
 
-  void insert(const pair1_type keyVal) 
+  void insert(const typename _my_base_type::pair1_type keyVal) 
   {
     _my_lock_guard_type lock(this->_mtx);
     _my_base_type::insert(keyVal);
@@ -479,49 +479,49 @@ public:
     return _my_base_type::operator[](key);
   }
 
-  const_iterator1_type find(const T1& key) const
+  typename _my_base_type::const_iterator1_type find(const T1& key) const
   {
     _my_lock_guard_type lock(this->_mtx);
     return _my_base_type::find(key);
   }
 
-  const_iterator2_type find(const T2& key) const
-  {
-    _my_lock_guard_type lock(this->_mtx);
-    return _my_base_type::find(key)
-  }
-
-  iterator1_type find(const T1& key) 
+  typename _my_base_type::const_iterator2_type find(const T2& key) const
   {
     _my_lock_guard_type lock(this->_mtx);
     return _my_base_type::find(key);
   }
 
-  iterator2_type find(const T2& key) 
+  typename _my_base_type::iterator1_type find(const T1& key) 
   {
     _my_lock_guard_type lock(this->_mtx);
-    return _my_base_type::find(key)
+    return _my_base_type::find(key);
   }
 
-  iterator1_type begin()
+  typename _my_base_type::iterator2_type find(const T2& key) 
+  {
+    _my_lock_guard_type lock(this->_mtx);
+    return _my_base_type::find(key);
+  }
+
+  typename _my_base_type::iterator1_type begin()
   {
     _my_lock_guard_type lock(this->_mtx);
     return _my_base_type::begin();
   }
 
-  iterator1_type end()
+  typename _my_base_type::iterator1_type end()
   {
     _my_lock_guard_type lock(this->_mtx);
     return _my_base_type::end();
   }
 
-  const_iterator1_type cbegin() const
+  typename _my_base_type::const_iterator1_type cbegin() const
   {
     _my_lock_guard_type lock(this->_mtx);
     return _my_base_type::cbegin();
   }
 
-  const_iterator1_type cend() const
+  typename _my_base_type::const_iterator1_type cend() const
   {
     _my_lock_guard_type lock(this->_mtx);
     return _my_base_type::cend();
