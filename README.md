@@ -1,4 +1,4 @@
-## TOSDataBridge v0.1 ::: README
+## TOSDataBridge v0.1 
 - - -
 TOSDataBridge (TOSDB) is an open-source collection of resources for 'scraping' real-time streaming data off of TDAmeritrade's ThinkOrSwim(TOS) platform, providing C, C++, and Python interfaces. Users of the TOS platform - with some basic programming/scripting knowledge - can use these tools to populate their own databases with market data; analyze large data-sets in real-time; test and debug other financial apps; or even build extensions on top of it.
 
@@ -340,7 +340,7 @@ The C++ version's second template argument is a boolean indicating whether it sh
 
 In most cases you'll want more than a single value: use the **`TOSDB_GetStreamSnapshot< , >(...)`** and **`TOSDB_GetStreamSnapshot[Type]s()`** calls. The concept is similar to the **`TOSDB_Get...`** calls from above except they return containers(C++) or populate arrays(C) and require a beginning and ending index value. The C calls require you to state the explicit dimensions of the arrays( the string version requires length of the string buffers as well; internally, data moved to string buffers is of maximum size TOSDB_STR_DATA_SZ so no need to allocate larger than that). 
 
-DateTimeStamp is dealt with in the same way as above. If NULL is not passed it's array length is presumed to be the same as the other array so make sure you pay attention to what you allocate and pass. The C++ calls are implemented to return either a vector of different types or a pair of vectors(the second a vector of DateTimeStamp), depending on the boolean template argument. **Please review the function prototypes in tos_databridge.h and the Glossary section below for a better understanding of the options available.**
+DateTimeStamp is dealt with in the same way as above. If NULL is not passed it's array length is presumed to be the same as the other array so make sure you pay attention to what you allocate and pass. The C++ calls are implemented to return either a vector of different types or a pair of vectors(the second a vector of DateTimeStamp), depending on the boolean template argument. **Please review the function prototypes in tos_databridge.h, and the Glossary section, for a better understanding of the options available.**
 
 > **IMPLEMENTATION NOTE:** Internally the data-stream tries to limit what is copied by keeping track of the streams occupancy and finding the MIN( occupancy count, difference between the end and begin indexes +1\[since they're inclusive\], size of parameter passed in). For C++ calls that return a container it's possible you may want the sub-stream from index 5 to 50 but if only 10 values have been pushed into the stream it will return a container with values from index 5 to 9. Therefore you should use the GetStreamOccupancy call mentioned in the above section, check the returned object's size, use its resize method(s), or pass an explicit array to one of the C calls if relying on an object of certain size(length). If you choose the latter keep in mind the data-stream will NOT copy/initialize the 'tail' elements of the array that do not correspond to valid indexes in the data-stream and the value of those elements should be assumed undefined.
 
@@ -382,7 +382,7 @@ The library also defines an exception hierarchy derived from TOSDB_Error and std
 There are operator\<\< overloads for most of the custom objects and containers returned by the **`TOSDB_Get...`** calls.
 
 
-### Import Details & Provisos
+### Important Details & Provisos
 - - -
 - **Clean.. Exit.. Close.. Stop..:** Exiting gracefully can be tricky because of the myriad states the  TOSDB system can be in. Assuming everything is up and running you really want to avoid shutting down the TOS platform and/or the Service while your client code is running. As a general rule follow this order: 
 
