@@ -26,7 +26,7 @@ Obviously the core implementation is not portable, but the python interface does
 
     - [x86|x64] : the version to build (required)
     - [admin] : does your TOS platform require elevation? (optional) 
-    - [session] : override the service's attempt to determine the session id when exiting from session-0 isolation (this may be necessary with remote access, e.x an EC2 instance; tos-databridge-engine.exe[] session id must match ThinkOrSwim's) (optional)
+    - [session] : override the service's attempt to determine the session id when exiting from session-0 isolation. MOST USERS SHOULDN'T WORRY ABOUT THIS unless they plan to run in a non-standard environment (e.g an EC2 instance). The tos-databridge-engine.exe[] binary needs to run in the same session as the ThinkOrSwim platform. (optional)
 
     ##### Python Wrapper (optional)
     ```
@@ -35,17 +35,29 @@ Obviously the core implementation is not portable, but the python interface does
     - C/C++ libs must be installed first
     - Building the _tosdb.pyd extension is problematic on some systems - please refer to the **Python Wrapper** section below
 
-    ##### Start
-    - You may need to white-list some of these files (specifically tos-databridge-engine-\[x86|x64].exe) in your Anti-Virus software before proceeding.
-    - Start the service:
 
-        ```
-        (Admin) C:\> SC start TOSDataBridge
-        ```
-    - Log on to the TOS platform and either:
-        - Include tos_databridge.h header in your code (if C++ make sure containers.hpp and generic.hpp can be found by the compiler), add the necessary lib calls, build and run
-        - \- or \-
-        - 'import tosdb' into a script or interactive shell to use the python wrapper
+### Quick Start
+- - -
+1. You may need to white-list some of these files (specifically tos-databridge-engine-\[x86|x64].exe) in your Anti-Virus software before proceeding.
+2. Start the service:
+
+    ```
+    (Admin) C:\> SC start TOSDataBridge
+    ```
+3. Log on to your TOS platform
+
+##### For C/C++:
+- Include tos_databridge.h header in your code (if C++ make sure containers.hpp and generic.hpp can be found by the compiler)
+- Use the library calls detailed in the **C/C++ Interface...** sections below
+- Link with *tos-databridge-0.1-[x86|x64].dll*
+- Build
+- Run
+
+##### For Python:
+- Open a python shell/interpreter or create a script
+- import tosdb
+- tosdb.init(...)
+
 
 ### Contents
 - - -
@@ -112,6 +124,7 @@ Obviously the core implementation is not portable, but the python interface does
 
 *(Going forward we'll exclude the build suffix (i.e. -x64 ) for syntactic convenience. We'll replace it with [] in an attempt to avoid confusion. Unless stated explicitly, if sensible, assume that both builds apply.)*
 
+
 ### Build Notes
 - - -
 
@@ -121,9 +134,7 @@ Obviously the core implementation is not portable, but the python interface does
 
 - Defining SPPRSS_INPT_CHCK will disable most of the internal C-string checks for overflows, NULL terminators etc. (not recommended).
 
-- There are 32 and 64 bit (Win32 and x64, not ARM) binaries included along with the relevant configurations in the VisualStudio solution. Debug versions have a "_d" suffix to avoid collisions. It's up to the user to choose and use the correct builds for ALL modules. The python library will search for the underlying DLL (-x64 vs. -x86) that matches the build of that version of python.
-
-- The core implementation has been tested, and 'works', on Windows 7 SP1, Windows Server 2008 R2, and Vista SP2. The virtual python layer/interface has been tested on Windows 7 and Debian/Linux-3.2.
+- There are 32 and 64 bit (Win32 and x64) binaries included along with the relevant configurations in the VisualStudio solution. Debug versions have a "_d" suffix to avoid collisions. It's up to the user to choose and use the correct builds for ALL modules. The python library will search for the underlying DLL (-x64 vs. -x86) that matches the build of that version of python.
 
 
 ### Installation Details
@@ -138,7 +149,7 @@ The following sections will outline how to setup and use TOSDB's basic functiona
     
 4. Determine if your TOS platform runs under elevated privileges (does it ask for an admin password before starting?)
    
-5. Determine if you need to run under a custom Session. MOST USERS SHOULDN'T WORRY ABOUT THIS unless you plan to run on a non-desktop environment (i.e a cloud instance). The tos-databridge-engine.exe[] binary needs to run in the same session as the ThinkOrSwim platform.
+5. Determine if you need to run under a custom Session. MOST USERS SHOULDN'T WORRY ABOUT THIS unless they plan to run in a non-standard environment (e.g an EC2 instance). The tos-databridge-engine.exe[] binary needs to run in the same session as the ThinkOrSwim platform.
   
 6. Open a command shell with Admin Privileges (right-click on cmd.exe and click 'run as administrator'). Navigate to the tos-databridge root directory and run the tosdb-setup.bat setup script with the info from steps #3, #4, and #5:
     
