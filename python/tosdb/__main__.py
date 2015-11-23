@@ -19,7 +19,10 @@ from tosdb import _SYS_IS_WIN, _Thread
 
 from argparse import ArgumentParser as _ArgumentParser
 
+args=None
+
 def _main_init():
+  global args
   parser = _ArgumentParser()
   parser.add_argument('--virtual-client', type=str,
                       help='initialize virtual client "address port [timeout]"')
@@ -56,9 +59,13 @@ def _main_init():
 _main_init()
 globals().pop('_main_init')
 
-exit_commands = ('q','Q','quit','QUIT','Quit','Exit','EXIT','exit')
-print('\n', str(exit_commands) + " to terminate")
-while input() not in exit_commands: 
-  pass
+if args and args.virtual_server and _SYS_IS_WIN:
+  exit_commands = ('q','Q','quit','QUIT','Quit','Exit','EXIT','exit')
+  print('\n', str(exit_commands) + " to terminate")
+  while input() not in exit_commands: 
+    pass
+else:
+  import code
+  code.interact(local=locals())
 
 

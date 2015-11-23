@@ -66,25 +66,39 @@ setblocklimit() / vsetblocklimit() : set max number of blocks you can create
  3) use standard calls/objects           |
                                          |
 --------------------------------------------------------------------------------
-                         Local with virtualization support:
+                     Local (interactive) init with virtualization support:
                                          |    
  1) init()                               |
  2) connect()**                          |
  3) use standard calls/objects...        |
  4) enable_virtualization((addr,port))   |
-                                         |   5a) use virtual calls/objects...
+                                         | 5a) use VTOSDB_DataBlock
  5b) use standard calls/objects...       |
-                                         |
+                                         | 6) admin_init()
+                                         | 7) use virtual admin calls
 --------------------------------------------------------------------------------
-                         Remote with virtualization support:
+                    Remote (interactive) init with virtualization support:
                                          |
  1) enable_virtualization((addr,port))   |
                                          |   2) admin_init()
                                          |   3) vinit()
                                          |   4) vconnect()**
-                                         |   5a) use virtual calls/objects...
- 5b) use standard calls/objects...       |
-                                         |
+                                         |   5a) use virtual calls/objs
+ 5b) use standard calls/objects...       |                                         
+--------------------------------------------------------------------------------
+    Local (daemon/server) Remote (interactive) init with virtualization support:
+                                                   |
+ 1) C:\...\python> python tosdb --virtual-server \ |
+                   "ADDR PORT" --root PATH-TO-DLL  |
+                                                   | 2) use VTOSDB_DataBlock
+                                                   | 3) admin_init()
+                                                   | 4) use virtual admin calls            
+                            ----------------------------------------------------
+                            |                 or Remote (client)
+                            |                     
+                            | 2) :/.../python/$ python tosdb --virtual-client \
+                            |                   "ADDR PORT" 
+                            | 3) use virtual calls/objs 
 --------------------------------------------------------------------------------
 
  **only needed if init/vinit() fails to call this for us

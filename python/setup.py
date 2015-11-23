@@ -9,6 +9,10 @@ from io import StringIO
 from platform import system
 import sys
 
+if sys.version_info.major < 3:
+  sys.stderr.write("fatal: tosdb is built for python3!\n")
+  exit(1)
+
 _SYS_IS_WIN = system() in ["Windows","windows","WINDOWS"]
 _SYS_ARCH = "x64" if ( log( sys.maxsize * 2, 2) > 33 ) else "x86"
 _SYS_ARCHD = "Win32" if _SYS_ARCH == "x86" else "x64"
