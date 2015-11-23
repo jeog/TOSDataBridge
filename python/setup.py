@@ -9,6 +9,10 @@ from io import StringIO
 from platform import system
 import sys
 
+if sys.version_info.major < 3:
+  sys.stderr.write("fatal: tosdb is built for python3!\n")
+  exit(1)
+
 _SYS_IS_WIN = system() in ["Windows","windows","WINDOWS"]
 _SYS_ARCH = "x64" if ( log( sys.maxsize * 2, 2) > 33 ) else "x86"
 _SYS_ARCHD = "Win32" if _SYS_ARCH == "x86" else "x64"
@@ -25,13 +29,15 @@ setup_dict = {
          
 # the cross platfrom stub
 ext_stub = Extension( "_tosdb",
-                      sources=[ "_tosdb.cpp" ], 
-                      include_dirs=[ "../include" ],
+                      sources=[ "_tosdb.cpp", "../src/topics.cpp" ], 
+                      include_dirs=[ "../include" ],                 
+                      extra_compile_args = ['--std=c++0x'],
                       optional=True )
 
 ext_win = Extension( **ext_stub.__dict__ )
 
 # add/override for Win
+ext_win.sources            =  [ "_tosdb.cpp" ]
 ext_win.library_dirs       =  [ "../bin/Release/"+ _SYS_ARCHD ]
 ext_win.libraries          =  [ "_tos-databridge-shared-"+ _SYS_ARCH,
                                 "_tos-databridge-static-"+ _SYS_ARCH ]

@@ -18,13 +18,23 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 #ifndef JO_TOSDB_DATABRIDGE
 #define JO_TOSDB_DATABRIDGE
 
-/* if not windows only provide a handful of necessary 
-  consts to get _tosdb.cpp to compile */
+/* if not windows only provide the necessary stuff for _tosdb.cpp to compile */
 #ifndef _WIN32
 #define XPLATFORM_PYTHON_CONSTS_ONLY
+#include <string.h> // containers.hpp needs strcmp declr
 #endif
 
-#ifndef XPLATFORM_PYTHON_CONSTS_ONLY
+/* just decl the default vals */
+#ifdef XPLATFORM_PYTHON_CONSTS_ONLY
+#define DLL_SPEC_IFACE_
+#define DLL_SPEC_IMPL_
+#ifdef __cplusplus
+#define CDCR_ "C"
+#else
+#define CDCR_
+#endif
+
+#else /* XPLATFORM_PYTHON_CONSTS_ONLY */
 
 /* internal objects of exported impl classes not exported;
   look here if link errors on change of_tos-databridge... mods */
@@ -121,8 +131,10 @@ class DLL_SPEC_IMPL_ DynamicIPCSlave;
 /* externally: limiting use of Win typedefs to LPCSTR / LPSTR, when possible 
    internally: WinAPI facing / relevant code will use all  */
 #include <windows.h> 
-
 #include <time.h>
+
+#endif /* XPLATFORM_PYTHON_CONSTS_ONLY */
+
 #ifdef __cplusplus
 #include <map>
 #include <vector>
@@ -146,12 +158,10 @@ class DLL_SPEC_IMPL_ DynamicIPCSlave;
 #define TOSDB_SIG_BAD ((int)(INT_MAX-1))
 
 /* the core types implemented by the data engine: engine-core.cpp */
-typedef long     def_size_type; 
+typedef long       def_size_type; 
 typedef long long  ext_size_type;
-typedef float    def_price_type;
-typedef double   ext_price_type;
-
-#endif /* XPLATFROM_PYTHON_CONSTS_ONLY */
+typedef float      def_price_type;
+typedef double     ext_price_type;
  
 /* guarantees for the Python wrapper */
 typedef unsigned long size_type;
@@ -170,18 +180,23 @@ typedef unsigned char type_bits_type;
 
 #define TOSDB_MAX_STR_SZ ((unsigned long)0xFF)
 
-#ifndef XPLATFORM_PYTHON_CONSTS_ONLY
+#ifdef XPLATFORM_PYTHON_CONSTS_ONLY
+#define TOSDB_DEF_TIMEOUT   2000
+#define TOSDB_MIN_TIMEOUT  1500
+#define TOSDB_SHEM_BUF_SZ  4096
+#define TOSDB_BLOCK_ID_SZ  63
+#else
+/* const versions exported from tos-databridge-0.1[].dll, 
+   must use /export:[func name] during link */
+extern CDCR_ const size_type DLL_SPEC_IFACE_  TOSDB_DEF_TIMEOUT;  
+extern CDCR_ const size_type DLL_SPEC_IFACE_  TOSDB_MIN_TIMEOUT;  
+extern CDCR_ const size_type DLL_SPEC_IFACE_  TOSDB_SHEM_BUF_SZ;  
+extern CDCR_ const size_type DLL_SPEC_IFACE_  TOSDB_BLOCK_ID_SZ;  
 
 extern char  DLL_SPEC_IMPL_  TOSDB_LOG_PATH[ MAX_PATH+20 ]; 
 /* consts NOT exported from tos-databridge-0.1[].dll */  
 extern LPCSTR  TOSDB_APP_NAME;    
 extern LPCSTR  TOSDB_COMM_CHANNEL;
-/* consts exported from tos-databridge-0.1[].dll, 
-   must use /export:[func name] during link */
-extern CDCR_ const size_type DLL_SPEC_IFACE_  TOSDB_DEF_TIMEOUT;  // 2000
-extern CDCR_ const size_type DLL_SPEC_IFACE_  TOSDB_MIN_TIMEOUT;  // 1500
-extern CDCR_ const size_type DLL_SPEC_IFACE_  TOSDB_SHEM_BUF_SZ;  // 4096
-extern CDCR_ const size_type DLL_SPEC_IFACE_  TOSDB_BLOCK_ID_SZ;  // 63
 
 typedef const enum{ 
   SHEM1 = 0, 
@@ -216,13 +231,12 @@ typedef struct{
   volatile unsigned int next_offset; /* logical location of next write */  
 } BufferHead, *pBufferHead; 
 
-#define TOSDB_BIT_SHIFT_LEFT(T,val) (((T)val)<<((sizeof(T)-sizeof(type_bits_type))*8))
-#define TOSDB_BIT_SHIFT_RIGHT(T,val) (((T)val)>>((sizeof(T)-sizeof(type_bits_type))*8))
-
+#endif /* XPLATFORM_PYTHON_CONSTS_ONLY */
 #ifdef __cplusplus
+#ifndef XPLATFORM_PYTHON_CONSTS_ONLY 
 
 /* for C code: create a string of form: "TOSDB_[topic name]_[item name]"  
-  only alpha-numeric characters (except under-score)        */
+   only alpha-numerics */
 std::string CreateBufferName(std::string sTopic, std::string sItem);
 std::string SysTimeString();
 
@@ -243,6 +257,11 @@ typedef std::map<std::string,
                  std::pair<generic_type,DateTimeStamp>> generic_dts_map_type;
 typedef std::map<std::string,generic_dts_map_type>      generic_dts_matrix_type;
 
+#endif /* XPLATFORM_PYTHON_CONSTS_ONLY */
+
+#define TOSDB_BIT_SHIFT_LEFT(T,val) (((T)val)<<((sizeof(T)-sizeof(type_bits_type))*8))
+#define TOSDB_BIT_SHIFT_RIGHT(T,val) (((T)val)>>((sizeof(T)-sizeof(type_bits_type))*8))
+
 template<typename T> 
 class Topic_Enum_Wrapper {
   static_assert(std::is_integral<T>::value && !std::is_same<T,bool>::value, 
@@ -255,8 +274,7 @@ class Topic_Enum_Wrapper {
   static const T ADJ_STRING_BIT = TOSDB_BIT_SHIFT_LEFT(T,TOSDB_STRING_BIT);
   static const T ADJ_FULL_MASK  = TOSDB_BIT_SHIFT_LEFT(T,TOSDB_TOPIC_BITMASK);
 
-public:  
-  typedef T enum_type;
+public:     
   enum class TOPICS 
       : T { /* 
              * pack type info into HO nibble of scoped Enum
@@ -362,7 +380,10 @@ public:
     YIELD = 0x152  
   };
 
-  template<TOPICS topic>
+  typedef T enum_value_type; 
+  typedef typename Topic_Enum_Wrapper<T>::TOPICS enum_type;
+
+  template<enum_type topic>
   struct Type{ /* type at compile-time  */
     typedef typename std::conditional<
       ((T)topic & ADJ_STRING_BIT), std::string, 
@@ -376,15 +397,19 @@ public:
           def_price_type>::type>::type>::type  type;
   };
   
-  static type_bits_type TypeBits(typename Topic_Enum_Wrapper<T>::TOPICS tTopic)
+  static type_bits_type TypeBits(enum_type tTopic)
   { /* type bits at run-time */
     return ((type_bits_type)(TOSDB_BIT_SHIFT_RIGHT(T, (T)tTopic)) 
-         & TOSDB_TOPIC_BITMASK); 
+           & TOSDB_TOPIC_BITMASK); 
   }
   
-  static std::string TypeString(typename Topic_Enum_Wrapper<T>::TOPICS tTopic)
-  { /* platform-dependent type strings at run-time */
-    switch(TOS_Topics::TypeBits(tTopic)){
+  static std::string TypeString(enum_type tTopic)
+  { /* 
+     * platform-dependent type strings at run-time 
+     * for convenience/debug only; use TypeBits instead
+     */
+    switch(TypeBits(tTopic))
+    {
     case TOSDB_STRING_BIT: return typeid(std::string).name();
     case TOSDB_INTGR_BIT:  return typeid(def_size_type).name();
     case TOSDB_QUAD_BIT:   return typeid(ext_price_type).name();
@@ -395,12 +420,25 @@ public:
   }
 
   struct top_less{ 
-    bool operator()(const TOPICS& left, const TOPICS& right){
+    bool operator()(const enum_type& left, const enum_type& right){
       return (map[left] < map[right]);      
     }
   };
 
-  typedef TwoWayHashMap<TOPICS, std::string>   topic_map_type;
+#ifdef XPLATFORM_PYTHON_CONSTS_ONLY
+  struct hasher{
+    size_t operator()(const enum_type& t) const { 
+      static_assert(std::is_unsigned<enum_value_type>::value,
+                    "hasher only accepts unsigned integral enum_value_types");
+      return (enum_value_type)t; 
+    }
+  };
+  typedef TwoWayHashMap<enum_type, std::string, false, hasher> topic_map_type;
+#else
+  /* windows/VS implementation allows default hasher */
+  typedef TwoWayHashMap<enum_type, std::string> topic_map_type;
+#endif
+
   typedef typename topic_map_type::pair1_type  topic_map_entry_type;  
   
   /* export ref from imported defs */
@@ -414,9 +452,10 @@ private:
 
 typedef Topic_Enum_Wrapper<unsigned short>  TOS_Topics;
 typedef ILSet<std::string> str_set_type;
-typedef ILSet<const TOS_Topics::TOPICS,TOS_Topics::top_less> topic_set_type;
+typedef ILSet<const typename TOS_Topics::TOPICS, typename TOS_Topics::top_less> topic_set_type;
 
 #endif
+#ifndef XPLATFORM_PYTHON_CONSTS_ONLY 
 
 /* NOTE int return types indicate an error value is returned */
 EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int            TOSDB_Connect();
