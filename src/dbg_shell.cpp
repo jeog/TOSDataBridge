@@ -137,20 +137,20 @@ std::string get_frame_commands[] =
 int main(int argc, char* argv[])
 {  
   std::cout<<"[-------------------------------------------------------------]" <<std::endl;
-  std::cout<<"[--                             --]" <<std::endl;
-  std::cout<<"[--     Welcome to the TOS-DataBridge Debug Shell     --]" <<std::endl;
-  std::cout<<"[--       Copyright (C) 2014 Jonathon Ogden       --]" <<std::endl;
-  std::cout<<"[--                             --]" <<std::endl;
+  std::cout<<"[--                                                         --]" <<std::endl;
+  std::cout<<"[--     Welcome to the TOS-DataBridge Debug Shell           --]" <<std::endl;
+  std::cout<<"[--       Copyright (C) 2014 Jonathon Ogden                 --]" <<std::endl;
+  std::cout<<"[--                                                         --]" <<std::endl;
   std::cout<<"[-------------------------------------------------------------]" <<std::endl;
-  std::cout<<"[--                             --]" <<std::endl;
-  std::cout<<"[-- This program is distributed WITHOUT ANY WARRANTY.     --]" <<std::endl;
-  std::cout<<"[-- See the GNU General Public License for more details.  --]" <<std::endl;
-  std::cout<<"[--                             --]" <<std::endl;
-  std::cout<<"[-- Use the 'Connect' command to connect to the Service.  --]" <<std::endl;
+  std::cout<<"[--                                                         --]" <<std::endl;
+  std::cout<<"[-- This program is distributed WITHOUT ANY WARRANTY.       --]" <<std::endl;
+  std::cout<<"[-- See the GNU General Public License for more details.    --]" <<std::endl;
+  std::cout<<"[--                                                         --]" <<std::endl;
+  std::cout<<"[-- Use the 'Connect' command to connect to the Service.    --]" <<std::endl;
   std::cout<<"[-- Type 'commands' for a list of commands; 'exit' to exit. --]" <<std::endl;
-  std::cout<<"[--                             --]" <<std::endl;
+  std::cout<<"[--                                                         --]" <<std::endl;
   std::cout<<"[-- NOTE: Topics/Items are case sensitive; use upper-case   --]" <<std::endl;
-  std::cout<<"[--                             --]" <<std::endl;
+  std::cout<<"[--                                                         --]" <<std::endl;
   std::cout<<"[-------------------------------------------------------------]" <<std::endl;
   std::cout<<std::endl;
   while(1)

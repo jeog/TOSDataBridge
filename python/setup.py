@@ -33,6 +33,7 @@ ext_stub = Extension( "_tosdb",
 ext_win = Extension( **ext_stub.__dict__ )
 
 # add/override for Win
+ext_win.sources            =  [ "_tosdb.cpp" ]
 ext_win.library_dirs       =  [ "../bin/Release/"+ _SYS_ARCHD ]
 ext_win.libraries          =  [ "_tos-databridge-shared-"+ _SYS_ARCH,
                                 "_tos-databridge-static-"+ _SYS_ARCH ]

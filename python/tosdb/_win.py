@@ -272,13 +272,13 @@ class TOSDB_DataBlock:
     if not self._items: # in case items came out of pre-cache
       self._items = self.items()
     if item not in self._items:
-      raise TOSDB_ValueError(item + " not found")
+      raise TOSDB_ValueError("item " + str(item) + " not found")
 
   def _valid_topic(self, topic):
     if not self._topics: # in case topics came out of pre-cache
       self._topics = self.topics()
     if topic not in self._topics:
-      raise TOSDB_ValueError(topic + " not found")
+      raise TOSDB_ValueError("topic " + str(topic) + " not found")
 
   def _item_count(self):       
     i_count = _ulong_()

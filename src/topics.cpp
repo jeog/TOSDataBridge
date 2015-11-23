@@ -716,5 +716,3 @@ const TOS_Topics::topic_map_entry_type topic_array[] =
 
 template<> const TOS_Topics::topic_map_type TOS_Topics::_map = topic_array;
 template<> const TOS_Topics::topic_map_type& TOS_Topics::map = TOS_Topics::_map;
-
-
