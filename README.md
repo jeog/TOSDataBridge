@@ -79,7 +79,7 @@ Obviously the core implementation is not portable, but the python interface does
 
 - */python* 
 
-    Files relevant to the python Wrapper.
+    Files relevant to the python wrapper.
 
 - */sigs* The detached signature for each binary; sha256 checksums for binaries, signatures, and the jeog.dev public key
 
@@ -168,7 +168,7 @@ The following sections will outline how to setup and use TOSDB's basic functiona
  
 8. Before we continue it's a good idea, possibly necessary, to add the tos-databridge binaries, or the whole directory, to your anti-virus's 'white-list'. ***There's a good chance that if you don't do this tos-databridge-engine[].exe, at the very least, may be stopped and/or deleted for 'suspicious' behavior.***
   
-9.  After the Windows Service has been successfully created run C:\> 'SC start TOSDataBridge' . Returned text and various system utilities should confirms this. (SEE THE SCREEN-SHOT BELOW) Some other commands you may need:
+9.  After the Windows Service has been successfully created run ```C:\> 'SC start TOSDataBridge'``` . Returned text and various system utilities should confirms this. (SEE THE SCREEN-SHOT BELOW) Some other commands you may need:
     - *SC stop TOSDataBridge* - this will stop the service. All the data collected so far will still exist but the engine will sever its connection to TOS and exit.  It should no longer be shown as a running process and its status should be Stopped.
     - *SC pause TOSDataBridge* - this will pause the service. All the data collected so far will still exist but the engine will stop recording new data in the buffers. It should still be shown as a running process but its status should be Paused. It's not recommended you pause the service.
     - *SC continue TOSDataBridge* - this should continue a paused service. All the data collected so far will still exist, the engine will start recording new data into the buffers, but you will have missed any streaming data while paused. The service should return to the Running state.
@@ -183,14 +183,14 @@ The following sections will outline how to setup and use TOSDB's basic functiona
 
 ### Python Wrapper
 - - -
-Tthe python wrapper is a simpler, yet still robust, way to get started with the underlying library. To use it you'll still need all the underlying modules mentioned above. 
+The python wrapper is a simpler, yet still robust, way to get started with the underlying library. To use it you'll still need all the underlying modules mentioned above. 
 
 > **IMPLEMENTATION NOTE:** tosdb was only written to be compatible with python3
 
 
-> **IMPLEMENTATION NOTE:** tosdb.py uses a library called ctypes.py to load the tos-databridge[].dll library. That library requires another library to be loaded (_tos-databridge-shared[].dll ) which it expects to be in one of a number of locations; that's why we manually copied it to your %WINDIR% directory in the  'Installation Details' section.
+> **IMPLEMENTATION NOTE:** tosdb uses a library called ctypes.py to load the tos-databridge[].dll library. That library requires another library to be loaded (_tos-databridge-shared[].dll ) which it expects to be in one of a number of locations; that's why we manually copied it to your %WINDIR% directory in the  'Installation Details' section.
 
-Make sure the build of the modules you installed in the 'Getting Started' section matches your python build. Open a python shell and look to see if it says 32 bit or 64 bit on the top. 32 bit needs x86 modules; 64 bit needs x64. From a command prompt navigate to the tos-databridge/python directory and enter:
+Make sure the build of the modules you installed in the 'Installation Details' section matches your python build. Open a python shell and look to see if it says 32 bit or 64 bit on the top. 32 bit needs x86 modules; 64 bit needs x64. If they don't match redo the earlier steps. From a command prompt navigate to the tos-databridge/python directory and enter:
       
 `C:\TOSDataBridge\python\> python setup.py install`
 
@@ -289,7 +289,7 @@ Once the Service is running start by calling **`TOSDB_Connect()`** which will re
 
 > **IMPLEMENTATION NOTE:** Be careful: **`TOSDB_IsConnected()`** returns an unsigned int that represents a boolean value; most of the other C admin calls return a signed int to indicate error(non-0) or success(0). Boolean values will be represented by unsigned int return values for C and bool values for C++. 
 
-Generally **`TOSDB_Disconnect()`** is generally unnecessary as it's called automatically when the library is unloaded.
+Generally **`TOSDB_Disconnect()`** is unnecessary as it's called automatically when the library is unloaded.
 
 > **NOTABLE CONVENTIONS:** The C calls, except in a few cases, don't return values but populate variables, arrays/buffers, and arrays of pointers to char buffers. The 'dest' argument is for primary data, and is a pointer to a variable or an array/buffer when followed by argument 'arr_len' - which takes its size in array elements. 
 
