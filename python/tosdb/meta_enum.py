@@ -36,7 +36,7 @@ class MetaEnum(type):
   >>> Speed.fast is Speed.default: # same values but different objects
   False  
 
-  raises Enum.EnumError(Exception)
+  raises MetaEnum.EnumError(Exception)
   """    
 
   class EnumError(Exception):

@@ -15,8 +15,7 @@
 #   <http://www.gnu.org/licenses/>.
 
 
-
-from _tosdb import * 
+from _tosdb import * # _tosdb.cpp, _topics.cpp
 from .meta_enum import MetaEnum 
 
 import sys as _sys
@@ -366,7 +365,7 @@ def abort_init_after_warn():
         
 # convert type_bits to string and ctypes type
 def _type_switch(type_bits):
-  if type_bits == INTGR_BIT + QUAD_BIT:
+  if type_bits == INTGR_BIT + QUAD_BIT: # why add, not logical OR ??
     return ("LongLong", _longlong_)
   elif type_bits == INTGR_BIT:
     return ("Long", _long_)

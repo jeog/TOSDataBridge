@@ -16,7 +16,7 @@
 
 """tosdb.py :  A Front-End / Wrapper for the TOS-DataBridge Library
 
-Please refer to docs/README.html for an explanation of the underlying C library
+Please refer to README.md for an explanation of the underlying C library
 and docs/PythonTutorial.html for a(currently out-dated) step-by-step walk-through.
 
                               * * * OBJECTS * * *
