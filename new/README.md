@@ -32,8 +32,9 @@ Obviously the core implementation is not portable, but the python interface does
     ```
     C:\[...TOSDataBridge]\python\python setup.py install
     ```
-    - Core C/C++ libs (above) must be installed first to use the (non-virtual) interface
-    - C++ python extensions have been converted to pure python to avoid portability/build issues. (tosdb/_tosdb.py is now generated automatically by setup.py)
+    - C/C++ libs must be installed first to use the (non-virtual) interface
+    - We've migrated all modules/packages to pure python to avoid portability issues building native C/C++ extensions via distutils
+
 
 ### Quick Start
 - - -
@@ -187,7 +188,7 @@ The python wrapper is a simpler, yet still robust, way to get started with the u
 > **IMPLEMENTATION NOTE:** tosdb was only written to be compatible with python3
 
 
-> **IMPLEMENTATION NOTE:** tosdb uses ctypes.py to load the tos-databridge[].dll library, which depends on _tos-databridge-shared[].dll. That's why we manually copied the latter to your %WINDIR% directory in the 'Installation Details' section.
+> **IMPLEMENTATION NOTE:** tosdb uses a library called ctypes.py to load the tos-databridge[].dll library. That library requires another library to be loaded (_tos-databridge-shared[].dll ) which it expects to be in one of a number of locations; that's why we manually copied it to your %WINDIR% directory in the  'Installation Details' section.
 
 Make sure the build of the modules you installed in the 'Installation Details' section matches your python build. Open a python shell and look to see if it says 32 bit or 64 bit on the top. 32 bit needs x86 modules; 64 bit needs x64. If they don't match redo the earlier steps. From a command prompt navigate to the tos-databridge/python directory and enter:
       
@@ -195,7 +196,7 @@ Make sure the build of the modules you installed in the 'Installation Details' s
 
 Remeber, if installing on a non-windows system to utilize the virtual interface you'll still need to install on a (physically or virtually) networked windows sytem.
 
-> **IMPLEMENTATION NOTE:** We recently shifted from providing (low-level) constants via a C++ extension to having the setup.py script automatically pull constants and topic enum values from tos_databridge.h to generate _tosdb.py, all in pure python. This avoids a number of portability and build issues.
+> **IMPLEMENTATION NOTE:** As mentioned above tosdb uses ctypes.py to access the underlying library. We recently shifted from providing constants via a C++ extensions to having the setup.py script pull constants and topic enum values from tos_databridge.h to automatically generate a _tosdb.py back-end to the tosdb package
 
 tosdb/ is structured as a package with the bulk of its code in \__init__.py and \_win.py , the latter holding the non-portable parts that \__init__.py will import if it determines it's being run on a windows sytem. This structure allows you to simply import the package(*import tosdb*) or, if needed, extensions like intervalize.py(*from tosdb import intervalize*). Once imported you'll have to initialize it, which requires the path or general location of the underlying library it's going to load (the tos-databridge[].dll) or the root directory it's going to search in for the latest version. Please see the (currently somewhat outdated) tutorial in /docs for a walk-through with screen-shots.
 
@@ -205,9 +206,9 @@ tosdb/ is structured as a package with the bulk of its code in \__init__.py and 
 
 >    1. a del call only decrements the ref-count of the object, it doesn't necessarily call **`__del__()`** and the underlying **`TOSDB_CloseBlock()`**, and 
 
->    2. on exit() the underlying call is dependent on the order in which globals are deleted and may fail, for this or other reasons. In some cases there appears to be no attempt to call the objects **`__del__()`** methods or free the underlying library.
+>    2. on exit() the underlying call is dependent on the order in which globals are deleted and may fail, for this or other reasons. In some cases there appears to be no attemptt to even call the objects **`__del__()`** methods or free the underlying library.
 
-> Because of all this WE STRONGLY RECOMMEND you call clean_up() before exiting to be sure all the shared resources have been properly dealt with. If this is not possible - the program terminates abruptly for instance - there's a good chance you've got dangling BufferStreams (shared mem segments) and mutexes. You can check this by opening the tos-databridge-shell[].exe calling Connect and then DumpBufferStatus to create a file in the Systems appdata folder to see what resources are held by the Service. You'll probably want to restart the Service if your program had more than a small number of trivial TOSDB_DataBlocks/VTOSDB_DataBlocks. 
+> Because of all this WE STRONGLY RECOMMEND you call clean_up() before exiting to be sure all the shared resources have been properly dealt with. If this is not possible, the program terminates abruptly for instance, there's a good chance you've got dangling BufferStreams (shared mem segments) and mutexes. You can check this by opening the tos-databridge-shell[].exe calling Connect and then DumpBufferStatus to create a file in the Systems appdata folder to see what resources are held by the Service. You'll probably want to restart the Service if your program had more than a small number of trivial TOS_DataBlocks. 
 
 ### Glossary
 - - -
@@ -300,7 +301,7 @@ Because the data-engine behind the blocks handles a number of types it's necessa
     else if( TOSDB_TypeBits( "BID" ) == TOSDB_INTGR_BIT | TOSDB_QUAD_BIT) 
        \\ data is a long long (ext_size_type)
     
-Make sure you don't simply check a bit with logical AND when what you really want is to check the entire type_bits_type value. In this example checking for the INTGR_BIT will return true for def_size_type AND ext_size_type. **`TOSDB_GetTypeString()`** provides a string of the type for convenience.
+Make sure you don't simply check a bit with logical AND when what you really want is to check the entire type_bits_type value; in this example checking for the INTGR_BIT will return true for def_size_type AND ext_size_type.) **`TOSDB_GetTypeString()`** provides a string of the type for convenience.
 
 > **IMPLEMENTATION NOTE:** The client-side library extracts data from the Service (tos-databridge-engine[].exe) through a series of protected kernel objects in the global namespace, namely a read-only shared memory segment and a mutex. The Service receives data messages from the TOS DDE server and immediately locks the mutex, writes them into the shared memory buffer, and unlocks the mutex. At the same time the library loops through its blocks and item-topic pairs looking to see what buffers have been updated, acquiring the mutex, and reading the buffers, if necessary. 
 
@@ -382,7 +383,7 @@ There are operator\<\< overloads for most of the custom objects and containers r
     3. Stop the Service 
     4. Close TOS platform
 
-    Once you've done (i) the remaining order is less important. (The Service is built to work with multiple instantiations of the client library, maintaining ref-counts to shared resources. Just because you cleaned up doesn't mean another instance has, or vice-versa.)
+    Once you've done (i) the remaining order is less important. (The Service is built to work with multiple instantiations of the client library, maintaining ref-counts to shared resources. Just because you cleaned up doesn't mean another instance has, or vice-versa)
 
 - **DDE Data:** It's important to realize that we (us, you, this code, and yours) are at the mercy of the TOS platform, the DDE technology, and TOS's implementation of it. DDE has been replaced by a number of better Windows technologies but it's the public interface that TOS exposes so it's what we're using. You may notice the streams of data - particularly on symbols with very high trading volume - will not match the Time & Sales perfectly.  If you take a step back and aggregate the data in more usable forms this really shouldn't be an issue.  Another way we are at the mercy of the DDE server is that fields like last price and last size are two different topics. That means they are changing at slightly different times with slightly different time-stamps even if they are the correct pairing. To get around this we can write (python) code like this to simulate a live-stream :
     ```
