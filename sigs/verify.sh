@@ -12,10 +12,7 @@ cd $SIGS_DIR
 
 X86_SIG_FILES=($(ls | egrep '.*tos-databridge.+x86\..+asc'))
 X64_SIG_FILES=($(ls | egrep '.*tos-databridge.+x64\..+asc'))
-PYD_SIG_FILES=($(ls | egrep '_tosdb-x(64|86)-[[:digit:]]\.pyd\.asc'))
 
-VGOOD=0
-VBAD=0
 _good_or_bad(){
   if (( $1 )); then
     VBAD=$(($VBAD+1))
@@ -24,6 +21,8 @@ _good_or_bad(){
   fi  
 }
 
+VGOOD=0
+VBAD=0
 for f in ${X86_SIG_FILES[*]}; do
   echo "::: $f :::"
   gpg --verify $f "../bin/Release/Win32/${f%.asc}";
@@ -31,9 +30,9 @@ for f in ${X86_SIG_FILES[*]}; do
   _good_or_bad $?
 done
 X86_SUMMARY="x86 binaries: $VGOOD good, $VBAD bad"
+
 VGOOD=0
 VBAD=0
-
 for f in ${X64_SIG_FILES[*]}; do
   echo "::: $f :::"
   gpg --verify $f "../bin/Release/x64/${f%.asc}";
@@ -41,22 +40,12 @@ for f in ${X64_SIG_FILES[*]}; do
   _good_or_bad $?
 done
 X64_SUMMARY="x64 binaries: $VGOOD good, $VBAD bad"
-VGOOD=0
-VBAD=0
 
-for f in ${PYD_SIG_FILES[*]}; do
-  echo "::: $f :::"
-  gpg --verify $f "../python/${f%.asc}";
-  echo ""
-  _good_or_bad $?
-done
-PYD_SUMMARY="pyd binaries: $VGOOD good, $VBAD bad"
 
 echo ""
 echo "::: SUMMARY :::"
 echo "$X86_SUMMARY"
 echo "$X64_SUMMARY"
-echo "$PYD_SUMMARY"
 echo ":::::::::::::::"
 echo ""
 
