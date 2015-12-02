@@ -3,11 +3,11 @@
   <head>
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="chrome=1">
-    <title>TOSDataBridge v0.1-alpha  by jeog</title>
+    <title>TOSDataBridge v0.2 by jeog</title>
 
     <link rel="stylesheet" href="stylesheets/styles.css">
-    <link rel="stylesheet" href="stylesheets/pygment_trac.css">
-    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+    <link rel="stylesheet" href="stylesheets/github-light.css">
+    <meta name="viewport" content="width=device-width">
     <!--[if lt IE 9]>
     <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
     <![endif]-->
@@ -15,7 +15,7 @@
   <body>
     <div class="wrapper">
       <header>
-        <h1>TOSDataBridge v0.1-alpha </h1>
+        <h1>TOSDataBridge v0.2</h1>
         <p>Free, Real-Time Streaming Market Data from your TOS Platform - API [C,C++,Python]</p>
 
         <p class="view"><a href="https://github.com/jeog/TOSDataBridge">View the Project on GitHub <small>jeog/TOSDataBridge</small></a></p>
@@ -28,70 +28,118 @@
         </ul>
       </header>
       <section>
-        <p>TOSDataBridge (TOSDB) is an open-source collection of resources for 'scraping' real-time streaming data off of TDAmeritrade's ThinkOrSwim(TOS) platform, providing C, C++, and Python interfaces. Users of the TOS platform - with some basic programming/scripting knowledge - can use these tools to populate their own databases with market data; perform specialized, low-level, and efficient analysis on large data-sets in real-time; test and debug other financial apps; or even build extensions on top of it.</p>
+        <h2>
+<a id="tosdatabridge-v02" class="anchor" href="#tosdatabridge-v02" aria-hidden="true"><span class="octicon octicon-link"></span></a>TOSDataBridge v0.2</h2>
 
-<p>TOSDB uses TOS's antiquated, yet still useful, DDE feature, directly through the Windows API. The C / C++ interfaces are implemented as a shared library(DLL) that communicates with a back-end Windows Service. The Python interface wraps this library in a more object-oriented, user-friendly format, providing an interactive environment for easy access to the low(er)-level calls. </p>
+<hr>
 
-<p><a href="https://raw.githubusercontent.com/jeog/TOSDataBridge/master/README.html">Complete Documentation (README.html - you'll need to copy the raw text into a new html file and open in a browser) </a></p>
+<p>TOSDataBridge (TOSDB) is an open-source collection of resources for 'scraping' real-time streaming data off of TDAmeritrade's ThinkOrSwim(TOS) platform, providing C, C++, and Python interfaces. Users of the TOS platform - with some basic programming/scripting knowledge - can use these tools to populate their own databases with market data; analyze large data-sets in real-time; test and debug other financial apps; or even build extensions on top of it.</p>
+
+<p>TOSDB uses TOS's antiquated, yet still useful, DDE feature, directly through the Windows API. The C / C++ interfaces are implemented as a shared library(DLL) that communicates with a back-end Windows Service. The Python interface wraps this library in a more object-oriented, user-friendly format, providing an interactive environment for easy access to the low(er)-level calls.</p>
+
+<p>Obviously the core implementation is not portable, but the python interface does provides a thin virtualization layer over TCP. A user running Windows in a Virtual Machine, for instance, can expose the exact same python interface to a different host system running python3. </p>
 
 <h3>
-<a name="-requirements" class="anchor" href="#-requirements"><span class="octicon octicon-link"></span></a>+ Requirements</h3>
+<a id="requirements" class="anchor" href="#requirements" aria-hidden="true"><span class="octicon octicon-link"></span></a>Requirements</h3>
+
+<hr>
 
 <ul>
-<li>Windows (this has been lightly tested on Windows 7 SP1 and Vista SP2)</li>
-<li>TDAmeritrade's ThinkOrSwim(TOS) platform that exposes DDE functionality (it should)</li>
+<li>Windows for the core implementation(tested on Windows 7 SP1, Vista SP2,and Server 2008 R2.) The python interface is available to any system running python3(also tested on Debian/Linux-3.2.)</li>
+<li>TDAmeritrade's ThinkOrSwim(TOS) platform that exposes DDE functionality (the Window's verion)</li>
 <li>VC++ 2012 Redistributable (included)</li>
+<li>Python3 (optional, for the python wrapper)</li>
 <li>Some basic Windows knowledge; some basic C, C++, or Python programming knowledge</li>
-<li>Patience (this is v0.1-alpha)</li>
-</ul><h3>
-<a name="-installation" class="anchor" href="#-installation"><span class="octicon octicon-link"></span></a>+ Installation</h3>
+</ul>
+
+<h3>
+<a id="quick-setup" class="anchor" href="#quick-setup" aria-hidden="true"><span class="octicon octicon-link"></span></a>Quick Setup</h3>
+
+<hr>
 
 <ul>
-<li>tosdb-setup.bat will attempt to install the necessary modules/dependencies for you but you should refer to README.html for a more detailed explanation.</li>
+<li>tosdb-setup.bat will attempt to install the necessary modules/dependencies for you but you should refer to <strong>Installation Details</strong> below for a more detailed explanation</li>
 <li>
-<p>Be sure to know what build you need(x86 vs x64); it should match your system, all the modules you'll need, and your version of Python(if you plan on using the python wrapper).</p>
+<p>Be sure to know what build you need(x86 vs x64); it should match your system, all the modules you'll need, and your version of Python(if you plan on using the python wrapper)</p>
 
-<h4>
-<a name="-core-cc-libraries" class="anchor" href="#-core-cc-libraries"><span class="octicon octicon-link"></span></a>++ Core C/C++ Libraries</h4>
+<h5>
+<a id="core-cc-libraries" class="anchor" href="#core-cc-libraries" aria-hidden="true"><span class="octicon octicon-link"></span></a>Core C/C++ Libraries</h5>
 
-<pre><code>(Admin) C:\[...TOSDataBridge]\tosdb-setup.bat   [x86|x64]   [admin]
+<pre><code>(Admin) C:\[...TOSDataBridge]\tosdb-setup.bat   [x86|x64]   [admin]   [session]
 </code></pre>
 
 <ul>
 <li>[x86|x64] : the version to build (required)</li>
-<li>[admin] : does your TOS platform require elevation? (leave blank if no)</li>
+<li>[admin] : does your TOS platform require elevation? (optional) </li>
+<li>[session] : override the service's attempt to determine the session id when exiting from session-0 isolation. MOST USERS SHOULDN'T WORRY ABOUT THIS unless they plan to run in a non-standard environment (e.g an EC2 instance). The tos-databridge-engine.exe[] binary needs to run in the same session as the ThinkOrSwim platform. (optional)</li>
 </ul>
-<h4>
-<a name="-python-wrapperfront-end-optional" class="anchor" href="#-python-wrapperfront-end-optional"><span class="octicon octicon-link"></span></a>++ Python Wrapper/Front-End (optional)</h4>
+
+<h5>
+<a id="python-wrapper-optional" class="anchor" href="#python-wrapper-optional" aria-hidden="true"><span class="octicon octicon-link"></span></a>Python Wrapper (optional)</h5>
 
 <pre><code>C:\[...TOSDataBridge]\python\python setup.py install
 </code></pre>
 
 <ul>
-<li>C/C++ libs must be installed first.</li>
-<li>Building the _tosdb.pyd extension is problematic on some systems - please refer to README.html for troubleshooting information.</li>
+<li>Core C/C++ libs (above) must be installed first to use the (non-virtual) interface</li>
+<li>C++ python extensions have been converted to pure python to avoid portability/build issues. (tosdb/_tosdb.py is now generated automatically by setup.py)</li>
 </ul>
 </li>
-</ul><h3>
-<a name="-start" class="anchor" href="#-start"><span class="octicon octicon-link"></span></a>+ Start</h3>
+</ul>
+
+<h3>
+<a id="quick-start" class="anchor" href="#quick-start" aria-hidden="true"><span class="octicon octicon-link"></span></a>Quick Start</h3>
+
+<hr>
 
 <ol>
-<li>(You may need to white-list some of these files in your Anti-Virus software before proceeding.) Start the service:<br>
-</li>
-</ol><pre><code>(Admin) C:\&gt; SC start TOSDataBridge
+<li>You may need to white-list some of these files (specifically tos-databridge-engine-[x86|x64].exe) in your Anti-Virus software before proceeding.</li>
+<li>
+<p>Start the service:</p>
+
+<pre><code>(Admin) C:\&gt; SC start TOSDataBridge
 </code></pre>
+</li>
+<li>Log on to your TOS platform</li>
+</ol>
 
-<ol>
-<li>Include tos_databridge.h header in your code (if C++ make sure containers.hpp and generic.hpp can be found by the compiler), add the necessary lib calls, build it.</li>
-<li>Log on to the TOS platform and start your program or the python wrapper(see the python tutorial in \python\docs for a walk-through).</li>
-</ol><h3>
-<a name="licensing--warranty" class="anchor" href="#licensing--warranty"><span class="octicon octicon-link"></span></a>LICENSING &amp; WARRANTY</h3>
+<h5>
+<a id="for-cc" class="anchor" href="#for-cc" aria-hidden="true"><span class="octicon octicon-link"></span></a>For C/C++:</h5>
+
+<ul>
+<li>Include tos_databridge.h header in your code (if C++ make sure containers.hpp and generic.hpp can be found by the compiler)</li>
+<li>Use the library calls detailed in the <strong>C/C++ Interface...</strong> sections below</li>
+<li>Link with <em>tos-databridge-0.2-[x86|x64].dll</em>
+</li>
+<li>Build</li>
+<li>Run</li>
+</ul>
+
+<h5>
+<a id="for-python" class="anchor" href="#for-python" aria-hidden="true"><span class="octicon octicon-link"></span></a>For Python:</h5>
+
+<ul>
+<li>Open a python shell/interpreter or create a script</li>
+<li>import tosdb</li>
+<li>tosdb.init(...)</li>
+</ul>
+
+<h3>
+<a id="license--terms" class="anchor" href="#license--terms" aria-hidden="true"><span class="octicon octicon-link"></span></a>License &amp; Terms</h3>
+
+<hr>
 
 <p><em>TOSDB is released under the GNU General Public License(GPL); a copy (LICENSE.txt) should be included. If not, see <a href="http://www.gnu.org/licenses">http://www.gnu.org/licenses</a>. The author reserves the right to issue current and/or future versions of TOSDB under other licensing agreements. Any party that wishes to use TOSDB, in whole or in part, in any way not explicitly stipulated by the GPL, is thereby required to obtain a separate license from the author. The author reserves all other rights.</em></p>
 
-<p><em>This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details. By choosing to use the software - under the broadest interpretation of the term 'use' - you absolve the author of ANY and ALL responsibility, for ANY and ALL damages incurred; including, but not limited to, damages arising from the accuracy and/or timeliness of data the software does, or does not, provide.</em>     </p>
+<p><em>This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.</em></p>
+
+<p><em>By choosing to use the software - under the broadest interpretation of the term "use" - you absolve the author of ANY and ALL responsibility, for ANY and ALL damages incurred; including, but not limited to, damages arising from the accuracy and/or timeliness of data the software does, or does not, provide.</em></p>
 
 <p><em>Furthermore, TOSDB is in no way related to TDAmeritrade or affiliated parties; users of TOSDB must abide by their terms of service and are solely responsible for any violations therein.</em></p>
+
+<hr>
+
+<p><em>Copyright (C) 2014 Jonathon Ogden</em></p>
       </section>
       <footer>
         <p>This project is maintained by <a href="https://github.com/jeog">jeog</a></p>
