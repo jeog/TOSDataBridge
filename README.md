@@ -1,4 +1,4 @@
-## TOSDataBridge v0.1 
+## TOSDataBridge v0.2 
 - - -
 TOSDataBridge (TOSDB) is an open-source collection of resources for 'scraping' real-time streaming data off of TDAmeritrade's ThinkOrSwim(TOS) platform, providing C, C++, and Python interfaces. Users of the TOS platform - with some basic programming/scripting knowledge - can use these tools to populate their own databases with market data; analyze large data-sets in real-time; test and debug other financial apps; or even build extensions on top of it.
 
@@ -48,7 +48,7 @@ Obviously the core implementation is not portable, but the python interface does
 ##### For C/C++:
 - Include tos_databridge.h header in your code (if C++ make sure containers.hpp and generic.hpp can be found by the compiler)
 - Use the library calls detailed in the **C/C++ Interface...** sections below
-- Link with *tos-databridge-0.1-[x86|x64].dll*
+- Link with *tos-databridge-0.2-[x86|x64].dll*
 - Build
 - Run
 
@@ -99,7 +99,7 @@ Obviously the core implementation is not portable, but the python interface does
 
     The main engine that interacts with the TOS platform. It is spawned from tos-databridge-serv.exe with a lowered integrity level (system-to-high or system-to-medium) and drastically reduced privileges to interact with the TOS platform (as standard user or admin). It is also able to communicate with our shared library(below) running in a normal user context at medium integrity level.
 
-- *tos-databridge-0.1-[x86|x64].dll*
+- *tos-databridge-0.2-[x86|x64].dll*
 
     The main library that client code will use to access TOSDB. It's part light-weight database(s) and part interface. Review tos-databridge.h, and the sections below, for all the necessary calls, types, and objects.
 
@@ -113,7 +113,7 @@ Obviously the core implementation is not portable, but the python interface does
 
 - *tosdb/*
 
-    A python package that serves as a wrapper around tos-databridge-0.1-x86.dll / -x64.dll. It provides a more object oriented, simplified means of accessing the core functionality.
+    A python package that serves as a wrapper around *tos-databridge-0.2-[x86|x64].dll*. It provides a more object oriented, simplified means of accessing the core functionality.
 
 - *tosdb/cli_scripts/*
 
@@ -174,7 +174,7 @@ The following sections will outline how to setup TOSDB's core C/C++ libraries. A
     - *SC pause TOSDataBridge* - this will pause the service. All the data collected so far will still exist but the engine will stop recording new data in the buffers. It should still be shown as a running process but its status should be Paused. It's not recommended you pause the service.
     - *SC continue TOSDataBridge* - this should continue a paused service. All the data collected so far will still exist, the engine will start recording new data into the buffers, but you will have missed any streaming data while paused. The service should return to the Running state.
     
-10. (***SKIP IF ONLY USING PYTHON***) Include the tos_databridge.h header in your code ( if its C++ make sure the compiler can find containers.hpp and generic.hpp ) and adjust the link settings to import the tos-databridge-0.1-[].lib stub. (If you run into trouble review the VisualStudio settings for tos-databridge-shell[].exe as they should resemble what you're trying to do.)
+10. (***SKIP IF ONLY USING PYTHON***) Include the tos_databridge.h header in your code ( if its C++ make sure the compiler can find containers.hpp and generic.hpp ) and adjust the link settings to import the tos-databridge-0.2-[].lib stub. (If you run into trouble review the VisualStudio settings for tos-databridge-shell[].exe as they should resemble what you're trying to do.)
    
 11. (***SKIP IF ONLY USING PYTHON***) Jump down to the next section for some of the basic library calls to add to your program.
    

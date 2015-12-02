@@ -183,7 +183,7 @@ for tosdb/setup.py - (temporary fix) - DO NOT REMOVE !
 these need to match the const defs declared below... 
 */
 
-/* const versions exported from tos-databridge-0.1[].dll, 
+/* const versions exported from tos-databridge-[].dll, 
    must use /export:[func name] during link */
 extern CDCR_ const size_type DLL_SPEC_IFACE_  TOSDB_DEF_TIMEOUT;  
 extern CDCR_ const size_type DLL_SPEC_IFACE_  TOSDB_MIN_TIMEOUT;  
@@ -191,7 +191,7 @@ extern CDCR_ const size_type DLL_SPEC_IFACE_  TOSDB_SHEM_BUF_SZ;
 extern CDCR_ const size_type DLL_SPEC_IFACE_  TOSDB_BLOCK_ID_SZ;  
 
 extern char  DLL_SPEC_IMPL_  TOSDB_LOG_PATH[ MAX_PATH+20 ]; 
-/* consts NOT exported from tos-databridge-0.1[].dll */  
+/* consts NOT exported from tos-databridge-[].dll */  
 extern LPCSTR  TOSDB_APP_NAME;    
 extern LPCSTR  TOSDB_COMM_CHANNEL;
 

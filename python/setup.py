@@ -11,7 +11,7 @@ from io import StringIO as _StringIO
 from re import match as _match, search as _search
 
 NAME = 'tosdb'
-VERSION = '0.1'
+VERSION = '0.2'
 DESCRIPTION = "Python Front-End / Wrapper for TOSDataBridge"
 AUTHOR = "Jonathon Ogden"
 AUTHOR_EMAIL = "jeog.dev@gmail.com"
