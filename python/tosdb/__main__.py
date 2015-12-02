@@ -44,16 +44,20 @@ def _main_init():
     vc_args += (int(raw_args[2]),) if len(raw_args) > 2 else ()
     admin_init(*vc_args)
             
-  if args.path:
-    if args.virtual_client:
-      vinit(dllpath=args.path)  
-    else:
-      init(dllpath=args.path)
-  elif args.root:
-    if args.virtual_client:
-      vinit(root=args.root)  
-    else:
+  if args.virtual_client:
+    if args.path:
+      vinit(dllpath=args.path)
+    elif args.root:
+      vinit(root=args.root)
+    if args.path or args.root and not vconnected():
+      raise TOSDB_Error("could not connect to service/engine")
+  else:
+    if args.path:
+      init(dllpath=args.path)   
+    elif args.root:  
       init(root=args.root)
+    if args.path or args.root and not connected():
+      raise TOSDB_Error("could not connect to service/engine")
 
 
 _main_init()
