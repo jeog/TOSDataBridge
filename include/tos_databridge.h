@@ -184,12 +184,7 @@ static_assert(sizeof(type_bits_type) == 1,"sizeof(type_bits_type) != 1");
 #define TOSDB_STRING_BIT ((type_bits_type)0x20)
 #define TOSDB_TOPIC_BITMASK ((type_bits_type)0xE0)
 
-#ifdef STR_DATA_SZ /* defined in data-stream.hpp, dependency issue??? */
-#define TOSDB_STR_DATA_SZ STR_DATA_SZ
-#else
 #define TOSDB_STR_DATA_SZ ((size_type)40)
-#endif
-
 #define TOSDB_MAX_STR_SZ ((unsigned long)0xFF)
 
 #ifdef XPLATFORM_PYTHON_CONSTS_ONLY

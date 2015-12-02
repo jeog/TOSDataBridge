@@ -19,7 +19,8 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 #define JO_TOSDB_DATA_STREAM
 
 #ifndef STR_DATA_SZ
-#define STR_DATA_SZ ((unsigned long)0xFF)
+#include "tos_databridge.h"
+#define STR_DATA_SZ TOSDB_STR_DATA_SZ // ((unsigned long)0xFF)
 #endif
 
 #include <deque>
