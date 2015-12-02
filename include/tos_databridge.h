@@ -18,23 +18,9 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 #ifndef JO_TOSDB_DATABRIDGE
 #define JO_TOSDB_DATABRIDGE
 
-/* if not windows only provide the necessary stuff for _tosdb.cpp to compile */
 #ifndef _WIN32
-#define XPLATFORM_PYTHON_CONSTS_ONLY
-#include <string.h> // containers.hpp needs strcmp declr
+#error tos-databridge core libs require Windows !
 #endif
-
-/* just decl the default vals */
-#ifdef XPLATFORM_PYTHON_CONSTS_ONLY
-#define DLL_SPEC_IFACE_
-#define DLL_SPEC_IMPL_
-#ifdef __cplusplus
-#define CDCR_ "C"
-#else
-#define CDCR_
-#endif
-
-#else /* XPLATFORM_PYTHON_CONSTS_ONLY */
 
 /* internal objects of exported impl classes not exported;
   look here if link errors on change of_tos-databridge... mods */
@@ -132,11 +118,7 @@ class DLL_SPEC_IMPL_ DynamicIPCSlave;
    internally: WinAPI facing / relevant code will use all  */
 #include <windows.h> 
 #include <time.h>
-
-#endif /* XPLATFORM_PYTHON_CONSTS_ONLY */
-
-#include <limits.h>  
-
+#include <limits.h>
 #ifdef __cplusplus
 #include <map>
 #include <vector>
@@ -169,14 +151,17 @@ typedef double     ext_price_type;
 typedef unsigned long size_type;
 typedef unsigned char type_bits_type;
 
-#ifdef __cplusplus
-/* simple type size checks for the build, shouldn't be an issue */
-static_assert(sizeof(def_size_type) == 4,"sizeof(def_size_type) != 4");
-static_assert(sizeof(ext_size_type) == 8,"sizeof(ext_size_type) != 8");
-static_assert(sizeof(def_price_type) == 4,"sizeof(def_price_type) != 4");
-static_assert(sizeof(ext_price_type) == 8,"sizeof(ext_price_type) != 8");
-static_assert(sizeof(size_type) == 4,"sizeof(size_type) != 4");
-static_assert(sizeof(type_bits_type) == 1,"sizeof(type_bits_type) != 1");
+#ifdef __cplusplus 
+namespace{
+struct{ /* sanity checks for the build */
+  static_assert(sizeof(def_size_type) == 4,"sizeof(def_size_type) != 4");
+  static_assert(sizeof(ext_size_type) == 8,"sizeof(ext_size_type) != 8");
+  static_assert(sizeof(def_price_type) == 4,"sizeof(def_price_type) != 4");
+  static_assert(sizeof(ext_price_type) == 8,"sizeof(ext_price_type) != 8");
+  static_assert(sizeof(size_type) == 4,"sizeof(size_type) != 4");
+  static_assert(sizeof(type_bits_type) == 1,"sizeof(type_bits_type) != 1");
+}TypeSizeAsserts_;
+};
 #endif
 
 #define TOSDB_INTGR_BIT ((type_bits_type)0x80)
@@ -187,13 +172,17 @@ static_assert(sizeof(type_bits_type) == 1,"sizeof(type_bits_type) != 1");
 #define TOSDB_STR_DATA_SZ ((size_type)40)
 #define TOSDB_MAX_STR_SZ ((unsigned long)0xFF)
 
-#ifdef XPLATFORM_PYTHON_CONSTS_ONLY
+/* 
+for tosdb/setup.py - (temporary fix) - DO NOT REMOVE !
 
 #define TOSDB_DEF_TIMEOUT  2000
 #define TOSDB_MIN_TIMEOUT  1500
 #define TOSDB_SHEM_BUF_SZ  4096
-#define TOSDB_BLOCK_ID_SZ  63
-#else
+#define TOSDB_BLOCK_ID_SZ  63 
+
+these need to match the const defs declared below... 
+*/
+
 /* const versions exported from tos-databridge-0.1[].dll, 
    must use /export:[func name] during link */
 extern CDCR_ const size_type DLL_SPEC_IFACE_  TOSDB_DEF_TIMEOUT;  
@@ -239,9 +228,7 @@ typedef struct{
   volatile unsigned int next_offset; /* logical location of next write */  
 } BufferHead, *pBufferHead; 
 
-#endif /* XPLATFORM_PYTHON_CONSTS_ONLY */
 #ifdef __cplusplus
-#ifndef XPLATFORM_PYTHON_CONSTS_ONLY 
 
 /* for C code: create a string of form: "TOSDB_[topic name]_[item name]"  
    only alpha-numerics */
@@ -264,8 +251,6 @@ typedef std::map<std::string, generic_map_type>         generic_matrix_type;
 typedef std::map<std::string, 
                  std::pair<generic_type,DateTimeStamp>> generic_dts_map_type;
 typedef std::map<std::string,generic_dts_map_type>      generic_dts_matrix_type;
-
-#endif /* XPLATFORM_PYTHON_CONSTS_ONLY */
 
 #define TOSDB_BIT_SHIFT_LEFT(T,val) (((T)val)<<((sizeof(T)-sizeof(type_bits_type))*8))
 #define TOSDB_BIT_SHIFT_RIGHT(T,val) (((T)val)>>((sizeof(T)-sizeof(type_bits_type))*8))
@@ -435,7 +420,7 @@ public:
     }
   };
 
-#ifdef XPLATFORM_PYTHON_CONSTS_ONLY
+#ifdef CUSTOM_HASHER
   struct hasher{
     size_t operator()(const enum_type& t) const { 
       static_assert(std::is_unsigned<enum_value_type>::value,
@@ -465,7 +450,6 @@ typedef ILSet<std::string> str_set_type;
 typedef ILSet<const typename TOS_Topics::TOPICS, typename TOS_Topics::top_less> topic_set_type;
 
 #endif
-#ifndef XPLATFORM_PYTHON_CONSTS_ONLY 
 
 /* NOTE int return types indicate an error value is returned */
 EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int            TOSDB_Connect();
@@ -781,7 +765,5 @@ public:
 };
 
 #endif
-
-#endif /* XPLATFROM_PYTHON_CONSTS_ONLY */
 
 #endif
