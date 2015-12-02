@@ -690,7 +690,7 @@ class TOSDB_DataBlock:
     
     if tytup[0] == "String":
       strs = [ _BUF_( data_str_max +1) for _ in range(safe_sz) ]   
-      strs_array = (_pchar_ * safe_sz)(*[ cast(s,_pchar_) for s in strs]) 
+      strs_array = (_pchar_ * safe_sz)(*[_cast(s,_pchar_) for s in strs]) 
 
       _lib_call("TOSDB_GetStreamSnapshotStringsFromMarker", 
                 self._name,

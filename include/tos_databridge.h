@@ -169,6 +169,16 @@ typedef double     ext_price_type;
 typedef unsigned long size_type;
 typedef unsigned char type_bits_type;
 
+#ifdef __cplusplus
+/* simple type size checks for the build, shouldn't be an issue */
+static_assert(sizeof(def_size_type) == 4,"sizeof(def_size_type) != 4");
+static_assert(sizeof(ext_size_type) == 8,"sizeof(ext_size_type) != 8");
+static_assert(sizeof(def_price_type) == 4,"sizeof(def_price_type) != 4");
+static_assert(sizeof(ext_price_type) == 8,"sizeof(ext_price_type) != 8");
+static_assert(sizeof(size_type) == 4,"sizeof(size_type) != 4");
+static_assert(sizeof(type_bits_type) == 1,"sizeof(type_bits_type) != 1");
+#endif
+
 #define TOSDB_INTGR_BIT ((type_bits_type)0x80)
 #define TOSDB_QUAD_BIT ((type_bits_type)0x40)
 #define TOSDB_STRING_BIT ((type_bits_type)0x20)

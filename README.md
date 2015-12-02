@@ -80,7 +80,9 @@ Obviously the core implementation is not portable, but the python interface does
 
     Files relevant to the python wrapper.
 
-- */sigs* The detached signature for each binary; sha256 checksums for binaries, signatures, and the jeog.dev public key
+- */sigs* 
+
+    The detached signature for each binary; sha256 checksums for binaries, signatures, and the jeog.dev public key
 
 - */docs* 
 
@@ -138,7 +140,7 @@ Obviously the core implementation is not portable, but the python interface does
 
 ### Installation Details
 - - -
-The following sections will outline how to setup and use TOSDB's basic functionality. At the end of this section is a screen-shot of all the relevant commands for using the x64 binaries.
+The following sections will outline how to setup TOSDB's core C/C++ libraries. At the end of this section is a screen-shot of all the relevant commands for using the x64 binaries. **If you're only interested in using the python wrapper you still need to follow these steps. If you're looking to use the virtual python interface (and have already followed these steps - and those from the Python Wrapper section - on a windows system) you can skip to the Python Wrapper section.**
 
 1. Move the unzipped tos-databridge folder to its permanent location(our's is in C:/ for convenience.) If you change it in the future you'll need to redo some of these steps because the Service module relies on an absolute path.
 
@@ -148,7 +150,7 @@ The following sections will outline how to setup and use TOSDB's basic functiona
     
 4. Determine if your TOS platform runs under elevated privileges (does it ask for an admin password before starting?)
    
-5. Determine if you need to run under a custom Session. MOST USERS SHOULDN'T WORRY ABOUT THIS unless they plan to run in a non-standard environment (e.g an EC2 instance). The tos-databridge-engine.exe[] binary needs to run in the same session as the ThinkOrSwim platform.
+5. Determine if you need to run under a custom Session. **MOST USERS SHOULDN'T WORRY ABOUT THIS** unless they plan to run in a non-standard environment (e.g an EC2 instance). The tos-databridge-engine.exe[] binary needs to run in the same session as the ThinkOrSwim platform.
   
 6. Open a command shell with Admin Privileges (right-click on cmd.exe and click 'run as administrator'). Navigate to the tos-databridge root directory and run the tosdb-setup.bat setup script with the info from steps #3, #4, and #5:
     
@@ -187,7 +189,7 @@ The python wrapper is a simpler, yet still robust, way to get started with the u
 > **IMPLEMENTATION NOTE:** tosdb was only written to be compatible with python3
 
 
-> **IMPLEMENTATION NOTE:** tosdb uses ctypes.py to load the tos-databridge[].dll library, which depends on _tos-databridge-shared[].dll. That's why we manually copied the latter to your %WINDIR% directory in the 'Installation Details' section.
+> **IMPLEMENTATION NOTE:** tosdb uses ctypes.py to load the tos-databridge[].dll library, which depends on _tos-databridge-shared[].dll. That's why we manually copied the latter to your %WINDIR% directory in the 'Installation Details' section above.
 
 Make sure the build of the modules you installed in the 'Installation Details' section matches your python build. Open a python shell and look to see if it says 32 bit or 64 bit on the top. 32 bit needs x86 modules; 64 bit needs x64. If they don't match redo the earlier steps. From a command prompt navigate to the tos-databridge/python directory and enter:
       
@@ -396,6 +398,9 @@ There are operator\<\< overloads for most of the custom objects and containers r
     ...     vol = v
     ...     time.sleep(.1)
     ```
+
+- **Numerical Values for Certain Instrument Types:** The TOS DDE server doesn't handle numerical values for non-decimal securities well. For instance, trying to get a bid/ask/last etc. for a 10-yr note future (/zn) will not return the franctional part of the price. In these cases use the topic versions suffixed with an x (bidx/askx/lastx etc.) which will provide a str that you'll need to parse.
+
 - **Case-Sensitivity:** Case Sensitivity is a minor issues with how Item values are handled. The underlying C/C++ library are case-sensitive; it's up to the client to make sure they are passing case consistent item strings. The Python wrapper is case-insensitive; on receiving item and topic strings they are converted to upper-case by default.
 
 - **Closing Large Blocks:** Currently Closing/Destroying large blocks(1,000,000+ combined data-stream elements) involves a large number of internal deallocations/destructions and becomes quite CPU intensive. The process is spun-off into its own thread but this may fail, returning to the main thread when the library is being freed, or block the python interpreter regardless of when or how it's called. One alternative is to utilize **`TOSDB_SetBlockSize() / set_block_size()`** to massively shrink the block/data-streams before closing the block. Internally the data-stream deque objects calls .resize() and .shrink_to_fit() but there are no guarantees as to if and when the actual memory will be deallocated so use caution when creating large blocks, especially those with many topics and items as the number of data-streams is a multiple of the two.
