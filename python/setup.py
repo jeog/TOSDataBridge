@@ -91,7 +91,7 @@ def _create__tosdb(consts, topics):
     pfile.write('\n')
     pfile.write('_TOPICS = ' + str(topics))
     pfile.write('\n\n')
-    pfile.write('from .meta_enum import MetaEnum\n')
+    pfile.write('from tosdb.meta_enum import MetaEnum\n')
     pfile.write('class TOPICS(metaclass=MetaEnum):\n')
     pfile.write('  fields = zip(_TOPICS,_TOPICS)\n')
      
@@ -110,8 +110,9 @@ if __name__ == '__main__':
     print(' checking ' + _OUTPUT_PATH)
     try:
       exec("from " + NAME + " import " + _AUTO_EXT)
-    except ImportError:
+    except ImportError as ie:
       print('  fatal: auto-generated ' + _OUTPUT_PATH + ' could not be imported !')
+      print('  fatal: ' + ie.args[0])
       exit(1)
     print('  success!')
     _setup(name=NAME, version=VERSION, description=DESCRIPTION, 
