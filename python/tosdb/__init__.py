@@ -506,7 +506,7 @@ class VTOSDB_DataBlock:
       if virt_type in [_vCREATE, _vDESTROY]:
         return True
       elif virt_type == _vCALL and ret_b[1]:
-        if ret_b[0] == _vSUCCESS_NT:
+        if ret_b[0].decode() == _vSUCCESS_NT:
           return _loadnamedtuple(ret_b[1])
         else:
           return _pickle.loads(ret_b[1])
