@@ -399,7 +399,7 @@ There are operator\<\< overloads for most of the custom objects and containers r
     ...     time.sleep(.1)
     ```
 
-- **Numerical Values for Certain Instrument Types:** The TOS DDE server doesn't handle numerical values for non-decimal securities well. For instance, trying to get a bid/ask/last etc. for a 10-yr note future (/zn) will not return the franctional part of the price. In these cases use the topic versions suffixed with an x (bidx/askx/lastx etc.) which will provide a str that you'll need to parse.
+- **Numerical Values for Certain Instrument Types:** The TOS DDE server doesn't handle numerical values for 'non-decimal' securities well. For instance, trying to get a bid/ask/last etc. for a 10-yr note future (/zn) will not return the fractional part of the price. In these cases use the topic versions suffixed with an x (bidx/askx/lastx etc.) which will provide a str that you'll need to parse.
 
 - **Case-Sensitivity:** Case Sensitivity is a minor issues with how Item values are handled. The underlying C/C++ library are case-sensitive; it's up to the client to make sure they are passing case consistent item strings. The Python wrapper is case-insensitive; on receiving item and topic strings they are converted to upper-case by default.
 
