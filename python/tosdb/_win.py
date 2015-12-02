@@ -68,6 +68,7 @@ SYS_ARCH_TYPE = "x64" if (_log(_maxsize * 2, 2) > 33) else "x86"
 MIN_MARGIN_OF_SAFETY = 10
 
 _REGEX_NON_ALNUM = _compile("[\W+]")
+_REGEX_LETTER = _compile("[a-zA-Z]")
 _VER_SFFX = '[\d]{1,2}.[\d]{1,2}'
 _REGEX_VER_SFFX = _compile('-' + _VER_SFFX + '-')
 _REGEX_DLL_NAME = \
@@ -951,6 +952,8 @@ def _str_clean(*strings):
   fin = []
   for s in strings:               
     tmp = ''
+    if not _match(_REGEX_LETTER, s):
+      s = 'X_' + s
     for sub in _split(_REGEX_NON_ALNUM, s):
       tmp += sub
     fin.append(tmp)
