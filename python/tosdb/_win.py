@@ -532,9 +532,7 @@ class TOSDB_DataBlock:
     if end < 0:
       end += self._block_size
     if beg < 0:
-      beg += self._block_size
-    if smart_size:        
-      end = min(end, self.stream_occupancy(item, topic) - 1)             
+      beg += self._block_size         
     size = (end - beg) + 1
     if beg < 0 \
        or end < 0 \
@@ -542,6 +540,14 @@ class TOSDB_DataBlock:
        or end >= self._block_size \
        or size <= 0:
       raise TOSDB_IndexError("invalid 'beg' and/or 'end' index value(s)")
+
+    if smart_size:
+      so = self.stream_occupancy(item, topic)
+      if so == 0 or so <= beg:
+        return []
+      end = min(end, so - 1)
+      beg = min(beg, so - 1)
+      size = (end - beg) + 1
     
     dtss = (_DateTimeStamp * size)()
     tbits = type_bits(topic)
@@ -635,7 +641,7 @@ class TOSDB_DataBlock:
     date_time: (True/False) attempt to retrieve a TOSDB_DateTime object          
     beg: index of most recent data-point (beginning of the snapshot)    
     margin_of_safety: (True/False) error margin for async stream growth
-    throw_if_data_loss: (True/False) how to handle error states (see above)
+    throw_if_data_lost: (True/False) how to handle error states (see above)
     data_str_max: the maximum length of string data returned
 
     if beg > internal marker value: returns -> None    
