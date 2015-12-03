@@ -42,7 +42,7 @@ init() / vinit() : tell the windows implementation to initialize the
 connect() / vconnect() : tell the windows implementation to connect to the 
                          underlying C library (init attemps this for you)
 
-connected() / connected() : is the windows implementation connected
+connected() /vconnected() : is the windows implementation connected
 
 clean_up() / vclean_up() : *** IMPORTANT *** de-allocates shared resources of the 
                            underlying library and Service. We attempt to clean up 

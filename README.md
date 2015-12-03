@@ -144,10 +144,10 @@ The following sections will outline how to setup TOSDB's core C/C++ libraries. A
 
 1. Move the unzipped tos-databridge folder to its permanent location(our's is in C:/ for convenience.) If you change it in the future you'll need to redo some of these steps because the Service module relies on an absolute path.
 
-2. (Optional) Compile the appropriate binaries if building from source.
-
-3. Determine the appropriate build you'll need: 32-bit(x86) or 64-bit(x64). ***Make sure you don't mix and match in future steps, python will automatically look for a version that matches its own build.***
-    
+2. Determine the appropriate build you'll need: 32-bit(x86) or 64-bit(x64). ***Make sure you don't mix and match in future steps, python will automatically look for a version that matches its own build.***
+ 
+3. (Optional) Compile the appropriate binaries if building from source.
+   
 4. Determine if your TOS platform runs under elevated privileges (does it ask for an admin password before starting?)
    
 5. Determine if you need to run under a custom Session. **MOST USERS SHOULDN'T WORRY ABOUT THIS** unless they plan to run in a non-standard environment (e.g an EC2 instance). The tos-databridge-engine.exe[] binary needs to run in the same session as the ThinkOrSwim platform.
@@ -186,7 +186,7 @@ The following sections will outline how to setup TOSDB's core C/C++ libraries. A
 - - -
 The python wrapper is a simpler, yet still robust, way to get started with the underlying library. To use it you'll still need all the underlying modules mentioned above. 
 
-> **IMPLEMENTATION NOTE:** tosdb was only written to be compatible with python3
+> **IMPORTANT:** tosdb was only written to be compatible with python3
 
 
 > **IMPLEMENTATION NOTE:** tosdb uses ctypes.py to load the tos-databridge[].dll library, which depends on _tos-databridge-shared[].dll. That's why we manually copied the latter to your %WINDIR% directory in the 'Installation Details' section above.
@@ -211,71 +211,18 @@ tosdb/ is structured as a package with the bulk of its code in \__init__.py and 
 
 > Because of all this WE STRONGLY RECOMMEND you call clean_up() before exiting to be sure all the shared resources have been properly dealt with. If this is not possible - the program terminates abruptly for instance - there's a good chance you've got dangling BufferStreams (shared mem segments) and mutexes. You can check this by opening the tos-databridge-shell[].exe calling Connect and then DumpBufferStatus to create a file in the Systems appdata folder to see what resources are held by the Service. You'll probably want to restart the Service if your program had more than a small number of trivial TOSDB_DataBlocks/VTOSDB_DataBlocks. 
 
-### Glossary
-- - -
-Variable                 | Description
------------------------- | -------------
-topics                   | strings or TOS_Topics::TOPICS enums(recommended) of fields to be added (e.g. BID, ASK, LAST )
-items                    | strings of symbols to be added (e.g. GE, SPY, GOOG )
-data-stream              | the historical data for each item-topic entry (see data_stream.hpp)
-frame                    | all the items, topics, or matrix of both, for a particular index( only index of 0 is currently implemented )
-TOS_Topics               | a specialization that provides a scoped enum containing all the topics( TOS data fields), a mapping to the relevant strings, and some utilities. This is the recommended way for C++ calling code to pass topics. Inside the high-order bits of the enum value are the type bit constants TPC..[ ] which can be checked directly or via one of the aptly named public utilities
-DateTimeStamp            | struct that wraps the C library tm struct, and adds a micro-second field
-BufferHead               | struct that aligns with the front of the Stream Buffers in shared memory providing info on the buffer to the client
-ILSet<>                  | wrapper around std::set<> type that provides additional means of construction / copy / move / assignment
-TwoWayHashMap<>          |mapping that allows values to be indexed both ways, using custom hashes, with a thread-safe specialization
-UpdateLatency            | Enum of milliseconds values the client library waits before re-checking buffers
-generic_type             | custom generic type (generic.hpp/cpp)
-generic_dts_type         | pair of generic and DateTimeStamp
-generic_vector_type      | vector of generics
-dts_vector_type          | vector of DateTimeStamps
-generic_dts_vectors_type | pair of : ( vector of generics, vector of DateTimeStamps )
-generic_map_type         | mapping of item/topic strings and generics
-generic_matrix_type      | mapping of item/topic strings and generic_map_type
-generic_dts_map_type     | mapping of item/topic strings and generic_dts_type
-generic_dts_matrix_type  | mapping of item/topic strings and generic_dts_map_type
-str_set_type             | instantiation of ILSet<> for std::string
-topic_set_type           | instantiation of ILSet<> for TOS_Topics::TOPICS
-def_size_type            | default size type for data ( long )
-ext_size_type            | extend size type for data ( long long )
-def_price_type           | default price type for data ( float )
-ext_price_type           | extended price type for data ( double )
-size_type                | explicit size type for Python Wrapper ( unsigned long )
-type_bits_type           | bits set in an unsigned char to indicate the underlying type of a TOS_Topics::TOPICS
-TOSDB_APP_NAME           | name of the DDE Application ( TOS )
-TOSDB_COMM_CHANNEL       | name of the DynamicIPC communication mechanism
-TOSDB_LOG_PATH           | path derived from users and system's %APPDATA%, for log files to be sent
-TOSDB_INTGR_BIT          | type bits for an integral data type
-TOSDB_QUAD_BIT           | type bits for an 8-byte data type
-TOSDB_STRING_BIT         | type bits for a string data type
-TOSDB_TOPIC_BITMASK      | logical OR of all the type bits
-TOSDB_SIG_ADD            | message sent to the data engine to add a stream/connection to TOS
-TOSDB_SIG_REMOVE         | message sent to the data engine to remove a stream/connection to TOS
-TOSDB_SIG_PAUSE          | message sent to the data engine from the service to pause
-TOSDB_SIG_CONTINUE       | message sent to the data engine from the service to continue
-TOSDB_SIG_STOP           | message sent to the data engine from the service to stop
-TOSDB_SIG_DUMP           | message sent to the data engine to dump the buffer data
-TOSDB_SIG_GOOD           | signal sent between data engine and service
-TOSDB_SIG_BAD            | signal sent between data engine and service
-TOSDB_MIN_TIMEOUT        | minimum timeout period for the locks/latches/signals used to for internal communication / synchronization
-TOSDB_DEF_TIMEOUT        | default timeout for above
-TOSDB_SHEM_BUF_SZ        | size in bytes of the buffer that the data engine will write to
-TOSDB_MAX_STR_SZ         | maximum string size for client input (items, topics etc) among other strings
-TOSDB_STR_DATA_SZ        | maximum size of char buffer pulled from DDE server and pushed into a data-stream of std::strings (everything larger is truncated)
-TOSDB_BLOCK_ID_SZ        | maximum string size for the name/ID of a TOSDBlock
-TOSDB_DEF_LATENCY        | the default UpdateLatency (Moderate= 300 milleseconds) 
 
 ### C/C++ Interface ::: Administrative Calls
 - - -
 Once the Service is running start by calling **`TOSDB_Connect()`** which will return 0 if successful. Call the Library function **`TOSDB_IsConnected()`** which returns 1 if you are 'connected' to the TOSDataBridge service.
 
-> **IMPORTANT:** 'Connected' only means there is a connection between the client/library and the engine/service, NOT that the engine/service can communicate with the TOS platform (or TOS is retrieving data from its server). If, for instance, TOS is not running or it's running with elevated privileges(and you didn't pass 'admin' to the setup script) you man be 'connected' but not able to communicate with the TOS platform. 
+> **IMPORTANT:** 'Connected' only means there is a connection between the client/library and the engine/service, NOT that the engine/service can communicate with the TOS platform (or TOS is retrieving data from its server). If, for instance, TOS is not running or it's running with elevated privileges(and you didn't pass 'admin' to the setup script) you may be 'connected' but not able to communicate with the TOS platform. 
 
 > **IMPLEMENTATION NOTE:** Be careful: **`TOSDB_IsConnected()`** returns an unsigned int that represents a boolean value; most of the other C admin calls return a signed int to indicate error(non-0) or success(0). Boolean values will be represented by unsigned int return values for C and bool values for C++. 
 
 Generally **`TOSDB_Disconnect()`** is unnecessary as it's called automatically when the library is unloaded.
 
-> **NOTABLE CONVENTIONS:** The C calls, except in a few cases, don't return values but populate variables, arrays/buffers, and arrays of pointers to char buffers. The 'dest' argument is for primary data, and is a pointer to a variable or an array/buffer when followed by argument 'arr_len' - which takes its size in array elements. 
+> **NOTABLE CONVENTIONS:** The C calls, except in a few cases, don't return values but populate variables, arrays/buffers, and arrays of pointers to char buffers. The 'dest' argument is for primary data; its a pointer to a scalar variable, or an array/buffer when followed by argument 'arr_len' for the number of array/buffer elements. 
 
 > The String versions of the calls take a char\*\* argument, followed by arr_len for the number of char\*s, and str_len for the size of the buffer each char\* points to (obviously they should all be >= to this value). 
 
@@ -293,17 +240,19 @@ Once a block is created, items and topics are added. Topics are the TOS fields (
 
 **`TOSDB_Add()`** **`TOSDB_AddTopic()`** **`TOSDB_AddItem()`** **`TOSDB_AddTopics()`** **`TOSDB_AddItems()`** There are a number of different versions for C and C++, taking C-Strings(const char\*), arrays of C-Strings(const char\*\*), string objects(std::string), TOS_Topics::TOPICS enums, and/or specialized sets (str_set_type, topic_set_type) of the latter two. Check the prototypes in tos_databridge.h for all the versions and arguments.
 
-> **IMPLEMENTATION NOTE:** Items\[Topics\] added before any topics\[items\] exist in the block will be pre-cached, i.e they will be visible to the back-end but not to the interface until a topic\[item\] is added; likewise if all the items\[topics\] are removed(thereby leaving only topics\[items\]). See **Important Details and Provisos** section below for more details. To view the pre-cache use the C++(only) calls **`TOSDB_GetPreCachedTopicNames()`** **`TOSDB_GetPreCachedItemNames()`** **`TOSDB_GetPreCachedTopicEnums()`**
+> **IMPORTANT:** Items\[Topics\] added before any topics\[items\] exist in the block will be pre-cached, i.e they will be visible to the back-end but not to the interface until a topic\[item\] is added; likewise if all the items\[topics\] are removed(thereby leaving only topics\[items\]). See **Important Details and Provisos** section below for more details. To view the pre-cache use the C++(only) calls **`TOSDB_GetPreCachedTopicNames()`** **`TOSDB_GetPreCachedItemNames()`** **`TOSDB_GetPreCachedTopicEnums()`**
 
-Currently its only possible to remove individual items **`TOSDB_RemoveItem()`** and topics **`TOSDB_RemoveTopic()`** or close the whole block. **`TOSDB_CloseBlock()`**
+To remove individual items **`TOSDB_RemoveItem()`**, and topics **`TOSDB_RemoveTopic()`**.
 
 As mentioned, the size of the block represents how large the data-streams are, i.e. how much historical data is saved for each item-topic. Each entry in the block has the same size; if you prefer different sizes create a new block. Call **`TOSDB_GetBlockSize()`** to get the size and **`TOSDB_SetBlockSize()`** to change it.
 
 > **IMPLEMENTATION NOTE:** The use of the term size may be misleading when getting into implementation details. This is the size from the block's perspective and the bound from the data-stream's perspective. For all intents and purposes the client can think of size as the maximum number of elements that can be in the block and the maximum range that can be indexed. To get the occupancy (how much valid data has come into the stream) call **`TOSDB_GetStreamOccupancy()`** .
 
-To find out the the items / topics currently in the block call the C or C++ versions of **`TOSDB_GetItemNames()`** **`TOSDB_GetTopicNames()`** **`TOSDB_GetTopicEnums()`** or if you just need the number **`TOSDB_GetItemCount()`** **`TOSDB_GetTopicCount()`** . To find out if the block is saving DateTime call the C or C++ versions of **`TOSDB_IsUsingDateTime()`**.
+To find out the the items / topics currently in the block call the C or C++ versions of **`TOSDB_GetItemNames()`** **`TOSDB_GetTopicNames()`** **`TOSDB_GetTopicEnums()`** or if you just need the number **`TOSDB_GetItemCount()`** **`TOSDB_GetTopicCount()`**. 
 
-Because the data-engine behind the blocks handles a number of types it's necessary to pack the type info inside the topic enum. Get the type bits at compile-time with **`TOS_Topics::Type< ...topic enum... >::type`** or at run-time with **`TOSDB_GetTypeBits()`** , checking the bits with the appropriately named TOSDB_[ ]_BIT constants in tos_databridge.h. 
+To find out if the block is saving DateTime call the C or C++ versions of **`TOSDB_IsUsingDateTime()`**.
+
+Because the data-engine behind the blocks handles a number of types it's necessary to pack the type info inside the topic enum. Get the type bits at compile-time with **`TOS_Topics::Type< ...topic enum... >::type`** or at run-time with **`TOSDB_GetTypeBits()`** , checking the bits with the appropriately named TOSDB_\[...\]_BIT constants in tos_databridge.h. 
 
     if( TOSDB_TypeBits("BID") == TOSDB_INTGR_BIT ) 
        \\ data is a long (def_size_type).
@@ -323,11 +272,11 @@ Once you've created a block with valid items and topics you'll want to extract t
 
 The two basic techniques are pulling data as: 
 
-1. *a segment:* some portion of the historical data of the block for a particular item-topic entry. A block with 3 topics and 4 items has 12 different data-streams each of the size passed to **`TOSDB_CreateBlock(...)`**. The data-stream is indexed thusly: 0 or (-block size) is the most recent value, -1 or (block size - 1) is the least recent. 
+1. ***a segment:*** some portion of the historical data of the block for a particular item-topic entry. A block with 3 topics and 4 items has 12 different data-streams each of the size passed to **`TOSDB_CreateBlock(...)`**. The data-stream is indexed thusly: 0 or (-block size) is the most recent value, -1 or (block size - 1) is the least recent. 
 
     > **IMPORTANT:** When indexing a sub-range it is important to keep in mind both values are INCLUSIVE \[ , \]. Therefore a sub-range of a data-stream of size 10 where index begin = 3(or -7) and index end = 5(or -5) will look like: \[0\]\[1\]\[2\]**\[3\]\[4\]\[5\]**\[6\]\[7\]\[8\]\[9\]. Be sure to keep this in mind when passing index values as the C++ versions will throw std::invalid_argument() if you pass an ending index of 100 to a stream of size 100.
 
-2. *a frame:* spans ALL the topics, items, or both. Think of all the data-streams as the 3rd dimension of 2-dimensional frames. In theory there can be a frame for each index - a frame of all the most recent values or of all the oldest, for instance - but in practice we've only implemented the retrieval of the most recent frame because of how the data are currently structured.
+2. ***a frame:*** spans ALL the topics, items, or both. Think of all the data-streams as the 3rd dimension of 2-dimensional frames. In theory there can be a frame for each index - a frame of all the most recent values or of all the oldest, for instance - but in practice we've only implemented the retrieval of the most recent frame because of how the data are currently structured.
 
 **SEGMENT CALLS**
 
@@ -454,6 +403,60 @@ There are operator\<\< overloads for most of the custom objects and containers r
 
 - **Concurrency:** TOSDB attemptts to manage and synchronize multiple threads, processes, and shared resources while providing a set of substantive guarantees for calling the underlying library functions from multiple threads. Unfortunately the library has not undergone enough testing to make any such guarantees, despite having the framework in place.
 
+
+### Glossary
+- - -
+Variable                 | Description
+------------------------ | -------------
+topics                   | strings or TOS_Topics::TOPICS enums(recommended) of fields to be added (e.g. BID, ASK, LAST )
+items                    | strings of symbols to be added (e.g. GE, SPY, GOOG )
+data-stream              | the historical data for each item-topic entry (see data_stream.hpp)
+frame                    | all the items, topics, or matrix of both, for a particular index( only index of 0 is currently implemented )
+TOS_Topics               | a specialization that provides a scoped enum containing all the topics( TOS data fields), a mapping to the relevant strings, and some utilities. This is the recommended way for C++ calling code to pass topics. Inside the high-order bits of the enum value are the type bit constants TPC..[ ] which can be checked directly or via one of the aptly named public utilities
+DateTimeStamp            | struct that wraps the C library tm struct, and adds a micro-second field
+BufferHead               | struct that aligns with the front of the Stream Buffers in shared memory providing info on the buffer to the client
+ILSet<>                  | wrapper around std::set<> type that provides additional means of construction / copy / move / assignment
+TwoWayHashMap<>          |mapping that allows values to be indexed both ways, using custom hashes, with a thread-safe specialization
+UpdateLatency            | Enum of milliseconds values the client library waits before re-checking buffers
+generic_type             | custom generic type (generic.hpp/cpp)
+generic_dts_type         | pair of generic and DateTimeStamp
+generic_vector_type      | vector of generics
+dts_vector_type          | vector of DateTimeStamps
+generic_dts_vectors_type | pair of : ( vector of generics, vector of DateTimeStamps )
+generic_map_type         | mapping of item/topic strings and generics
+generic_matrix_type      | mapping of item/topic strings and generic_map_type
+generic_dts_map_type     | mapping of item/topic strings and generic_dts_type
+generic_dts_matrix_type  | mapping of item/topic strings and generic_dts_map_type
+str_set_type             | instantiation of ILSet<> for std::string
+topic_set_type           | instantiation of ILSet<> for TOS_Topics::TOPICS
+def_size_type            | default size type for data ( long )
+ext_size_type            | extend size type for data ( long long )
+def_price_type           | default price type for data ( float )
+ext_price_type           | extended price type for data ( double )
+size_type                | explicit size type for Python Wrapper ( unsigned long )
+type_bits_type           | bits set in an unsigned char to indicate the underlying type of a TOS_Topics::TOPICS
+TOSDB_APP_NAME           | name of the DDE Application ( TOS )
+TOSDB_COMM_CHANNEL       | name of the DynamicIPC communication mechanism
+TOSDB_LOG_PATH           | path derived from users and system's %APPDATA%, for log files to be sent
+TOSDB_INTGR_BIT          | type bits for an integral data type
+TOSDB_QUAD_BIT           | type bits for an 8-byte data type
+TOSDB_STRING_BIT         | type bits for a string data type
+TOSDB_TOPIC_BITMASK      | logical OR of all the type bits
+TOSDB_SIG_ADD            | message sent to the data engine to add a stream/connection to TOS
+TOSDB_SIG_REMOVE         | message sent to the data engine to remove a stream/connection to TOS
+TOSDB_SIG_PAUSE          | message sent to the data engine from the service to pause
+TOSDB_SIG_CONTINUE       | message sent to the data engine from the service to continue
+TOSDB_SIG_STOP           | message sent to the data engine from the service to stop
+TOSDB_SIG_DUMP           | message sent to the data engine to dump the buffer data
+TOSDB_SIG_GOOD           | signal sent between data engine and service
+TOSDB_SIG_BAD            | signal sent between data engine and service
+TOSDB_MIN_TIMEOUT        | minimum timeout period for the locks/latches/signals used to for internal communication / synchronization
+TOSDB_DEF_TIMEOUT        | default timeout for above
+TOSDB_SHEM_BUF_SZ        | size in bytes of the buffer that the data engine will write to
+TOSDB_MAX_STR_SZ         | maximum string size for client input (items, topics etc) among other strings
+TOSDB_STR_DATA_SZ        | maximum size of char buffer pulled from DDE server and pushed into a data-stream of std::strings (everything larger is truncated)
+TOSDB_BLOCK_ID_SZ        | maximum string size for the name/ID of a TOSDBlock
+TOSDB_DEF_LATENCY        | the default UpdateLatency (Moderate= 300 milleseconds) 
 
 ### License & Terms
 - - -
