@@ -27,6 +27,9 @@ _MAGIC_TOPIC_STR = 'ksxaw9834hr84hf;esij?><'
 #regex for finding our header #define consts 
 _REGEX_HEADER_CONST = "#define[\s]+([\w]+)[\s]+.*?([\d][\w]*)" 
 
+#adjust for topics we had to permute to form valid enum vars
+TOPIC_VAL_REPLACE = {'HIGH52':'52HIGH','LOW52':'52LOW'}
+
 class TOSDB_SetupError(Exception):
   def __init__(self,*msgs):
     super().__init__(*msgs)  
@@ -80,8 +83,6 @@ def _pull_topics_from_header(verbose=True):
           if verbose:
             print('',_HEADER_PATH + ":" + str(lineno-1) + ": topic enum BEGIN") 
   return topics
-    
-TOPIC_VAL_REPLACE = {'HIGH52':'52HIGH','LOW52':'52LOW'}
 
 # build a tosdb/_tosdb.py file from the header extracted vals
 def _create__tosdb(consts, topics): 
