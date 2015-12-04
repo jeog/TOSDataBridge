@@ -1,9 +1,9 @@
 ### tosdb/ tutorial 
 ---
 
-This tutorial attempts to show example usage of the core tosdb package. Please refer to *_win.py*, *_common.py* and *__init__.py* for more details on the core package; *__init__.__doc__* for an explanation of the virtual layer; *__main__.py* for running the package outside of the interactive interpreter; *intervalize.py* for a work-in-progress attempt to build time intervals(e.g OHLC) with the raw data; and *cli_scripts/* for code built on top of the core package.
+This tutorial attempts to show example usage of the core tosdb package. Please refer to *\_win.py*, *\_common.py* and *\__init__.py* for more details on the core package; *\__init__.\__doc__* for an explanation of the virtual layer; *\__main__.py* for running the package outside of the interactive interpreter; *intervalize.py* for a work-in-progress attempt to build time intervals(e.g OHLC) with the raw data; and *cli_scripts/* for code built on top of the core package.
 
-There are a number of comments inside the screen-shots that help explain what we are doing, and why.
+There are a number of comments inside the screen-shots that help explain what we are doing and why.
 
 ---
 
