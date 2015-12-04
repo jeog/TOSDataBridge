@@ -84,9 +84,9 @@ Obviously the core implementation is not portable, but the python interface does
 
     The detached signature for each binary; sha256 checksums for binaries, signatures, and the jeog.dev public key
 
-- */docs* 
+- */res* 
 
-    Documentation, Tutorials, Licenses etc.
+    Miscellaneous resources
 
 
 ### Modules
@@ -180,7 +180,7 @@ The following sections will outline how to setup TOSDB's core C/C++ libraries. A
    
 12. Make sure the TOS Platform is running, execute your program or start the python wrapper(see below).
 
-![](./docs/SCss1.png)
+![](./res/SCss1.png)
 
 ### Python Wrapper
 - - -
@@ -199,7 +199,7 @@ Remeber, if installing on a non-windows system to utilize the virtual interface 
 
 > **IMPLEMENTATION NOTE:** We recently shifted from providing (low-level) constants via a C++ extension to having the setup.py script automatically pull constants and topic enum values from tos_databridge.h to generate _tosdb.py, all in pure python. This avoids a number of portability and build issues.
 
-tosdb/ is structured as a package with the bulk of its code in \__init__.py and \_win.py , the latter holding the non-portable parts that \__init__.py will import if it determines it's being run on a windows sytem. This structure allows you to simply import the package(*import tosdb*) or, if needed, extensions like intervalize.py(*from tosdb import intervalize*). Once imported you'll have to initialize it, which requires the path or general location of the underlying library it's going to load (the tos-databridge[].dll) or the root directory it's going to search in for the latest version. Please see the (currently somewhat outdated) tutorial in /docs for a walk-through with screen-shots.
+tosdb/ is structured as a package with the bulk of its code in \__init__.py and \_win.py , the latter holding the non-portable parts that \__init__.py will import if it determines it's being run on a windows sytem. This structure allows you to simply import the package(*import tosdb*) or, if needed, extensions like intervalize.py(*from tosdb import intervalize*). Once imported you'll have to initialize it, which requires the path or general location of the underlying library it's going to load (the tos-databridge[].dll) or the root directory it's going to search in for the latest version. Please see tosdb/TUTORIAL.md for a walk-through with screen-shots.
 
 > **IMPORTANT:**  There is a minor issue with how python uses the underlying library to deallocate shared resources used by it and the Service. Generally calls like **`TOSDB_CloseBlock()`** and **`TOSDB_RemoveTopic()`** handle this on a case by case basis or the DLL's DllMain method attempts to close the necessary resources and signal the Service with the corresponding requests when the library is freed.
 
