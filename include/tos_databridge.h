@@ -152,8 +152,9 @@ typedef unsigned long size_type;
 typedef unsigned char type_bits_type;
 
 #ifdef __cplusplus 
-namespace{
-struct{ /* sanity checks for the build */
+namespace{ /* sanity checks for the build 
+            * sizeof(long) == 4 on both Wintel Archs */
+struct{ 
   static_assert(sizeof(def_size_type) == 4,"sizeof(def_size_type) != 4");
   static_assert(sizeof(ext_size_type) == 8,"sizeof(ext_size_type) != 8");
   static_assert(sizeof(def_price_type) == 4,"sizeof(def_price_type) != 4");
@@ -162,6 +163,15 @@ struct{ /* sanity checks for the build */
   static_assert(sizeof(type_bits_type) == 1,"sizeof(type_bits_type) != 1");
 }TypeSizeAsserts_;
 };
+#else /* a cruder version for C */
+struct{ 
+  char ASSERT_def_size_type_is_4bytes[sizeof(def_size_type) == 4 ? 1 : -1];
+  char ASSERT_ext_size_type_is_8bytes[sizeof(ext_size_type) == 8 ? 1 : -1];
+  char ASSERT_def_price_type_is_4bytes[sizeof(def_price_type) == 4 ? 1 : -1];
+  char ASSERT_ext_price_type_is_8bytes[sizeof(ext_price_type) == 8 ? 1 : -1];
+  char ASSERT_size_type_is_4bytes[sizeof(size_type) == 4 ? 1 : -1];
+  char ASSERT_type_bits_type_is_1byte[sizeof(type_bits_type) == 1 ? 1 : -1];
+}TypeSizeAsserts_;
 #endif
 
 #define TOSDB_INTGR_BIT ((type_bits_type)0x80)
