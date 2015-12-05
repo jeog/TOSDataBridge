@@ -55,7 +55,6 @@ Obviously the core implementation is not portable, but the python interface does
 ##### For Python:
 - Open a python shell/interpreter or create a script
 - import tosdb
-- tosdb.init(...)
 
 
 ### Contents
@@ -117,7 +116,7 @@ Obviously the core implementation is not portable, but the python interface does
 
 - *tosdb/cli_scripts/*
 
-    Python scripts build on top of the python wrapper.
+    Python scripts built on top of the python wrapper.
 
 - *tos-databridge-shell-[x86|x64]*  
 
@@ -152,7 +151,7 @@ The following sections will outline how to setup TOSDB's core C/C++ libraries. A
    
 5. Determine if you need to run under a custom Session. **MOST USERS SHOULDN'T WORRY ABOUT THIS** unless they plan to run in a non-standard environment (e.g an EC2 instance). The tos-databridge-engine.exe[] binary needs to run in the same session as the ThinkOrSwim platform.
   
-6. Open a command shell with Admin Privileges (right-click on cmd.exe and click 'run as administrator'). Navigate to the tos-databridge root directory and run the tosdb-setup.bat setup script with the info from steps #3, #4, and #5:
+6. Open a command shell with Admin Privileges (right-click on cmd.exe and click 'run as administrator'). Navigate to the tos-databridge root directory and run the tosdb-setup.bat setup script with the info from steps #2, #4, and #5:
     
     ```
     Usage: C:\TOSDataBridge\> tosdb-setup.bat   [x86|x64]   [admin]   [session]
@@ -199,17 +198,22 @@ Remeber, if installing on a non-windows system to utilize the virtual interface 
 
 > **IMPLEMENTATION NOTE:** We recently shifted from providing (low-level) constants via a C++ extension to having the setup.py script automatically pull constants and topic enum values from tos_databridge.h to generate _tosdb.py, all in pure python. This avoids a number of portability and build issues.
 
-tosdb/ is structured as a package with the bulk of its code in \__init__.py and \_win.py , the latter holding the non-portable parts that \__init__.py will import if it determines it's being run on a windows sytem. This structure allows you to simply import the package(*import tosdb*) or, if needed, extensions like intervalize.py(*from tosdb import intervalize*). Once imported you'll have to initialize it, which requires the path or general location of the underlying library it's going to load (the tos-databridge[].dll) or the root directory it's going to search in for the latest version. Please see tosdb/TUTORIAL.md for a walk-through with screen-shots.
+tosdb/ is structured as a package with the bulk of its code in \__init__.py and \_win.py , the latter holding the non-portable parts that \__init__.py will import if it determines it's being run on a windows sytem. This structure allows you to simply import the package(*import tosdb*) or, if needed, extensions like intervalize.py(*from tosdb import intervalize*). Once imported you'll have to initialize it, which requires the path of tos-databridge[].dll or the root directory it's going to search in for the latest version. Please see tosdb/tutorial.md for a walk-through with screen-shots.
 
-> **IMPORTANT:**  There is a minor issue with how python uses the underlying library to deallocate shared resources used by it and the Service. Generally calls like **`TOSDB_CloseBlock()`** and **`TOSDB_RemoveTopic()`** handle this on a case by case basis or the DLL's DllMain method attempts to close the necessary resources and signal the Service with the corresponding requests when the library is freed.
-
-> tosdb attemps to handle this implicity in methods like **`remove_items()`** and **`remove_topics()`** and the object's **`__del__()`** method which calls the underlying **`TOSDB_CloseBlock()`** function. The problem with the **`__del__()`** method is two-fold: 
+> **IMPORTANT:**  There is a minor issue with how python uses the underlying library to deallocate shared resources used by it and the Service. tosdb attemps to handle this implicity in most methods, or explicity via the object's **`__del__()`** method. The problem with the **`__del__()`** method is two-fold: 
 
 >    1. a del call only decrements the ref-count of the object, it doesn't necessarily call **`__del__()`** and the underlying **`TOSDB_CloseBlock()`**, and 
 
->    2. on exit() the underlying call is dependent on the order in which globals are deleted and may fail, for this or other reasons. In some cases there appears to be no attempt to call the objects **`__del__()`** methods or free the underlying library.
+>    2. on exit() the underlying call may fail. In some cases there appears to be no attempt to call the objects **`__del__()`** methods or free the underlying library.
 
-> Because of all this WE STRONGLY RECOMMEND you call clean_up() before exiting to be sure all the shared resources have been properly dealt with. If this is not possible - the program terminates abruptly for instance - there's a good chance you've got dangling BufferStreams (shared mem segments) and mutexes. You can check this by opening the tos-databridge-shell[].exe calling Connect and then DumpBufferStatus to create a file in the Systems appdata folder to see what resources are held by the Service. You'll probably want to restart the Service if your program had more than a small number of trivial TOSDB_DataBlocks/VTOSDB_DataBlocks. 
+> Because of all this WE STRONGLY RECOMMEND you call clean_up() before exiting to be sure all shared resources have been properly dealt with. If this is not possible - the program terminates abruptly, for instance - there's a chance you've got dangling/orphaned resources. 
+
+> You can check the state of these resources, at any time, with tos-databridge-shell[].exe: 
+``` 
+   [--> Connect
+   [--> DumpBufferStatus
+```
+> this creates a dump file in the Systems appdata folder.
 
 
 ### C/C++ Interface ::: Administrative Calls

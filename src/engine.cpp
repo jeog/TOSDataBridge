@@ -531,8 +531,7 @@ void TearDownTopic(TOS_Topics::TOPICS tTopic, unsigned long timeout)
 bool CreateBuffer(TOS_Topics::TOPICS tTopic, 
                   std::string sItem, 
                   unsigned int buffer_sz)
-{    
-  type_bits_type tbits;
+{  
   StreamBuffer buf;
   std::string name;
 
@@ -564,17 +563,13 @@ bool CreateBuffer(TOS_Topics::TOPICS tTopic,
     UnmapViewOfFile(buf.raw_addr); 
     return false;
   }
-
-  tbits = TOS_Topics::TypeBits(tTopic);    
+ 
   /* cast mem-map to our header and fill values */
   pBufferHead ptmp = (pBufferHead)(buf.raw_addr); 
   ptmp->loop_seq = 0;
   ptmp->next_offset = ptmp->beg_offset = sizeof(BufferHead);
 
-  ptmp->elem_size = ((tbits & TOSDB_STRING_BIT) 
-                      ? TOSDB_STR_DATA_SZ 
-                      : (tbits & TOSDB_QUAD_BIT) ? 8 : 4) 
-                    + sizeof(DateTimeStamp);
+  ptmp->elem_size = TOS_Topics::TypeSize(tTopic) + sizeof(DateTimeStamp);
 
   ptmp->end_offset = ptmp->beg_offset 
                    + ((buf.raw_sz - ptmp->beg_offset) / ptmp->elem_size) 

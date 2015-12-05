@@ -407,6 +407,18 @@ public:
     return ((type_bits_type)(TOSDB_BIT_SHIFT_RIGHT(T, (T)tTopic)) 
            & TOSDB_TOPIC_BITMASK); 
   }
+
+  static size_type TypeSize(enum_type tTopic)
+  { /* type size at run-time */
+    switch(TypeBits(tTopic))
+    {
+    case TOSDB_STRING_BIT:                 return TOSDB_STR_DATA_SZ;
+    case TOSDB_INTGR_BIT:                  return sizeof(def_size_type);
+    case TOSDB_QUAD_BIT:                   return sizeof(ext_price_type);
+    case TOSDB_INTGR_BIT | TOSDB_QUAD_BIT: return sizeof(ext_size_type);
+    default :                              return sizeof(def_price_type);
+    }; 
+  }
   
   static std::string TypeString(enum_type tTopic)
   { /* 
@@ -415,12 +427,11 @@ public:
      */
     switch(TypeBits(tTopic))
     {
-    case TOSDB_STRING_BIT: return typeid(std::string).name();
-    case TOSDB_INTGR_BIT:  return typeid(def_size_type).name();
-    case TOSDB_QUAD_BIT:   return typeid(ext_price_type).name();
-    case TOSDB_INTGR_BIT 
-         | TOSDB_QUAD_BIT: return typeid(ext_size_type).name();
-    default :              return typeid(def_price_type).name();
+    case TOSDB_STRING_BIT:                 return typeid(std::string).name();
+    case TOSDB_INTGR_BIT:                  return typeid(def_size_type).name();
+    case TOSDB_QUAD_BIT:                   return typeid(ext_price_type).name();
+    case TOSDB_INTGR_BIT | TOSDB_QUAD_BIT: return typeid(ext_size_type).name();
+    default :                              return typeid(def_price_type).name();
     }; 
   }
 
