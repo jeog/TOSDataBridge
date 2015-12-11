@@ -228,7 +228,7 @@ class TOSDB_DataBlock:
   
   def __del__(self): 
     # for convenience, no guarantee
-    if _lib_call is not None and self._valid:
+    if _lib_call is not None and self._valid and _dll is not None:
       try:
         _lib_call("TOSDB_CloseBlock", self._name)      
       except:      

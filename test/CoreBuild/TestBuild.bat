@@ -50,7 +50,7 @@ IF "%1"=="x86" (
     echo Usage: "%0  [x86|x64]  [C|CPP]  [VS_TOOLS_NUM]"
     echo        "[x86|x64]      - build" 
     echo        "[C|CPP]        - language"
-    echo        "[VS_TOOLS_NUM] - integer part of VS...COMNTOOLS varialiable (e.g VS110COMNTOOLS -> 110)"
+    echo        "[VS_TOOLS_NUM] - integer part of VS...COMNTOOLS variable (e.g VS110COMNTOOLS -> 110)"
     EXIT /B 1
   )
 )
@@ -68,7 +68,7 @@ IF "%2"=="C" (
     echo Usage: "%0  [x86|x64]  [C|CPP]  [VS_TOOLS_NUM]"
     echo        "[x86|x64]      - build" 
     echo        "[C|CPP]        - language"
-    echo        "[VS_TOOLS_NUM] - integer part of VS...COMNTOOLS varialiable (e.g VS110COMNTOOLS -> 110)"
+    echo        "[VS_TOOLS_NUM] - integer part of VS...COMNTOOLS variable (e.g VS110COMNTOOLS -> 110)"
     EXIT /B 1
   )
 )

@@ -147,7 +147,9 @@ typedef long long  ext_size_type;
 typedef float      def_price_type;
 typedef double     ext_price_type;
  
-/* guarantees for the Python wrapper */
+/* guarantees for the Python wrapper 
+ * we probably want uint_32 for size_type, uint_8 for type_bits_type 
+ * not a problem if we only compile on Windows(sizeof(long) == 4) */
 typedef unsigned long size_type;
 typedef unsigned char type_bits_type;
 
@@ -179,7 +181,7 @@ struct{
 #define TOSDB_TOPIC_BITMASK ((type_bits_type)0xE0)
 
 #define TOSDB_STR_DATA_SZ ((size_type)40)
-#define TOSDB_MAX_STR_SZ ((unsigned long)0xFF)
+#define TOSDB_MAX_STR_SZ ((size_type)0xFF)
 
 /* 
 for tosdb/setup.py - (temporary fix) - DO NOT REMOVE !
