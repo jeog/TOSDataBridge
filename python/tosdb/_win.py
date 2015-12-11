@@ -232,8 +232,8 @@ class TOSDB_DataBlock:
       try:
         _lib_call("TOSDB_CloseBlock", self._name)      
       except:      
-        print("Error closing block - leak possible!")
-        raise
+        print("warning: __del__ failed to call TOSDB_CloseBlock - leak possible")
+        #raise
 
   def __str__(self):      
     sio = _StringIO() # ouput buffer
