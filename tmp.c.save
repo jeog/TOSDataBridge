@@ -1,5 +1,0 @@
-
-#define SZ_CHCK(cond) ((void)(sizeof(char[1-2*!!(cond)])));
-
-SZ_CH
-
