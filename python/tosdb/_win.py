@@ -31,6 +31,7 @@ from atexit import register as _on_exit
 from collections import namedtuple as _namedtuple
 from time import asctime as _asctime, localtime as _localtime
 from platform import system as _system
+from contextlib import contextmanager as _contextmanager
 
 from os import walk as _walk, stat as _stat, curdir as _curdir, \
                listdir as _listdir, sep as _sep
@@ -90,7 +91,7 @@ def init(dllpath=None, root="C:\\", bypass_check=False):
   rel = set()
   if not bypass_check and dllpath is None and root == "C:\\":
     if abort_init_after_warn():
-      return
+      return False
 
   def _remove_older_versions():
     nonlocal rel  
@@ -114,7 +115,7 @@ def init(dllpath=None, root="C:\\", bypass_check=False):
             if file:                           
               rel.add(root + _sep + file.string)                           
         if not rel: # if still nothing throw
-          raise TOSDB_Error(" could not locate DLL")          
+          raise TOSDB_InitError(" could not locate DLL")          
       if len(rel) > 1:  # only use the most recent version(s)
         _remove_older_versions()              
       # most recently updated
@@ -129,8 +130,10 @@ def init(dllpath=None, root="C:\\", bypass_check=False):
     else:
       print("- Failed to Connect to Service \ Engine")
     return True # indicate the lib was loaded (but not if connect succeeded)
+  except TOSDB_Error:
+    raise
   except Exception as e:
-    raise TOSDB_CLibError("unable to initialize library", e)        
+    raise TOSDB_InitError("unable to initialize library", e)        
 
 
 def connect():
@@ -158,6 +161,19 @@ def clean_up():
     del _dll
     _dll = None
  
+
+@contextmanager
+def Init(dllpath=None, root="C:\\", bypass_check=False):
+  try:
+    if not init(dllpath, root, bypass_check):
+      raise TODB_InitError("failed to initilize library")
+    if not connected():      
+      if not connect(): # try again
+        raise TODB_InitError("failed to connect to library")
+    yield
+  finally:
+    clean_up()
+
 
 def get_block_limit():
   """ Returns the block limit of C/C++ RawDataBlock factory """

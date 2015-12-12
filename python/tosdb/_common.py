@@ -86,50 +86,52 @@ class _TOSDB_DataBlock(metaclass=_ABCMeta):
 class TOSDB_Error(Exception):
   """ Base exception for tosdb """  
   def __init__(self,  *messages): 
-    Exception(*messages)
+    super().__init__(*messages)
+
+
+class TOSDB_InitError(TOSDB_Error):
+  def __init__(self, *messages):
+    super().__init__(*messages)
 
 
 class TOSDB_PlatformError(TOSDB_Error):
   def __init__(self, *messages):
-    TOSDB_Error(*messages)
+    super().__init__(*messages)
 
 
 class TOSDB_CLibError(TOSDB_Error):
   def __init__(self, *messages):
-    TOSDB_Error(*messages)
+    super().__init__(*messages)
 
 
 class TOSDB_DateTimeError(TOSDB_Error):
   def __init__(self, *messages):
-    TOSDB_Error(*messages)
+    super().__init__(*messages)
 
 
 class TOSDB_DataError(TOSDB_Error):
   def __init__(self, *messages):
-    TOSDB_Error(*messages)
+    super().__init__(*messages)
 
 
 class TOSDB_ValueError(TOSDB_Error, ValueError):
   def __init__(self, *messages):
-    TOSDB_Error(*messages)
-    ValueError(*messages)
+    super().__init__(*messages) 
 
 
 class TOSDB_TypeError(TOSDB_Error, TypeError):
   def __init__(self, *messages):
-    TOSDB_Error(*messages)
-    TypeError(*messages)
+    super().__init__(*messages)
 
 
 class TOSDB_IndexError(TOSDB_Error, IndexError):
   def __init__(self, *messages):
-    TOSDB_Error(*messages)
-    IndexError(*messages)
+    super().__init__*messages)
 
 
 class TOSDB_VirtualizationError(TOSDB_Error):
   def __init__(self, *messages):
-    TOSDB_Error(*messages)
+    super().__init__(*messages)
 
 
 def wrap_impl_error(clss):

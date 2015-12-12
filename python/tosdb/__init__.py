@@ -53,6 +53,14 @@ clean_up() / vclean_up() : *** IMPORTANT *** de-allocates shared resources of th
 getblockcount() / vgetblockcount() : number of (created) blocks in the C lib
 getblocklimit() / vgetblocklimit() : get max number of blocks you can create 
 setblocklimit() / vsetblocklimit() : set max number of blocks you can create 
+                         
+                             * * * OTHER OBJECTS * * *     
+
+Init: context manager that handles initialization and clean-up
+
+VInit: version of Init for the virtual layer
+
+** both throw TOSDB_InitError 
 
                              * * * INITIALIZATION * * *
 
@@ -162,32 +170,54 @@ def vinit(dllpath=None, root="C:\\", bypass_check=False):
   """
   if not bypass_check and dllpath is None and root == "C:\\":
     if abort_init_after_warn():
-      return
+      return False
   return _admin_call('init', dllpath, root, True)
+
 
 def vconnect():
   """ Attempts to connect the underlying Windows Library/Service """
   return _admin_call('connect')
 
+
 def vconnected():
   """ True if an active connection to the Library/Service exists """
   return _admin_call('connected')
-        
+    
+    
 def vclean_up():
   """ Clean up shared resources. (!! ON THE WINDOWS SIDE !!) """
   _admin_call('clean_up')
+
+
+@contextmanager
+def VInit(address, dllpath=None, root="C:\\", bypass_check=False, 
+          poll_interval=DEF_TIMEOUT):
+  try:
+    admin_init(address, poll_interval)
+    if not vinit(dllpath, root, bypass_check):
+      raise TODB_InitError("failed to initilize library (virtual)")
+    if not vconnected():      
+      if not vconnect(): # try again
+        raise TODB_InitError("failed to connect to library (virtual)")
+    yield
+  finally:
+    vclean_up()
+
 
 def vget_block_limit():
   """ Returns the block limit of C/C++ RawDataBlock factory """
   return _admin_call('get_block_limit')
 
+
 def vset_block_limit(new_limit):
   """ Changes the block limit of C/C++ RawDataBlock factory """
   _admin_call('set_block_limit', new_limit) 
 
+
 def vget_block_count():
   """ Returns the count of current instantiated blocks """
   return _admin_call('get_block_count')
+
 
 def vtype_bits(topic):
   """ Returns the type bits for a particular 'topic'
@@ -198,12 +228,14 @@ def vtype_bits(topic):
   """  
   return _admin_call('type_bits', topic)
 
+
 def vtype_string(topic):
   """ Returns a platform-dependent string of the type of a particular 'topic'
 
   topic: string representing a TOS data field('LAST','ASK', etc)
   """
   return _admin_call('type_string', topic) 
+
 
 def admin_init(address, poll_interval=DEF_TIMEOUT):
   """ Initialize virtual admin calls (e.g vinit(), vconnect()) 
@@ -223,6 +255,7 @@ def admin_init(address, poll_interval=DEF_TIMEOUT):
     _virtual_hub_addr = ''
     _virtual_admin_sock = None
     raise
+
 
 def _admin_call(method, *arg_buffer):
   if not _virtual_admin_sock:
@@ -259,6 +292,7 @@ class VTOSDB_DataBlock:
     self._call(_vCREATE, '__init__', size, date_time, timeout)
     self._connected = True    
     
+
   def __del__(self):
     try:
       if self._connected:
@@ -268,22 +302,27 @@ class VTOSDB_DataBlock:
     except:
       pass
 
+
   def __str__(self):
     s = self._call(_vCALL, '__str__')  
     return s if s else ''
   
+
   def info(self):
     """ Returns a more readable dict of info about the underlying block """
     return self._call(_vCALL, 'info')
   
+
   def get_block_size(self):
     """ Returns the amount of historical data stored in the block """
     return self._call(_vCALL, 'get_block_size')
   
+
   def set_block_size(self, sz):
     """ Changes the amount of historical data stored in the block """
     self._call(_vCALL, 'set_block_size', sz)
       
+
   def stream_occupancy(self, item, topic):
     """ Returns the current number of data-points pushed into the data-stream
         
@@ -292,6 +331,7 @@ class VTOSDB_DataBlock:
     """           
     return self._call(_vCALL, 'stream_occupancy', item, topic)
   
+
   def items(self, str_max = MAX_STR_SZ):
     """ Returns the items currently in the block (and not pre-cached).
     
@@ -300,6 +340,7 @@ class VTOSDB_DataBlock:
     """
     return self._call(_vCALL, 'items', str_max) 
         
+
   def topics(self,  str_max = MAX_STR_SZ):
     """ Returns the topics currently in the block (and not pre-cached).
     
@@ -308,6 +349,7 @@ class VTOSDB_DataBlock:
     """
     return self._call(_vCALL, 'topics', str_max)    
   
+
   def add_items(self, *items):
     """ Add items (ex. 'IBM', 'SPY') to the block.
 
@@ -317,6 +359,7 @@ class VTOSDB_DataBlock:
     *items: any numer of item strings
     """         
     self._call(_vCALL, 'add_items', *items)     
+
 
   def add_topics(self, *topics):
     """ Add topics (ex. 'LAST', 'ASK') to the block.
@@ -328,6 +371,7 @@ class VTOSDB_DataBlock:
     """         
     self._call(_vCALL, 'add_topics', *topics)
 
+
   def remove_items(self, *items):
     """ Remove items (ex. 'IBM', 'SPY') from the block.
 
@@ -337,6 +381,7 @@ class VTOSDB_DataBlock:
     *items: any numer of item strings
     """
     self._call(_vCALL, 'remove_items', *items)
+
 
   def remove_topics(self, *topics):
     """ Remove topics (ex. 'LAST', 'ASK') from the block.
@@ -348,6 +393,7 @@ class VTOSDB_DataBlock:
     """
     self._call(_vCALL, 'remove_topics', *topics)
     
+
   def get(self, item, topic, date_time=False, indx = 0, check_indx=True, 
           data_str_max=STR_DATA_SZ):
     """ Return a single data-point from the data-stream
@@ -361,6 +407,7 @@ class VTOSDB_DataBlock:
     """
     return self._call(_vCALL, 'get', item, topic, date_time, indx, check_indx, 
                       data_str_max) 
+
 
   def stream_snapshot(self, item, topic, date_time=False, end=-1, beg=0, 
                       smart_size=True, data_str_max=STR_DATA_SZ):
@@ -379,6 +426,7 @@ class VTOSDB_DataBlock:
     """
     return self._call(_vCALL, 'stream_snapshot', item, topic, date_time,
                       end, beg, smart_size, data_str_max) 
+
 
   def stream_snapshot_from_marker(self, item, topic, date_time=False, beg=0, 
                                   margin_of_safety=100, throw_if_data_lost=True,
@@ -435,6 +483,7 @@ class VTOSDB_DataBlock:
                       date_time, beg, margin_of_safety, throw_if_data_lost,
                       data_str_max) 
   
+
   def item_frame(self, topic, date_time=False, labels=True, 
                  data_str_max=STR_DATA_SZ, label_str_max=MAX_STR_SZ):
     """ Return all the most recent item values for a particular topic.
@@ -453,6 +502,7 @@ class VTOSDB_DataBlock:
     return self._call(_vCALL, 'item_frame', topic, date_time, labels,
                       data_str_max, label_str_max)   
 
+
   def topic_frame(self, item, date_time=False, labels=True, 
                   data_str_max=STR_DATA_SZ, label_str_max=MAX_STR_SZ):
     """ Return all the most recent topic values for a particular item:
@@ -470,6 +520,7 @@ class VTOSDB_DataBlock:
     """
     return self._call(_vCALL, 'topic_frame', item, date_time, labels,
                       data_str_max, label_str_max)
+
 
 ##
 ##  !! CREATE A WAY TO PICKLE AN ITERABLE OF DIFFERENT NAMEDTUPLES !!
