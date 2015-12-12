@@ -162,7 +162,7 @@ def clean_up():
     _dll = None
  
 
-@contextmanager
+@_contextmanager
 def Init(dllpath=None, root="C:\\", bypass_check=False):
   try:
     if not init(dllpath, root, bypass_check):

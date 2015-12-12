@@ -27,7 +27,7 @@ from time import mktime as _mktime, struct_time as _struct_time, \
                  strftime as _strftime
 
 from ctypes import Structure as _Structure, \
-                   c_long as _long_, 
+                   c_long as _long_, \
                    c_int as _int_, \
                    c_double as _double_, \
                    c_float as _float_, \
@@ -126,7 +126,7 @@ class TOSDB_TypeError(TOSDB_Error, TypeError):
 
 class TOSDB_IndexError(TOSDB_Error, IndexError):
   def __init__(self, *messages):
-    super().__init__*messages)
+    super().__init__(*messages)
 
 
 class TOSDB_VirtualizationError(TOSDB_Error):

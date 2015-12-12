@@ -123,6 +123,7 @@ from platform import system as _system
 from sys import stderr as _stderr
 from re import sub as _sub
 from atexit import register as _on_exit
+from contextlib import contextmanager as _contextmanager
 
 import struct as _struct
 import socket as _socket
@@ -189,7 +190,7 @@ def vclean_up():
   _admin_call('clean_up')
 
 
-@contextmanager
+@_contextmanager
 def VInit(address, dllpath=None, root="C:\\", bypass_check=False, 
           poll_interval=DEF_TIMEOUT):
   try:
