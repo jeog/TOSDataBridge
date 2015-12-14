@@ -222,7 +222,7 @@ def type_string(topic):
 _on_exit(clean_up) #
 ####################
 
-class TOSDB_DataBlock:
+class TOSDB_DataBlock(_TOSDB_DataBlock):
   """ The main object for storing TOS data.    
 
   size: how much historical data to save
@@ -248,8 +248,8 @@ class TOSDB_DataBlock:
       try:
         _lib_call("TOSDB_CloseBlock", self._name)      
       except:      
-        print("warning: __del__ failed to call TOSDB_CloseBlock - leak possible")
-        #raise
+        print("WARN: block[" + self._name.decode() + "] __del__ failed "
+              "to call TOSDB_CloseBlock - leak possible")        
 
   def __str__(self):      
     sio = _StringIO() # ouput buffer

@@ -271,7 +271,7 @@ def _admin_call(method, *arg_buffer):
     return _pickle.loads(ret_b[1])
   
 
-class VTOSDB_DataBlock:
+class VTOSDB_DataBlock(_TOSDB_DataBlock):
   """ The main object for storing TOS data. (VIRTUAL)   
 
   address:: tuple(str,int) :: (host/address of the windows implementation, port)
