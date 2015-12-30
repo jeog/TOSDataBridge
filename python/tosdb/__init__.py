@@ -129,7 +129,6 @@ import struct as _struct
 import socket as _socket
 import pickle as _pickle
   
-
 _SYS_IS_WIN = _system() in ["Windows","windows","WINDOWS"]
 
 if _SYS_IS_WIN: 
@@ -137,7 +136,6 @@ if _SYS_IS_WIN:
   
 _virtual_hub = None
 _virtual_hub_addr = None
-_virtual_admin = False
 _virtual_admin_sock = None # <- what happens when we exit the client side ?
 
 _vCREATE     = 'CREATE'
@@ -203,6 +201,7 @@ def VInit(address, dllpath=None, root="C:\\", bypass_check=False,
     yield
   finally:
     vclean_up()
+    admin_close()
 
 
 def vget_block_limit():
@@ -238,6 +237,15 @@ def vtype_string(topic):
   return _admin_call('type_string', topic) 
 
 
+def admin_close(): # do we need to signal the server ?
+  """ Close connection created by admin_init """  
+  global _virtual_hub_addr, _virtual_admin_sock
+  if _virtual_admin_sock:
+    _virtual_admin_sock.close()
+  _virtual_hub_addr = ''
+  _virtual_admin_sock = None 
+
+
 def admin_init(address, poll_interval=DEF_TIMEOUT):
   """ Initialize virtual admin calls (e.g vinit(), vconnect()) 
 
@@ -253,8 +261,7 @@ def admin_init(address, poll_interval=DEF_TIMEOUT):
     _virtual_admin_sock.connect(_virtual_hub_addr)
     _vcall(_pack_msg(_vCONN_ADMIN), _virtual_admin_sock, _virtual_hub_addr)
   except:
-    _virtual_hub_addr = ''
-    _virtual_admin_sock = None
+    admin_close()
     raise
 
 
@@ -774,8 +781,7 @@ def _vcall(msg, my_sock, hub_addr):
     try:
       ret_b = _recv_tcp(my_sock)
     except _socket.timeout as e:
-      raise TOSDB_VirtualizationError("socket timed out", 
-                                      "VTOSDB_DataBlock._vcall")        
+      raise TOSDB_VirtualizationError("socket timed out", "_vcall")        
     args = _unpack_msg(ret_b)   
     status = args[0].decode()  
     if status == _vFAILURE:       
@@ -792,8 +798,7 @@ def _vcall(msg, my_sock, hub_addr):
       # ? INFINITE LOOP ? this recursive call might be the cause      
       return _vcall(msg, my_sock, hub_addr)
     except:
-      raise TOSDB_VirtualizationError("failed to reconnect to hub",
-                                      "VTOSDB_DataBlock._vcall")    
+      raise TOSDB_VirtualizationError("failed to reconnect to hub","_vcall")    
                         
 def _dumpnamedtuple(nt):
   n = type(nt).__name__
