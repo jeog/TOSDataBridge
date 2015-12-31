@@ -573,6 +573,7 @@ class VTOSDB_DataBlock(_TOSDB_DataBlock):
 
 def enable_virtualization(address, poll_interval=DEF_TIMEOUT):
   global _virtual_hub    
+
   ## --- NESTED CLASS _VTOS_BlockServer --- ##
   class _VTOS_BlockServer(_Thread):    
     def __init__(self, conn, poll_interval, stop_callback):
@@ -646,8 +647,10 @@ def enable_virtualization(address, poll_interval=DEF_TIMEOUT):
           print("Unhandled exception in _VTOS_BlockServer, terminated",
                 file=_stderr)
           self._rflag = False
+          self._my_sock.close()
           self._stop_callback(self)
           raise        
+      self._my_sock.close()
       self._stop_callback(self)  
     ### --- run --- ###    
   ## --- NESTED CLASS _VTOS_BlockServer --- ##
@@ -692,7 +695,9 @@ def enable_virtualization(address, poll_interval=DEF_TIMEOUT):
           print("Unhandled exception in _VTOS_AdminServer, terminated",
                 file=_stderr)
           self._rflag = False
+          self._my_sock.close()
           raise
+      self._my_sock.close()
   ## --- NESTED CLASS _VTOS_AdminServer --- ##
 
   ## --- NESTED CLASS _VTOS_Hub --- ##
