@@ -140,7 +140,6 @@ _virtual_admin_sock = None # <- what happens when we exit the client side ?
 
 _vCREATE     = 'CREATE'
 _vCALL       = 'CALL'
-_vDESTROY    = 'DESTROY'
 _vFAILURE    = 'FAILURE'
 _vFAIL_EXC   = '1'
 _vSUCCESS    = 'SUCCESS'
@@ -289,7 +288,6 @@ class VTOSDB_DataBlock(_TOSDB_DataBlock):
   Please review the attached README.html for details.
   """  
   def __init__(self, address, size=1000, date_time=False, timeout=DEF_TIMEOUT):         
-    self._connected = False
     self._hub_addr = _check_and_resolve_address(address)
     self._my_sock = _socket.socket()
     self._my_sock.settimeout(timeout / 1000)
@@ -297,15 +295,12 @@ class VTOSDB_DataBlock(_TOSDB_DataBlock):
     self._call_LOCK = _Lock()
     _vcall(_pack_msg(_vCONN_BLOCK), self._my_sock, self._hub_addr)      
     # in case __del__ is called during socket op
-    self._call(_vCREATE, '__init__', size, date_time, timeout)
-    self._connected = True    
+    self._call(_vCREATE, '__init__', size, date_time, timeout) 
     
 
   def __del__(self):
     try:
-      if self._connected:
-        self._call(_vDESTROY)
-      if self._my_sock:
+      if self._my_sock:    
         self._my_sock.close()
     except:
       pass
@@ -556,13 +551,11 @@ class VTOSDB_DataBlock(_TOSDB_DataBlock):
     elif virt_type == _vCALL:
       a = (_vCALL, method) + ((_pickle.dumps(arg_buffer),) if arg_buffer else ())
       req_b = _pack_msg(*a)       
-    elif virt_type == _vDESTROY:
-      req_b = _pack_msg(_vDESTROY)
     else:
       raise TOSDB_VirtualizationError("invalid virt_type")
     with self._call_LOCK:
       ret_b = _vcall(req_b, self._my_sock, self._hub_addr)
-      if virt_type in [_vCREATE, _vDESTROY]:
+      if virt_type == _vCREATE:
         return True
       elif virt_type == _vCALL and ret_b[1]:
         if ret_b[0].decode() == _vSUCCESS_NT:
@@ -606,7 +599,7 @@ def enable_virtualization(address, poll_interval=DEF_TIMEOUT):
             return _pack_msg(_vFAILURE, _vFAIL_EXC, repr(e))   
         ### --- _handle_call --- ###   
         r = None
-        kill = True
+        kill = False
         args = _unpack_msg(dat)        
         msg_t = args[0].decode()        
         try:
@@ -614,17 +607,14 @@ def enable_virtualization(address, poll_interval=DEF_TIMEOUT):
             uargs = _pickle.loads(args[1])         
             self._blk = TOSDB_DataBlock(*uargs)
             r = _pack_msg(_vSUCCESS)
-            kill = False if r else True                     
-          elif msg_t == _vDESTROY:
-            if self._blk:
-              del self._blk
-            r = _pack_msg(_vSUCCESS)              
-          elif msg_t == _vCALL:
-            kill = False
+            if not r:
+              kill = True                                  
+          elif msg_t == _vCALL:   
             r = _handle_call(args)
           else:
             raise TOSDB_ValueError("invalid msg type")
-        except Exception as e:          
+        except Exception as e:  
+          kill = True        
           r = _pack_msg(_vFAILURE, _vFAIL_EXC, repr(e))
         try:
           _send_tcp(self._my_sock, r)
@@ -644,12 +634,13 @@ def enable_virtualization(address, poll_interval=DEF_TIMEOUT):
         except _socket.timeout:        
           pass
         except:
-          print("Unhandled exception in _VTOS_BlockServer, terminated",
-                file=_stderr)
-          self._rflag = False
+          print("fatal: unhandled exception in _VTOS_BlockServer", file=_stderr)
+          del self._blk
+          self._rflag = False          
           self._my_sock.close()
           self._stop_callback(self)
-          raise        
+          raise    
+      del self._blk    
       self._my_sock.close()
       self._stop_callback(self)  
     ### --- run --- ###    
@@ -692,8 +683,7 @@ def enable_virtualization(address, poll_interval=DEF_TIMEOUT):
         except _socket.timeout:        
           pass
         except:
-          print("Unhandled exception in _VTOS_AdminServer, terminated",
-                file=_stderr)
+          print("fatal: unhandled exception in _VTOS_AdminServer", file=_stderr)
           self._rflag = False
           self._my_sock.close()
           raise
