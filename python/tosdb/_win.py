@@ -21,6 +21,7 @@ Please refer to the tosdb (tosdb/__init__.py) docstring for detailed information
 
 from ._common import *
 from ._common import _DateTimeStamp, _TOSDB_DataBlock, _type_switch
+from .doxtend import doxtend as _doxtend
 
 from io import StringIO as _StringIO
 from uuid import uuid4 as _uuid4
@@ -242,6 +243,7 @@ class TOSDB_DataBlock(_TOSDB_DataBlock):
     self._items = []   
     self._topics = []        
   
+
   def __del__(self): 
     # for convenience, no guarantee
     if _lib_call is not None and self._valid and _dll is not None:
@@ -250,6 +252,7 @@ class TOSDB_DataBlock(_TOSDB_DataBlock):
       except:      
         print("WARN: block[" + self._name.decode() + "] __del__ failed "
               "to call TOSDB_CloseBlock - leak possible")        
+
 
   def __str__(self):      
     sio = _StringIO() # ouput buffer
@@ -291,24 +294,28 @@ class TOSDB_DataBlock(_TOSDB_DataBlock):
     if item not in self._items:
       raise TOSDB_ValueError("item " + str(item) + " not found")
 
+
   def _valid_topic(self, topic):
     if not self._topics: # in case topics came out of pre-cache
       self._topics = self.topics()
     if topic not in self._topics:
       raise TOSDB_ValueError("topic " + str(topic) + " not found")
 
+
   def _item_count(self):       
     i_count = _ulong_()
     _lib_call("TOSDB_GetItemCount", self._name, _pointer(i_count))
     return i_count.value
+
 
   def _topic_count(self):        
     t_count = _ulong_()
     _lib_call("TOSDB_GetTopicCount", self._name, _pointer(t_count))
     return t_count.value
 
+
+  @_doxtend(_TOSDB_DataBlock) # __doc__ from ABC _TOSDB_DataBlock
   def info(self):      
-    """ Returns a more readable dict of info about the underlying block """       
     return {"Name": self._name.decode('ascii'), 
             "Items": self.items(),
             "Topics": self.topics(), 
@@ -316,23 +323,22 @@ class TOSDB_DataBlock(_TOSDB_DataBlock):
             "DateTime": "Enabled" if self._date_time else "Disabled",
             "Timeout": self._timeout}
     
-  def get_block_size(self):
-    """ Returns the amount of historical data stored in the block """       
+
+  @_doxtend(_TOSDB_DataBlock) # __doc__ from ABC _TOSDB_DataBlock
+  def get_block_size(self):          
     b_size = _ulong_()
     _lib_call("TOSDB_GetBlockSize", self._name, _pointer(b_size))
     return b_size.value
     
-  def set_block_size(self, sz):
-    """ Changes the amount of historical data stored in the block """
+
+  @_doxtend(_TOSDB_DataBlock) # __doc__ from ABC _TOSDB_DataBlock
+  def set_block_size(self, sz):  
     _lib_call("TOSDB_SetBlockSize", self._name, sz)
     self._block_size = sz
-            
-  def stream_occupancy(self, item, topic):     
-    """ Returns the current number of data-points pushed into the data-stream
-        
-    item: any item string in the block
-    topic: any topic string in the block
-    """           
+       
+
+  @_doxtend(_TOSDB_DataBlock) # __doc__ from ABC _TOSDB_DataBlock     
+  def stream_occupancy(self, item, topic):              
     item = item.upper()
     topic = topic.upper()
     self._valid_item(item)
@@ -349,12 +355,8 @@ class TOSDB_DataBlock(_TOSDB_DataBlock):
     return occ.value
     
 
-  def items(self, str_max=MAX_STR_SZ):
-    """ Returns the items currently in the block (and not pre-cached).
-        
-    str_max: the maximum length of item strings returned
-    returns -> list of strings 
-    """        
+  @_doxtend(_TOSDB_DataBlock) # __doc__ from ABC _TOSDB_DataBlock
+  def items(self, str_max=MAX_STR_SZ):  
     size = self._item_count()  
     strs = [_BUF_(str_max + 1) for _ in range(size)]      
     strs_array = (_pchar_* size)(*[ _cast(s, _pchar_) for s in strs]) 
@@ -369,12 +371,8 @@ class TOSDB_DataBlock(_TOSDB_DataBlock):
     return [_cast_cstr(s) for s in strs_array]            
        
        
+  @_doxtend(_TOSDB_DataBlock) # __doc__ from ABC _TOSDB_DataBlock
   def topics(self,  str_max=MAX_STR_SZ):
-    """ Returns the topics currently in the block (and not pre-cached).
-      
-    str_max: the maximum length of topic strings returned  
-    returns -> list of strings 
-    """   
     size = self._topic_count()
     strs = [_BUF_(str_max + 1) for _ in range(size)]     
     strs_array = (_pchar_* size)(*[ _cast(s, _pchar_) for s in strs])   
@@ -388,15 +386,9 @@ class TOSDB_DataBlock(_TOSDB_DataBlock):
     
     return [_cast_cstr(s) for s in strs_array] 
       
-    
-  def add_items(self, *items):
-    """ Add items (ex. 'IBM', 'SPY') to the block.
-
-    NOTE: if there are no topics currently in the block, these items will 
-    be pre-cached and appear not to exist, until a valid topic is added.
-
-    *items: any numer of item strings
-    """               
+ 
+  @_doxtend(_TOSDB_DataBlock) # __doc__ from ABC _TOSDB_DataBlock   
+  def add_items(self, *items):              
     mtup = tuple(s.encode("ascii").upper() for s in items)
     items_type = _str_ * len(mtup)
     citems = items_type(*mtup)
@@ -407,14 +399,8 @@ class TOSDB_DataBlock(_TOSDB_DataBlock):
     self._items = self.items()
        
 
-  def add_topics(self, *topics):
-    """ Add topics (ex. 'LAST', 'ASK') to the block.
-
-    NOTE: if there are no items currently in the block, these topics will 
-    be pre-cached and appear not to exist, until a valid item is added.
-
-    *topics: any numer of topic strings
-    """           
+  @_doxtend(_TOSDB_DataBlock) # __doc__ from ABC _TOSDB_DataBlock
+  def add_topics(self, *topics):        
     mtup = tuple(s.encode("ascii").upper() for s in topics)
     topics_type = _str_ * len(mtup)
     ctopics = topics_type(*mtup)
@@ -425,45 +411,24 @@ class TOSDB_DataBlock(_TOSDB_DataBlock):
     self._topics = self.topics()
 
 
+  @_doxtend(_TOSDB_DataBlock) # __doc__ from ABC _TOSDB_DataBlock
   def remove_items(self, *items):
-    """ Remove items (ex. 'IBM', 'SPY') from the block.
-
-    NOTE: if there this call removes all items from the block the 
-    remaining topics will be pre-cached and appear not to exist, until 
-    a valid item is re-added.
-
-    *items: any numer of item strings
-    """
     for item in items:
       _lib_call("TOSDB_RemoveItem", self._name, item.encode("ascii").upper())     
     self._items = self.items()
 
 
+  @_doxtend(_TOSDB_DataBlock) # __doc__ from ABC _TOSDB_DataBlock
   def remove_topics(self, *topics):
-    """ Remove topics (ex. 'LAST', 'ASK') from the block.
-
-    NOTE: if there this call removes all topics from the block the 
-    remaining items will be pre-cached and appear not to exist, until 
-    a valid topic is re-added.
-
-    *topics: any numer of topic strings
-    """
     for topic in topics:
       _lib_call("TOSDB_RemoveTopic", self._name, topic.encode("ascii").upper())
     self._topics = self.topics()
         
 
+  @_doxtend(_TOSDB_DataBlock) # __doc__ from ABC _TOSDB_DataBlock
   def get(self, item, topic, date_time=False, indx=0, check_indx=True, 
           data_str_max=STR_DATA_SZ):
-    """ Return a single data-point from the data-stream
-    
-    item: any item string in the block
-    topic: any topic string in the block
-    date_time: (True/False) attempt to retrieve a TOSDB_DateTime object   
-    indx: index of data-points [0 to block_size), [-block_size to -1]
-    check_indx: throw if datum doesn't exist at that particular index
-    data_str_max: the maximum size of string data returned
-    """       
+     
     item = item.upper()
     topic = topic.upper()
     
@@ -521,21 +486,10 @@ class TOSDB_DataBlock(_TOSDB_DataBlock):
         return val.value
 
 
+  @_doxtend(_TOSDB_DataBlock) # __doc__ from ABC _TOSDB_DataBlock
   def stream_snapshot(self, item, topic, date_time=False, end=-1, beg=0, 
                       smart_size=True, data_str_max=STR_DATA_SZ):
-    """ Return multiple data-points(a snapshot) from the data-stream
-    
-    item: any item string in the block
-    topic: any topic string in the block
-    date_time: (True/False) attempt to retrieve a TOSDB_DateTime object          
-    end: index of least recent data-point (end of the snapshot)
-    beg: index of most recent data-point (beginning of the snapshot)    
-    smart_size: limits amount of returned data by data-stream's occupancy
-    data_str_max: the maximum length of string data returned
 
-    if date_time is True: returns-> list of 2tuple
-    else: returns -> list          
-    """     
     item = item.upper()
     topic = topic.upper()
     
@@ -613,57 +567,10 @@ class TOSDB_DataBlock(_TOSDB_DataBlock):
         return [n for n in num_array]
 
 
+  @_doxtend(_TOSDB_DataBlock) # __doc__ from ABC _TOSDB_DataBlock
   def stream_snapshot_from_marker(self, item, topic, date_time=False, beg=0, 
                                   margin_of_safety=100, throw_if_data_lost=True,
                                   data_str_max=STR_DATA_SZ):
-    """ Return multiple data-points(a snapshot) from the data-stream,
-    ending where the last call began
-
-    It's likely the stream will grow between consecutive calls. This call
-    guarantees to pick up where the last get(), stream_snapshot(), or
-    stream_snapshot_from_marker() call ended (under a few assumptions, see
-    below). 
-
-    Internally the stream maintains a 'marker' that tracks the position of
-    the last value pulled; the act of retreiving data and moving the
-    marker can be thought of as a single, 'atomic' operation.
-
-    There are three states to be aware of:
-      1) a 'beg' value that is greater than the marker (even if beg = 0)
-      2) a marker that moves through the entire stream and hits the bound
-      3) passing a buffer that is too small for the whole range
-
-    State (1) can be caused by passing in a beginning index that is past
-    the current marker, or by passing in 0 when the marker has yet to
-    move. 'None' will be returned.
-
-    State (2) occurs when the marker doesn't get reset before it hits the
-    bound (block_size); as the oldest data is popped of the back of the
-    stream it is lost (the marker can't grow past the end of the stream). 
-
-    State (3) occurs when an inadequately large buffer is used. The call
-    handles buffer sizing for you by calling down to get the marker index,
-    adjusting by 'beg' and 'margin_of_safety'. The latter helps assure the
-    marker doesn't outgrow the buffer by the time the low-level retrieval
-    operation completes. The default value indicates that over 100 push
-    operations would have to take place during this call(highly unlikely).
-
-    In either case (state (2) or (3)) if throw_if_data_lost is True a
-    TOSDB_DataError will be thrown, otherwise the available data will
-    be returned as normal. 
-    
-    item: any item string in the block
-    topic: any topic string in the block
-    date_time: (True/False) attempt to retrieve a TOSDB_DateTime object          
-    beg: index of most recent data-point (beginning of the snapshot)    
-    margin_of_safety: (True/False) error margin for async stream growth
-    throw_if_data_lost: (True/False) how to handle error states (see above)
-    data_str_max: the maximum length of string data returned
-
-    if beg > internal marker value: returns -> None    
-    if date_time is True: returns-> list of 2tuple
-    else: returns -> list          
-    """
     
     item = item.upper()
     topic = topic.upper()
@@ -771,21 +678,10 @@ class TOSDB_DataBlock(_TOSDB_DataBlock):
         return [n for n in num_array[:get_size]]    
     
 
+  @_doxtend(_TOSDB_DataBlock) # __doc__ from ABC _TOSDB_DataBlock
   def item_frame(self, topic, date_time=False, labels=True, 
                  data_str_max=STR_DATA_SZ, label_str_max=MAX_STR_SZ):
-    """ Return all the most recent item values for a particular topic.
-
-    topic: any topic string in the block
-    date_time: (True/False) attempt to retrieve a TOSDB_DateTime object       
-    labels: (True/False) pull the item labels with the values 
-    data_str_max: the maximum length of string data returned
-    label_str_max: the maximum length of item label strings returned
-
-    if labels and date_time are True: returns-> namedtuple of 2tuple
-    if labels is True: returns -> namedtuple
-    if date_time is True: returns -> list of 2tuple
-    else returns-> list
-    """      
+   
     topic = topic.upper()
     
     if date_time and not self._date_time:
@@ -860,21 +756,10 @@ class TOSDB_DataBlock(_TOSDB_DataBlock):
           return [n for n in num_array]    
 
 
+  @_doxtend(_TOSDB_DataBlock) # __doc__ from ABC _TOSDB_DataBlock
   def topic_frame(self, item, date_time=False, labels=True, 
                   data_str_max=STR_DATA_SZ, label_str_max=MAX_STR_SZ):
-    """ Return all the most recent topic values for a particular item:
-  
-    item: any item string in the block
-    date_time: (True/False) attempt to retrieve a TOSDB_DateTime object       
-    labels: (True/False) pull the topic labels with the values 
-    data_str_max: the maximum length of string data returned
-    label_str_max: the maximum length of topic label strings returned
-
-    if labels and date_time are True: returns-> namedtuple of 2tuple
-    if labels is True: returns -> namedtuple
-    if date_time is True: returns -> list of 2tuple
-    else returns-> list
-    """      
+   
     item = item.upper()
     
     if date_time and not self._date_time:

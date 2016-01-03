@@ -115,6 +115,7 @@ VInit: version of Init for the virtual layer
 
 from ._common import * 
 from ._common import _DateTimeStamp, _TOSDB_DataBlock, _type_switch
+from .doxtend import doxtend as _doxtend
 
 from collections import namedtuple as _namedtuple
 from threading import Thread as _Thread, Lock as _Lock
@@ -309,218 +310,96 @@ class VTOSDB_DataBlock(_TOSDB_DataBlock):
   def __str__(self):
     s = self._call(_vCALL, '__str__')  
     return s if s else ''
-  
 
-  def info(self):
-    """ Returns a more readable dict of info about the underlying block """
+  
+  @_doxtend(_TOSDB_DataBlock) # __doc__ from ABC _TOSDB_DataBlock
+  def info(self):    
     return self._call(_vCALL, 'info')
   
 
-  def get_block_size(self):
-    """ Returns the amount of historical data stored in the block """
+  @_doxtend(_TOSDB_DataBlock) # __doc__ from ABC _TOSDB_DataBlock
+  def get_block_size(self):    
     return self._call(_vCALL, 'get_block_size')
   
 
-  def set_block_size(self, sz):
-    """ Changes the amount of historical data stored in the block """
+  @_doxtend(_TOSDB_DataBlock) # __doc__ from ABC _TOSDB_DataBlock
+  def set_block_size(self, sz):    
     self._call(_vCALL, 'set_block_size', sz)
-      
 
-  def stream_occupancy(self, item, topic):
-    """ Returns the current number of data-points pushed into the data-stream
-        
-    item: any item string in the block
-    topic: any topic string in the block
-    """           
-    return self._call(_vCALL, 'stream_occupancy', item, topic)
-  
 
+  @_doxtend(_TOSDB_DataBlock) # __doc__ from ABC _TOSDB_DataBlock
+  def stream_occupancy(self, item, topic):          
+    return self._call(_vCALL, 'stream_occupancy', item, topic)  
+
+
+  @_doxtend(_TOSDB_DataBlock) # __doc__ from ABC _TOSDB_DataBlock
   def items(self, str_max = MAX_STR_SZ):
-    """ Returns the items currently in the block (and not pre-cached).
-    
-    str_max: the maximum length of item strings returned
-    returns -> list of strings 
-    """
-    return self._call(_vCALL, 'items', str_max) 
-        
+    return self._call(_vCALL, 'items', str_max)         
 
+
+  @_doxtend(_TOSDB_DataBlock) # __doc__ from ABC _TOSDB_DataBlock
   def topics(self,  str_max = MAX_STR_SZ):
-    """ Returns the topics currently in the block (and not pre-cached).
-    
-    str_max: the maximum length of topic strings returned  
-    returns -> list of strings 
-    """
-    return self._call(_vCALL, 'topics', str_max)    
-  
+    return self._call(_vCALL, 'topics', str_max) 
 
-  def add_items(self, *items):
-    """ Add items (ex. 'IBM', 'SPY') to the block.
 
-    NOTE: if there are no topics currently in the block, these items will 
-    be pre-cached and appear not to exist, until a valid topic is added.
-
-    *items: any numer of item strings
-    """         
+  @_doxtend(_TOSDB_DataBlock) # __doc__ from ABC _TOSDB_DataBlock
+  def add_items(self, *items):       
     self._call(_vCALL, 'add_items', *items)     
 
 
-  def add_topics(self, *topics):
-    """ Add topics (ex. 'LAST', 'ASK') to the block.
-
-    NOTE: if there are no items currently in the block, these topics will 
-    be pre-cached and appear not to exist, until a valid item is added.
-
-    *topics: any numer of topic strings
-    """         
+  @_doxtend(_TOSDB_DataBlock) # __doc__ from ABC _TOSDB_DataBlock
+  def add_topics(self, *topics):    
     self._call(_vCALL, 'add_topics', *topics)
 
 
+  @_doxtend(_TOSDB_DataBlock) # __doc__ from ABC _TOSDB_DataBlock
   def remove_items(self, *items):
-    """ Remove items (ex. 'IBM', 'SPY') from the block.
-
-    NOTE: if this call removes all items from the block the remaining topics 
-    will be pre-cached and appear not to exist, until a valid item is re-added.
-
-    *items: any numer of item strings
-    """
     self._call(_vCALL, 'remove_items', *items)
 
 
+  @_doxtend(_TOSDB_DataBlock) # __doc__ from ABC _TOSDB_DataBlock
   def remove_topics(self, *topics):
-    """ Remove topics (ex. 'LAST', 'ASK') from the block.
-
-    NOTE: if this call removes all topics from the block the remaining items 
-    will be pre-cached and appear not to exist, until a valid topic is re-added.
-
-    *topics: any numer of topic strings
-    """
     self._call(_vCALL, 'remove_topics', *topics)
     
 
+  @_doxtend(_TOSDB_DataBlock) # __doc__ from ABC _TOSDB_DataBlock
   def get(self, item, topic, date_time=False, indx = 0, check_indx=True, 
           data_str_max=STR_DATA_SZ):
-    """ Return a single data-point from the data-stream
-    
-    item: any item string in the block
-    topic: any topic string in the block
-    date_time: (True/False) attempt to retrieve a TOSDB_DateTime object   
-    indx: index of data-points [0 to block_size), [-block_size to -1]
-    check_indx: throw if datum doesn't exist at that particular index
-    data_str_max: the maximum size of string data returned
-    """
+
     return self._call(_vCALL, 'get', item, topic, date_time, indx, check_indx, 
                       data_str_max) 
 
 
+  @_doxtend(_TOSDB_DataBlock) # __doc__ from ABC _TOSDB_DataBlock
   def stream_snapshot(self, item, topic, date_time=False, end=-1, beg=0, 
                       smart_size=True, data_str_max=STR_DATA_SZ):
-    """ Return multiple data-points(a snapshot) from the data-stream
-    
-    item: any item string in the block
-    topic: any topic string in the block
-    date_time: (True/False) attempt to retrieve a TOSDB_DateTime object        
-    end: index of least recent data-point (end of the snapshot)
-    beg: index of most recent data-point (beginning of the snapshot)    
-    smart_size: limits amount of returned data by data-stream's occupancy
-    data_str_max: the maximum length of string data returned
 
-    if date_time is True: returns-> list of 2tuple
-    else: returns -> list        
-    """
     return self._call(_vCALL, 'stream_snapshot', item, topic, date_time,
                       end, beg, smart_size, data_str_max) 
 
 
+  @_doxtend(_TOSDB_DataBlock) # __doc__ from ABC _TOSDB_DataBlock
   def stream_snapshot_from_marker(self, item, topic, date_time=False, beg=0, 
                                   margin_of_safety=100, throw_if_data_lost=True,
                                   data_str_max=STR_DATA_SZ):
-    """ Return multiple data-points(a snapshot) from the data-stream,
-    ending where the last call began
 
-    It's likely the stream will grow between consecutive calls. This call
-    guarantees to pick up where the last get(), stream_snapshot(), or
-    stream_snapshot_from_marker() call ended (under a few assumptions, see
-    below). 
-
-    Internally the stream maintains a 'marker' that tracks the position of
-    the last value pulled; the act of retreiving data and moving the
-    marker can be thought of as a single, 'atomic' operation.
-
-    There are three states to be aware of:
-      1) a 'beg' value that is greater than the marker (even if beg = 0)
-      2) a marker that moves through the entire stream and hits the bound
-      3) passing a buffer that is too small for the whole range
-
-    State (1) can be caused by passing in a beginning index that is past
-    the current marker, or by passing in 0 when the marker has yet to
-    move. 'None' will be returned.
-
-    State (2) occurs when the marker doesn't get reset before it hits the
-    bound (block_size); as the oldest data is popped of the back of the
-    stream it is lost (the marker can't grow past the end of the stream). 
-
-    State (3) occurs when an inadequately large buffer is used. The call
-    handles buffer sizing for you by calling down to get the marker index,
-    adjusting by 'beg' and 'margin_of_safety'. The latter helps assure the
-    marker doesn't outgrow the buffer by the time the low-level retrieval
-    operation completes. The default value indicates that over 100 push
-    operations would have to take place during this call(highly unlikely).
-
-    In either case (state (2) or (3)) if throw_if_data_lost is True a
-    TOSDB_DataError will be thrown, otherwise the available data will
-    be returned as normal. 
-    
-    item: any item string in the block
-    topic: any topic string in the block
-    date_time: (True/False) attempt to retrieve a TOSDB_DateTime object            
-    beg: index of most recent data-point (beginning of the snapshot)    
-    margin_of_safety: (True/False) error margin for async stream growth
-    throw_if_data_loss: (True/False) how to handle error states (see above)
-    data_str_max: the maximum length of string data returned
-
-    if beg > internal marker value: returns -> None    
-    if date_time is True: returns-> list of 2tuple
-    else: returns -> list        
-    """
     return self._call(_vCALL, 'stream_snapshot_from_marker', item, topic,
                       date_time, beg, margin_of_safety, throw_if_data_lost,
                       data_str_max) 
   
 
+  @_doxtend(_TOSDB_DataBlock) # __doc__ from ABC _TOSDB_DataBlock
   def item_frame(self, topic, date_time=False, labels=True, 
                  data_str_max=STR_DATA_SZ, label_str_max=MAX_STR_SZ):
-    """ Return all the most recent item values for a particular topic.
 
-    topic: any topic string in the block
-    date_time: (True/False) attempt to retrieve a TOSDB_DateTime object     
-    labels: (True/False) pull the item labels with the values 
-    data_str_max: the maximum length of string data returned
-    label_str_max: the maximum length of item label strings returned
-
-    if labels and date_time are True: returns-> namedtuple of 2tuple
-    if labels is True: returns -> namedtuple
-    if date_time is True: returns -> list of 2tuple
-    else returns-> list
-    """
     return self._call(_vCALL, 'item_frame', topic, date_time, labels,
                       data_str_max, label_str_max)   
 
 
+  @_doxtend(_TOSDB_DataBlock) # __doc__ from ABC _TOSDB_DataBlock
   def topic_frame(self, item, date_time=False, labels=True, 
                   data_str_max=STR_DATA_SZ, label_str_max=MAX_STR_SZ):
-    """ Return all the most recent topic values for a particular item:
-  
-    item: any item string in the block
-    date_time: (True/False) attempt to retrieve a TOSDB_DateTime object     
-    labels: (True/False) pull the topic labels with the values 
-    data_str_max: the maximum length of string data returned
-    label_str_max: the maximum length of topic label strings returned
 
-    if labels and date_time are True: returns-> namedtuple of 2tuple
-    if labels is True: returns -> namedtuple
-    if date_time is True: returns -> list of 2tuple
-    else returns-> list
-    """
     return self._call(_vCALL, 'topic_frame', item, date_time, labels,
                       data_str_max, label_str_max)
 
@@ -758,7 +637,8 @@ def enable_virtualization(address, poll_interval=DEF_TIMEOUT):
       _virtual_hub.start()    
   except Exception as e:
     raise TOSDB_VirtualizationError("(enable) virtualization error", e)
-# --- enabel_virtualization --- #
+# --- enable_virtualization --- #
+
 
 def disable_virtualization():
   global _virtual_hub
@@ -794,16 +674,19 @@ def _vcall(msg, my_sock, hub_addr):
       return _vcall(msg, my_sock, hub_addr)
     except:
       raise TOSDB_VirtualizationError("failed to reconnect to hub","_vcall")    
-                        
+       
+                 
 def _dumpnamedtuple(nt):
   n = type(nt).__name__
   od = nt.__dict__
   return _pickle.dumps((n,tuple(od.keys()),tuple(od.values())))
 
+
 def _loadnamedtuple(nt):
   name,keys,vals = _pickle.loads(nt)
   ty = _namedtuple(name, keys)
   return ty(*vals)
+
 
 def _recv_tcp(sock):
   packedlen = _recvall_tcp(sock, 8)
@@ -811,6 +694,7 @@ def _recv_tcp(sock):
     return None
   dlen = _struct.unpack('Q', packedlen)[0]
   return _recvall_tcp(sock, dlen)
+
 
 def _recvall_tcp(sock, n):
   data = b''
@@ -821,10 +705,12 @@ def _recvall_tcp(sock, n):
     data += p
   return data
 
+
 def _send_tcp(sock, data):
   dl = len(data)
   msg = _struct.pack('Q',len(data)) + data
   return sock.sendall(msg)
+
 
 def _pack_msg(*parts):   
   def _escape_part(part):
@@ -833,6 +719,7 @@ def _pack_msg(*parts):
     return _sub(_vDELIM, _vESC + _vDEXOR, esc1) #escape the delim SECOND
   return _vDELIM.join([_escape_part(p) for p in parts])
 
+
 def _unpack_msg(msg):  
   def _unescape_part(part):    
     unesc1 = _sub(_vESC + _vDEXOR, _vDELIM, part) #unescape the delim FIRST    
@@ -840,6 +727,7 @@ def _unpack_msg(msg):
   if not msg:
     return msg
   return [_unescape_part(p) for p in msg.strip().split(_vDELIM)]
+
 
 def _check_and_resolve_address(addr): 
   if type(addr) is tuple:

@@ -47,40 +47,213 @@ class _TOSDB_DataBlock(metaclass=_ABCMeta):
           return False
       return True
     return NotImplemented
+
   @_abstractmethod
-  def __str__(): pass
+  def __str__(): 
+    pass
+
   @_abstractmethod
-  def info(): pass
+  def info(): 
+    """ Returns a more readable dict of info about the underlying block """
+    pass
+
   @_abstractmethod
-  def get_block_size(): pass
+  def get_block_size(): 
+    """ Returns the amount of historical data stored in the block """
+    pass
+
   @_abstractmethod
-  def set_block_size(): pass
+  def set_block_size(): 
+    """ Changes the amount of historical data stored in the block """
+    pass
+
   @_abstractmethod
-  def stream_occupancy(): pass
+  def stream_occupancy(): 
+    """ Returns the current number of data-points pushed into the data-stream
+        
+    item: any item string in the block
+    topic: any topic string in the block
+    """ 
+    pass
+
   @_abstractmethod
-  def items(): pass
+  def items(): 
+    """ Returns the items currently in the block (and not pre-cached).
+    
+    str_max: the maximum length of item strings returned
+    returns -> list of strings 
+    """
+    pass
+
   @_abstractmethod
-  def topics(): pass
+  def topics(): 
+    """ Returns the topics currently in the block (and not pre-cached).
+    
+    str_max: the maximum length of topic strings returned  
+    returns -> list of strings 
+    """
+    pass
+
   @_abstractmethod
-  def add_items(): pass
+  def add_items(): 
+    """ Add items (ex. 'IBM', 'SPY') to the block.
+
+    NOTE: if there are no topics currently in the block, these items will 
+    be pre-cached and appear not to exist, until a valid topic is added.
+
+    *items: any numer of item strings
+    """  
+    pass
+
   @_abstractmethod
-  def add_topics(): pass
+  def add_topics(): 
+    """ Add topics (ex. 'LAST', 'ASK') to the block.
+
+    NOTE: if there are no items currently in the block, these topics will 
+    be pre-cached and appear not to exist, until a valid item is added.
+
+    *topics: any numer of topic strings
+    """     
+    pass
+
   @_abstractmethod
-  def remove_items(): pass
+  def remove_items(): 
+    """ Remove items (ex. 'IBM', 'SPY') from the block.
+
+    NOTE: if this call removes all items from the block the remaining topics 
+    will be pre-cached and appear not to exist, until a valid item is re-added.
+
+    *items: any numer of item strings
+    """
+    pass
+
   @_abstractmethod
-  def remove_topics(): pass
+  def remove_topics(): 
+    """ Remove topics (ex. 'LAST', 'ASK') from the block.
+
+    NOTE: if this call removes all topics from the block the remaining items 
+    will be pre-cached and appear not to exist, until a valid topic is re-added.
+
+    *topics: any numer of topic strings
+    """
+    pass
+
   @_abstractmethod
-  def get(): pass
+  def get(): 
+    """ Return a single data-point from the data-stream
+    
+    item: any item string in the block
+    topic: any topic string in the block
+    date_time: (True/False) attempt to retrieve a TOSDB_DateTime object   
+    indx: index of data-points [0 to block_size), [-block_size to -1]
+    check_indx: throw if datum doesn't exist at that particular index
+    data_str_max: the maximum size of string data returned
+    """
+    pass
+
   @_abstractmethod
-  def stream_snapshot(): pass
+  def stream_snapshot(): 
+    """ Return multiple data-points(a snapshot) from the data-stream
+    
+    item: any item string in the block
+    topic: any topic string in the block
+    date_time: (True/False) attempt to retrieve a TOSDB_DateTime object        
+    end: index of least recent data-point (end of the snapshot)
+    beg: index of most recent data-point (beginning of the snapshot)    
+    smart_size: limits amount of returned data by data-stream's occupancy
+    data_str_max: the maximum length of string data returned
+
+    if date_time is True: returns-> list of 2tuple
+    else: returns -> list        
+    """
+    pass
+
   @_abstractmethod
-  def stream_snapshot_from_marker(): pass
+  def stream_snapshot_from_marker(): 
+    """ Return multiple data-points(a snapshot) from the data-stream,
+    ending where the last call began
+
+    It's likely the stream will grow between consecutive calls. This call
+    guarantees to pick up where the last get(), stream_snapshot(), or
+    stream_snapshot_from_marker() call ended (under a few assumptions, see
+    below). 
+
+    Internally the stream maintains a 'marker' that tracks the position of
+    the last value pulled; the act of retreiving data and moving the
+    marker can be thought of as a single, 'atomic' operation.
+
+    There are three states to be aware of:
+      1) a 'beg' value that is greater than the marker (even if beg = 0)
+      2) a marker that moves through the entire stream and hits the bound
+      3) passing a buffer that is too small for the whole range
+
+    State (1) can be caused by passing in a beginning index that is past
+    the current marker, or by passing in 0 when the marker has yet to
+    move. 'None' will be returned.
+
+    State (2) occurs when the marker doesn't get reset before it hits the
+    bound (block_size); as the oldest data is popped of the back of the
+    stream it is lost (the marker can't grow past the end of the stream). 
+
+    State (3) occurs when an inadequately large buffer is used. The call
+    handles buffer sizing for you by calling down to get the marker index,
+    adjusting by 'beg' and 'margin_of_safety'. The latter helps assure the
+    marker doesn't outgrow the buffer by the time the low-level retrieval
+    operation completes. The default value indicates that over 100 push
+    operations would have to take place during this call(highly unlikely).
+
+    In either case (state (2) or (3)) if throw_if_data_lost is True a
+    TOSDB_DataError will be thrown, otherwise the available data will
+    be returned as normal. 
+    
+    item: any item string in the block
+    topic: any topic string in the block
+    date_time: (True/False) attempt to retrieve a TOSDB_DateTime object            
+    beg: index of most recent data-point (beginning of the snapshot)    
+    margin_of_safety: (True/False) error margin for async stream growth
+    throw_if_data_loss: (True/False) how to handle error states (see above)
+    data_str_max: the maximum length of string data returned
+
+    if beg > internal marker value: returns -> None    
+    if date_time is True: returns-> list of 2tuple
+    else: returns -> list        
+    """
+    pass
+
   @_abstractmethod
-  def item_frame(): pass
+  def item_frame(): 
+    """ Return all the most recent item values for a particular topic.
+
+    topic: any topic string in the block
+    date_time: (True/False) attempt to retrieve a TOSDB_DateTime object     
+    labels: (True/False) pull the item labels with the values 
+    data_str_max: the maximum length of string data returned
+    label_str_max: the maximum length of item label strings returned
+
+    if labels and date_time are True: returns-> namedtuple of 2tuple
+    if labels is True: returns -> namedtuple
+    if date_time is True: returns -> list of 2tuple
+    else returns-> list
+    """
+    pass
+
   @_abstractmethod
-  def topic_frame(): pass
-  #@_abstractmethod
-  #def total_frame(): pass     
+  def topic_frame(): 
+    """ Return all the most recent topic values for a particular item:
+  
+    item: any item string in the block
+    date_time: (True/False) attempt to retrieve a TOSDB_DateTime object     
+    labels: (True/False) pull the topic labels with the values 
+    data_str_max: the maximum length of string data returned
+    label_str_max: the maximum length of topic label strings returned
+
+    if labels and date_time are True: returns-> namedtuple of 2tuple
+    if labels is True: returns -> namedtuple
+    if date_time is True: returns -> list of 2tuple
+    else returns-> list
+    """
+    pass
+
 
 
 class TOSDB_Error(Exception):
