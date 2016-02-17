@@ -18,6 +18,7 @@ from tosdb import *
 from tosdb import _SYS_IS_WIN, _Thread
 
 from argparse import ArgumentParser as _ArgumentParser
+from sys import stderr as _stderr
 
 args=None
 
@@ -34,13 +35,21 @@ def _main_init():
 
   if args.virtual_server and _SYS_IS_WIN:
     raw_args = args.virtual_server.split(' ')
-    vs_args = ((raw_args[0],int(raw_args[1])),)
+    try:
+      vs_args = ((raw_args[0],int(raw_args[1])),)
+    except IndexError:
+      print("usage: tosdb --virtual-server 'address port [timeout]'",file=_stderr)
+      exit(1)
     vs_args += (int(raw_args[2]),) if len(raw_args) > 2 else ()  
     _Thread(target=enable_virtualization, args=vs_args).start()
       
   if args.virtual_client:
     raw_args = args.virtual_client.split(' ')
-    vc_args = ((raw_args[0],int(raw_args[1])),)
+    try:
+      vc_args = ((raw_args[0],int(raw_args[1])),)
+    except IndexError:
+      print("usage: tosdb --virtual-client 'address port [timeout]'",file=_stderr)
+      exit(1)
     vc_args += (int(raw_args[2]),) if len(raw_args) > 2 else ()
     admin_init(*vc_args)
             
