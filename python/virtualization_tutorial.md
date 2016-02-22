@@ -1,4 +1,4 @@
-### tosdb/ tutorial 
+### tosdb virtualization tutorial 
 ---
 
 This tutorial attempts to show simple example usage of the tosdb virtual layer. Please refer to *\__init__.\__doc__* for an explanation of the virtual layer and the myriad ways to initialize and use it, not show in this tutorial.
@@ -43,6 +43,7 @@ True
 ```
 
 ##### Local Server Init 
+*notice the preceding space in the --virtual-server arg tuple: " 55555"*
 
 ![](./../res/vtut_loc_3.png)
 
