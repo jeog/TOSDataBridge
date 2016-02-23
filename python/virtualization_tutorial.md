@@ -1,13 +1,15 @@
 ### tosdb virtualization tutorial 
 ---
 
-This tutorial attempts to show simple example usage of the tosdb virtual layer. Please refer to *\__init__.\__doc__* for an explanation of the virtual layer and the myriad ways to initialize and use it, not show in this tutorial.
+This tutorial attempts to show simple example usage of the tosdb virtual layer. Please refer to *\__init__.\__doc__* for an explanation of the virtual layer and the myriad ways to initialize and use it not show in this tutorial.
 
-The screen shots are of the local/windows side. The code blocks are from the remote/linux side.
+For this tutorial we are using TOS in a Windows virtual machine. We've set up a host-only network adapter and assigned an address of 192.168.56.101 to this guest machine, and 192.168.56.1 to the host(linux) machine. We've also added a firewall rule allowing TCP IN to port 55555 from our host address. The screen shots are of the 'local'/guest/windows side; the code blocks are of the 'remote'/host/linux side. 
 
 ---
 
 ##### Local Interactive Init
+
+From an interactive interpreter we are going to initialize tosdb as normal, followed by a call to enable_virtualization with an address tuple indicating what (local address, port) to bind to. If sucessfull we can, from the remote machine, create a VTOSDB_DataBlock or use admin_init to access the admin calls. When done we delete the block remotely and use admin_close to close the connections. We can use clean_up locally or vclean_up remotely(after admin_close). 
 
 ![](./../res/vtut_loc_1.png)
 
@@ -24,6 +26,8 @@ True
 ```
 
 ##### Remote Interactive Init
+
+Similar to the previous approach except we handle all the initialization remotely after we call enable_virtualization locally(as above). To initialize we first call admin_init(from the remote machine) in order to access vinit which is the same as init. (Remember we are passing the 'local' windows path of the underlying library to vinit.)
 
 ![](./../res/vtut_loc_2.png)
 
@@ -43,7 +47,10 @@ True
 ```
 
 ##### Local Server Init 
-*notice the preceding space in the --virtual-server arg tuple: " 55555"*
+
+This enables virtualization and handles initialization for you, returning an interactive shell that only accepts a quit command to close. From the remote side we can make the necessary calls(as above) or use the --virtual-client switch which will do it for us and drop us into an interactive interpreter.
+
+*notice the preceding space in the --virtual-server arg tuple " 55555" to indicate 'all available interfaces'*
 
 ![](./../res/vtut_loc_3.png)
 
