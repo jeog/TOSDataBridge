@@ -16,8 +16,9 @@
 
 """tosdb.py :  A Front-End / Wrapper for the TOS-DataBridge Library
 
-Please refer to README.md for an explanation of the underlying C library
-and docs/PythonTutorial.html for a(currently out-dated) step-by-step walk-through.
+Please refer to README.md for an explanation of the underlying C library,
+python/tutorial.md for a walk-through of tosdb basics, and 
+python/virtualization_tutorial.md for example usage on non-Windows systems.
 
                               * * * OBJECTS * * *
 
@@ -63,6 +64,8 @@ VInit: version of Init for the virtual layer
 ** both throw TOSDB_InitError 
 
                              * * * INITIALIZATION * * *
+
+* Please refer to python/virtualization_tutorial.md for example usage
 
 --------------------------------------------------------------------------------
           [ local(windows) side ]        |         [ remote side ]
