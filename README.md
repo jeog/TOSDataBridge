@@ -265,6 +265,23 @@ Because the data-engine behind the blocks handles a number of types it's necessa
     
 Make sure you don't simply check a bit with logical AND when what you really want is to check the entire type_bits_type value. In this example checking for the INTGR_BIT will return true for def_size_type AND ext_size_type. **`TOSDB_GetTypeString()`** provides a string of the type for convenience.
 
+> **IMPORTANT:** Because the core library can only run on Windows we make certain type assumptions that are checked in tos_databridge.h; client code should understand and respect these assumptions.
+```
+...
+struct{ 
+  static_assert(sizeof(def_size_type) >= 4,"sizeof(def_size_type) < 4");
+  static_assert(sizeof(ext_size_type) == 8,"sizeof(ext_size_type) != 8");
+  static_assert(sizeof(def_price_type) >= 4,"sizeof(def_price_type) < 4");
+  static_assert(sizeof(ext_price_type) == 8,"sizeof(ext_price_type) != 8");
+  static_assert(sizeof(size_type) == 4,"sizeof(size_type) != 4");
+  static_assert(sizeof(type_bits_type) == 1,"sizeof(type_bits_type) != 1");
+}TypeSizeAsserts_;
+... 
+``` 
+   
+.
+
+
 > **IMPLEMENTATION NOTE:** The client-side library extracts data from the Service (tos-databridge-engine[].exe) through a series of protected kernel objects in the global namespace, namely a read-only shared memory segment and a mutex. The Service receives data messages from the TOS DDE server and immediately locks the mutex, writes them into the shared memory buffer, and unlocks the mutex. At the same time the library loops through its blocks and item-topic pairs looking to see what buffers have been updated, acquiring the mutex, and reading the buffers, if necessary. 
 
 >The speed at which the looping occurs depends on the UpdateLatency enum value set in the library. The lower the value, the less it waits, the faster the updates. **`TOSDB_GetLatency()`** and **`TOSDB_SetLatency()`** are the relevant calls. A value of Fastest(0) allows for the quickest refreshes, but can chew up clock cycles - view the relevant CPU% in process explorer or task manager to see for yourself. The default(Fast, 30) or Moderate(300) should be fine for most users. 
