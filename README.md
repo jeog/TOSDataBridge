@@ -59,70 +59,52 @@ Obviously the core implementation is not portable, but the python interface does
 
 ### Contents
 - - -
-- */VisualStudioBuild* 
-
-    The complete Visual Studio solution with properties, pre-processor options, relative links etc. set, ready to be built.
-
-- */include* 
+- **/include** 
 
     C/C++ header files; your C/C++ code must include the tos-databridge.h header; C++ code needs to make sure that containers.hpp and generic.hpp are in the include path.
 
-- */src* 
+- **/src** 
 
     C/C++ source files; if compiling from source simply open the .sln file inside /VisualStudioBuild, select the configuration/platform, and build.
 
-- */bin* 
+- **/VisualStudioBuild** 
 
-    Compiled binaries by build type. (We don't include debug builds.)
+    The complete Visual Studio solution with properties, pre-processor options, relative links etc. set, ready to be built.
 
-- */python* 
+- **/bin** 
+   
+     (Pre-)Compiled binaries by build type. (No debug builds)
+
+    - ***tos-databridge-serv-[x86|x64].exe*** : The service process that spawns and controls the main engine described below. This program is run as a typical windows service with SYSTEM privileges; as such its intended role is very limited. (For debugging) pass the --noservice arg to run as a pure executable. 
+
+    - ***tos-databridge-engine-[x86|x64].exe*** : The main engine - spawned from tos-databridge-serv.exe - that interacts with the TOS platform and our DLL(below). It runs with a lower(ed) integrity level and reduced privileges. 
+
+    - ***tos-databridge-0.2-[x86|x64].dll*** : The library/interface that client code uses to access TOSDB. Review tos-databridge.h, and the sections below, for all the necessary calls, types, and objects.
+
+    - ***_tos-databridge-shared-[x86|x64].dll*** : A back-end library that provides custom concurrency and IPC objects, as well as the Topic-String mapping. It needs to be in the right path for other modules that are dependent on it. (see below)
+
+    - ***_tos-databridge-static-[x86|x64].lib*** : A statically linked back-end library that provides some basic logging and utility functions shared between the modules.
+
+    - ***tos-databridge-shell-[x86|x64]*** : A crude 'shell' used to interact directly with the library calls; for testing and debugging.
+
+    *(Going forward we'll exclude the build suffix (i.e. -x64 ) for syntactic convenience. We'll replace it with [] in an attempt to avoid confusion. Unless stated explicitly, if sensible, assume that both builds apply.)*
+
+- **/python** 
 
     Files relevant to the python wrapper.
 
-- */sigs* 
+    - **tosdb/** : A python package that serves as a wrapper around *tos-databridge-0.2-[x86|x64].dll*. It provides a more object oriented, simplified means of accessing the core functionality.
+
+    - **tosdb/cli_scripts/** : Python scripts built on top of the python wrapper.
+
+- **/sigs** 
 
     The detached signature for each binary; sha256 checksums for binaries, signatures, and the jeog.dev public key
 
-- */res* 
+- **/res** 
 
     Miscellaneous resources
 
-
-### Modules
-- - -
-- *tos-databridge-serv-[x86|x64].exe*
-
-    The service process that spawns and controls the main engine described below. This program should be run as a typical windows service. In certain cases, debugging for instance, you can pass the --noservice arg to run as a pure executable. This module runs as SYSTEM, with such privileges; as such its intended role is very limited.
-
-- *tos-databridge-engine-[x86|x64].exe*
-
-    The main engine that interacts with the TOS platform. It is spawned from tos-databridge-serv.exe with a lowered integrity level (system-to-high or system-to-medium) and drastically reduced privileges to interact with the TOS platform (as standard user or admin). It is also able to communicate with our shared library(below) running in a normal user context at medium integrity level.
-
-- *tos-databridge-0.2-[x86|x64].dll*
-
-    The main library that client code will use to access TOSDB. It's part light-weight database(s) and part interface. Review tos-databridge.h, and the sections below, for all the necessary calls, types, and objects.
-
-- *_tos-databridge-shared-[x86|x64].dll*
-
-    A back-end library used by the previous two modules. It provides the concurrency and IPC objects used in both modules as well as the Topic-String mapping. It doesn't need to be linked to your code but it needs to be in the right path for other modules that are dependent on it. (see below)
-
-- *_tos-databridge-static-[x86|x64].lib*
-
-    The other back-end library that provides some basic logging and utility functions shared between the modules.
-
-- *tosdb/*
-
-    A python package that serves as a wrapper around *tos-databridge-0.2-[x86|x64].dll*. It provides a more object oriented, simplified means of accessing the core functionality.
-
-- *tosdb/cli_scripts/*
-
-    Python scripts built on top of the python wrapper.
-
-- *tos-databridge-shell-[x86|x64]*  
-
-    A 'shell' used to interact directly with the library calls; for testing and debugging.
-
-*(Going forward we'll exclude the build suffix (i.e. -x64 ) for syntactic convenience. We'll replace it with [] in an attempt to avoid confusion. Unless stated explicitly, if sensible, assume that both builds apply.)*
 
 
 ### Build Notes
