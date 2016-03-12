@@ -130,10 +130,6 @@ Obviously the core implementation is not portable, but the python interface does
 
 - Object code and logs are placed into an intermediate sub-directory of /VisualStudioBuild of form /$(Configuration)/$(Platform). After the object code is linked the binaries are sent to a sub-directory of /bin of form /$(Configuration)/$(Platform) and the symbol files are sent to /symbols/$(Configuration).
 
-- A debug build with VLD_ defined will use virtual leak detector (assuming you've followed the other instructions for using it.).
-
-- Defining SPPRSS_INPT_CHCK will disable most of the internal C-string checks for overflows, NULL terminators etc. (not recommended).
-
 - There are 32 and 64 bit (Win32 and x64) binaries included along with the relevant configurations in the VisualStudio solution. Debug versions have a "_d" suffix to avoid collisions. It's up to the user to choose and use the correct builds for ALL modules. The python library will search for the underlying DLL (-x64 vs. -x86) that matches the build of that version of python.
 
 

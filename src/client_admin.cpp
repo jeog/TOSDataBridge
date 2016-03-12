@@ -911,21 +911,17 @@ const TOSDBlock* GetBlockOrThrow(std::string id)
 
 bool CheckStringLength(LPCSTR str)
 {
-#ifndef SPPRSS_INPT_CHCK_
   if(strnlen_s(str, TOSDB_MAX_STR_SZ+1) == (TOSDB_MAX_STR_SZ+1))
   {
     TOSDB_LogH("User Input", "string length > TOSDB_MAX_STR_SZ");
     return false;
   }
-#endif
+
   return true;
 }
 
 bool CheckStringLength(LPCSTR str, LPCSTR str2)
 {
-#ifdef SPPRSS_INPT_CHCK_
-  return true;
-#endif
   if(!CheckStringLength(str))
     return false;
 
@@ -934,27 +930,25 @@ bool CheckStringLength(LPCSTR str, LPCSTR str2)
 
 bool CheckStringLengths(LPCSTR* str, size_type items_len)
 {
-#ifndef SPPRSS_INPT_CHCK_
   while(items_len--)
     if(strnlen_s(str[items_len], TOSDB_MAX_STR_SZ + 1) == (TOSDB_MAX_STR_SZ+1))
     { 
       TOSDB_LogH("User Input", "string length > TOSDB_MAX_STR_SZ");
       return false;
     }
-#endif
+
   return true;
 }
 
 
 bool CheckIDLength(LPCSTR id)
 {
-#ifndef SPPRSS_INPT_CHCK_
   if(strnlen_s(id, TOSDB_BLOCK_ID_SZ + 1) == (TOSDB_BLOCK_ID_SZ + 1))
   {
     TOSDB_LogH("Strings", "name/id length > TOSDB_BLOCK_ID_SZ");
     return false;
   }
-#endif
+
   return true;
 }
 

@@ -74,28 +74,15 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 #define KGBLNS_
 #endif
 
-/* virtual leak detector */
-#ifdef _DEBUG 
-#ifdef VLD_
-#include <vld.h>
-#endif
-#endif
-
 /* define to use portable sync objects built on std::condition_variable,
   (doesn't work properly in VS2012: throws access violation)    */
 #ifdef CPP_COND_VAR
 #define CPP_COND_VAR_
 #endif
 
-/* define to supress internal strlen checks on input, not recommended */
-#ifdef SPPRSS_INPT_CHCK
-#define SPPRSS_INPT_CHCK_
-#endif
-
 #ifdef __cplusplus
-namespace JO{ 
-  /* forward declaration for generic.hpp */
-class DLL_SPEC_IFACE_ Generic;
+namespace JO{ /* forward declaration for generic.hpp */
+  class DLL_SPEC_IFACE_ Generic;
 };
 
 /* forward declarations for _tos-databridge-shared.dll */
@@ -138,8 +125,8 @@ class DLL_SPEC_IMPL_ DynamicIPCSlave;
 #define TOSDB_SIG_CONTINUE 4
 #define TOSDB_SIG_STOP 5
 #define TOSDB_SIG_DUMP 6
-#define TOSDB_SIG_GOOD 7 // ((int)INT_MAX)
-#define TOSDB_SIG_BAD 8 //((int)(INT_MAX-1))
+#define TOSDB_SIG_GOOD 7 
+#define TOSDB_SIG_BAD 8 
 
 /* the core types implemented by the data engine: engine-core.cpp */
 typedef long       def_size_type; 
@@ -218,7 +205,7 @@ typedef const enum{ /*milliseconds*/
   Fast = 30, 
   Moderate = 300, 
   Slow = 3000, 
-  Glacial = 30000 /* <- for debuging */
+  Glacial = 30000 /* for debuging */
 }UpdateLatency;
 #define TOSDB_DEF_LATENCY Fast
 
@@ -252,16 +239,15 @@ typedef std::chrono::microseconds                micro_sec_type;
 typedef std::chrono::duration<long, std::milli>  milli_sec_type;
 
 /* Generic STL Types returned by the interface(below) */ 
-typedef JO::Generic                                     generic_type;
-typedef std::pair<generic_type,DateTimeStamp>           generic_dts_type; 
-typedef std::vector<generic_type>                       generic_vector_type;
-typedef std::vector<DateTimeStamp>                      dts_vector_type;
-typedef std::pair<generic_vector_type,dts_vector_type>  generic_dts_vectors_type;  
-typedef std::map<std::string, generic_type>             generic_map_type;
-typedef std::map<std::string, generic_map_type>         generic_matrix_type;  
-typedef std::map<std::string, 
-                 std::pair<generic_type,DateTimeStamp>> generic_dts_map_type;
-typedef std::map<std::string,generic_dts_map_type>      generic_dts_matrix_type;
+typedef JO::Generic                                                   generic_type;
+typedef std::pair<generic_type,DateTimeStamp>                         generic_dts_type; 
+typedef std::vector<generic_type>                                     generic_vector_type;
+typedef std::vector<DateTimeStamp>                                    dts_vector_type;
+typedef std::pair<generic_vector_type,dts_vector_type>                generic_dts_vectors_type;  
+typedef std::map<std::string, generic_type>                           generic_map_type;
+typedef std::map<std::string, generic_map_type>                       generic_matrix_type;  
+typedef std::map<std::string, std::pair<generic_type,DateTimeStamp>>  generic_dts_map_type;
+typedef std::map<std::string,generic_dts_map_type>                    generic_dts_matrix_type;
 
 #define TOSDB_BIT_SHIFT_LEFT(T,val) (((T)val)<<((sizeof(T)-sizeof(type_bits_type))*8))
 #define TOSDB_BIT_SHIFT_RIGHT(T,val) (((T)val)>>((sizeof(T)-sizeof(type_bits_type))*8))
@@ -687,7 +673,6 @@ class TOSDB_Error
     : public std::exception {
   unsigned long _threadID, _processID;
   std::string _tag, _info;
-
 public:
   TOSDB_Error(const char* info, const char* tag)
     : 
@@ -715,7 +700,6 @@ public:
       _processID(GetCurrentProcessId())
     {        
     }
-
   virtual ~TOSDB_Error() {}
   inline unsigned long threadID() const { return _threadID; }
   inline unsigned long processID() const { return _processID; }
@@ -727,36 +711,50 @@ class TOSDB_IPC_Error
     : public TOSDB_Error {
 public:
   TOSDB_IPC_Error(const char* info, const char* tag = "IPC")
-    : TOSDB_Error(info, tag) {}
+    : 
+      TOSDB_Error(info, tag) 
+    {
+    }
 };
 
 class TOSDB_BufferError 
     : public TOSDB_IPC_Error {
 public:
   TOSDB_BufferError(const char* info, const char* tag = "DATA-BUFFER")
-    : TOSDB_IPC_Error(info, tag) {}
+    : 
+      TOSDB_IPC_Error(info, tag) 
+    {
+    }
 };
 
 class TOSDB_DDE_Error 
     : public TOSDB_Error {
 public:
   TOSDB_DDE_Error(const char* info, const char* tag = "DDE")
-    : TOSDB_Error(info, tag) {}
-  TOSDB_DDE_Error(const std::exception& e, 
-                  const char* info, 
-                  const char* tag = "DDE")
-    : TOSDB_Error(e, info, tag) {}
+    : 
+      TOSDB_Error(info, tag) 
+    {
+    }
+  TOSDB_DDE_Error(const std::exception& e, const char* info, const char* tag = "DDE")
+    : 
+      TOSDB_Error(e, info, tag) 
+    {
+    }
 };    
 
 class TOSDB_DataBlockError 
     : public TOSDB_Error {
 public:
   TOSDB_DataBlockError(const char* info, const char* tag = "DataBlock")
-    : TOSDB_Error(info, tag) {}
-  TOSDB_DataBlockError(const std::exception& e, 
-                       const char* info, 
-                       const char* tag = "DataBlock") 
-    : TOSDB_Error(e, info, tag) {}
+    : 
+      TOSDB_Error(info, tag) 
+    {
+    }
+  TOSDB_DataBlockError(const std::exception& e, const char* info, const char* tag = "DataBlock") 
+    :  
+      TOSDB_Error(e, info, tag) 
+    {
+    }
 };    
 
 class TOSDB_DataBlockLimitError 
@@ -771,7 +769,6 @@ public:
       limit(limit)
     {
     }
-
   virtual const char* what() const { return TOSDB_DataBlockError::what(); }  
 };            
 
@@ -779,11 +776,15 @@ class TOSDB_DataStreamError
     : public TOSDB_DataBlockError {
 public:
   TOSDB_DataStreamError(const char* info, const char* tag = "DataStream")
-    : TOSDB_DataBlockError(info, tag) {}
-  TOSDB_DataStreamError(const std::exception& e, 
-                        const char* info, 
-                        const char* tag = "DataStream")
-    : TOSDB_DataBlockError(e, info, tag) {}
+    : 
+      TOSDB_DataBlockError(info, tag) 
+    {
+    }
+  TOSDB_DataStreamError(const std::exception& e, const char* info, const char* tag = "DataStream")
+    : 
+      TOSDB_DataBlockError(e, info, tag) 
+    {
+    }
 };
 
 #endif
