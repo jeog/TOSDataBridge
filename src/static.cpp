@@ -22,13 +22,6 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 #include <string>
 #include <algorithm>
 
-LPCSTR TOSDB_APP_NAME     =  "TOS";
-LPCSTR TOSDB_COMM_CHANNEL = "TOSDB_channel_1";
-
-const size_type TOSDB_DEF_TIMEOUT = 2000;
-const size_type TOSDB_MIN_TIMEOUT = 1500;
-const size_type TOSDB_SHEM_BUF_SZ = 4096;
-const size_type TOSDB_BLOCK_ID_SZ = 63;
 
 std::string CreateBufferName(std::string sTopic, std::string sItem)
 { /* 
