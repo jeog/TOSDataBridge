@@ -31,30 +31,19 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 #pragma warning(disable : 4996)
 
 #ifdef __cplusplus
-#define CDCR_ "C"
-#define EXT_SPEC_ extern CDCR_
-#define NO_THROW_ __declspec(nothrow)
-#else /* default == nothing */
-#define CDCR_ 
+#define EXT_SPEC_ extern "C"
+#define NO_THROW_ __declspec(nothrow) 
+#else 
 #define EXT_SPEC_ 
 #define NO_THROW_
 #endif
 
 #if defined(THIS_EXPORTS_INTERFACE)
 #define DLL_SPEC_IFACE_ __declspec (dllexport)
-/*#define TMPL_EXP_(tmpl, prot, body) \
-  tmpl DLL_SPEC_IFACE_ prot ;*/
 #elif defined(THIS_DOESNT_IMPORT_INTERFACE)
 #define DLL_SPEC_IFACE_ 
-//#define TMPL_EXP_
 #else /* default interface directive should be to import */
 #define DLL_SPEC_IFACE_ __declspec (dllimport)
-/*#define TMPL_EXP_(tmpl, prot, body) \
-  tmpl \
-  inline prot \
-  { \
-  body \
-  }  */
 #endif 
 
 #if defined(THIS_EXPORTS_IMPLEMENTATION)
@@ -63,6 +52,11 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 #define DLL_SPEC_IMPL_ __declspec (dllimport)
 #else /* default implementation directive should be nothing */
 #define DLL_SPEC_IMPL_
+#endif
+
+#if defined(THIS_EXPORTS_INTERFACE) || defined(THIS_DOESNT_IMPORT_INTERFACE) || \
+    defined(THIS_EXPORTS_IMPLEMENTATION) || defined(THIS_IMPORTS_IMPLEMENTATION)
+#define BACKEND_ONLY
 #endif
 
 #ifndef _DEBUG
@@ -86,6 +80,8 @@ namespace JO{ /* forward declaration for generic.hpp */
 };
 
 /* forward declarations for _tos-databridge-shared.dll */
+#ifdef BACKEND_ONLY
+
 #ifdef CPP_COND_VAR_
 // class DLL_SPEC_IMPL_ BoundedSemaphore; 
 // class DLL_SPEC_IMPL_ CyclicCountDownLatch;
@@ -94,39 +90,38 @@ class DLL_SPEC_IMPL_ SignalManager
 class DLL_SPEC_IMPL_ LightWeightMutex;
 class DLL_SPEC_IMPL_ WinLockGuard;
 class DLL_SPEC_IMPL_ SignalManager;
-#endif
+#endif  /* CPP_COND_VAR_ */
+
 class DLL_SPEC_IMPL_ ExplicitHeap;
 class DLL_SPEC_IMPL_ DynamicIPCBase;
 class DLL_SPEC_IMPL_ DynamicIPCMaster;
 class DLL_SPEC_IMPL_ DynamicIPCSlave;
-#endif
+
+#endif /* BACKEND_ONLY */
+
+#endif /* __cplusplus */
 
 /* externally: limiting use of Win typedefs to LPCSTR / LPSTR, when possible 
-   internally: WinAPI facing / relevant code will use all  */
+   internally: WinAPI facing / relevant code will use all  
+
+   OK inside __cplusplus - backend only compiles via C++    */
 #include <windows.h> 
 #include <time.h>
 #include <limits.h>
+
 #ifdef __cplusplus
+
 #include <map>
 #include <vector>
 #include <iostream>
 #include <chrono>
 #include <thread>
 #include <memory>
+
 #include "containers.hpp"/*custom client-facing containers */
 #include "generic.hpp"  /* our 'generic' type */
-#endif
 
-/* need to #define; can't define consts in header because of C,
-  can't define at link-time because of switches / arrays */
-#define TOSDB_SIG_ADD 1
-#define TOSDB_SIG_REMOVE 2
-#define TOSDB_SIG_PAUSE 3
-#define TOSDB_SIG_CONTINUE 4
-#define TOSDB_SIG_STOP 5
-#define TOSDB_SIG_DUMP 6
-#define TOSDB_SIG_GOOD 7 
-#define TOSDB_SIG_BAD 8 
+#endif /* __cplusplus */
 
 /* the core types implemented by the data engine: engine-core.cpp */
 typedef long       def_size_type; 
@@ -160,7 +155,7 @@ struct{
   char ASSERT_size_type_is_4bytes[sizeof(size_type) == 4 ? 1 : -1];
   char ASSERT_type_bits_type_is_1byte[sizeof(type_bits_type) == 1 ? 1 : -1];
 }TypeSizeAsserts_;
-#endif
+#endif /* __cplusplus */
 
 #define TOSDB_INTGR_BIT ((type_bits_type)0x80)
 #define TOSDB_QUAD_BIT ((type_bits_type)0x40)
@@ -177,14 +172,60 @@ struct{
 #define TOSDB_BLOCK_ID_SZ  63 
 /* for tosdb/setup.py ! DO NOT REMOVE ! */ 
 
-extern char  DLL_SPEC_IMPL_  TOSDB_LOG_PATH[ MAX_PATH+20 ]; 
-/* consts NOT exported from tos-databridge-[].dll */  
+#ifdef BACKEND_ONLY
+
+#define TOSDB_SIG_ADD 1
+#define TOSDB_SIG_REMOVE 2
+#define TOSDB_SIG_PAUSE 3
+#define TOSDB_SIG_CONTINUE 4
+#define TOSDB_SIG_STOP 5
+#define TOSDB_SIG_DUMP 6
+#define TOSDB_SIG_GOOD 7 
+#define TOSDB_SIG_BAD 8 
+
+#define TOSDB_APP_NAME     "TOS"
+#define TOSDB_COMM_CHANNEL "TOSDB_channel_1"
 
 typedef const enum{ 
   SHEM1 = 0, 
   MUTEX1, 
   PIPE1 
 }Securable;
+
+typedef struct{ /* header that will be placed at the front(offset 0) of the mem mapping 
+                   logical location: beg_offset + ((raw_size - beg_offset) // elem_size)
+                 */
+  volatile unsigned int loop_seq;    /* # of times buffer has looped around */
+  volatile unsigned int elem_size;   /* size of elements in the buffer */
+  volatile unsigned int beg_offset;  /* logical location (after header) */  
+  volatile unsigned int end_offset;  /* logical location (after header) */ 
+  volatile unsigned int next_offset; /* logical location of next write */  
+} BufferHead, *pBufferHead; 
+
+extern char  DLL_SPEC_IMPL_  TOSDB_LOG_PATH[ MAX_PATH+20 ]; 
+
+/* if logging is not enabled high severity events will be sent to std::cerr */ 
+typedef enum{ low = 0, high }Severity;  
+
+/* 'internal' versions, use the MACROS below */
+EXT_SPEC_  DLL_SPEC_IMPL_ void  TOSDB_Log_(DWORD , DWORD, Severity, LPCSTR, LPCSTR); 
+EXT_SPEC_  DLL_SPEC_IMPL_ void  TOSDB_LogEx_(DWORD , DWORD, Severity, LPCSTR, LPCSTR, DWORD); 
+DLL_SPEC_IMPL_            void  TOSDB_Log_Raw_(LPCSTR);
+
+#endif /* BACKEND_ONLY */
+
+/* when building tos-databridge[].dll these calls need to be both imported( from _tosd-databridge-[].dll)
+   and exported (from tos-databridge[].dll)  -  they must use /export:[func name] during link */ 
+EXT_SPEC_  DLL_SPEC_IMPL_ void  TOSDB_StartLogging(LPCSTR fname);
+EXT_SPEC_  DLL_SPEC_IMPL_ void  TOSDB_StopLogging();
+EXT_SPEC_  DLL_SPEC_IMPL_ void  TOSDB_ClearLog();
+
+#define TOSDB_LogH(tag,desc)        TOSDB_Log_(GetCurrentProcessId(), GetCurrentThreadId(), high, tag, desc)
+#define TOSDB_Log(tag,desc)         TOSDB_Log_(GetCurrentProcessId(), GetCurrentThreadId(), low, tag, desc)
+#define TOSDB_LogEx(tag,desc,error) TOSDB_LogEx_(GetCurrentProcessId(), GetCurrentThreadId(), high, tag, desc, error)
+
+EXT_SPEC_ DLL_SPEC_IMPL_ char**  NewStrings(size_t num_strs, size_t strs_len);
+EXT_SPEC_ DLL_SPEC_IMPL_ void    DeleteStrings(char** str_array, size_t num_strs);
 
 typedef const enum{ /*milliseconds*/
   Fastest = 0, 
@@ -198,32 +239,19 @@ typedef const enum{ /*milliseconds*/
 
 typedef struct{
   struct tm  ctime_struct;
-  long     micro_second;
+  long       micro_second;
 } DateTimeStamp, *pDateTimeStamp;
-
-typedef struct{ 
-/* 
- * header that will be placed at the front(offset 0) of the mem mapping 
- * logical location: beg_offset + ((raw_size - beg_offset) // elem_size)
- */
-  volatile unsigned int loop_seq;    /* # of times buffer has looped around */
-  volatile unsigned int elem_size;   /* size of elements in the buffer */
-  volatile unsigned int beg_offset;  /* logical location (after header) */  
-  volatile unsigned int end_offset;  /* logical location (after header) */ 
-  volatile unsigned int next_offset; /* logical location of next write */  
-} BufferHead, *pBufferHead; 
 
 #ifdef __cplusplus
 
 /* for C code: create a string of form: "TOSDB_[topic name]_[item name]"  
    only alpha-numerics */
-std::string CreateBufferName(std::string sTopic, std::string sItem);
-std::string SysTimeString();
+DLL_SPEC_IMPL_ std::string CreateBufferName(std::string sTopic, std::string sItem);
+DLL_SPEC_IMPL_ std::string SysTimeString();
 
 typedef std::chrono::steady_clock                steady_clock_type;
 typedef std::chrono::system_clock                system_clock_type;
 typedef std::chrono::microseconds                micro_sec_type; 
-typedef std::chrono::duration<long, std::milli>  milli_sec_type;
 
 /* Generic STL Types returned by the interface(below) */ 
 typedef JO::Generic                                                   generic_type;
@@ -239,8 +267,18 @@ typedef std::map<std::string,generic_dts_map_type>                    generic_dt
 #define TOSDB_BIT_SHIFT_LEFT(T,val) (((T)val)<<((sizeof(T)-sizeof(type_bits_type))*8))
 #define TOSDB_BIT_SHIFT_RIGHT(T,val) (((T)val)>>((sizeof(T)-sizeof(type_bits_type))*8))
 
+/*
+    The TOPICS enum and utility functions/templates inside the wrapper will end 
+    up being defined in each module but trying to export it from both the backend 
+    and the client-side libs creates all kinds of problems.
+
+    The enum-string mapping is stored in the static TwoWayHashMap 'map' and 
+    is used internally. Client code should use the exported MAP() static function
+    which returns a const reference to 'map'.
+ */
 template<typename T> 
 class Topic_Enum_Wrapper {
+ 
   static_assert(std::is_integral<T>::value && !std::is_same<T,bool>::value, 
                 "Invalid Topic_Enum_Wrapper<T> Type");
 
@@ -251,7 +289,7 @@ class Topic_Enum_Wrapper {
   static const T ADJ_STRING_BIT = TOSDB_BIT_SHIFT_LEFT(T,TOSDB_STRING_BIT);
   static const T ADJ_FULL_MASK  = TOSDB_BIT_SHIFT_LEFT(T,TOSDB_TOPIC_BITMASK);
 
-public:     
+public:
   enum class TOPICS 
       : T { /* 
              * pack type info into HO nibble of scoped Enum
@@ -411,7 +449,7 @@ public:
 
   struct top_less{ 
     bool operator()(const enum_type& left, const enum_type& right){
-      return (map[left] < map[right]);      
+      return (MAP()[left] < MAP()[right]);      
     }
   };
 
@@ -430,15 +468,22 @@ public:
 #endif
 
   typedef typename topic_map_type::pair1_type  topic_map_entry_type;  
-  
-  /* export ref from imported defs */
-  /* note: need to define the ref in each module */
-  static DLL_SPEC_IFACE_ const topic_map_type& map;
 
-private: 
-  /* import defs from _tos-databridge.dll */
-  static DLL_SPEC_IMPL_ const topic_map_type _map; 
+  /* internally we can use map (link w/ _tos-databridge[].dll) */
+#if defined(THIS_IMPORTS_IMPLEMENTATION) || defined(THIS_EXPORTS_IMPLEMENTATION)
+  static DLL_SPEC_IMPL_ const topic_map_type map;
+#endif
+
+  /* externally we use the inline MAP() (link w/ tos-databridge-[].dll) */
+  static DLL_SPEC_IFACE_ const topic_map_type& MAP()
+#if defined(THIS_EXPORTS_INTERFACE) || defined(THIS_DOESNT_IMPORT_INTERFACE)
+  { return map; }
+#else
+  ;
+#endif 
+
 };
+
 
 typedef Topic_Enum_Wrapper<unsigned short>  TOS_Topics;
 typedef ILSet<std::string> str_set_type;
@@ -714,28 +759,7 @@ TOSDB_GetTotalFrame(std::string id)
 template<> DLL_SPEC_IFACE_ generic_matrix_type     TOSDB_GetTotalFrame<false>(std::string id);
 template<> DLL_SPEC_IFACE_ generic_dts_matrix_type TOSDB_GetTotalFrame<true>(std::string id);
 
-#endif 
 
-/* if logging is not enabled high severity events will be sent to std::cerr */ 
-typedef enum{ low = 0, high }Severity;  
-
-/* note: these _tos-databridge-static.lib imports must use /export:[func name] during link */ 
-EXT_SPEC_ DLL_SPEC_IFACE_ void  TOSDB_StartLogging(LPCSTR fname);
-EXT_SPEC_ DLL_SPEC_IFACE_ void  TOSDB_StopLogging();
-EXT_SPEC_ DLL_SPEC_IFACE_ void  TOSDB_ClearLog();
-
-#define TOSDB_LogH(tag,desc)        TOSDB_Log_(GetCurrentProcessId(), GetCurrentThreadId(), high, tag, desc)
-#define TOSDB_Log(tag,desc)         TOSDB_Log_(GetCurrentProcessId(), GetCurrentThreadId(), low, tag, desc)
-#define TOSDB_LogEx(tag,desc,error) TOSDB_LogEx_(GetCurrentProcessId(), GetCurrentThreadId(), high, tag, desc, error)
-
-EXT_SPEC_ DLL_SPEC_IFACE_ void  TOSDB_Log_(DWORD , DWORD, Severity, LPCSTR, LPCSTR); 
-EXT_SPEC_ DLL_SPEC_IFACE_ void  TOSDB_LogEx_(DWORD , DWORD, Severity, LPCSTR, LPCSTR, DWORD); 
-void                            TOSDB_Log_Raw_(LPCSTR);
-
-EXT_SPEC_ DLL_SPEC_IFACE_ char**  AllocStrArray(size_t num_strs, size_t strs_len);
-EXT_SPEC_ DLL_SPEC_IFACE_ void    DeallocStrArray(const char* const* str_array, size_t num_strs);
-
-#ifdef __cplusplus
 DLL_SPEC_IFACE_       std::ostream& operator<<(std::ostream&, const generic_type&); 
 DLL_SPEC_IFACE_       std::ostream& operator<<(std::ostream&, const DateTimeStamp&); 
 DLL_SPEC_IFACE_       std::ostream& operator<<(std::ostream&, const generic_matrix_type&); 

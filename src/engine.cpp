@@ -102,7 +102,6 @@ namespace {
 
 };
 
-const TOS_Topics::topic_map_type& TOS_Topics::map = TOS_Topics::_map;
 
 int WINAPI WinMain(HINSTANCE hInst, 
                    HINSTANCE hPrevInst, 

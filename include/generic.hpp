@@ -24,10 +24,7 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 #include <math.h>
 
 namespace JO {
-/*  
-  this is just a crass hack to allow tosdb_data_stream to overload by 
-  return type, allowing for a simpler generic C++ interface
-*/
+
 class Generic {
   static const int VOID_    = 0;
   static const int LONG_    = 1;
@@ -137,12 +134,10 @@ public:
   inline bool is_long() const { return (_type_val == LONG_); }
   inline bool is_long_long() const { return (_type_val == LONG_LONG_); }  
   inline bool is_string() const { return (_type_val == STRING_); }
-  inline bool is_floating_point() const 
-  { 
+  inline bool is_floating_point() const { 
     return (_type_val == FLOAT_ || _type_val == DOUBLE_); 
   }
-  inline bool is_integer() const    
-  { 
+  inline bool is_integer() const { 
     return (_type_val == LONG_ || _type_val == LONG_LONG_); 
   }
   inline long      as_long() const { return _val_switch<long>(); }
@@ -173,10 +168,10 @@ T Generic::_val_switch() const
     default: throw;
     }
   }catch(...){
-    std::ostringstream msgStrm;
-    msgStrm << "error casting generic to < " << typeid(T).name() << " >";
+    std::ostringstream s;
+    s << "error casting generic to < " << typeid(T).name() << " >";
 #ifndef XPLATFORM_PYTHON_CONSTS_ONLY
-    throw std::bad_cast(msgStrm.str().c_str());
+    throw std::bad_cast(s.str().c_str());
 #else
     throw std::bad_cast();
 #endif

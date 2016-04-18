@@ -23,9 +23,6 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 #include <atomic>
 #include "tos_databridge.h"
 
-#define TOSDB_APP_NAME     "TOS"
-#define TOSDB_COMM_CHANNEL "TOSDB_channel_1"
-
 const system_clock_type  system_clock;
 
 typedef struct{

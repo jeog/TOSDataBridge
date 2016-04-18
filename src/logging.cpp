@@ -18,49 +18,7 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 #include "tos_databridge.h"
 #include <iomanip>
 #include <fstream>
-#include <memory>
 #include <string>
-#include <algorithm>
-
-
-std::string CreateBufferName(std::string sTopic, std::string sItem)
-{ /* 
-   * name of mapping is of form: "TOSDB_[topic name]_[item_name]"  
-   * only alpha-numeric characters (except under-score) 
-   */
-  std::string str("TOSDB_");
-  str.append(sTopic.append("_"+sItem));   
-  str.erase(std::remove_if(str.begin(), str.end(), 
-                           [](char x){ return !isalnum(x) && x != '_'; }), 
-            str.end());
-#ifdef KGBLNS_
-  return std::string("Global\\").append(str);
-#else
-  return str;
-#endif
-}
-
-char** AllocStrArray(size_t num_strs, size_t strs_len)
-{
-  char** mat = new char*[num_strs];
-
-  for(size_t i = 0; i < num_strs; ++i)
-    mat[i] = new char[strs_len + 1];
-
-  return mat;
-}
-
-void DeallocStrArray(const char* const* str_array, size_t num_strs)
-{
-  if(!str_array)
-    return;
-
-  while(num_strs--)  
-    if(str_array[num_strs])
-      delete[] (char*)(str_array[num_strs]);    
-
-  delete[] (char**)str_array;
-}
 
 namespace {
   const system_clock_type  sys_clock;

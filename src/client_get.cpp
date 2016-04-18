@@ -197,8 +197,7 @@ int TOSDB_GetTopicNames(LPCSTR id,
     return -3;  
 
   i = err = 0;
-  for(auto & t : topics)
-  {
+  for(auto & t : topics){
     err = strcpy_s(dest[i++], str_len,TOS_Topics::map[t].c_str());
     if(err)
       return err;     
@@ -230,8 +229,7 @@ int TOSDB_GetItemNames(LPCSTR id,
     return -3;   
  
   i = err = 0;
-  for(auto & item : items)
-  {
+  for(auto & item : items){
     err = strcpy_s(dest[i++], str_len, item.c_str());
     if(err)
       return err;
@@ -457,9 +455,9 @@ size_type TOSDB_GetStreamOccupancy(std::string id,
   try{
     return (size_type)(dat->size());
   }
-  catch(const tosdb_data_stream::error& e)
+  catch(const DataStreamError& e)
   {
-    throw TOSDB_DataStreamError(e, "tosdb_data_stream error caught in "
+    throw TOSDB_DataStreamError(e, "DataStreamError error caught in "
                                    "TOSDB_GetStreamOccupancy()");
   }catch(...){ throw; }
   /* --- CRITICAL SECTION --- */
@@ -508,9 +506,9 @@ long long TOSDB_GetMarkerPosition(std::string id,
   dat = db->block->raw_stream_ptr(sItem, tTopic);   
   try{
     return (dat->marker_position());
-  }catch(const tosdb_data_stream::error& e)
+  }catch(const DataStreamError& e)
   {
-    throw TOSDB_DataStreamError(e, "tosdb_data_stream error caught in "
+    throw TOSDB_DataStreamError(e, "DataStreamError error caught in "
                                    "TOSDB_GetMarkerPosition()");
   }catch(...){ throw; }
   /* --- CRITICAL SECTION --- */
@@ -560,9 +558,9 @@ bool TOSDB_IsMarkerDirty(std::string id,
   try{
     return dat->is_marker_dirty();
   }
-  catch(const tosdb_data_stream::error& e)
+  catch(const DataStreamError& e)
   {
-    throw TOSDB_DataStreamError(e, "tosdb_data_stream error caught in "
+    throw TOSDB_DataStreamError(e, "DataStreamError error caught in "
                                     "TOSDB_IsMarkerDirty()");
   }
   catch(...){ throw; }
@@ -585,9 +583,9 @@ generic_type TOSDB_Get<generic_type, false>(std::string id,
   try{
     return dat->operator[](indx);
   }
-  catch(const tosdb_data_stream::error& e)
+  catch(const DataStreamError& e)
   {
-    throw TOSDB_DataStreamError(e, "tosdb_data_stream error caught in "
+    throw TOSDB_DataStreamError(e, "DataStreamError error caught in "
                                    "TOSDB_Get<generic_type,false>()");
   }
   catch(...){ throw; }
@@ -610,9 +608,9 @@ generic_dts_type TOSDB_Get<generic_type, true>(std::string id,
   try{
     return dat->both(indx);
   }
-  catch(const tosdb_data_stream::error& e)
+  catch(const DataStreamError& e)
   {
-    throw TOSDB_DataStreamError(e, "tosdb_data_stream error caught in "
+    throw TOSDB_DataStreamError(e, "DataStreamError error caught in "
                                    "TOSDB_Get<generic_type,true>()");
   }
   catch(...){ throw; }
@@ -782,9 +780,9 @@ TOSDB_GetStreamSnapshot<generic_type, false>(std::string id,
   try{
     return dat->vector(end, beg); 
   }
-  catch(const tosdb_data_stream::error& e)
+  catch(const DataStreamError& e)
   {
-    throw TOSDB_DataStreamError(e, "tosdb_data_stream error caught in "
+    throw TOSDB_DataStreamError(e, "DataStreamError error caught in "
                                 "TOSDB_GetStreamSnapshot<generic_type,false>()");
   }
   catch(...){ throw; }
@@ -810,8 +808,8 @@ TOSDB_GetStreamSnapshot<generic_type, true>(std::string id,
     return std::pair<std::vector<generic_type>,std::vector<DateTimeStamp>>(
              dat->vector(end, beg), dat->secondary_vector(end,beg));
   }
-  catch(const tosdb_data_stream::error& e){
-    throw TOSDB_DataStreamError(e, "tosdb_data_stream error caught in "
+  catch(const DataStreamError& e){
+    throw TOSDB_DataStreamError(e, "DataStreamError error caught in "
                                 "TOSDB_GetStreamSnapshot<generic_type,true>()");
   }
   catch(...){ throw; }
@@ -884,9 +882,9 @@ auto TOSDB_GetStreamSnapshot(std::string id,
   try{ 
     return GSSRetType<T,b>()(dat, end, beg, (size_t)minDiff);
   }
-  catch(const tosdb_data_stream::error& e)
+  catch(const DataStreamError& e)
   {
-    throw TOSDB_DataStreamError(e, "tosdb_data_stream error caught in "
+    throw TOSDB_DataStreamError(e, "DataStreamError error caught in "
                                    "TOSDB_GetStreamSnapshot<T,b>()");
   }
   catch(...){ throw; } 

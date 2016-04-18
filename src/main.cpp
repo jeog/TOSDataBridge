@@ -17,6 +17,9 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 
 #include "tos_databridge.h"
 #include <fstream>
+#include <memory>
+#include <string>
+#include <algorithm>
 
 char TOSDB_LOG_PATH[MAX_PATH+20];
 
@@ -41,4 +44,44 @@ BOOL WINAPI DllMain(HANDLE mod, DWORD why, LPVOID res)
   default: break;
   }
   return TRUE;
+}
+
+std::string CreateBufferName(std::string sTopic, std::string sItem)
+{ /* 
+   * name of mapping is of form: "TOSDB_[topic name]_[item_name]"  
+   * only alpha-numeric characters (except under-score) 
+   */
+  std::string str("TOSDB_");
+  str.append(sTopic.append("_"+sItem));   
+  str.erase(std::remove_if(str.begin(), str.end(), 
+                           [](char x){ return !isalnum(x) && x != '_'; }), 
+            str.end());
+#ifdef KGBLNS_
+  return std::string("Global\\").append(str);
+#else
+  return str;
+#endif
+}
+
+char** NewStrings(size_t num_strs, size_t strs_len)
+{
+  char** strs = new char*[num_strs];
+
+  for(size_t i = 0; i < num_strs; ++i)
+    strs[i] = new char[strs_len + 1];
+
+  return strs;
+}
+
+void DeleteStrings(char** str_array, size_t num_strs)
+{
+  if(!str_array)
+    return;
+
+  while(num_strs--){  
+    if(str_array[num_strs])
+      delete[] str_array[num_strs];    
+  }
+
+  delete[] str_array;
 }

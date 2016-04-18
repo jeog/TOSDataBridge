@@ -25,4 +25,8 @@
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\src\data_stream.tpp" />
+    <ClInclude Include="..\src\raw_data_block.tpp" />
+  </ItemGroup>
 </Project>

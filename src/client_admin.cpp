@@ -68,11 +68,8 @@ namespace {
     int ret;
     bool ret_stat;  
 
-    if(opcode != TOSDB_SIG_ADD 
-       && opcode != TOSDB_SIG_REMOVE)
-      {
-        return -1;   
-      }     
+    if(opcode != TOSDB_SIG_ADD && opcode != TOSDB_SIG_REMOVE)
+        return -1;              
 
     IPC_TIMED_WAIT(master.grab_pipe() <= 0,
                    "RequestStreamOP timed out trying to grab pipe", -2);    
@@ -83,8 +80,8 @@ namespace {
     DynamicIPCMaster::shem_chunk arg3 = master.insert(&timeout);
 
     master << DynamicIPCMaster::shem_chunk(opcode, 0) 
-           << arg1 << arg2 << arg3 
-           << DynamicIPCMaster::shem_chunk(0,0);    
+           << arg1 << arg2 << arg3 << DynamicIPCMaster::shem_chunk(0,0);    
+
     ret_stat = master.recv(ret); 
     /* don't remove until we get a response ! */
     master.remove(arg1).remove(arg2).remove(arg3);
@@ -183,7 +180,7 @@ namespace {
      */
     long npos;
     long long loop_diff, nelems;
-    unsigned int dlen, dtsz;
+    unsigned int dlen;
     char* spot;
 
     pBufferHead head = (pBufferHead)std::get<3>(buf_info);
@@ -200,6 +197,7 @@ namespace {
 
     /* get the effective size of the buffer */
     dlen = head->end_offset - head->beg_offset; 
+
     /* relative position since last read (begin offset needs to be 0) */  
     npos = head->next_offset - head->beg_offset - std::get<0>(buf_info); 
         
@@ -220,12 +218,10 @@ namespace {
       throw TOSDB_BufferError("numElems < 0");
     }
     else{ /* extract */  
-
       if((unsigned long long)nelems >= (dlen / head->elem_size)) 
         /* make sure we don't insert more than the max elems */
         nelems = dlen / head->elem_size;
-
-      dtsz = sizeof(DateTimeStamp);
+        
       do{/* 
           * go through each elem, last first 
           */
@@ -237,7 +233,8 @@ namespace {
           block->   
           block->
              insert_data(topic, item, CastToVal<T>(spot), 
-                         *(pDateTimeStamp)(spot + ((head->elem_size) - dtsz))); 
+                         *(pDateTimeStamp)
+                         (spot + ((head->elem_size) - sizeof(DateTimeStamp)))); 
         }
       } while(--nelems);
     } 
@@ -262,7 +259,8 @@ namespace {
   {
     TOSDB_RawDataBlock* cln;
 
-    if(cln = (TOSDB_RawDataBlock*)lParam)
+    cln = (TOSDB_RawDataBlock*)lParam;
+    if(cln)
       delete cln;
 
     return 0;
@@ -323,8 +321,6 @@ namespace {
     return 0;
   }
 };
-
-const TOS_Topics::topic_map_type& TOS_Topics::map = TOS_Topics::_map;
 
 BOOL WINAPI DllMain(HANDLE mod, DWORD why, LPVOID res)
 {    

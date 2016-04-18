@@ -93,6 +93,7 @@
       <AdditionalIncludeDirectories>..\include</AdditionalIncludeDirectories>
       <ProgramDataBaseFileName>$(SolutionDir)..\symbols\$(Configuration)\$(TargetName).pdb</ProgramDataBaseFileName>
       <CompileAs>Default</CompileAs>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -110,6 +111,7 @@
       <AdditionalIncludeDirectories>..\include</AdditionalIncludeDirectories>
       <ProgramDataBaseFileName>$(SolutionDir)..\symbols\$(Configuration)\$(TargetName).pdb</ProgramDataBaseFileName>
       <CompileAs>Default</CompileAs>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -129,6 +131,7 @@
       <AdditionalIncludeDirectories>..\include</AdditionalIncludeDirectories>
       <ProgramDataBaseFileName>$(SolutionDir)..\symbols\$(Configuration)\$(TargetName).pdb</ProgramDataBaseFileName>
       <CompileAs>Default</CompileAs>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -150,6 +153,7 @@
       <AdditionalIncludeDirectories>..\include</AdditionalIncludeDirectories>
       <ProgramDataBaseFileName>$(SolutionDir)..\symbols\$(Configuration)\$(TargetName).pdb</ProgramDataBaseFileName>
       <CompileAs>Default</CompileAs>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>

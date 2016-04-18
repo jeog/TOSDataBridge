@@ -19,7 +19,8 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 #define JO_TOSDB_CLIENT
 
 #include "tos_databridge.h"
-#include  <mutex>
+#include <mutex>
+#include <chrono>
 
 typedef std::lock_guard<std::recursive_mutex> our_rlock_guard_type;
 extern std::recursive_mutex global_rmutex;
@@ -28,6 +29,8 @@ extern std::recursive_mutex global_rmutex;
 
 template<typename T,typename T2> class RawDataBlock; 
 typedef RawDataBlock< generic_type, DateTimeStamp> TOSDB_RawDataBlock;
+
+typedef std::chrono::duration<long, std::milli>  milli_sec_type;
 
 typedef struct {
   TOSDB_RawDataBlock* block;
