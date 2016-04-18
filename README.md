@@ -1,4 +1,4 @@
-## TOSDataBridge v0.2 
+## TOSDataBridge v0.3 
 - - -
 TOSDataBridge (TOSDB) is an open-source collection of resources for 'scraping' real-time streaming data off of TDAmeritrade's ThinkOrSwim(TOS) platform, providing C, C++, and Python interfaces. Users of the TOS platform - with some basic programming/scripting knowledge - can use these tools to populate their own databases with market data; analyze large data-sets in real-time; test and debug other financial apps; or even build extensions on top of it.
 
@@ -48,7 +48,7 @@ Obviously the core implementation is not portable, but the python interface does
 ##### For C/C++:
 - Include tos_databridge.h header in your code (if C++ make sure containers.hpp and generic.hpp can be found by the compiler)
 - Use the library calls detailed in the **C/C++ Interface...** sections below
-- Link with *tos-databridge-0.2-[x86|x64].dll*
+- Link with *tos-databridge-0.3-[x86|x64].dll*
 - Build
 - Run
 
@@ -79,7 +79,7 @@ Obviously the core implementation is not portable, but the python interface does
 
     - ***tos-databridge-engine-[x86|x64].exe*** : The main engine - spawned from tos-databridge-serv.exe - that interacts with the TOS platform and our DLL(below). It runs with a lower(ed) integrity level and reduced privileges. 
 
-    - ***tos-databridge-0.2-[x86|x64].dll*** : The library/interface that client code uses to access TOSDB. Review tos-databridge.h, and the sections below, for all the necessary calls, types, and objects.
+    - ***tos-databridge-0.3-[x86|x64].dll*** : The library/interface that client code uses to access TOSDB. Review tos-databridge.h, and the sections below, for all the necessary calls, types, and objects.
 
     - ***_tos-databridge-shared-[x86|x64].dll*** : A back-end library that provides custom concurrency and IPC objects, as well as the Topic-String mapping. It needs to be in the right path for other modules that are dependent on it. (see below)
 
@@ -93,7 +93,7 @@ Obviously the core implementation is not portable, but the python interface does
 
     Files relevant to the python wrapper.
 
-    - **tosdb/** : A python package that serves as a wrapper around *tos-databridge-0.2-[x86|x64].dll*. It provides a more object oriented, simplified means of accessing the core functionality.
+    - **tosdb/** : A python package that serves as a wrapper around *tos-databridge-0.-[x86|x64].dll*. It provides a more object oriented, simplified means of accessing the core functionality.
 
     - **tosdb/cli_scripts/** : Python scripts built on top of the python wrapper.
 
