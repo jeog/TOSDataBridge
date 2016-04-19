@@ -311,7 +311,7 @@ DATASTREAM_PRIMARY_CLASS::copy_from_marker(Ty* dest,
         return 0;
 
     /* CAREFUL: we cant have a negative *_mark_count past this point */
-    copy_sz = (long long)(this->copy(dest, sz, *(this->_mark_count), beg, sec));          
+    copy_sz = (long long)(this->copy(dest, sz, (int)(*(this->_mark_count)), beg, sec));          
 
     if(was_dirty || copy_sz < req_sz)
         /* 
@@ -355,7 +355,7 @@ DATASTREAM_PRIMARY_CLASS::copy_from_marker(char** dest,
         return 0;
 
     /* CAREFUL: we cant have a negative *_mark_count past this point */
-    copy_sz = (long long)(this->copy(dest, dest_sz, str_sz, *(this->_mark_count), beg, sec));          
+    copy_sz = (long long)(this->copy(dest, dest_sz, str_sz, (int)(*(this->_mark_count)), beg, sec));          
 
     if(was_dirty || copy_sz < req_sz)
        /*

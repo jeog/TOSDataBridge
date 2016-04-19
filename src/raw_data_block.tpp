@@ -53,8 +53,11 @@ typename RAW_DATA_BLOCK_CLASS::_my_row_ty*
 RAW_DATA_BLOCK_CLASS::_insert_topic(typename RAW_DATA_BLOCK_CLASS::_my_row_ty* row, 
                                    TOS_Topics::TOPICS topic)
 {    
-  _my_stream_ty *stream;
+  _my_stream_ty *stream; /*
+  stream = new DataStream< TOS_Topics::Type<topic>::type, 
+                           datetime_type, generic_type, this->_datetime >(_block_sz);
 
+  */
   switch(TOS_Topics::TypeBits(topic)){ 
   case TOSDB_STRING_BIT :
     stream = this->_datetime 
@@ -85,7 +88,7 @@ RAW_DATA_BLOCK_CLASS::_insert_topic(typename RAW_DATA_BLOCK_CLASS::_my_row_ty* r
     row->erase(topic);
     row->insert(_my_row_elem_ty(topic,_my_stream_uptr_ty(stream)));
   }catch(...){
-    TOSDB_LogH("DataBlock","_insert_topic(): Problem inserting t-block");
+    TOSDB_LogH("RawDataBlock","problem inserting t-block");
     if(stream)
         delete stream;
   }
@@ -137,8 +140,8 @@ RAW_DATA_BLOCK_CLASS::block_size(size_type b)
 {
     _my_lock_guard_type lock(*_mtx);
     /* --- CRITICAL SECTION --- */
-    if(b > INT_MAX)
-        b = INT_MAX; 
+    if(b > TOSDB_MAX_BLOCK_SZ)
+        b = TOSDB_MAX_BLOCK_SZ; 
 
     for(auto& col : this->_block){
         for(auto& row : *(col.second))
@@ -160,31 +163,33 @@ RAW_DATA_BLOCK_CLASS::insert_data(TOS_Topics::TOPICS topic,
 {
     _my_stream_ty *stream; 
     _my_row_ty  *topics; 
-    try{    
-        _my_lock_guard_type lock(*_mtx);  
-        /* --- CRITICAL SECTION --- */
-        topics = this->_block.at(item).get(); 
+        
+    _my_lock_guard_type lock(*_mtx);  
+    /* --- CRITICAL SECTION --- */
+    try{
+        topics = this->_block.at(item).get();
         if (!topics)
-            throw TOSDB_DataBlockError("item not in block");   
+            throw std::out_of_range("item not in block");
+    }catch(const std::out_of_range& e){    
+        TOSDB_LogH("RawDataBlock", e.what());
+        throw TOSDB_DataBlockError(e.what()); 
+    }
 
+    try{
         stream = (topics->at(topic)).get();
         if (!stream) 
-            throw TOSDB_DataBlockError("topic not in block");  
-      
+            throw std::out_of_range("topic not in block");
+    }catch(const std::out_of_range& e){    
+        TOSDB_LogH("RawDataBlock", e.what());
+        throw TOSDB_DataBlockError(e.what()); 
+    } 
+          
+    try{      
         stream->push(val, std::move(datetime)); 
-        /* --- CRITICAL SECTION --- */
-    }catch(const std::out_of_range&){    
-        TOSDB_LogH("DataBlock"," data rejected from block ");
-        throw;
-    }catch(const TOSDB_Error&){  
-        throw;
     }catch(const DataStreamError& e){    
         throw TOSDB_DataStreamError(e, "insert_data");
-    }catch(const std::exception & e){    
-        throw TOSDB_DataBlockError(e, "insert_data");
-    }catch(...){    
-        throw TOSDB_DataBlockError("unknown error inserting data");
-  }
+    }
+    /* --- CRITICAL SECTION --- */
 }
 
 RAW_DATA_BLOCK_TEMPLATE
@@ -229,7 +234,7 @@ RAW_DATA_BLOCK_CLASS::remove_item(std::string item)
                    
         /* --- CRITICAL SECTION --- */
     }catch(const std::out_of_range& e){
-        TOSDB_LogH("DataBlock", "remove_item out_of_range exception");
+        TOSDB_LogH("RawDataBlock", "remove_item out_of_range exception");
         throw TOSDB_DataBlockError(e, "remove_item out_of_range");  
     }catch(const std::exception & e){
         throw TOSDB_DataBlockError(e, "remove_item");
@@ -273,7 +278,7 @@ RAW_DATA_BLOCK_CLASS::remove_topic(TOS_Topics::TOPICS topic)
         }           
         /* --- CRITICAL SECTION --- */
     }catch(const std::out_of_range& e){
-        TOSDB_LogH("DataBlock", "remove_topic out_of_range exception");
+        TOSDB_LogH("RawDataBlock", "remove_topic out_of_range exception");
         throw TOSDB_DataBlockError(e, "remove_topic out_of_range");
     }catch(const std::exception & e){
         throw TOSDB_DataBlockError(e, "remove_topic");    
@@ -294,7 +299,7 @@ RAW_DATA_BLOCK_CLASS::raw_stream_ptr(std::string item,
             stream = (row->at(topic)).get();
         /* --- CRITICAL SECTION --- */
     }catch(const std::out_of_range& e){
-        TOSDB_LogH("DataBlock", "raw_stream_ptr out_of_range exception");
+        TOSDB_LogH("RawDataBlock", "raw_stream_ptr out_of_range exception");
         throw TOSDB_DataBlockError(e, "raw_stream_ptr out_of_range");
     }catch(const std::exception & e){
         throw TOSDB_DataBlockError(e, "raw_stream_ptr");
@@ -324,7 +329,7 @@ RAW_DATA_BLOCK_CLASS::map_of_frame_topics(std::string item) const
         }        
         /* --- CRITICAL SECTION --- */
     }catch(const std::out_of_range& e){
-        TOSDB_LogH("DataBlock", "map_of_frame_topics out_of_range exception");
+        TOSDB_LogH("RawDataBlock", "map_of_frame_topics out_of_range exception");
         throw TOSDB_DataBlockError(e, "map_of_frame_topics out_of_range");
     }catch(const DataStreamError& e){
         throw TOSDB_DataStreamError(e, "map_of_frame_topics");
@@ -349,7 +354,7 @@ RAW_DATA_BLOCK_CLASS::map_of_frame_items(TOS_Topics::TOPICS topic) const
         }
         /* --- CRITICAL SECTION --- */
     }catch(const std::out_of_range& e){
-        TOSDB_LogH("DataBlock", "map_of_frame_items out_of_range exception");
+        TOSDB_LogH("RawDataBlock", "map_of_frame_items out_of_range exception");
         throw TOSDB_DataBlockError(e, "map_of_frame_items out_of_range");
     }catch(const DataStreamError& e){
         throw TOSDB_DataStreamError(e, "map_of_frame_items");
@@ -379,7 +384,7 @@ RAW_DATA_BLOCK_CLASS::pair_map_of_frame_topics(std::string item) const
         }        
         /* --- CRITICAL SECTION --- */
     }catch(const std::out_of_range& e){
-        TOSDB_LogH("DataBlock", "pair_map_of_frame_topics out_of_range exception");
+        TOSDB_LogH("RawDataBlock", "pair_map_of_frame_topics out_of_range exception");
         throw TOSDB_DataBlockError(e, "pair_map_of_frame_topics out_of_range");
     }catch(const DataStreamError& e){
         throw TOSDB_DataStreamError(e, "pair_map_of_frame_topics");
@@ -405,7 +410,7 @@ RAW_DATA_BLOCK_CLASS::pair_map_of_frame_items(TOS_Topics::TOPICS topic) const
         }
         /* --- CRITICAL SECTION --- */
     }catch(const std::out_of_range& e){
-        TOSDB_LogH("DataBlock", "pair_map_of_frame_items out_of_range exception");
+        TOSDB_LogH("RawDataBlock", "pair_map_of_frame_items out_of_range exception");
         throw TOSDB_DataBlockError(e, "pair_map_of_frame_items out_of_range");
     }catch(const DataStreamError& e){
         throw TOSDB_DataStreamError(e, "pair_map_of_frame_items");

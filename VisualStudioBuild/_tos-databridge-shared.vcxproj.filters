@@ -59,5 +59,8 @@
     <ClInclude Include="..\include\tos_databridge.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\include\exceptions.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

@@ -29,6 +29,8 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 #pragma warning(disable : 4503)
 /* chkd iterator warning: we check internally */
 #pragma warning(disable : 4996)
+/* BOOL to bool warn */
+#pragma warning(disable : 4800)
 
 #ifdef __cplusplus
 #define EXT_SPEC_ extern "C"
@@ -38,74 +40,29 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 #define NO_THROW_
 #endif
 
+/* the following manages what is imported/exported from various modules, 
+   check the preprocessor options for each module to see what is defined*/
+
 #if defined(THIS_EXPORTS_INTERFACE)
 #define DLL_SPEC_IFACE_ __declspec (dllexport)
 #elif defined(THIS_DOESNT_IMPORT_INTERFACE)
 #define DLL_SPEC_IFACE_ 
-#else /* default interface directive should be to import */
-#define DLL_SPEC_IFACE_ __declspec (dllimport)
-#endif 
+#else 
+#define DLL_SPEC_IFACE_ __declspec (dllimport) /* default == import */
+#endif /* INTERFACE */
 
 #if defined(THIS_EXPORTS_IMPLEMENTATION)
 #define DLL_SPEC_IMPL_ __declspec (dllexport)
 #elif defined(THIS_IMPORTS_IMPLEMENTATION)
 #define DLL_SPEC_IMPL_ __declspec (dllimport)
-#else /* default implementation directive should be nothing */
-#define DLL_SPEC_IMPL_
-#endif
+#else 
+#define DLL_SPEC_IMPL_ /* default == nothing */
+#endif /* IMPLEMENTATION */
 
-#if defined(THIS_EXPORTS_INTERFACE) || defined(THIS_DOESNT_IMPORT_INTERFACE) || \
-    defined(THIS_EXPORTS_IMPLEMENTATION) || defined(THIS_IMPORTS_IMPLEMENTATION)
-#define BACKEND_ONLY
-#endif
 
-#ifndef _DEBUG
-#define KERNEL_GLOBAL_NAMESPACE
-#endif
-
-/* if we need to prefix our inter-Session kernel objects with 'Global\' */
-#ifdef KERNEL_GLOBAL_NAMESPACE
-#define KGBLNS_
-#endif
-
-/* define to use portable sync objects built on std::condition_variable,
-  (doesn't work properly in VS2012: throws access violation)    */
-#ifdef CPP_COND_VAR
-#define CPP_COND_VAR_
-#endif
-
-#ifdef __cplusplus
-namespace JO{ /* forward declaration for generic.hpp */
-  class DLL_SPEC_IFACE_ Generic;
-};
-
-/* forward declarations for _tos-databridge-shared.dll */
-#ifdef BACKEND_ONLY
-
-#ifdef CPP_COND_VAR_
-// class DLL_SPEC_IMPL_ BoundedSemaphore; 
-// class DLL_SPEC_IMPL_ CyclicCountDownLatch;
-class DLL_SPEC_IMPL_ SignalManager
-#else
-class DLL_SPEC_IMPL_ LightWeightMutex;
-class DLL_SPEC_IMPL_ WinLockGuard;
-class DLL_SPEC_IMPL_ SignalManager;
-#endif  /* CPP_COND_VAR_ */
-
-class DLL_SPEC_IMPL_ ExplicitHeap;
-class DLL_SPEC_IMPL_ DynamicIPCBase;
-class DLL_SPEC_IMPL_ DynamicIPCMaster;
-class DLL_SPEC_IMPL_ DynamicIPCSlave;
-
-#endif /* BACKEND_ONLY */
-
-#endif /* __cplusplus */
-
-/* externally: limiting use of Win typedefs to LPCSTR / LPSTR, when possible 
-   internally: WinAPI facing / relevant code will use all  
-
-   OK inside __cplusplus - backend only compiles via C++    */
-#include <windows.h> 
+#include <windows.h> /* C API uses Window's string typedefs:
+                          typedef const char* LPCSTR
+                          typedef char*       LPSTR          */
 #include <time.h>
 #include <limits.h>
 
@@ -120,59 +77,92 @@ class DLL_SPEC_IMPL_ DynamicIPCSlave;
 
 #include "containers.hpp"/*custom client-facing containers */
 #include "generic.hpp"  /* our 'generic' type */
+#include "exceptions.hpp" /* our global exceptions */
 
 #endif /* __cplusplus */
+
+/* if we need to prefix our inter-Session kernel objects with 'Global\' */
+#if defined(KERNEL_GLOBAL_NAMESPACE) || defined(_DEBUG)
+#define KGBLNS_
+#endif
 
 /* the core types implemented by the data engine: engine-core.cpp */
 typedef long       def_size_type; 
 typedef long long  ext_size_type;
 typedef float      def_price_type;
 typedef double     ext_price_type;
- 
+
 /* guarantees for the Python wrapper 
  * we probably want uint_32 for size_type, uint_8 for type_bits_type 
- * not a problem if we only compile on Windows(sizeof(long) == 4) */
+ * not a problem since sizeof(long) == 4 on Windows */
 typedef unsigned long size_type;
 typedef unsigned char type_bits_type;
 
-#ifdef __cplusplus 
-namespace{ /* sanity checks for the build */
-struct{ 
-  static_assert(sizeof(def_size_type) >= 4,"sizeof(def_size_type) < 4");
-  static_assert(sizeof(ext_size_type) == 8,"sizeof(ext_size_type) != 8");
-  static_assert(sizeof(def_price_type) >= 4,"sizeof(def_price_type) < 4");
-  static_assert(sizeof(ext_price_type) == 8,"sizeof(ext_price_type) != 8");
-  static_assert(sizeof(size_type) == 4,"sizeof(size_type) != 4");
-  static_assert(sizeof(type_bits_type) == 1,"sizeof(type_bits_type) != 1");
-}TypeSizeAsserts_;
-};
-#else /* a cruder version for C */
-struct{ 
+struct TypeSizeAsserts_{ 
+  /* sanity checks */
   char ASSERT_def_size_type_atleast_4bytes[sizeof(def_size_type) >= 4 ? 1 : -1];
   char ASSERT_ext_size_type_is_8bytes[sizeof(ext_size_type) == 8 ? 1 : -1];
   char ASSERT_def_price_type_atleast_4bytes[sizeof(def_price_type) >= 4 ? 1 : -1];
   char ASSERT_ext_price_type_is_8bytes[sizeof(ext_price_type) == 8 ? 1 : -1];
   char ASSERT_size_type_is_4bytes[sizeof(size_type) == 4 ? 1 : -1];
   char ASSERT_type_bits_type_is_1byte[sizeof(type_bits_type) == 1 ? 1 : -1];
-}TypeSizeAsserts_;
-#endif /* __cplusplus */
+  /* sanity checks */
+};
 
+typedef const enum{ /*milliseconds*/
+  Fastest = 0, 
+  VeryFast = 3, 
+  Fast = 30, 
+  Moderate = 300, 
+  Slow = 3000, 
+  Glacial = 30000 /* <-- DEBUG ONLY */
+}UpdateLatency;
+
+typedef struct{
+  struct tm  ctime_struct;
+  long       micro_second;
+} DateTimeStamp, *pDateTimeStamp;
+
+
+/* for tosdb/setup.py ! DO NOT REMOVE ! */
 #define TOSDB_INTGR_BIT ((type_bits_type)0x80)
 #define TOSDB_QUAD_BIT ((type_bits_type)0x40)
 #define TOSDB_STRING_BIT ((type_bits_type)0x20)
 #define TOSDB_TOPIC_BITMASK ((type_bits_type)0xE0)
-
 #define TOSDB_STR_DATA_SZ ((size_type)40)
 #define TOSDB_MAX_STR_SZ ((size_type)0xFF)
-
-/* for tosdb/setup.py ! DO NOT REMOVE ! */
 #define TOSDB_DEF_TIMEOUT  2000
 #define TOSDB_MIN_TIMEOUT  1500
 #define TOSDB_SHEM_BUF_SZ  4096
 #define TOSDB_BLOCK_ID_SZ  63 
+#define TOSDB_MAX_BLOCK_SZ INT_MAX 
+#define TOSDB_DEF_LATENCY Fast
 /* for tosdb/setup.py ! DO NOT REMOVE ! */ 
 
-#ifdef BACKEND_ONLY
+
+/* following block will only be declared for our 'back-end';
+   to access you should define 'THIS_IMPORTS_IMPLEMENTATION'  */
+#if defined(THIS_EXPORTS_IMPLEMENTATION) || defined(THIS_IMPORTS_IMPLEMENTATION)
+
+/* forward declarations for _tos-databridge-shared.dll */
+
+/* CONCURRENCY - concurrency.cpp / concurrency.hpp 
+
+   define CPP_COND_VAR to use portable sync objects built on std::condition_variable,
+  (doesn't work properly in VS2012: throws access violation)    */
+#ifdef CPP_COND_VAR
+class DLL_SPEC_IMPL_ SignalManager
+#else
+class DLL_SPEC_IMPL_ LightWeightMutex;
+class DLL_SPEC_IMPL_ WinLockGuard;
+class DLL_SPEC_IMPL_ SignalManager;
+#endif  /* CPP_COND_VAR */
+
+/* IPC - dynamic_ipc.cpp / dynamic_ipc.hpp */
+class DLL_SPEC_IMPL_ ExplicitHeap;
+class DLL_SPEC_IMPL_ DynamicIPCBase;
+class DLL_SPEC_IMPL_ DynamicIPCMaster;
+class DLL_SPEC_IMPL_ DynamicIPCSlave;
 
 #define TOSDB_SIG_ADD 1
 #define TOSDB_SIG_REMOVE 2
@@ -192,9 +182,11 @@ typedef const enum{
   PIPE1 
 }Securable;
 
-typedef struct{ /* header that will be placed at the front(offset 0) of the mem mapping 
-                   logical location: beg_offset + ((raw_size - beg_offset) // elem_size)
-                 */
+typedef struct{ 
+  /* 
+     header that will be placed at the front(offset 0) of the mem mapping 
+     logical location: beg_offset + ((raw_size - beg_offset) // elem_size) 
+   */
   volatile unsigned int loop_seq;    /* # of times buffer has looped around */
   volatile unsigned int elem_size;   /* size of elements in the buffer */
   volatile unsigned int beg_offset;  /* logical location (after header) */  
@@ -202,71 +194,35 @@ typedef struct{ /* header that will be placed at the front(offset 0) of the mem 
   volatile unsigned int next_offset; /* logical location of next write */  
 } BufferHead, *pBufferHead; 
 
-extern char  DLL_SPEC_IMPL_  TOSDB_LOG_PATH[ MAX_PATH+20 ]; 
+#endif /* THIS_EXPORTS_IMPLEMENTATION || THIS_IMPORTS_IMPLEMENTATION */
 
-/* if logging is not enabled high severity events will be sent to std::cerr */ 
-typedef enum{ low = 0, high }Severity;  
-
-/* 'internal' versions, use the MACROS below */
-EXT_SPEC_  DLL_SPEC_IMPL_ void  TOSDB_Log_(DWORD , DWORD, Severity, LPCSTR, LPCSTR); 
-EXT_SPEC_  DLL_SPEC_IMPL_ void  TOSDB_LogEx_(DWORD , DWORD, Severity, LPCSTR, LPCSTR, DWORD); 
-DLL_SPEC_IMPL_            void  TOSDB_Log_Raw_(LPCSTR);
-
-#endif /* BACKEND_ONLY */
-
-/* when building tos-databridge[].dll these calls need to be both imported( from _tosd-databridge-[].dll)
-   and exported (from tos-databridge[].dll)  -  they must use /export:[func name] during link */ 
-EXT_SPEC_  DLL_SPEC_IMPL_ void  TOSDB_StartLogging(LPCSTR fname);
-EXT_SPEC_  DLL_SPEC_IMPL_ void  TOSDB_StopLogging();
-EXT_SPEC_  DLL_SPEC_IMPL_ void  TOSDB_ClearLog();
-
-#define TOSDB_LogH(tag,desc)        TOSDB_Log_(GetCurrentProcessId(), GetCurrentThreadId(), high, tag, desc)
-#define TOSDB_Log(tag,desc)         TOSDB_Log_(GetCurrentProcessId(), GetCurrentThreadId(), low, tag, desc)
-#define TOSDB_LogEx(tag,desc,error) TOSDB_LogEx_(GetCurrentProcessId(), GetCurrentThreadId(), high, tag, desc, error)
-
-EXT_SPEC_ DLL_SPEC_IMPL_ char**  NewStrings(size_t num_strs, size_t strs_len);
-EXT_SPEC_ DLL_SPEC_IMPL_ void    DeleteStrings(char** str_array, size_t num_strs);
-
-typedef const enum{ /*milliseconds*/
-  Fastest = 0, 
-  VeryFast = 3, 
-  Fast = 30, 
-  Moderate = 300, 
-  Slow = 3000, 
-  Glacial = 30000 /* for debuging */
-}UpdateLatency;
-#define TOSDB_DEF_LATENCY Fast
-
-typedef struct{
-  struct tm  ctime_struct;
-  long       micro_second;
-} DateTimeStamp, *pDateTimeStamp;
 
 #ifdef __cplusplus
-
-/* for C code: create a string of form: "TOSDB_[topic name]_[item name]"  
-   only alpha-numerics */
-DLL_SPEC_IMPL_ std::string CreateBufferName(std::string sTopic, std::string sItem);
-DLL_SPEC_IMPL_ std::string SysTimeString();
 
 typedef std::chrono::steady_clock                steady_clock_type;
 typedef std::chrono::system_clock                system_clock_type;
 typedef std::chrono::microseconds                micro_sec_type; 
 
+namespace JO{ /* forward declaration for generic.hpp */
+  class DLL_SPEC_IFACE_ Generic;
+};
+
 /* Generic STL Types returned by the interface(below) */ 
-typedef JO::Generic                                                   generic_type;
-typedef std::pair<generic_type,DateTimeStamp>                         generic_dts_type; 
-typedef std::vector<generic_type>                                     generic_vector_type;
-typedef std::vector<DateTimeStamp>                                    dts_vector_type;
-typedef std::pair<generic_vector_type,dts_vector_type>                generic_dts_vectors_type;  
-typedef std::map<std::string, generic_type>                           generic_map_type;
-typedef std::map<std::string, generic_map_type>                       generic_matrix_type;  
-typedef std::map<std::string, std::pair<generic_type,DateTimeStamp>>  generic_dts_map_type;
-typedef std::map<std::string,generic_dts_map_type>                    generic_dts_matrix_type;
+typedef JO::Generic                                       generic_type;
+typedef std::pair<generic_type,DateTimeStamp>             generic_dts_type; 
+typedef std::vector<generic_type>                         generic_vector_type;
+typedef std::vector<DateTimeStamp>                        dts_vector_type;
+typedef std::pair<generic_vector_type,dts_vector_type>    generic_dts_vectors_type;  
+typedef std::map<std::string, generic_type>               generic_map_type;
+typedef std::map<std::string, generic_map_type>           generic_matrix_type;  
+typedef std::map<std::string, generic_dts_type>           generic_dts_map_type;
+typedef std::map<std::string, generic_dts_map_type>       generic_dts_matrix_type;
 
 #define TOSDB_BIT_SHIFT_LEFT(T,val) (((T)val)<<((sizeof(T)-sizeof(type_bits_type))*8))
 #define TOSDB_BIT_SHIFT_RIGHT(T,val) (((T)val)>>((sizeof(T)-sizeof(type_bits_type))*8))
 
+template<typename T> 
+class Topic_Enum_Wrapper {
 /*
     The TOPICS enum and utility functions/templates inside the wrapper will end 
     up being defined in each module but trying to export it from both the backend 
@@ -275,14 +231,13 @@ typedef std::map<std::string,generic_dts_map_type>                    generic_dt
     The enum-string mapping is stored in the static TwoWayHashMap 'map' and 
     is used internally. Client code should use the exported MAP() static function
     which returns a const reference to 'map'.
- */
-template<typename T> 
-class Topic_Enum_Wrapper {
- 
+ */ 
   static_assert(std::is_integral<T>::value && !std::is_same<T,bool>::value, 
                 "Invalid Topic_Enum_Wrapper<T> Type");
 
-  Topic_Enum_Wrapper() {}  
+  Topic_Enum_Wrapper() 
+    {
+    }  
 
   static const T ADJ_INTGR_BIT  = TOSDB_BIT_SHIFT_LEFT(T,TOSDB_INTGR_BIT);
   static const T ADJ_QUAD_BIT   = TOSDB_BIT_SHIFT_LEFT(T,TOSDB_QUAD_BIT);
@@ -401,169 +356,303 @@ public:
   typedef typename Topic_Enum_Wrapper<T>::TOPICS enum_type;
 
   template<enum_type topic>
-  struct Type{ /* type at compile-time  */
-    typedef typename std::conditional<
-      ((T)topic & ADJ_STRING_BIT), std::string, 
-      typename std::conditional<
-        (T)topic & ADJ_INTGR_BIT,           
-        typename std::conditional<
-          (T)topic & ADJ_QUAD_BIT, ext_size_type, def_size_type>::type,
-        typename std::conditional<
-          (T)topic & ADJ_QUAD_BIT, 
-          ext_price_type,  
-          def_price_type>::type>::type>::type  type;
+  struct Type{ /* type at compile-time */
+      /* e.g TOS_Topics::Type<TOS_Topics::LAST>::type == ext_price_type */
+      typedef typename std::conditional<
+          ((T)topic & ADJ_STRING_BIT), std::string, 
+          typename std::conditional<
+              (T)topic & ADJ_INTGR_BIT,           
+              typename std::conditional<
+                 (T)topic & ADJ_QUAD_BIT, ext_size_type, def_size_type>::type,
+                 typename std::conditional<
+                      (T)topic & ADJ_QUAD_BIT, 
+                      ext_price_type, def_price_type>::type>::type>::type  type;
   };
   
-  static type_bits_type TypeBits(enum_type tTopic)
-  { /* type bits at run-time */
-    return ((type_bits_type)(TOSDB_BIT_SHIFT_RIGHT(T, (T)tTopic)) 
-           & TOSDB_TOPIC_BITMASK); 
+  static inline type_bits_type 
+  TypeBits(enum_type topic) /* type bits at run-time */
+  { 
+      return ((type_bits_type)(TOSDB_BIT_SHIFT_RIGHT(T, (T)topic)) 
+              & TOSDB_TOPIC_BITMASK); 
   }
 
-  static size_type TypeSize(enum_type tTopic)
-  { /* type size at run-time */
-    switch(TypeBits(tTopic))
-    {
-    case TOSDB_STRING_BIT:                 return TOSDB_STR_DATA_SZ;
-    case TOSDB_INTGR_BIT:                  return sizeof(def_size_type);
-    case TOSDB_QUAD_BIT:                   return sizeof(ext_price_type);
-    case TOSDB_INTGR_BIT | TOSDB_QUAD_BIT: return sizeof(ext_size_type);
-    default :                              return sizeof(def_price_type);
-    }; 
+  static size_type 
+  TypeSize(enum_type topic) /* type size at run-time */
+  { 
+      switch(TypeBits(topic)){
+      case TOSDB_STRING_BIT:                 return TOSDB_STR_DATA_SZ;
+      case TOSDB_INTGR_BIT:                  return sizeof(def_size_type);
+      case TOSDB_QUAD_BIT:                   return sizeof(ext_price_type);
+      case TOSDB_INTGR_BIT | TOSDB_QUAD_BIT: return sizeof(ext_size_type);
+      default :                              return sizeof(def_price_type);
+      }; 
   }
   
-  static std::string TypeString(enum_type tTopic)
-  { /* 
-     * platform-dependent type strings at run-time 
-     * for convenience/debug only; use TypeBits instead
-     */
-    switch(TypeBits(tTopic))
-    {
-    case TOSDB_STRING_BIT:                 return typeid(std::string).name();
-    case TOSDB_INTGR_BIT:                  return typeid(def_size_type).name();
-    case TOSDB_QUAD_BIT:                   return typeid(ext_price_type).name();
-    case TOSDB_INTGR_BIT | TOSDB_QUAD_BIT: return typeid(ext_size_type).name();
-    default :                              return typeid(def_price_type).name();
-    }; 
+  static std::string 
+  TypeString(enum_type topic) /* platform-dependent type strings at run-time */
+  {     
+      switch(TypeBits(topic)){
+      case TOSDB_STRING_BIT:                 return typeid(std::string).name();
+      case TOSDB_INTGR_BIT:                  return typeid(def_size_type).name();
+      case TOSDB_QUAD_BIT:                   return typeid(ext_price_type).name();
+      case TOSDB_INTGR_BIT | TOSDB_QUAD_BIT: return typeid(ext_size_type).name();
+      default :                              return typeid(def_price_type).name();
+      }; 
   }
-
-  struct top_less{ 
-    bool operator()(const enum_type& left, const enum_type& right){
-      return (MAP()[left] < MAP()[right]);      
-    }
-  };
 
 #ifdef CUSTOM_HASHER
+  /* we can't guarantee that the particular STL implementation will  
+     provide a default hasher like VS */
   struct hasher{
-    size_t operator()(const enum_type& t) const { 
-      static_assert(std::is_unsigned<enum_value_type>::value,
-                    "hasher only accepts unsigned integral enum_value_types");
-      return (enum_value_type)t; 
-    }
+      size_t operator()(const enum_type& t) const { 
+          static_assert(std::is_unsigned<enum_value_type>::value,
+                        "hasher only accepts unsigned integral enum_value_types");
+          return (enum_value_type)t; 
+      }
   };
   typedef TwoWayHashMap<enum_type, std::string, false, hasher> topic_map_type;
 #else
-  /* windows/VS implementation allows default hasher */
   typedef TwoWayHashMap<enum_type, std::string> topic_map_type;
 #endif
 
   typedef typename topic_map_type::pair1_type  topic_map_entry_type;  
 
-  /* internally we can use map (link w/ _tos-databridge[].dll) */
+  /* 'map' is defined in topics.cpp as part of the _tos-databrige[].dll module;
+     therefore, the client facing lib (tos-databridge[].dll) and the service/engine
+     need to import it, but the former ALSO needs to export it.
+
+     In this case we define 'map' so the back-end can see it, the client-side lib
+     can import it, and ALSO export the MAP() wrapper to client code.           
+     
+     long-story-short, just use MAP() to access the topic-string mapping    */
+
+  /* internally we use map (link w/ _tos-databridge[].dll) */
 #if defined(THIS_IMPORTS_IMPLEMENTATION) || defined(THIS_EXPORTS_IMPLEMENTATION)
   static DLL_SPEC_IMPL_ const topic_map_type map;
 #endif
 
-  /* externally we use the inline MAP() (link w/ tos-databridge-[].dll) */
-  static DLL_SPEC_IFACE_ const topic_map_type& MAP()
+  /* externally we use the MAP() (link w/ tos-databridge-[].dll) */
+  static DLL_SPEC_IFACE_ const topic_map_type&   
 #if defined(THIS_EXPORTS_INTERFACE) || defined(THIS_DOESNT_IMPORT_INTERFACE)
-  { return map; }
+  MAP(){ return map; }
 #else
-  ;
+  MAP();
 #endif 
+  
+  struct top_less{ /* back-end should use 'map' but attempts to #define 
+                      special versions of top_less won't link w/ client code */      
+      bool operator()(const enum_type& left, const enum_type& right){ 
+          return (MAP()[left] < MAP()[right]); 
+      }
+  };
 
 };
 
-
 typedef Topic_Enum_Wrapper<unsigned short>  TOS_Topics;
+
 typedef ILSet<std::string> str_set_type;
 typedef ILSet<const typename TOS_Topics::TOPICS, typename TOS_Topics::top_less> topic_set_type;
 
 #endif
 
-/* NOTE int return types indicate an error value is returned */
-EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int            TOSDB_Connect();
-EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int            TOSDB_Disconnect();
-EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ unsigned int   TOSDB_IsConnected();
-EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int            TOSDB_CreateBlock(LPCSTR id, size_type sz, BOOL is_datetime, size_type timeout) ;
-EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int            TOSDB_CloseBlock(LPCSTR id);
-EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int            TOSDB_CloseBlocks();
-EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ size_type      TOSDB_GetBlockLimit();
-EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ size_type      TOSDB_SetBlockLimit(size_type sz);
-EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ size_type      TOSDB_GetBlockCount();
-EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int            TOSDB_GetBlockIDs(LPSTR* dest, size_type array_len, size_type str_len);
-EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int            TOSDB_GetBlockSize(LPCSTR id, size_type* pSize);
-EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int            TOSDB_SetBlockSize(LPCSTR id, size_type sz);
-EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ unsigned long  TOSDB_GetLatency();
-EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ unsigned long  TOSDB_SetLatency(UpdateLatency latency);
-EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int            TOSDB_Add(LPCSTR id, LPCSTR* sItems, size_type items_len, LPCSTR* sTopics , size_type topics_len);
-EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int            TOSDB_AddTopic(LPCSTR id, LPCSTR sTopic);
-EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int            TOSDB_AddItem(LPCSTR id, LPCSTR sItem);
-EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int            TOSDB_AddTopics(LPCSTR id, LPCSTR* sTopics, size_type topics_len);
-EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int            TOSDB_AddItems(LPCSTR id, LPCSTR* sItems, size_type items_len);
-EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int            TOSDB_RemoveTopic(LPCSTR id, LPCSTR sTopic); 
-EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int            TOSDB_RemoveItem(LPCSTR id, LPCSTR sItem);
-EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int            TOSDB_GetItemCount(LPCSTR id, size_type* count);
-EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int            TOSDB_GetTopicCount(LPCSTR id, size_type* count);
-EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int            TOSDB_GetTopicNames(LPCSTR id, LPSTR* dest, size_type array_len, size_type str_len);
-EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int            TOSDB_GetItemNames(LPCSTR id, LPSTR* dest, size_type array_len, size_type str_len);
-//EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int          TOSDB_GetPreCachedTopicNames(LPCSTR id, LPSTR* dest, size_type str_len, size_type array_len);
-//EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int          TOSDB_GetPreCachedItemNames(LPCSTR id, LPSTR* dest, size_type str_len, size_type array_len);
-EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int            TOSDB_GetTypeBits(LPCSTR sTopic, type_bits_type* type_bits);
-EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int            TOSDB_GetTypeString(LPCSTR sTopic, LPSTR dest, size_type str_len);
-EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int            TOSDB_IsUsingDateTime(LPCSTR id, unsigned int* is_datetime);
-EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int            TOSDB_GetStreamOccupancy(LPCSTR id,LPCSTR sItem, LPCSTR sTopic, size_type* sz);
-EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int            TOSDB_GetMarkerPosition(LPCSTR id,LPCSTR sItem, LPCSTR sTopic, long long* pos);
-EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int            TOSDB_IsMarkerDirty(LPCSTR id, LPCSTR sItem, LPCSTR sTopic, unsigned int* is_dirty);
-EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int            TOSDB_DumpSharedBufferStatus();
+/* 'Administrative' C API  -  client_admin.cpp
+
+   NOTE: int return types indicate an error value is returned */
+
+EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int            
+TOSDB_Connect();
+
+EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int            
+TOSDB_Disconnect();
+
+EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ unsigned int   
+TOSDB_IsConnected();
+
+EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int            
+TOSDB_CreateBlock(LPCSTR id, size_type sz, BOOL is_datetime, size_type timeout) ;
+
+EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int            
+TOSDB_CloseBlock(LPCSTR id);
+
+EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int            
+TOSDB_CloseBlocks();
+
+EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ size_type      
+TOSDB_GetBlockLimit();
+
+EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ size_type      
+TOSDB_SetBlockLimit(size_type sz);
+
+EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ size_type      
+TOSDB_GetBlockCount();
+
+EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int            
+TOSDB_GetBlockIDs(LPSTR* dest, size_type array_len, size_type str_len);
+
+EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int            
+TOSDB_GetBlockSize(LPCSTR id, size_type* pSize);
+
+EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int            
+TOSDB_SetBlockSize(LPCSTR id, size_type sz);
+
+EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ unsigned long  
+TOSDB_GetLatency();
+
+EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ unsigned long 
+TOSDB_SetLatency(UpdateLatency latency);
+
+EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int           
+TOSDB_Add(LPCSTR id, LPCSTR* sItems, size_type items_len, LPCSTR* sTopics , size_type topics_len);
+
+EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int           
+TOSDB_AddTopic(LPCSTR id, LPCSTR sTopic);
+
+EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int            
+TOSDB_AddItem(LPCSTR id, LPCSTR sItem);
+
+EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int            
+TOSDB_AddTopics(LPCSTR id, LPCSTR* sTopics, size_type topics_len);
+
+EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int           
+TOSDB_AddItems(LPCSTR id, LPCSTR* sItems, size_type items_len);
+
+EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int           
+TOSDB_RemoveTopic(LPCSTR id, LPCSTR sTopic); 
+
+EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int           
+TOSDB_RemoveItem(LPCSTR id, LPCSTR sItem);
+
+EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int           
+TOSDB_GetItemCount(LPCSTR id, size_type* count);
+
+EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int           
+TOSDB_GetTopicCount(LPCSTR id, size_type* count);
+
+EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int           
+TOSDB_GetTopicNames(LPCSTR id, LPSTR* dest, size_type array_len, size_type str_len);
+
+EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int            
+TOSDB_GetItemNames(LPCSTR id, LPSTR* dest, size_type array_len, size_type str_len);
+
+//EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int          
+//TOSDB_GetPreCachedTopicNames(LPCSTR id, LPSTR* dest, size_type str_len, size_type array_len);
+
+//EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int          
+//TOSDB_GetPreCachedItemNames(LPCSTR id, LPSTR* dest, size_type str_len, size_type array_len);
+
+EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int            
+TOSDB_GetTypeBits(LPCSTR sTopic, type_bits_type* type_bits);
+
+EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int           
+TOSDB_GetTypeString(LPCSTR sTopic, LPSTR dest, size_type str_len);
+
+EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int            
+TOSDB_IsUsingDateTime(LPCSTR id, unsigned int* is_datetime);
+
+EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int            
+TOSDB_GetStreamOccupancy(LPCSTR id,LPCSTR sItem, LPCSTR sTopic, size_type* sz);
+
+EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int            
+TOSDB_GetMarkerPosition(LPCSTR id,LPCSTR sItem, LPCSTR sTopic, long long* pos);
+
+EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int            
+TOSDB_IsMarkerDirty(LPCSTR id, LPCSTR sItem, LPCSTR sTopic, unsigned int* is_dirty);
+
+EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int           
+TOSDB_DumpSharedBufferStatus();
 
 #ifdef __cplusplus
 
-DLL_SPEC_IFACE_ NO_THROW_ int   TOSDB_Add(std::string id, str_set_type sItems, topic_set_type tTopics);
-DLL_SPEC_IFACE_ NO_THROW_ int   TOSDB_AddTopic(std::string id, TOS_Topics::TOPICS tTopic);
-DLL_SPEC_IFACE_ NO_THROW_ int   TOSDB_AddTopics(std::string id, topic_set_type tTopics);
-DLL_SPEC_IFACE_ NO_THROW_ int   TOSDB_AddItems(std::string id, str_set_type sItems);
-DLL_SPEC_IFACE_ NO_THROW_ int   TOSDB_RemoveTopic(std::string id, TOS_Topics::TOPICS tTopic);                          
-DLL_SPEC_IFACE_ str_set_type    TOSDB_GetBlockIDs();
-DLL_SPEC_IFACE_ topic_set_type  TOSDB_GetTopicEnums(std::string id);
-DLL_SPEC_IFACE_ str_set_type    TOSDB_GetTopicNames(std::string id);
-DLL_SPEC_IFACE_ str_set_type    TOSDB_GetItemNames(std::string id);
-DLL_SPEC_IFACE_ topic_set_type  TOSDB_GetPreCachedTopicEnums(std::string id);
-DLL_SPEC_IFACE_ str_set_type    TOSDB_GetPreCachedTopicNames(std::string id);
-DLL_SPEC_IFACE_ str_set_type    TOSDB_GetPreCachedItemNames(std::string id);
-DLL_SPEC_IFACE_ type_bits_type  TOSDB_GetTypeBits(TOS_Topics::TOPICS tTopic);
-DLL_SPEC_IFACE_ std::string     TOSDB_GetTypeString(TOS_Topics::TOPICS tTopic);
-DLL_SPEC_IFACE_ size_type       TOSDB_GetItemCount(std::string id);
-DLL_SPEC_IFACE_ size_type       TOSDB_GetTopicCount(std::string id);
-DLL_SPEC_IFACE_ bool            TOSDB_IsUsingDateTime(std::string id);
-DLL_SPEC_IFACE_ size_type       TOSDB_GetBlockSize(std::string id);
-DLL_SPEC_IFACE_ size_type       TOSDB_GetStreamOccupancy(std::string id, std::string sItem, TOS_Topics::TOPICS tTopic);
-DLL_SPEC_IFACE_ long long       TOSDB_GetMarkerPosition(std::string id, std::string sItem, TOS_Topics::TOPICS tTopic);
-DLL_SPEC_IFACE_ bool            TOSDB_IsMarkerDirty(std::string id, std::string sItem, TOS_Topics::TOPICS tTopic);
+/* (extended) 'Administrative' C++ API  -  client_admin.cpp
 
-/* get individual data points */
-template<typename T, bool b> auto           
+   NOTE: ints indicate error/success (as above) BUT these calls may also throw*/
+
+DLL_SPEC_IFACE_ int   
+TOSDB_Add(std::string id, str_set_type sItems, topic_set_type tTopics);
+
+DLL_SPEC_IFACE_  int   
+TOSDB_AddTopic(std::string id, TOS_Topics::TOPICS tTopic);
+
+DLL_SPEC_IFACE_  int   
+TOSDB_AddTopics(std::string id, topic_set_type tTopics);
+
+DLL_SPEC_IFACE_  int   
+TOSDB_AddItems(std::string id, str_set_type sItems);
+
+DLL_SPEC_IFACE_ int   
+TOSDB_RemoveTopic(std::string id, TOS_Topics::TOPICS tTopic); 
+
+DLL_SPEC_IFACE_ str_set_type    
+TOSDB_GetBlockIDs();
+
+DLL_SPEC_IFACE_ topic_set_type  
+TOSDB_GetTopicEnums(std::string id);
+
+DLL_SPEC_IFACE_ str_set_type   
+TOSDB_GetTopicNames(std::string id);
+
+DLL_SPEC_IFACE_ str_set_type    
+TOSDB_GetItemNames(std::string id);
+
+DLL_SPEC_IFACE_ topic_set_type  
+TOSDB_GetPreCachedTopicEnums(std::string id);
+
+DLL_SPEC_IFACE_ str_set_type   
+TOSDB_GetPreCachedTopicNames(std::string id);
+
+DLL_SPEC_IFACE_ str_set_type   
+TOSDB_GetPreCachedItemNames(std::string id);
+
+DLL_SPEC_IFACE_ type_bits_type  
+TOSDB_GetTypeBits(TOS_Topics::TOPICS tTopic);
+
+DLL_SPEC_IFACE_ std::string     
+TOSDB_GetTypeString(TOS_Topics::TOPICS tTopic);
+
+DLL_SPEC_IFACE_ size_type       
+TOSDB_GetItemCount(std::string id);
+
+DLL_SPEC_IFACE_ size_type       
+TOSDB_GetTopicCount(std::string id);
+
+DLL_SPEC_IFACE_ bool            
+TOSDB_IsUsingDateTime(std::string id);
+
+DLL_SPEC_IFACE_ size_type      
+TOSDB_GetBlockSize(std::string id);
+
+DLL_SPEC_IFACE_ size_type       
+TOSDB_GetStreamOccupancy(std::string id, std::string sItem, TOS_Topics::TOPICS tTopic);
+
+DLL_SPEC_IFACE_ long long       
+TOSDB_GetMarkerPosition(std::string id, std::string sItem, TOS_Topics::TOPICS tTopic);
+
+DLL_SPEC_IFACE_ bool            
+TOSDB_IsMarkerDirty(std::string id, std::string sItem, TOS_Topics::TOPICS tTopic);
+
+
+/* 'Get' C/C++ API  -  client_get.cpp
+
+   NOTE: C versions return error code while C++ versions throw; most internal errors 
+         will be wrapped in TOSDB_Error or derived exceptions (exceptions.cpp) but
+         this IS NOT guaranteed.                                                    */
+
+
+/* individual data points */
+
+template<typename T, bool b> 
+auto           
 TOSDB_Get(std::string id, std::string sItem, TOS_Topics::TOPICS tTopic, long indx = 0) 
--> typename std::conditional<b, std::pair<T, DateTimeStamp> , T>::type;
-  
-/* generic fastest without DateTimeStamp <generic_type, false> */
-template<> DLL_SPEC_IFACE_ generic_type     
+    -> typename std::conditional<b, std::pair<T, DateTimeStamp> , T>::type;
+
+template<> 
+DLL_SPEC_IFACE_ generic_type     
 TOSDB_Get<generic_type, false>(std::string id, std::string sItem, TOS_Topics::TOPICS tTopic, long indx);  
 
-template<> DLL_SPEC_IFACE_ generic_dts_type 
+template<> 
+DLL_SPEC_IFACE_ generic_dts_type 
 TOSDB_Get<generic_type, true>(std::string id, std::string sItem, TOS_Topics::TOPICS tTopic, long indx);
 
-/* templatized type fastest with DateTimeStamp <..., true> */
 template DLL_SPEC_IFACE_ std::string        
 TOSDB_Get<std::string, false>(std::string id, std::string sItem, TOS_Topics::TOPICS tTopic, long indx);
 
@@ -614,14 +703,18 @@ TOSDB_GetString(LPCSTR id, LPCSTR sItem, LPCSTR sTopic, long indx, LPSTR dest, s
 #ifdef __cplusplus   
 
 /* get multiple contiguous data points in the stream*/
-template<typename T, bool b> auto                        
-TOSDB_GetStreamSnapshot(std::string id, std::string sItem, TOS_Topics::TOPICS tTopic, long end = -1, long beg = 0)
--> typename std::conditional<b, std::pair<std::vector<T>, dts_vector_type>, std::vector<T>>::type;
 
-template<> DLL_SPEC_IFACE_ generic_vector_type           
+template<typename T, bool b> 
+auto                        
+TOSDB_GetStreamSnapshot(std::string id, std::string sItem, TOS_Topics::TOPICS tTopic, long end = -1, long beg = 0)
+    -> typename std::conditional<b, std::pair<std::vector<T>, dts_vector_type>, std::vector<T>>::type;
+
+template<> 
+DLL_SPEC_IFACE_ generic_vector_type           
 TOSDB_GetStreamSnapshot<generic_type, false>(std::string id, std::string sItem, TOS_Topics::TOPICS tTopic, long end, long beg);                    
 
-template<> DLL_SPEC_IFACE_ generic_dts_vectors_type      
+template<> 
+DLL_SPEC_IFACE_ generic_dts_vectors_type      
 TOSDB_GetStreamSnapshot<generic_type, true>(std::string id, std::string sItem, TOS_Topics::TOPICS tTopic, long end, long beg);  
 
 /* 20x faster than generic */
@@ -681,6 +774,7 @@ TOSDB_GetStreamSnapshotStrings(LPCSTR id, LPCSTR sItem, LPCSTR sTopic, LPSTR* de
 
 
 /* 'guaranteed' to be contiguous between calls (Get, GetStreamSnapshot, GetStreamSnapshot) */
+
 EXT_SPEC_ DLL_SPEC_IFACE_ NO_THROW_ int  
 TOSDB_GetStreamSnapshotDoublesFromMarker(LPCSTR id,LPCSTR sItem,LPCSTR sTopic,ext_price_type* dest,size_type array_len, 
                                          pDateTimeStamp datetime, long beg, long *get_size);
@@ -704,12 +798,19 @@ TOSDB_GetStreamSnapshotStringsFromMarker(LPCSTR id, LPCSTR sItem, LPCSTR sTopic,
 #ifdef __cplusplus
 
 /* get all the most recent item values for a particular topic */
-template<bool b> auto                           
-TOSDB_GetItemFrame(std::string id, TOS_Topics::TOPICS tTopic) 
--> typename std::conditional<b, generic_dts_map_type, generic_map_type>::type; 
 
-template<> DLL_SPEC_IFACE_ generic_map_type     TOSDB_GetItemFrame<false>(std::string id, TOS_Topics::TOPICS tTopic);
-template<> DLL_SPEC_IFACE_ generic_dts_map_type TOSDB_GetItemFrame<true>(std::string id, TOS_Topics::TOPICS tTopic);
+template<bool b> 
+auto                           
+TOSDB_GetItemFrame(std::string id, TOS_Topics::TOPICS tTopic) 
+    -> typename std::conditional<b, generic_dts_map_type, generic_map_type>::type; 
+
+template<> 
+DLL_SPEC_IFACE_ generic_map_type     
+TOSDB_GetItemFrame<false>(std::string id, TOS_Topics::TOPICS tTopic);
+
+template<> 
+DLL_SPEC_IFACE_ generic_dts_map_type 
+TOSDB_GetItemFrame<true>(std::string id, TOS_Topics::TOPICS tTopic);
 
 #endif 
 
@@ -736,12 +837,19 @@ TOSDB_GetItemFrameStrings(LPCSTR id, LPCSTR sTopic, LPSTR* dest, size_type array
 #ifdef __cplusplus  
 
 /* get all the most recent topic values for a particular item */
-template<bool b> auto                           
-TOSDB_GetTopicFrame(std::string id, std::string sItem) 
--> typename std::conditional<b, generic_dts_map_type, generic_map_type>::type; 
 
-template<> DLL_SPEC_IFACE_ generic_map_type     TOSDB_GetTopicFrame<false>(std::string id, std::string sItem);
-template<> DLL_SPEC_IFACE_ generic_dts_map_type TOSDB_GetTopicFrame<true>(std::string id, std::string sItem);
+template<bool b> 
+auto                           
+TOSDB_GetTopicFrame(std::string id, std::string sItem) 
+    -> typename std::conditional<b, generic_dts_map_type, generic_map_type>::type; 
+
+template<> 
+DLL_SPEC_IFACE_ generic_map_type     
+TOSDB_GetTopicFrame<false>(std::string id, std::string sItem);
+
+template<> 
+DLL_SPEC_IFACE_ generic_dts_map_type 
+TOSDB_GetTopicFrame<true>(std::string id, std::string sItem);
 
 #endif
 
@@ -752,20 +860,28 @@ TOSDB_GetTopicFrameStrings(LPCSTR id, LPCSTR sItem, LPSTR* dest, size_type array
 #ifdef __cplusplus
 
 /* get all the most recent item and topic values */
-template<bool b> auto                              
+
+template<bool b> 
+auto                              
 TOSDB_GetTotalFrame(std::string id) 
--> typename std::conditional<b, generic_dts_matrix_type, generic_matrix_type>::type; 
+    -> typename std::conditional<b, generic_dts_matrix_type, generic_matrix_type>::type; 
 
-template<> DLL_SPEC_IFACE_ generic_matrix_type     TOSDB_GetTotalFrame<false>(std::string id);
-template<> DLL_SPEC_IFACE_ generic_dts_matrix_type TOSDB_GetTotalFrame<true>(std::string id);
+template<> 
+DLL_SPEC_IFACE_ generic_matrix_type     
+TOSDB_GetTotalFrame<false>(std::string id);
 
+template<> 
+DLL_SPEC_IFACE_ generic_dts_matrix_type 
+TOSDB_GetTotalFrame<true>(std::string id);
 
-DLL_SPEC_IFACE_       std::ostream& operator<<(std::ostream&, const generic_type&); 
-DLL_SPEC_IFACE_       std::ostream& operator<<(std::ostream&, const DateTimeStamp&); 
-DLL_SPEC_IFACE_       std::ostream& operator<<(std::ostream&, const generic_matrix_type&); 
-DLL_SPEC_IFACE_       std::ostream& operator<<(std::ostream&, const generic_map_type::value_type&); 
-DLL_SPEC_IFACE_       std::ostream& operator<<(std::ostream&, const generic_map_type&); 
-DLL_SPEC_IFACE_       std::ostream& operator<<(std::ostream&, const generic_vector_type&); 
+/* OSTREAM OVERLOADS - client_out.cpp */
+
+DLL_SPEC_IFACE_ std::ostream& operator<<(std::ostream&, const generic_type&); 
+DLL_SPEC_IFACE_ std::ostream& operator<<(std::ostream&, const DateTimeStamp&); 
+DLL_SPEC_IFACE_ std::ostream& operator<<(std::ostream&, const generic_matrix_type&); 
+DLL_SPEC_IFACE_ std::ostream& operator<<(std::ostream&, const generic_map_type::value_type&); 
+DLL_SPEC_IFACE_ std::ostream& operator<<(std::ostream&, const generic_map_type&); 
+DLL_SPEC_IFACE_ std::ostream& operator<<(std::ostream&, const generic_vector_type&); 
 DLL_SPEC_IFACE_       std::ostream& operator<<(std::ostream&, const dts_vector_type&);
 DLL_SPEC_IFACE_       std::ostream& operator<<(std::ostream&, const generic_dts_matrix_type&); 
 DLL_SPEC_IFACE_       std::ostream& operator<<(std::ostream&, const generic_dts_type&); 
@@ -778,12 +894,14 @@ template DLL_SPEC_IFACE_  std::ostream& operator<<(std::ostream&, const std::pai
 template DLL_SPEC_IFACE_  std::ostream& operator<<(std::ostream&, const std::pair<ext_size_type,DateTimeStamp>&);
 template DLL_SPEC_IFACE_  std::ostream& operator<<(std::ostream&, const std::pair<def_size_type,DateTimeStamp>&);
 template DLL_SPEC_IFACE_  std::ostream& operator<<(std::ostream&, const std::pair<std::string,DateTimeStamp>&);
+
 template<typename T>      std::ostream& operator<<(std::ostream&, const std::vector<T>&);
 template DLL_SPEC_IFACE_  std::ostream& operator<<(std::ostream&, const std::vector<ext_price_type>&);
 template DLL_SPEC_IFACE_  std::ostream& operator<<(std::ostream&, const std::vector<def_price_type>&);
 template DLL_SPEC_IFACE_  std::ostream& operator<<(std::ostream&, const std::vector<ext_size_type>&);
 template DLL_SPEC_IFACE_  std::ostream& operator<<(std::ostream&, const std::vector<def_size_type>&);
 template DLL_SPEC_IFACE_  std::ostream& operator<<(std::ostream&, const std::vector<std::string>&); 
+
 template<typename T>      std::ostream& operator<<(std::ostream&, const std::pair<std::vector<T>,dts_vector_type>&);
 template DLL_SPEC_IFACE_  std::ostream& operator<<(std::ostream&, const std::pair<std::vector<ext_price_type>,dts_vector_type>&);
 template DLL_SPEC_IFACE_  std::ostream& operator<<(std::ostream&, const std::pair<std::vector<def_price_type>,dts_vector_type>&);
@@ -791,139 +909,66 @@ template DLL_SPEC_IFACE_  std::ostream& operator<<(std::ostream&, const std::pai
 template DLL_SPEC_IFACE_  std::ostream& operator<<(std::ostream&, const std::pair<std::vector<def_size_type>,dts_vector_type>&);
 template DLL_SPEC_IFACE_  std::ostream& operator<<(std::ostream&, const std::pair<std::vector<std::string>,dts_vector_type>&);
 
+/* for C code: create a string of form: "TOSDB_[topic name]_[item name]"  
+   only alpha-numerics */
+DLL_SPEC_IMPL_ std::string 
+CreateBufferName(std::string sTopic, std::string sItem);
 
-class TOSDB_Error 
-    : public std::exception {
-
-  unsigned long _threadID, _processID;
-  std::string _tag, _info;
-
-public:
-  TOSDB_Error(const char* info, const char* tag)
-    : 
-      std::exception(info),
-      _tag(tag),
-      _info(info),
-      _threadID(GetCurrentThreadId()),
-      _processID(GetCurrentProcessId())
-    {        
-    }
-  TOSDB_Error(const std::exception& e, const char* tag)
-    : 
-      std::exception(e),
-      _tag(tag),    
-      _threadID(GetCurrentThreadId()),
-      _processID(GetCurrentProcessId())
-    {         
-    }
-  TOSDB_Error(const std::exception& e, const char* info, const char* tag)
-    : 
-      std::exception(e),
-      _tag(tag),
-      _info(info),
-      _threadID(GetCurrentThreadId()),
-      _processID(GetCurrentProcessId())
-    {        
-    }
-  virtual ~TOSDB_Error() {}
-  inline unsigned long threadID() const { return _threadID; }
-  inline unsigned long processID() const { return _processID; }
-  inline std::string tag() const { return _tag; }
-  inline std::string info() const { return _info; }
-};
-  
-
-class TOSDB_IPC_Error 
-    : public TOSDB_Error {
-
-public:
-  TOSDB_IPC_Error(const char* info, const char* tag = "IPC")
-    : 
-      TOSDB_Error(info, tag) 
-    {
-    }
-};
-
-
-class TOSDB_BufferError 
-    : public TOSDB_IPC_Error {
-
-public:
-  TOSDB_BufferError(const char* info, const char* tag = "DATA-BUFFER")
-    : 
-      TOSDB_IPC_Error(info, tag) 
-    {
-    }
-};
-
-
-class TOSDB_DDE_Error 
-    : public TOSDB_Error {
-
-public:
-  TOSDB_DDE_Error(const char* info, const char* tag = "DDE")
-    : 
-      TOSDB_Error(info, tag) 
-    {
-    }
-  TOSDB_DDE_Error(const std::exception& e, const char* info, const char* tag = "DDE")
-    : 
-      TOSDB_Error(e, info, tag) 
-    {
-    }
-};    
-
-
-class TOSDB_DataBlockError 
-    : public TOSDB_Error {
-
-public:
-  TOSDB_DataBlockError(const char* info, const char* tag = "DataBlock")
-    : 
-      TOSDB_Error(info, tag) 
-    {
-    }
-  TOSDB_DataBlockError(const std::exception& e, const char* info, const char* tag = "DataBlock") 
-    :  
-      TOSDB_Error(e, info, tag) 
-    {
-    }
-};    
-
-
-class TOSDB_DataBlockLimitError 
-    : public TOSDB_DataBlockError, 
-      public std::length_error {
-
-public:
-  const size_t limit;  
-  TOSDB_DataBlockLimitError(const size_t limit)
-    : 
-      TOSDB_DataBlockError("Creating TOSDB_RawDataBlock would exceed limit."),
-      std::length_error("Creating TOSDB_RawDataBlock would exceed limit."),
-      limit(limit)
-    {
-    }
-  virtual const char* what() const { return TOSDB_DataBlockError::what(); }  
-};            
-
-
-class TOSDB_DataStreamError 
-    : public TOSDB_DataBlockError {
-
-public:
-  TOSDB_DataStreamError(const char* info, const char* tag = "DataStream")
-    : 
-      TOSDB_DataBlockError(info, tag) 
-    {
-    }
-  TOSDB_DataStreamError(const std::exception& e, const char* info, const char* tag = "DataStream")
-    : 
-      TOSDB_DataBlockError(e, info, tag) 
-    {
-    }
-};
+DLL_SPEC_IMPL_ std::string 
+SysTimeString();
 
 #endif /* __cplusplus */
+
+extern char  DLL_SPEC_IMPL_  TOSDB_LOG_PATH[ MAX_PATH+20 ]; 
+
+/* if logging is not enabled high severity events will be sent to std::cerr */ 
+typedef enum{ low = 0, high }Severity;  
+
+/* LOGGING - logging.cpp */
+
+/* 'internal' versions, use the MACROS below */
+EXT_SPEC_  DLL_SPEC_IMPL_ void  
+TOSDB_Log_(DWORD , DWORD, Severity, LPCSTR, LPCSTR); 
+
+EXT_SPEC_  DLL_SPEC_IMPL_ void  
+TOSDB_LogEx_(DWORD , DWORD, Severity, LPCSTR, LPCSTR, DWORD); 
+
+DLL_SPEC_IMPL_ void  
+TOSDB_Log_Raw_(LPCSTR);
+
+/* when building tos-databridge[].dll these calls need to be both imported( from _tosd-databridge-[].dll)
+   and exported (from tos-databridge[].dll)  -  they must use /export:[func name] during link */ 
+EXT_SPEC_  DLL_SPEC_IMPL_ void  
+TOSDB_StartLogging(LPCSTR fname);
+
+EXT_SPEC_  DLL_SPEC_IMPL_ void  
+TOSDB_StopLogging();
+
+EXT_SPEC_  DLL_SPEC_IMPL_ void  
+TOSDB_ClearLog();
+
+#define TOSDB_LogH(tag,desc) \
+TOSDB_Log_(GetCurrentProcessId(), GetCurrentThreadId(), high, tag, desc)
+
+#define TOSDB_Log(tag,desc) \
+TOSDB_Log_(GetCurrentProcessId(), GetCurrentThreadId(), low, tag, desc)
+
+#define TOSDB_LogEx(tag,desc,error) \
+TOSDB_LogEx_(GetCurrentProcessId(), GetCurrentThreadId(), high, tag, desc, error)
+
+EXT_SPEC_ DLL_SPEC_IMPL_ char**  
+NewStrings(size_t num_strs, size_t strs_len);
+
+EXT_SPEC_ DLL_SPEC_IMPL_ void    
+DeleteStrings(char** str_array, size_t num_strs);
+
+EXT_SPEC_  DLL_SPEC_IMPL_ unsigned int
+CheckIDLength(LPCSTR id);
+
+EXT_SPEC_  DLL_SPEC_IMPL_ unsigned int
+CheckStringLength(LPCSTR str);
+
+EXT_SPEC_  DLL_SPEC_IMPL_ unsigned int
+CheckStringLengths(LPCSTR* str, size_type items_len);
 
 #endif /* JO_TOSDB_DATABRIDGE */

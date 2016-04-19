@@ -46,7 +46,8 @@ BOOL WINAPI DllMain(HANDLE mod, DWORD why, LPVOID res)
   return TRUE;
 }
 
-std::string CreateBufferName(std::string sTopic, std::string sItem)
+std::string 
+CreateBufferName(std::string sTopic, std::string sItem)
 { /* 
    * name of mapping is of form: "TOSDB_[topic name]_[item_name]"  
    * only alpha-numeric characters (except under-score) 
@@ -63,7 +64,8 @@ std::string CreateBufferName(std::string sTopic, std::string sItem)
 #endif
 }
 
-char** NewStrings(size_t num_strs, size_t strs_len)
+char** 
+NewStrings(size_t num_strs, size_t strs_len)
 {
   char** strs = new char*[num_strs];
 
@@ -73,7 +75,8 @@ char** NewStrings(size_t num_strs, size_t strs_len)
   return strs;
 }
 
-void DeleteStrings(char** str_array, size_t num_strs)
+void 
+DeleteStrings(char** str_array, size_t num_strs)
 {
   if(!str_array)
     return;
@@ -84,4 +87,46 @@ void DeleteStrings(char** str_array, size_t num_strs)
   }
 
   delete[] str_array;
+}
+
+
+unsigned int 
+CheckStringLength(LPCSTR str)
+{
+    size_t slen = strnlen_s(str, TOSDB_MAX_STR_SZ+1);
+    if( slen == (TOSDB_MAX_STR_SZ+1) ){
+        TOSDB_LogH("User Input", "string length > TOSDB_MAX_STR_SZ");
+        return 0;
+    }
+
+    return 1;
+}
+
+
+unsigned int 
+CheckStringLengths(LPCSTR* str, size_type items_len)
+{
+    size_t slen;
+    while(items_len--){
+        slen = strnlen_s(str[items_len], TOSDB_MAX_STR_SZ + 1);
+        if( slen == (TOSDB_MAX_STR_SZ+1) ){ 
+            TOSDB_LogH("User Input", "string length > TOSDB_MAX_STR_SZ");
+            return 0;
+        }
+    }
+
+  return 1;
+}
+
+
+unsigned int 
+CheckIDLength(LPCSTR id)
+{
+    size_t slen = strnlen_s(id, TOSDB_BLOCK_ID_SZ + 1);
+    if( slen == (TOSDB_BLOCK_ID_SZ + 1) ){
+        TOSDB_LogH("Strings", "name/id length > TOSDB_BLOCK_ID_SZ");
+        return 0;
+    }
+
+  return 1;
 }

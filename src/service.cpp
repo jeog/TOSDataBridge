@@ -381,15 +381,19 @@ int WINAPI WinMain(HINSTANCE hInst,
   GetSystemInfo(&sys_info);  
   ParseArgs(args,cmd_str);
   
-  int argc = args.size();
+  size_t argc = args.size();
   int admin_pos = 0;
   int no_service_pos = 0;
 
-  if(argc > 0 && args[0] == "--admin")      admin_pos = 1;
-  else if(argc > 1 && args[1] == "--admin") admin_pos = 2;
+  if(argc > 0 && args[0] == "--admin")      
+      admin_pos = 1;
+  else if(argc > 1 && args[1] == "--admin") 
+      admin_pos = 2;
   
-  if(argc > 0 && args[0] == "--noservice")      no_service_pos = 1;
-  else if(argc > 1 && args[1] == "--noservice") no_service_pos = 2;
+  if(argc > 0 && args[0] == "--noservice")      
+      no_service_pos = 1;
+  else if(argc > 1 && args[1] == "--noservice") 
+      no_service_pos = 2;
 
   switch(argc){
   case 1:
@@ -405,6 +409,9 @@ int WINAPI WinMain(HINSTANCE hInst,
     if(admin_pos > 0 && no_service_pos > 0)
       custom_session = std::stoi(args[2]);
     break;
+  default:
+    TOSDB_LogH("STARTUP","invalid # of args");
+    return 1;
   }   
   
   integrity_level = admin_pos > 0 

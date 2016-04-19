@@ -30,41 +30,60 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 
 std::recursive_mutex global_rmutex;
 
-namespace {    
+namespace { /* 'buffers_lock_guard_' is reserved inside this namespace */
 
-  typedef std::tuple<unsigned int, 
-                     unsigned int,  
-                     std::set<const TOSDBlock*>, 
-                     HANDLE, 
-                     HANDLE>                          buffer_info_type;
+typedef std::tuple<unsigned int, unsigned int,  
+                   std::set<const TOSDBlock*>, 
+                   HANDLE, HANDLE>                  buf_info_ty;
+typedef std::pair<TOS_Topics::TOPICS, std::string>  buf_id_ty;
+typedef std::map<buf_id_ty, buf_info_ty>            buffers_ty;
 
-  typedef std::pair<TOS_Topics::TOPICS, std::string>  buffer_id_type;
-  typedef std::map<buffer_id_type, buffer_info_type>  buffers_type;
-  typedef std::lock_guard<std::mutex>                 our_lock_guard_type;
+typedef std::lock_guard<std::mutex>                 our_lock_guard_type;
 
-  std::map<std::string,TOSDBlock*>  dde_blocks;
+typedef std::insert_iterator<str_set_type>          str_set_inserter;
+typedef std::insert_iterator<topic_set_type>        topic_set_inserter;
 
-  DynamicIPCMaster   master(TOSDB_COMM_CHANNEL);
-  std::atomic<bool>  aware_of_connection(false);   
+std::map<std::string,TOSDBlock*>  dde_blocks;
 
-  buffers_type buffers;
-  std::mutex   buffer_mtx;
+/* buffers in shared mem */
+buffers_ty buffers;
+std::mutex buffers_mtx;
+  
+#define LOCAL_BUFFERS_LOCK_GUARD our_lock_guard_type buffers_lock_guard_(buffers_mtx)
 
-  unsigned long buffer_latency = TOSDB_DEF_LATENCY;
+/* for 'scheduling' buffer reads */
+steady_clock_type steady_clock;
 
-  HANDLE buffer_thread    = NULL;
-  DWORD  buffer_thread_id = 0;   
+unsigned long  buffer_latency    =  TOSDB_DEF_LATENCY;
+HANDLE         buffer_thread     =  NULL;
+DWORD          buffer_thread_id  =  0;   
 
-  steady_clock_type steady_clock;
+/* our IPC mechanism */
+DynamicIPCMaster master(TOSDB_COMM_CHANNEL);
 
-  TOSDBlock*    _getBlockPtr(std::string id);
-  DWORD WINAPI  BlockCleanup(LPVOID lParam);
+/* atomic flag that supports IPC connectivity */
+std::atomic<bool> aware_of_connection(false);  
 
-  int RequestStreamOP(TOS_Topics::TOPICS tTopic, 
-                      std::string sItem, 
-                      unsigned long timeout, 
-                      unsigned int opcode)
-  {/* needs exclusivity but can't block; calling code must lock */
+/* get our block (or NULL) internally */
+TOSDBlock* 
+_getBlockPtr(std::string id)
+{ 
+    try{        
+        return dde_blocks.at(id);
+    }catch(...){ 
+        TOSDB_Log("TOSDBlock", "TOSDBlock does not exist.");
+        return NULL; 
+    }
+}
+
+
+int 
+RequestStreamOP(TOS_Topics::TOPICS tTopic, 
+                std::string sItem, 
+                unsigned long timeout, 
+                unsigned int opcode)
+/* needs exclusivity but can't block; CALLING CODE MUST LOCK*/
+{
     int ret;
     bool ret_stat;  
 
@@ -72,112 +91,114 @@ namespace {
         return -1;              
 
     IPC_TIMED_WAIT(master.grab_pipe() <= 0,
-                   "RequestStreamOP timed out trying to grab pipe", -2);    
+                   "RequestStreamOP timed out trying to grab pipe", 
+                   -2);    
 
     DynamicIPCMaster::shem_chunk arg1 = master.insert(&tTopic);
-    DynamicIPCMaster::shem_chunk arg2 = 
-      master.insert(sItem.c_str(), (size_type)sItem.size() + 1); 
+    DynamicIPCMaster::shem_chunk arg2 = master.insert(sItem.c_str(), 
+                                                      (size_type)sItem.size() + 1); 
     DynamicIPCMaster::shem_chunk arg3 = master.insert(&timeout);
 
     master << DynamicIPCMaster::shem_chunk(opcode, 0) 
-           << arg1 << arg2 << arg3 << DynamicIPCMaster::shem_chunk(0,0);    
+           << arg1 << arg2 << arg3 
+           << DynamicIPCMaster::shem_chunk(0,0);    
 
     ret_stat = master.recv(ret); 
     /* don't remove until we get a response ! */
     master.remove(arg1).remove(arg2).remove(arg3);
 
     if(!ret_stat){
-      master.release_pipe();
-      TOSDB_LogH("IPC","recv failed; problem with connection");
-      return -3;
+        master.release_pipe();
+        TOSDB_LogH("IPC","recv failed; problem with connection");
+        return -3;
     }
     master.release_pipe();
     return ret;
-  }
+}
 
-  void CaptureBuffer(TOS_Topics::TOPICS tTopic, 
-                     std::string sItem, 
-                     const TOSDBlock* db)
-  {
+void 
+CaptureBuffer(TOS_Topics::TOPICS tTopic, 
+              std::string sItem, 
+              const TOSDBlock* db)
+{
     std::string buf_name;
     void *fm_hndl, *mem_addr, *mtx_hndl;
-    buffers_type::key_type buf_key(tTopic, sItem); 
+    buffers_ty::key_type buf_key(tTopic, sItem); 
 
-    our_lock_guard_type lock(buffer_mtx);
+    LOCAL_BUFFERS_LOCK_GUARD;
     /* --- CRITICAL SECTION --- */
 
-    buffers_type::iterator b_iter = buffers.find(buf_key);
-    if(b_iter != buffers.end()) 
-    {  
-      std::get<2>(b_iter->second).insert(db);     
-    }
-    else
-    { 
-      buf_name = CreateBufferName(TOS_Topics::map[tTopic], sItem);
-      fm_hndl = OpenFileMapping(FILE_MAP_READ, 0, buf_name.c_str());
-      if(!fm_hndl 
-         || !(mem_addr = MapViewOfFile(fm_hndl,FILE_MAP_READ,0,0,0)))
+    buffers_ty::iterator b_iter = buffers.find(buf_key);
+    if( b_iter != buffers.end() ){  
+        std::get<2>(b_iter->second).insert(db);     
+    }else{ 
+        buf_name = CreateBufferName(TOS_Topics::map[tTopic], sItem);
+        fm_hndl = OpenFileMapping(FILE_MAP_READ, 0, buf_name.c_str());
+
+        if( !fm_hndl || !(mem_addr = MapViewOfFile(fm_hndl,FILE_MAP_READ,0,0,0)) )
         {  
-          if(fm_hndl)
-            CloseHandle(fm_hndl);
-          throw TOSDB_BufferError(std::string("failure to map shared memory: ")
-                                             .append(buf_name).c_str());
+            if(fm_hndl)
+                CloseHandle(fm_hndl);
+            std::string e("failure to map shared memory: "); 
+            throw TOSDB_BufferError( e.append(buf_name).c_str() );
         }
-      CloseHandle(fm_hndl); 
+        CloseHandle(fm_hndl); 
 
-      std::string mtx_name = std::string(buf_name).append("_mtx");
-      mtx_hndl = OpenMutex(SYNCHRONIZE,FALSE,mtx_name.c_str());
-      if(!mtx_hndl)
-      { 
-        UnmapViewOfFile(mem_addr);
-        throw TOSDB_BufferError(std::string("failure to open MUTEX handle: ")
-                                           .append(buf_name).c_str());
-      }
+        std::string mtx_name = std::string(buf_name).append("_mtx");
+        mtx_hndl = OpenMutex(SYNCHRONIZE,FALSE,mtx_name.c_str());
+        if(!mtx_hndl){ 
+            UnmapViewOfFile(mem_addr);
+            std::string e("failure to open MUTEX handle: ");
+            throw TOSDB_BufferError( e.append(buf_name).c_str() );
+        }
 
-      std::set<const TOSDBlock*> db_set;
-      db_set.insert(db);  
+        std::set<const TOSDBlock*> db_set;
+        db_set.insert(db);  
 
-      buffers.insert(buffers_type::value_type(
-        buf_key, std::make_tuple(0,0,std::move(db_set),mem_addr,mtx_hndl)));        
+        auto binfo = std::make_tuple(0,0,std::move(db_set),mem_addr,mtx_hndl);
+        buffers.insert( buffers_ty::value_type(std::move(buf_key),std::move(binfo)) );        
     }     
     /* --- CRITICAL SECTION --- */
-  }  
+}  
 
-  void ReleaseBuffer(TOS_Topics::TOPICS tTopic, 
-                     std::string sItem, 
-                     const TOSDBlock* db)
-  {
-    buffers_type::key_type buf_key(tTopic, sItem);
+void 
+ReleaseBuffer(TOS_Topics::TOPICS tTopic, 
+              std::string sItem, 
+              const TOSDBlock* db)
+{
+    buffers_ty::key_type buf_key(tTopic, sItem);
 
-    our_lock_guard_type lock(buffer_mtx);
+    LOCAL_BUFFERS_LOCK_GUARD;
     /* --- CRITICAL SECTION --- */
-    buffers_type::iterator b_iter = buffers.find(buf_key);
-    if(b_iter != buffers.end())
-    {
-      std::get<2>(b_iter->second).erase(db);
-      if(std::get<2>(b_iter->second).empty())
-      {
-        UnmapViewOfFile(std::get<3>(b_iter->second));
-        CloseHandle(std::get<4>(b_iter->second));
-        buffers.erase(b_iter);    
-      }
+    buffers_ty::iterator b_iter = buffers.find(buf_key);
+    if(b_iter != buffers.end()){
+        std::get<2>(b_iter->second).erase(db);
+        if(std::get<2>(b_iter->second).empty())
+        {
+            UnmapViewOfFile(std::get<3>(b_iter->second));
+            CloseHandle(std::get<4>(b_iter->second));
+            buffers.erase(b_iter);    
+        }
     }  
     /* --- CRITICAL SECTION --- */
-  }  
+}  
 
-  template<typename T> 
-  inline T CastToVal(char* val) { return *(T*)val; }
+template<typename T> 
+inline T 
+CastToVal(char* val) { return *(T*)val; }
   
-  template<> 
-  inline std::string CastToVal<std::string>(char* val){ return std::string(val); }
+template<> 
+inline std::string 
+CastToVal<std::string>(char* val){ return std::string(val); }
   
-  template<typename T> 
-  void ExtractFromBuffer(TOS_Topics::TOPICS topic, 
-                         std::string item, 
-                         buffer_info_type& buf_info)
-  { /* 
-     * some unecessary comp in here; cache some of the buffer params 
-     */
+
+template<typename T> 
+void 
+ExtractFromBuffer(TOS_Topics::TOPICS topic, 
+                  std::string item, 
+                  buf_info_ty& buf_info)
+/* some unecessary comp in here; cache some of the buffer params */
+{ 
     long npos;
     long long loop_diff, nelems;
     unsigned int dlen;
@@ -185,15 +206,13 @@ namespace {
 
     pBufferHead head = (pBufferHead)std::get<3>(buf_info);
         
-    if(head->next_offset - head->beg_offset == std::get<0>(buf_info) 
-       && head->loop_seq == std::get<1>(buf_info) 
-       || WaitForSingleObject(std::get<4>(buf_info), 0))
-      { /* 
-         * attempt to bail early if chance buffer hasn't changed;
-         * dont wait for the mutex, move on to the next 
-         */
+    if( head->next_offset - head->beg_offset == std::get<0>(buf_info) 
+        && head->loop_seq == std::get<1>(buf_info) 
+        || WaitForSingleObject(std::get<4>(buf_info), 0) ){
+        /* attempt to bail early if chance buffer hasn't changed;
+           dont wait for the mutex, move on to the next          */
         return;   
-      }
+    }
 
     /* get the effective size of the buffer */
     dlen = head->end_offset - head->beg_offset; 
@@ -203,117 +222,99 @@ namespace {
         
     if((loop_diff = (head->loop_seq - std::get<1>(buf_info))) < 0)
     {/* how many times has the buffer looped around, if any */
-      loop_diff+=(((long long)UINT_MAX+1)); /* in case of num limit */
+        loop_diff+=(((long long)UINT_MAX+1)); /* in case of num limit */
     }
 
     /* how many elems have been written, 'borrow' a dlen if necesary */
     nelems = (npos + (loop_diff * dlen)) / head->elem_size;      
-    if(!nelems){ 
-      /* if no new elems we're done */
-      ReleaseMutex(std::get<4>(buf_info));
-      return;
-    }else if(nelems < 0){ 
-      /* if something very bad happened */
-      ReleaseMutex(std::get<4>(buf_info));
-      throw TOSDB_BufferError("numElems < 0");
-    }
-    else{ /* extract */  
-      if((unsigned long long)nelems >= (dlen / head->elem_size)) 
-        /* make sure we don't insert more than the max elems */
-        nelems = dlen / head->elem_size;
-        
-      do{/* 
-          * go through each elem, last first 
-          */
-        spot = (char*)head + 
-             (((head->next_offset - (nelems * head->elem_size)) + dlen) % dlen);  
-      
-        for(const TOSDBlock* block : std::get<2>(buf_info)){ 
-          /* insert those elements into each block's raw data block */          
-          block->   
-          block->
-             insert_data(topic, item, CastToVal<T>(spot), 
-                         *(pDateTimeStamp)
-                         (spot + ((head->elem_size) - sizeof(DateTimeStamp)))); 
+    if(!nelems){ /* if no new elems we're done */
+        ReleaseMutex(std::get<4>(buf_info));
+        return;
+    }else if(nelems < 0){ /* if something very bad happened */
+        ReleaseMutex(std::get<4>(buf_info));
+        throw TOSDB_BufferError("numElems < 0");
+    }else{ /* extract */  
+
+        if((unsigned long long)nelems >= (dlen / head->elem_size)){ 
+            /* make sure we don't insert more than the max elems */
+            nelems = dlen / head->elem_size;
         }
-      } while(--nelems);
+        
+        do{ /* go through each elem, last first  */
+            spot = (char*)head + 
+                   (((head->next_offset - (nelems * head->elem_size)) + dlen) % dlen);  
+      
+            for(const TOSDBlock* block : std::get<2>(buf_info)){ 
+                /* insert those elements into each block's raw data block */          
+                block->   
+                block->
+                insert_data(topic, item, CastToVal<T>(spot), 
+                            *(pDateTimeStamp)
+                            (spot + ((head->elem_size) - sizeof(DateTimeStamp)))); 
+            }
+        }while(--nelems);
     } 
     /* adjust our buffer info to the present values */
     std::get<0>(buf_info) = head->next_offset - head->beg_offset;
     std::get<1>(buf_info) = head->loop_seq; 
 
     ReleaseMutex(std::get<4>(buf_info));
-  }
+}
 
-  TOSDBlock* _getBlockPtr(std::string id)
-  { 
-    try{        
-      return dde_blocks.at(id);
-    }catch(...){ 
-      TOSDB_Log("TOSDBlock", "TOSDBlock does not exist.");
-      return NULL; 
-    }
-  }
 
-  DWORD WINAPI BlockCleanup(LPVOID lParam)
-  {
+DWORD WINAPI 
+BlockCleanup(LPVOID lParam)
+{
     TOSDB_RawDataBlock* cln;
 
     cln = (TOSDB_RawDataBlock*)lParam;
     if(cln)
-      delete cln;
+        delete cln;
 
     return 0;
-  }
+}
 
-  DWORD WINAPI Threaded_Init(LPVOID lParam)
-  {        
+
+DWORD WINAPI 
+Threaded_Init(LPVOID lParam)
+{        
     steady_clock_type::time_point tbeg, tend;
     long tdiff;   
  
     aware_of_connection.store(true);
-    while(master.connected() && aware_of_connection.load())
-    { 
-      /* the concurrent read loop errs on the side of greedyness */
-      tbeg = steady_clock.now(); /* include time waiting for lock */   
-      {       
-        our_lock_guard_type lock(buffer_mtx);  
-        /* --- CRITICAL SECTION --- */
-        /* make sure we give up this lock each time through the buffers */ 
-        for(buffers_type::value_type & buf : buffers)
-        {
-          switch(TOS_Topics::TypeBits(buf.first.first)){
-          case TOSDB_STRING_BIT :  
-          {
-            ExtractFromBuffer<std::string>(buf.first.first, buf.first.second, 
-                                           buf.second); 
-          } break;
-          case TOSDB_INTGR_BIT :  
-          {
-            ExtractFromBuffer<def_size_type>(buf.first.first, buf.first.second, 
-                                             buf.second); 
-          } break;                      
-          case TOSDB_QUAD_BIT :   
-          {
-            ExtractFromBuffer<ext_price_type>(buf.first.first, buf.first.second, 
-                                              buf.second); 
-          } break;            
-          case TOSDB_INTGR_BIT | TOSDB_QUAD_BIT :  
-          {
-            ExtractFromBuffer<ext_size_type>(buf.first.first, buf.first.second, 
-                                             buf.second); 
-          } break;              
-          default : 
-            ExtractFromBuffer<def_price_type>(buf.first.first, buf.first.second, 
-                                              buf.second);                         
-          };        
-        }
-        /* --- CRITICAL SECTION --- */
-      }
-      tend = steady_clock.now();
-      tdiff = std::chrono::duration_cast<milli_sec_type>(tend - tbeg).count();    
-      Sleep(std::min<long>(std::max<long>((buffer_latency - tdiff),0),Glacial)); 
+    while(master.connected() && aware_of_connection.load()){ 
+        /* the concurrent read loop errs on the side of greedyness */
+        tbeg = steady_clock.now(); /* include time waiting for lock */   
+        {       
+            LOCAL_BUFFERS_LOCK_GUARD;  
+            /* --- CRITICAL SECTION --- */             
+            for(buffers_ty::value_type & buf : buffers)
+            {
+                switch(TOS_Topics::TypeBits(buf.first.first)){
+                case TOSDB_STRING_BIT :                  
+                    ExtractFromBuffer<std::string>(buf.first.first, buf.first.second, buf.second); 
+                    break;
+                case TOSDB_INTGR_BIT :                  
+                    ExtractFromBuffer<def_size_type>(buf.first.first, buf.first.second, buf.second); 
+                    break;                      
+                case TOSDB_QUAD_BIT :                   
+                    ExtractFromBuffer<ext_price_type>(buf.first.first, buf.first.second, buf.second); 
+                    break;            
+                case TOSDB_INTGR_BIT | TOSDB_QUAD_BIT :                  
+                    ExtractFromBuffer<ext_size_type>(buf.first.first, buf.first.second, buf.second); 
+                    break;              
+                default : 
+                    ExtractFromBuffer<def_price_type>(buf.first.first, buf.first.second, buf.second);                         
+                };        
+            }
+            /* --- CRITICAL SECTION --- */
+        } /* make sure we give up this lock each time through the buffers */
+
+        tend = steady_clock.now();
+        tdiff = std::chrono::duration_cast<milli_sec_type>(tend - tbeg).count();    
+        Sleep(std::min<long>(std::max<long>((buffer_latency - tdiff),0),Glacial)); 
     }
+
     aware_of_connection.store(false);
     master.disconnect();  
     buffer_thread = NULL;
@@ -322,639 +323,655 @@ namespace {
   }
 };
 
-BOOL WINAPI DllMain(HANDLE mod, DWORD why, LPVOID res)
+
+BOOL WINAPI 
+DllMain(HANDLE mod, DWORD why, LPVOID res) /* ENTRY POINT */
 {    
-  switch(why){
-  case DLL_PROCESS_ATTACH:
-  {/* 
-    * ! NO AUTO-CONNECT ! need blocking ops deep into ->try_for_slave() 
-    */         
-    TOSDB_StartLogging(std::string(std::string(TOSDB_LOG_PATH) + 
-                                   std::string("client-log.log")).c_str());   
-  } break;   
-  case DLL_THREAD_ATTACH: break;
-  case DLL_THREAD_DETACH: break;
-  case DLL_PROCESS_DETACH:  
-  {
-    if(master.connected())
-    {
-      aware_of_connection.store(false);        
-      for(const auto & buffer : buffers)
-      {/* signal the service and close the handles */        
-        RequestStreamOP(buffer.first.first, buffer.first.second, 
-                        TOSDB_DEF_TIMEOUT, TOSDB_SIG_REMOVE);
-        UnmapViewOfFile(std::get<3>(buffer.second));
-        CloseHandle(std::get<4>(buffer.second));
-      }
-      TOSDB_Disconnect();  
+    switch(why){
+    case DLL_PROCESS_ATTACH:
+        /* ! NO AUTO-CONNECT ! need blocking ops deep into ->try_for_slave()   */
+        {         
+            std::string f( std::string(TOSDB_LOG_PATH) 
+                           + std::string("client-log.log") );
+            TOSDB_StartLogging(f.c_str());   
+        } 
+        break;   
+    case DLL_THREAD_ATTACH: 
+        break;
+    case DLL_THREAD_DETACH: 
+        break;
+    case DLL_PROCESS_DETACH:  
+        {
+            if( master.connected() ){
+                aware_of_connection.store(false);        
+                for(const auto & buffer : buffers)
+                {/* signal the service and close the handles */        
+                    RequestStreamOP(buffer.first.first, buffer.first.second, 
+                                    TOSDB_DEF_TIMEOUT, TOSDB_SIG_REMOVE);
+                    UnmapViewOfFile(std::get<3>(buffer.second));
+                    CloseHandle(std::get<4>(buffer.second));
+                }
+                TOSDB_Disconnect();  
+            }
+        } 
+        break;    
+    default: 
+        break;
     }
-  } break;    
-  default: break;
-  }
-  return TRUE;
+
+    return TRUE;
 }
 
-int TOSDB_Connect()
+
+int 
+TOSDB_Connect()
 {  
-  unsigned int lcount = 0;
+    unsigned int lcount = 0;
 
-  if(master.connected() && aware_of_connection.load())
+    if(master.connected() && aware_of_connection.load())
+        return 0;
+
+    if( !master.try_for_slave() ){
+       TOSDB_Log_Raw_("could not connect with slave");
+        return -1;
+    }  
+
+    if(buffer_thread)
+        return 0;
+
+    buffer_thread = CreateThread(0, 0, Threaded_Init, 0, 0, &buffer_thread_id);
+    if(!buffer_thread){
+        TOSDB_Log_Raw_("error initializing communication thread");        
+        return -2;  
+    }
+
+    /* we need a timed wait on aware_of_connection to avoid situations 
+       where a lib call is made before Threaded_Init sets it to true   */    
+    IPC_TIMED_WAIT(!aware_of_connection.load(),
+                   "timed out waiting for aware_of_connection", 
+                   -3);
     return 0;
-
-  if(!master.try_for_slave()){
-    TOSDB_Log_Raw_("could not connect with slave");
-    return -1;
-  }  
-
-  if(buffer_thread)
-    return 0;
-
-  buffer_thread = CreateThread(0, 0, Threaded_Init, 0, 0, &buffer_thread_id);
-  if(!buffer_thread){
-    TOSDB_Log_Raw_("error initializing communication thread");        
-    return -2;  
-  }
-  /* 
-   * we need a timed wait on aware_of_connection to avoid situations 
-   * where a lib call is made before Threaded_Init sets it to true
-   */    
-  IPC_TIMED_WAIT(!aware_of_connection.load(),
-                 "timed out waiting for aware_of_connection", -3);
-  return 0;
 }
 
-int TOSDB_Disconnect()
+int 
+TOSDB_Disconnect()
 {  
-  master.disconnect();
-  return 0;
+    master.disconnect();
+    return 0;
 }
 
-unsigned int TOSDB_IsConnected()
+
+unsigned int 
+TOSDB_IsConnected()
 {
-  return master.connected() && aware_of_connection.load() ? 1 : 0;
+    return master.connected() && aware_of_connection.load() ? 1 : 0;
 }
 
-int TOSDB_CreateBlock(LPCSTR id,size_type sz,BOOL is_datetime,size_type timeout)
+
+int 
+TOSDB_CreateBlock(LPCSTR id,
+                  size_type sz,
+                  BOOL is_datetime,
+                  size_type timeout)
 {  
-  TOSDBlock* db;
+    TOSDBlock* db;
 
-  if(!aware_of_connection.load()){
-    TOSDB_LogH("IPC", "not connected to slave (aware_of_connection)");
-    return -1;
-  }  
+    if( !aware_of_connection.load() ){
+        TOSDB_LogH("IPC", "not connected to slave (!aware_of_connection)");
+        return -1;
+    }  
 
-  if(!master.connected()){
-    TOSDB_LogH("IPC", "not connected to slave (master.connected)");
-    return -1;
-  }
+    if( !master.connected() ){
+        TOSDB_LogH("IPC", "not connected to slave (!master.connected)");
+        return -1;
+    }
 
-  if(!CheckIDLength(id))    
-    return -2;
+    if(!CheckIDLength(id))    
+        return -2;
 
-  GLOBAL_RLOCK_GUARD;
-  /* --- CRITICAL SECTION --- */
+    GLOBAL_RLOCK_GUARD;
+    /* --- CRITICAL SECTION --- */
 
-  if(GetBlockPtr(id)){
-    TOSDB_LogH("TOSDBlock", "TOSDBlock with this ID already exists");
-    return -3; 
-  }
+    if( GetBlockPtr(id) ){
+        TOSDB_LogH("TOSDBlock", "TOSDBlock with this ID already exists");
+        return -3; 
+    }
 
-  db = new TOSDBlock;   
-  db->timeout = std::max<unsigned long>(timeout,TOSDB_MIN_TIMEOUT);
-  db->block = nullptr;
+    db = new TOSDBlock;   
+    db->timeout = std::max<unsigned long>(timeout,TOSDB_MIN_TIMEOUT);
+    db->block = nullptr;
 
-  try{
-    db->block = TOSDB_RawDataBlock::CreateBlock(sz, (bool)is_datetime); 
-  }
-  catch(TOSDB_DataBlockLimitError&){
-    TOSDB_LogH("TOSDBlock", "Attempted to exceed Block Limit");
-  }catch(std::exception& e){
-    TOSDB_LogH("TOSDBlock", e.what());
-  }
+    try{
+        db->block = TOSDB_RawDataBlock::CreateBlock(sz, is_datetime); 
+    }catch(TOSDB_DataBlockLimitError&){
+        TOSDB_LogH("TOSDBlock", "attempt to exceed block limit");
+    }catch(std::exception& e){
+        TOSDB_LogH("TOSDBlock", e.what());
+    }
    
-  if (!db->block){
-    TOSDB_LogH("DataBlock", "Error Creating TOSDB_RawDataBlock. "
-                            "TOSDBlock will be destroyed.");
-    delete db;
-    return -4;
-  }   
+    if(!db->block){
+        TOSDB_LogH("DataBlock", "creation error, TOSDBlock will be destroyed.");
+        delete db;
+        return -4;
+    }   
  
-  dde_blocks.insert(std::pair<std::string, TOSDBlock*>(id, db));  
-  return 0;
-  /* --- CRITICAL SECTION --- */
+    dde_blocks.insert( std::pair<std::string, TOSDBlock*>(id, db) );  
+    return 0;
+    /* --- CRITICAL SECTION --- */
 }
 
-typedef std::insert_iterator<str_set_type> str_set_inserter;
-typedef std::insert_iterator<topic_set_type> topic_set_inserter;
 
-int TOSDB_Add(std::string id, str_set_type sItems, topic_set_type tTopics)
-{/* 
-  * for adding sets of topics and strings, dealing with pre-cache; 
-  * all add methods end up here 
-  */
-  topic_set_type  tdiff, old_topics, tot_topics;
-  str_set_type  idiff, old_items, iunion, tot_items;
+/* adding sets of topics and strings, dealing with pre-cache; 
+   all Add_ methods end up here  */
+int 
+TOSDB_Add(std::string id, 
+          str_set_type sItems, 
+          topic_set_type tTopics)
+{
+    topic_set_type tdiff, old_topics, tot_topics;
+    str_set_type   idiff, old_items,  tot_items, iunion;
+    bool is_empty;
+    TOSDBlock *db;
 
-  bool is_empty;
-  TOSDBlock *db;
+    HWND hndl = NULL;
+    int err = 0;
 
-  HWND hndl = NULL;
-  int err = 0;
-
-  if(!master.connected() || !aware_of_connection.load())
-  {
-    TOSDB_LogH("IPC", "not connected to slave/server");
-    return -2;
-  }  
+    if( !master.connected() || !aware_of_connection.load() ){
+        TOSDB_LogH("IPC", "not connected to slave/server");
+        return -2;
+    }  
   
-  GLOBAL_RLOCK_GUARD;
-  /* --- CRITICAL SECTION --- */
+    GLOBAL_RLOCK_GUARD;
+    /* --- CRITICAL SECTION --- */
 
-  if(!(db = _getBlockPtr(id)))
-    return -3;
+    if(!(db = _getBlockPtr(id)))
+        return -3;
 
-  old_topics = db->block->topics();
-  old_items = db->block->items(); 
+    old_topics = db->block->topics();
+    old_items = db->block->items(); 
   
-  if(!db->item_precache.empty())
-  { /* if we have pre-cached items, include them */
-    std::set_union(sItems.cbegin(), sItems.cend(),
-                   db->item_precache.cbegin(), db->item_precache.cend(),
-                   str_set_inserter(tot_items,tot_items.begin())); 
-  }
-  else /* 'copy', keep sItems available for pre-caching */
-    tot_items = sItems;  
+    if( !db->item_precache.empty() ){ 
+       /* if we have pre-cached items, include them */
+       std::set_union(sItems.cbegin(), sItems.cend(),
+                      db->item_precache.cbegin(), db->item_precache.cend(),
+                      str_set_inserter(tot_items,tot_items.begin())); 
+    }else{ 
+        tot_items = sItems; /* 'copy', keep sItems available for pre-caching */ 
+    }
   
+    if( !db->topic_precache.empty() ){ 
+        /* if we have pre-cached topics, include them */
+        std::set_union(tTopics.cbegin(), tTopics.cend(),
+                       db->topic_precache.cbegin(), db->topic_precache.cend(),
+                       topic_set_inserter(tot_topics,tot_topics.begin()),
+                       TOS_Topics::top_less()); 
+    }else{ 
+        tot_topics = std::move(tTopics); /* move, don't need tTopics anymore */  
+    }
 
-  if(!db->topic_precache.empty())
-  { /* if we have pre-cached topics, include them */
-    std::set_union(tTopics.cbegin(), tTopics.cend(),
-                   db->topic_precache.cbegin(), db->topic_precache.cend(),
-                   topic_set_inserter(tot_topics,tot_topics.begin()),
-                   TOS_Topics::top_less()); 
-  }
-  else /* move, we don't need tTopics anymore */
-    tot_topics = std::move(tTopics);   
+    /* find new items and topics to add */
+    std::set_difference(tot_topics.cbegin(), tot_topics.cend(),
+                        old_topics.cbegin(), old_topics.cend(),
+                        topic_set_inserter(tdiff,tdiff.begin()),
+                        TOS_Topics::top_less());
 
-  /* find new items and topics to add */
-  std::set_difference(tot_topics.cbegin(), tot_topics.cend(),
-                      old_topics.cbegin(), old_topics.cend(),
-                      topic_set_inserter(tdiff,tdiff.begin()),
-                      TOS_Topics::top_less());
+    std::set_difference(tot_items.cbegin(), tot_items.cend(),
+                        old_items.cbegin(), old_items.cend(),
+                        str_set_inserter(idiff, idiff.begin()));
 
-  std::set_difference(tot_items.cbegin(), tot_items.cend(),
-                      old_items.cbegin(), old_items.cend(),
-                      str_set_inserter(idiff, idiff.begin()));
-
-  if(!tdiff.empty())
-  {/* 
-    * if new topics, atleast one item, add them to the block
-    * add ALL the items (new and old) for each 
-    */
-    std::set_union(tot_items.cbegin(), tot_items.cend(),
-                   old_items.cbegin(), old_items.cend(),
-                   str_set_inserter(iunion, iunion.begin()));
-    is_empty = iunion.empty();
-
-    for(auto & topic : tdiff)
-    {      
-      if(is_empty)
-        db->topic_precache.insert(topic);
-
-      for(auto & item : iunion)
-      {      
-        if(!RequestStreamOP(topic, item, db->timeout, TOSDB_SIG_ADD)){
-          db->block->add_topic(topic);
-          db->block->add_item(item);
-          db->item_precache.clear();
-          db->topic_precache.clear();
-          CaptureBuffer(topic, item, db);  
-        }else
-          ++err;        
-      }          
-    }    
-  }
-  else if(old_topics.empty())
-  {/* don't ignore items if no topics yet.. */
-    for(auto & i : sItems)
-      db->item_precache.insert(i); /* ...pre-cache them */     
-  }
+    if( !tdiff.empty() ){
+        /* if new topics, atleast one item, add them to the block
+           add ALL the items (new and old) for each */
+        std::set_union(tot_items.cbegin(), tot_items.cend(),
+                       old_items.cbegin(), old_items.cend(),
+                       str_set_inserter(iunion, iunion.begin()));
+        
+        is_empty = iunion.empty();
+        for(auto & topic : tdiff)
+        {    
+            if(is_empty)
+                db->topic_precache.insert(topic);
+            for(auto & item : iunion)
+            {                              /* TRY TO ADD TO BLOCK */
+                if(!RequestStreamOP(topic, item, db->timeout, TOSDB_SIG_ADD)){
+                    db->block->add_topic(topic);
+                    db->block->add_item(item);
+                    db->item_precache.clear();
+                    db->topic_precache.clear();
+                    CaptureBuffer(topic, item, db);  
+                }else{
+                    ++err;        
+                }
+            }          
+        }    
+    }else if(old_topics.empty()){ /* don't ignore items if no topics yet.. */
+        for(auto & i : sItems)
+            db->item_precache.insert(i); /* ...pre-cache them */     
+    }
     
-  for(auto & topic : old_topics) /* add new items to the old topics */
-    for(auto & item : idiff)
-    { 
-      if(!RequestStreamOP(topic, item, db->timeout, TOSDB_SIG_ADD))
-      {
-        db->block->add_item(item);          
-        CaptureBuffer(topic, item, db);   
-      }
-      else
-        ++err; 
+    for(auto & topic : old_topics) /* add new items to the old topics */
+    {
+        for(auto & item : idiff){       /* TRY TO ADD TO BLOCK */
+            if( !RequestStreamOP(topic, item, db->timeout, TOSDB_SIG_ADD) ){
+                db->block->add_item(item);          
+                CaptureBuffer(topic, item, db);   
+            }else{
+                ++err; 
+            }
+        }
     }
 
-  return err;
-  /* --- CRITICAL SECTION --- */
+    return err;
+    /* --- CRITICAL SECTION --- */
 }
 
-int TOSDB_AddTopic(std::string id, TOS_Topics::TOPICS tTopic)
+
+int 
+TOSDB_AddTopic(std::string id, TOS_Topics::TOPICS tTopic)
 {
-  return TOSDB_Add(id, str_set_type(), tTopic);
+    return TOSDB_Add(id, str_set_type(), tTopic);
 }
 
-int TOSDB_AddTopic(LPCSTR id, LPCSTR sTopic)
+
+int 
+TOSDB_AddTopic(LPCSTR id, LPCSTR sTopic)
 {
-  if(!CheckIDLength(id) || !CheckStringLength(sTopic))
-    return -1;
+    if( !CheckIDLength(id) || !CheckStringLength(sTopic) )
+        return -1;
 
-  return TOSDB_AddTopic(id, GetTopicEnum(sTopic));
+    return TOSDB_AddTopic(id, GetTopicEnum(sTopic));
 }
 
-int TOSDB_AddTopics(std::string id, topic_set_type tTopics)
+
+int 
+TOSDB_AddTopics(std::string id, topic_set_type tTopics)
 {  
-  return TOSDB_Add(id, str_set_type(), tTopics);
+    return TOSDB_Add(id, str_set_type(), tTopics);
 }
 
-int TOSDB_AddTopics(LPCSTR id, LPCSTR* sTopics, size_type topics_len)
+
+int 
+TOSDB_AddTopics(LPCSTR id, LPCSTR* sTopics, size_type topics_len)
 {  
-  if(!CheckIDLength(id) || !CheckStringLengths(sTopics, topics_len)) 
-    return -1;  
-     
-  topic_set_type tset(sTopics, topics_len, 
-                      [=](LPCSTR str){ return TOS_Topics::map[str]; });
+    if( !CheckIDLength(id) || !CheckStringLengths(sTopics, topics_len) ) 
+        return -1;  
 
-  return TOSDB_Add(id, str_set_type(), std::move(tset));
+    auto f =  [=](LPCSTR str){ return TOS_Topics::map[str]; };
+    topic_set_type tset(sTopics, topics_len, f);
+
+    return TOSDB_Add(id, str_set_type(), std::move(tset));
 }
 
-int TOSDB_AddItem(LPCSTR id, LPCSTR sItem)
+
+int 
+TOSDB_AddItem(LPCSTR id, LPCSTR sItem)
 {  
-  if(!CheckIDLength(id) || !CheckStringLength(sItem))
-    return -1;
+    if( !CheckIDLength(id) || !CheckStringLength(sItem) )
+        return -1;
 
-  return TOSDB_Add(id, std::string(sItem), topic_set_type());
+    return TOSDB_Add(id, std::string(sItem), topic_set_type());
 }
 
-int TOSDB_AddItems(std::string id, str_set_type sItems)
+
+int 
+TOSDB_AddItems(std::string id, str_set_type sItems)
 {
-  return TOSDB_Add(id, sItems, topic_set_type());
+    return TOSDB_Add(id, sItems, topic_set_type());
 }
 
-int TOSDB_AddItems(LPCSTR id, LPCSTR* sItems, size_type items_len)
+
+int 
+TOSDB_AddItems(LPCSTR id, LPCSTR* sItems, size_type items_len)
 {  
-  if(!CheckIDLength(id) || !CheckStringLengths(sItems, items_len)) 
-    return -1; 
+    if( !CheckIDLength(id) || !CheckStringLengths(sItems, items_len) ) 
+        return -1; 
    
-  return TOSDB_Add(id, str_set_type(sItems,items_len), topic_set_type());  
+    return TOSDB_Add(id, str_set_type(sItems,items_len), topic_set_type());  
 }
 
-int TOSDB_Add(LPCSTR id, 
-              LPCSTR* sItems, 
-              size_type items_len, 
-              LPCSTR* sTopics, 
-              size_type topics_len)
+
+int 
+TOSDB_Add(LPCSTR id, 
+          LPCSTR* sItems, 
+          size_type items_len, 
+          LPCSTR* sTopics, 
+          size_type topics_len)
 { 
-  if(!CheckIDLength(id) 
-     || !CheckStringLengths(sItems, items_len) 
-     || !CheckStringLengths(sTopics, topics_len))
-    {  
-      return -1;  
+    if( !CheckIDLength(id) 
+        || !CheckStringLengths(sItems, items_len) 
+        || !CheckStringLengths(sTopics, topics_len) ){  
+        return -1;  
     }
 
-  topic_set_type tset(sTopics, topics_len, 
-                      [=](LPCSTR str){ return TOS_Topics::map[str]; });
+    auto f = [=](LPCSTR str){ return TOS_Topics::map[str]; };
+    topic_set_type tset(sTopics, topics_len, f);
   
-  return TOSDB_Add(id, str_set_type(sItems,items_len), std::move(tset)); 
+    return TOSDB_Add(id, str_set_type(sItems,items_len), std::move(tset)); 
 }
 
-int TOSDB_RemoveTopic(LPCSTR id, LPCSTR sTopic)
+
+int 
+TOSDB_RemoveTopic(LPCSTR id, LPCSTR sTopic)
 {
-  if(!CheckIDLength(id) || !CheckStringLength(sTopic))
-    return -1;
+    if( !CheckIDLength(id) || !CheckStringLength(sTopic) )
+        return -1;
 
-  return TOSDB_RemoveTopic(id, TOS_Topics::map[sTopic]);
+    return TOSDB_RemoveTopic(id, TOS_Topics::map[sTopic]);
 }
 
-int TOSDB_RemoveTopic(std::string id, TOS_Topics::TOPICS tTopic)
+
+int 
+TOSDB_RemoveTopic(std::string id, TOS_Topics::TOPICS tTopic)
 {  
-  TOSDBlock* db;
-  int err = 0;
+    TOSDBlock* db;
+    int err = 0;
 
-  if(!master.connected() || !aware_of_connection.load())
-  {
-    TOSDB_LogH("IPC", "not connected to slave/server");
-    return -2;
-  }
+    if( !master.connected() || !aware_of_connection.load() ){
+        TOSDB_LogH("IPC", "not connected to slave/server");
+        return -2;
+    }
   
-  GLOBAL_RLOCK_GUARD;
+    GLOBAL_RLOCK_GUARD;
+    /* --- CRITICAL SECTION --- */
+
+    db = _getBlockPtr(id);
+    if(!db){
+        TOSDB_LogH("TOSDBlock", "block doesn't exist");
+        return -3;
+    }   
+
+    if( !(TOS_Topics::enum_value_type)(tTopic) ){
+        TOSDB_LogH("TOSDBlock", "NULL topic");
+        return -3;
+    }   
+
+    if( db->block->has_topic(tTopic) ){
+        for(const std::string & item : db->block->items())
+        {
+            ReleaseBuffer(tTopic, item, db); 
+            if( RequestStreamOP(tTopic, item, db->timeout, TOSDB_SIG_REMOVE) ){
+                ++err;
+                TOSDB_LogH("IPC","RequestStreamOP(REMOVE) failed, stream leaked");
+            }
+        }
+        db->block->remove_topic(tTopic);
+        if( db->block->topics().empty() ){
+            for(const std::string & item : db->block->items()){
+                db->item_precache.insert(item);
+                db->block->remove_item(item); 
+            }  
+        }
+    }else{
+        err = -4;  
+    }
+
+    db->topic_precache.erase(tTopic);
+    return err;
+    /* --- CRITICAL SECTION --- */
+}
+
+int 
+TOSDB_RemoveItem(LPCSTR id, LPCSTR sItem)
+{  
+    TOSDBlock* db;
+    int err = 0;
+
+    if( !master.connected() || !aware_of_connection.load() ){
+        TOSDB_LogH("IPC", "not connected to slave/server");
+        return -1;
+    }
+  
+    GLOBAL_RLOCK_GUARD;
+    /* --- CRITICAL SECTION --- */
+
+    if( !CheckIDLength(id) ){
+        TOSDB_LogH("TOSDBlock", "invalid id length");
+        return -2;
+    }  
+
+    db = _getBlockPtr(id);
+    if(!db){
+        TOSDB_LogH("TOSDBlock", "block doesn't exist");
+        return -2;
+    }  
+
+    if( !CheckStringLength(sItem) )
+        return -3;
+
+    if( db->block->has_item(sItem) ){
+        for(const TOS_Topics::TOPICS topic : db->block->topics())
+        {
+            ReleaseBuffer(topic, sItem, db); 
+            if( RequestStreamOP(topic, sItem, db->timeout, TOSDB_SIG_REMOVE) ){
+                ++err;
+                TOSDB_LogH("IPC","RequestStreamOP(REMOVE) failed, stream leaked");
+            }
+        }
+        db->block->remove_item(sItem);
+        if( db->block->items().empty() ){
+            for(const TOS_Topics::TOPICS topic : db->block->topics()){
+                db->topic_precache.insert (topic);
+                db->block->remove_topic(topic);
+            }
+        }
+    }else{
+        err = -4;  
+    }
+
+    db->item_precache.erase(sItem);
+    return err;
   /* --- CRITICAL SECTION --- */
+}
 
-  db = _getBlockPtr(id);
-  if (!db || !(TOS_Topics::enum_value_type)(tTopic))
-  {
-    TOSDB_LogH("TOSDBlock", "Could not Remove.");
-    return -3;
-  }    
+int 
+TOSDB_CloseBlock(LPCSTR id)
+{
+    TOSDBlock* db;
+    HANDLE del_thrd_hndl;
+    DWORD del_thrd_id;
 
-  if(db->block->has_topic(tTopic))
-  {
+    int err = 0;
+
+    if( !master.connected() || !aware_of_connection.load() ){
+        TOSDB_LogH("IPC", "not connected to slave/server");
+        return -1;
+    }
+
+    GLOBAL_RLOCK_GUARD;
+    /* --- CRITICAL SECTION --- */
+
+    if( !CheckIDLength(id) ){
+        TOSDB_LogH("TOSDBlock", "invalid id length");
+        return -2;
+    }  
+
+    db = _getBlockPtr(id);
+    if(!db){
+        TOSDB_LogH("TOSDBlock", "block doesn't exist");
+        return -2;
+    }  
+
     for(const std::string & item : db->block->items())
     {
-      ReleaseBuffer(tTopic, item, db); 
-      if(RequestStreamOP(tTopic, item, db->timeout, TOSDB_SIG_REMOVE)){
-        ++err;
-        TOSDB_LogH("IPC","RequestStreamOP(TOSDB_SIG_REMOVE) fail, stream leaked");
-      }
+        for(TOS_Topics::TOPICS topic : db->block->topics()){
+            ReleaseBuffer(topic, item, db);
+            if( RequestStreamOP(topic, item, db->timeout, TOSDB_SIG_REMOVE) ){
+                ++err;
+                TOSDB_LogH("IPC", "RequestStreamOP(REMOVE) failed, stream leaked");
+            }
+        }
     }
-    db->block->remove_topic(tTopic);
-    if(db->block->topics().empty()) 
-    {
-      for(const std::string & item : db->block->items())
-      {
-        db->item_precache.insert(item);
-        db->block->remove_item(item); 
-      }  
-    }
-  }
-  else
-    err = -4;  
 
-  db->topic_precache.erase(tTopic);
-  return err;
-  /* --- CRITICAL SECTION --- */
+    dde_blocks.erase(id);       
+
+    /* try to spin-off block destruction - and potentially a large number of
+       internal dealloactions - to its own thread so we don't block the main */
+    del_thrd_hndl = CreateThread(NULL, 0, BlockCleanup, 
+                                 (LPVOID)db->block, 0, &(del_thrd_id));
+    if(!del_thrd_hndl){
+        err = -3;
+        TOSDB_LogH("Threading", "using main thread to clean-up(THIS MAY BLOCK)"); 
+        BlockCleanup((LPVOID)db->block);
+    }
+
+    delete db;
+    return err;
+    /* --- CRITICAL SECTION --- */
 }
 
-int TOSDB_RemoveItem(LPCSTR id, LPCSTR sItem)
-{  
-  TOSDBlock* db;
-  int err = 0;
+int 
+TOSDB_CloseBlocks()
+{
+    std::map<std::string, TOSDBlock*> bcopy;  
+    int err = 0;
+    try{ 
+        GLOBAL_RLOCK_GUARD;  
+        /* --- CRITICAL SECTION --- */
 
-  if(!master.connected() || !aware_of_connection.load())
-  {
-    TOSDB_LogH("IPC", "not connected to slave/server");
-    return -1;
-  }
+        /* need a copy, _CloseBlock removes from original */    
+        std::insert_iterator<std::map<std::string,TOSDBlock*>> i(bcopy,bcopy.begin());
+        std::copy(dde_blocks.begin(), dde_blocks.end(), i); 
+        for(const auto& b: bcopy){    
+            if( TOSDB_CloseBlock(b.first.c_str()) )
+                ++err;
+        }
+        /* --- CRITICAL SECTION --- */
+    }catch(...){ 
+        return -1; 
+    }
+
+    return err;
+}
+
+
+int 
+TOSDB_DumpSharedBufferStatus()
+{
+    int ret;  
+    unsigned int lcount = 0;
+
+    GLOBAL_RLOCK_GUARD;
+    /* --- CRITICAL SECTION --- */
+
+    IPC_TIMED_WAIT(master.grab_pipe() <= 0,
+                   "TOSDB_DumpSharedBufferStatus timeout trying to grab pipe",
+                   -1);
   
-  GLOBAL_RLOCK_GUARD;
-  /* --- CRITICAL SECTION --- */
+    master << DynamicIPCMaster::shem_chunk(TOSDB_SIG_DUMP, 0) 
+           << DynamicIPCMaster::shem_chunk(0,0);
 
-  if (!CheckIDLength(id) || !(db = _getBlockPtr(id)))
-  {
-    TOSDB_LogH("TOSDBlock", "Could not Remove.");
-    return -2;
-  }  
-
-  if(!CheckStringLength(sItem))
-    return -3;
-
-  if(db->block->has_item(sItem))
-  {
-    for(const TOS_Topics::TOPICS topic : db->block->topics())
-    {
-      ReleaseBuffer(topic, sItem, db); 
-      if(RequestStreamOP(topic, sItem, db->timeout, TOSDB_SIG_REMOVE)){
-        ++err;
-        TOSDB_LogH("IPC","RequestStreamOP(TOSDB_SIG_REMOVE) fail, stream leaked");
-      }
+    if( !master.recv(ret) ){
+        master.release_pipe();
+        TOSDB_LogH("IPC","recv failed; problem with connection");
+        return -2;
     }
-    db->block->remove_item(sItem);
-    if(db->block->items().empty())
-    {
-      for(const TOS_Topics::TOPICS topic : db->block->topics())
-      {
-        db->topic_precache.insert (topic);
-        db->block->remove_topic(topic);
-      }
-    }
-  }
-  else
-    err = -4;  
+    master.release_pipe();
 
-  db->item_precache.erase(sItem);
-  return err;
-  /* --- CRITICAL SECTION --- */
+    return ret;
+    /* --- CRITICAL SECTION --- */
 }
 
-int TOSDB_CloseBlock(LPCSTR id)
-{
-  TOSDBlock* db;
-  HANDLE del_thrd_hndl;
-  DWORD del_thrd_id;
+int 
+TOSDB_GetBlockIDs(LPSTR* dest, size_type array_len, size_type str_len)
+{  
+    GLOBAL_RLOCK_GUARD;
+    /* --- CRITICAL SECTION --- */
+    if(array_len < dde_blocks.size()) 
+      return -1;
 
-  int err = 0;
+    int i = 0;
+    int err = 0;
 
-  if(!master.connected() || !aware_of_connection.load()){
-    TOSDB_LogH("IPC", "not connected to slave/server");
-    return -1;
-  }
-
-  GLOBAL_RLOCK_GUARD;
-  /* --- CRITICAL SECTION --- */
-
-  if (!CheckIDLength(id) || !(db = _getBlockPtr(id))){
-    TOSDB_LogH("TOSDBlock", "Could not close.");
-    return -2;
-  }  
-
-  for(const std::string & item : db->block->items())
-    for(TOS_Topics::TOPICS topic : db->block->topics())
-    {
-      ReleaseBuffer(topic, item, db);
-      if(RequestStreamOP(topic, item, db->timeout, TOSDB_SIG_REMOVE)){
-        ++err;
-        TOSDB_LogH("IPC", "RequestStreamOP(TOSDB_SIG_REMOVE) failed, "
-                   "stream leaked");
-      }
+    for(auto & name : dde_blocks){
+        err = strcpy_s(dest[i++], str_len, name.first.c_str());
+        if(err) 
+            return err;    
     }
-
-  dde_blocks.erase(id);      
-   
-  del_thrd_hndl = 
-    CreateThread(NULL, 0, BlockCleanup, (LPVOID)db->block, 0, &(del_thrd_id));
-
-  if(!del_thrd_hndl){
-    err = -3;
-    TOSDB_LogH("Threading", "Error initializing clean-up thread: using main."
-                            " (THIS MAY BLOCK... for a long, long time!)"); 
-    BlockCleanup((LPVOID)db->block);
-  }
-
-  delete db;
-  return err;
-  /* --- CRITICAL SECTION --- */
+     
+    return err; 
+    /* --- CRITICAL SECTION --- */
 }
 
-int TOSDB_CloseBlocks()
+str_set_type 
+TOSDB_GetBlockIDs()
 {
-  std::map<std::string, TOSDBlock*> bcopy;  
-  int err = 0;
-  try{ 
+    str_set_type tmp;
+
+    GLOBAL_RLOCK_GUARD;
+    /* --- CRITICAL SECTION --- */
+    for(auto & name : dde_blocks)
+        tmp.insert(name.first);
+
+    return tmp;
+    /* --- CRITICAL SECTION --- */
+}
+
+
+unsigned long 
+TOSDB_GetLatency() 
+{ 
+    return buffer_latency; 
+}
+
+
+unsigned long 
+TOSDB_SetLatency(UpdateLatency latency) 
+{
     GLOBAL_RLOCK_GUARD;  
     /* --- CRITICAL SECTION --- */
-    /* need a copy, _CloseBlock removes from original */    
-    std::copy(dde_blocks.begin(), dde_blocks.end(), 
-              std::insert_iterator<std::map<std::string,TOSDBlock*>>(
-                bcopy,bcopy.begin())); 
+    unsigned long tmp = buffer_latency;
 
-    for (const auto& block: bcopy)    
-      if(TOSDB_CloseBlock(block.first.c_str()))
-        ++err;
-    /* --- CRITICAL SECTION --- */
-  }
-  catch(...){ return -1; }
+    switch(latency){
+    case Fastest:  
+    case VeryFast:    
+    case Fast:    
+    case Moderate:
+    case Slow:
+    case Glacial:
+        buffer_latency = latency;
+        break;
+    default:
+        buffer_latency = Moderate;
+    }
 
-  return err;
+    return tmp;
+  /* --- CRITICAL SECTION --- */
 }
 
-int TOSDB_DumpSharedBufferStatus()
+
+const TOSDBlock* 
+GetBlockPtr(const std::string id)
 {
-  int ret;  
-  unsigned int lcount = 0;
-
-  GLOBAL_RLOCK_GUARD;
-  /* --- CRITICAL SECTION --- */
-
-  IPC_TIMED_WAIT(master.grab_pipe() <= 0,
-                 "TOSDB_DumpSharedBufferStatus timeout trying to grab pipe",-1);
-  
-  master << DynamicIPCMaster::shem_chunk(TOSDB_SIG_DUMP, 0) 
-         << DynamicIPCMaster::shem_chunk(0,0);
-
-  if(!master.recv(ret))
-  {
-    master.release_pipe();
-    TOSDB_LogH("IPC","recv failed; problem with connection");
-    return -2;
-  }
-  master.release_pipe();
-
-  return ret;
-  /* --- CRITICAL SECTION --- */
+    try{      
+        return dde_blocks.at(id);
+    }catch(...){ 
+        TOSDB_Log("TOSDBlock", "block doesn't exist");
+        return NULL; 
+    }
 }
 
-int TOSDB_GetBlockIDs(LPSTR* dest, size_type array_len, size_type str_len)
-{  
-  GLOBAL_RLOCK_GUARD;
-  /* --- CRITICAL SECTION --- */
-  if(array_len < dde_blocks.size()) 
-    return -1;
 
-  int i, err;
-  i = err = 0;
-
-  for(auto & name : dde_blocks)
-    if(err = strcpy_s(dest[i++], str_len, name.first.c_str())) 
-      return err;    
-     
-  return err; 
-  /* --- CRITICAL SECTION --- */
-}
-
-str_set_type TOSDB_GetBlockIDs()
+const TOSDBlock* 
+GetBlockOrThrow(std::string id)
 {
-  str_set_type tmp;
+    const TOSDBlock* db;
 
-  GLOBAL_RLOCK_GUARD;
-  /* --- CRITICAL SECTION --- */
-  for(auto & name : dde_blocks)
-    tmp.insert(name.first);
-
-  return tmp;
-  /* --- CRITICAL SECTION --- */
-}
-
-unsigned long TOSDB_GetLatency() { return buffer_latency; }
-
-unsigned long TOSDB_SetLatency(UpdateLatency latency) 
-{
-  GLOBAL_RLOCK_GUARD;  
-  /* --- CRITICAL SECTION --- */
-  unsigned long tmp = buffer_latency;
-  switch(latency){
-  case Fastest:  
-  case VeryFast:    
-  case Fast:    
-  case Moderate:
-  case Slow:
-  case Glacial:
-    buffer_latency = latency;
-    break;
-  default:
-    buffer_latency = Moderate;
-  }  
-  return tmp;
-  /* --- CRITICAL SECTION --- */
-}
-
-const TOSDBlock* GetBlockPtr(const std::string id)
-{
-  try{      
-    return dde_blocks.at(id);
-  }catch(...){ 
-    TOSDB_Log("TOSDBlock", "TOSDBlock does not exist.");
-    return NULL; 
-  }
-}
-
-const TOSDBlock* GetBlockOrThrow(std::string id)
-{
-  const TOSDBlock* db;
-
-  db = GetBlockPtr(id);
-  if (!db) 
-    throw TOSDB_Error("TOSDBlock does not exist","TOSDBlock");
-  else
+    db = GetBlockPtr(id);
+    if(!db) 
+        throw TOSDB_DataBlockError("block doesn't exist");
+ 
     return db;
 }
 
-bool CheckStringLength(LPCSTR str)
+
+TOS_Topics::TOPICS 
+GetTopicEnum(std::string sTopic)
 {
-  if(strnlen_s(str, TOSDB_MAX_STR_SZ+1) == (TOSDB_MAX_STR_SZ+1))
-  {
-    TOSDB_LogH("User Input", "string length > TOSDB_MAX_STR_SZ");
-    return false;
-  }
-
-  return true;
-}
-
-bool CheckStringLength(LPCSTR str, LPCSTR str2)
-{
-  if(!CheckStringLength(str))
-    return false;
-
-  return CheckStringLength(str2);  
-}
-
-bool CheckStringLengths(LPCSTR* str, size_type items_len)
-{
-  while(items_len--)
-    if(strnlen_s(str[items_len], TOSDB_MAX_STR_SZ + 1) == (TOSDB_MAX_STR_SZ+1))
-    { 
-      TOSDB_LogH("User Input", "string length > TOSDB_MAX_STR_SZ");
-      return false;
-    }
-
-  return true;
-}
-
-
-bool CheckIDLength(LPCSTR id)
-{
-  if(strnlen_s(id, TOSDB_BLOCK_ID_SZ + 1) == (TOSDB_BLOCK_ID_SZ + 1))
-  {
-    TOSDB_LogH("Strings", "name/id length > TOSDB_BLOCK_ID_SZ");
-    return false;
-  }
-
-  return true;
-}
-
-TOS_Topics::TOPICS GetTopicEnum(std::string sTopic)
-{
-  TOS_Topics::TOPICS t = TOS_Topics::map[sTopic];
-  if(!(TOS_Topics::enum_value_type)t)
-    TOSDB_Log("TOS_Topic", "TOS_Topic has no corresponding enum type in map");
- 
-  return t;
+    TOS_Topics::TOPICS t = TOS_Topics::map[sTopic];
+    /* why are we logging this ?? 
+    if( !(TOS_Topics::enum_value_type)t )
+        TOSDB_Log("TOS_Topic", "TOS_Topic has no corresponding enum type in map"); */ 
+    return t;
 }
 
 

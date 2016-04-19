@@ -28,7 +28,7 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 #include <vector>
 #include <mutex>  
 
-/* implemented in data_streams.tpp */
+/* implemented in src/data_streams.tpp */
 
 /* interface */
 #define DATASTREAM_INTERFACE_TEMPLATE template< typename SecTy, typename GenTy >

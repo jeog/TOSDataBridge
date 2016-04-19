@@ -22,6 +22,8 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 #include "client.hpp"
 #include <memory>
 
+/* implemented in src/raw_data_block.tpp */
+
 #define RAW_DATA_BLOCK_TEMPLATE template<typename GenericTy, typename DateTimeTy>
 #define RAW_DATA_BLOCK_CLASS RawDataBlock<GenericTy, DateTimeTy>
 #define MAX_BLOCK_COUNT 10
@@ -131,10 +133,10 @@ public:
   block_size() const { return this->_block_sz; }  
 
   inline size_type 
-  item_count() const { return this->_item_names.size(); }
+  item_count() const { return (size_type)(this->_item_names.size()); }
 
   inline size_type 
-  topic_count() const { return this->_topic_enums.size(); }
+  topic_count() const { return (size_type)(this->_topic_enums.size()); }
 
   void add_item(std::string item); 
   void remove_item(std::string item); 
