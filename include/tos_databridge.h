@@ -60,9 +60,10 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 #endif /* IMPLEMENTATION */
 
 
-#include <windows.h> /* C API uses Window's string typedefs:
-                          typedef const char* LPCSTR
-                          typedef char*       LPSTR          */
+#include <windows.h> 
+/* C API uses Window's string typedefs:
+     typedef const char* LPCSTR
+     typedef char*       LPSTR          */
 #include <time.h>
 #include <limits.h>
 
@@ -99,28 +100,28 @@ typedef unsigned long size_type;
 typedef unsigned char type_bits_type;
 
 struct TypeSizeAsserts_{ 
-  /* sanity checks */
-  char ASSERT_def_size_type_atleast_4bytes[sizeof(def_size_type) >= 4 ? 1 : -1];
-  char ASSERT_ext_size_type_is_8bytes[sizeof(ext_size_type) == 8 ? 1 : -1];
-  char ASSERT_def_price_type_atleast_4bytes[sizeof(def_price_type) >= 4 ? 1 : -1];
-  char ASSERT_ext_price_type_is_8bytes[sizeof(ext_price_type) == 8 ? 1 : -1];
-  char ASSERT_size_type_is_4bytes[sizeof(size_type) == 4 ? 1 : -1];
-  char ASSERT_type_bits_type_is_1byte[sizeof(type_bits_type) == 1 ? 1 : -1];
-  /* sanity checks */
+    /* sanity checks */
+    char ASSERT_def_size_type_atleast_4bytes[sizeof(def_size_type) >= 4 ? 1 : -1];
+    char ASSERT_ext_size_type_is_8bytes[sizeof(ext_size_type) == 8 ? 1 : -1];
+    char ASSERT_def_price_type_atleast_4bytes[sizeof(def_price_type) >= 4 ? 1 : -1];
+    char ASSERT_ext_price_type_is_8bytes[sizeof(ext_price_type) == 8 ? 1 : -1];
+    char ASSERT_size_type_is_4bytes[sizeof(size_type) == 4 ? 1 : -1];
+    char ASSERT_type_bits_type_is_1byte[sizeof(type_bits_type) == 1 ? 1 : -1];
+    /* sanity checks */
 };
 
 typedef const enum{ /*milliseconds*/
-  Fastest = 0, 
-  VeryFast = 3, 
-  Fast = 30, 
-  Moderate = 300, 
-  Slow = 3000, 
-  Glacial = 30000 /* <-- DEBUG ONLY */
+    Fastest = 0, 
+    VeryFast = 3, 
+    Fast = 30, 
+    Moderate = 300, 
+    Slow = 3000, 
+    Glacial = 30000 /* <-- DEBUG ONLY */
 }UpdateLatency;
 
 typedef struct{
-  struct tm  ctime_struct;
-  long       micro_second;
+    struct tm  ctime_struct;
+    long       micro_second;
 } DateTimeStamp, *pDateTimeStamp;
 
 
@@ -177,38 +178,36 @@ class DLL_SPEC_IMPL_ DynamicIPCSlave;
 #define TOSDB_COMM_CHANNEL "TOSDB_channel_1"
 
 typedef const enum{ 
-  SHEM1 = 0, 
-  MUTEX1, 
-  PIPE1 
+    SHEM1 = 0, 
+    MUTEX1, 
+    PIPE1 
 }Securable;
 
 typedef struct{ 
-  /* 
-     header that will be placed at the front(offset 0) of the mem mapping 
-     logical location: beg_offset + ((raw_size - beg_offset) // elem_size) 
-   */
-  volatile unsigned int loop_seq;    /* # of times buffer has looped around */
-  volatile unsigned int elem_size;   /* size of elements in the buffer */
-  volatile unsigned int beg_offset;  /* logical location (after header) */  
-  volatile unsigned int end_offset;  /* logical location (after header) */ 
-  volatile unsigned int next_offset; /* logical location of next write */  
+    /* 
+      header that will be placed at the front(offset 0) of the mem mapping 
+      logical location: beg_offset + ((raw_size - beg_offset) // elem_size) 
+     */
+    volatile unsigned int loop_seq;    /* # of times buffer has looped around */
+    volatile unsigned int elem_size;   /* size of elements in the buffer */
+    volatile unsigned int beg_offset;  /* logical location (after header) */  
+    volatile unsigned int end_offset;  /* logical location (after header) */ 
+    volatile unsigned int next_offset; /* logical location of next write */  
 } BufferHead, *pBufferHead; 
 
 #endif /* THIS_EXPORTS_IMPLEMENTATION || THIS_IMPORTS_IMPLEMENTATION */
 
-
 #ifdef __cplusplus
 
-typedef std::chrono::steady_clock                steady_clock_type;
-typedef std::chrono::system_clock                system_clock_type;
-typedef std::chrono::microseconds                micro_sec_type; 
+typedef std::chrono::steady_clock  steady_clock_type;
+typedef std::chrono::system_clock  system_clock_type;
+typedef std::chrono::microseconds  micro_sec_type; 
 
-namespace JO{ /* forward declaration for generic.hpp */
-  class DLL_SPEC_IFACE_ Generic;
-};
+/* forward declaration for generic.hpp */
+class DLL_SPEC_IFACE_ TOSDB_Generic;
 
 /* Generic STL Types returned by the interface(below) */ 
-typedef JO::Generic                                       generic_type;
+typedef TOSDB_Generic                                     generic_type;
 typedef std::pair<generic_type,DateTimeStamp>             generic_dts_type; 
 typedef std::vector<generic_type>                         generic_vector_type;
 typedef std::vector<DateTimeStamp>                        dts_vector_type;
@@ -223,34 +222,34 @@ typedef std::map<std::string, generic_dts_map_type>       generic_dts_matrix_typ
 
 template<typename T> 
 class Topic_Enum_Wrapper {
-/*
-    The TOPICS enum and utility functions/templates inside the wrapper will end 
-    up being defined in each module but trying to export it from both the backend 
-    and the client-side libs creates all kinds of problems.
+   /*
+      The TOPICS enum and utility functions/templates inside the wrapper will end 
+      up being defined in each module but trying to export it from both the backend 
+      and the client-side libs creates all kinds of problems.
 
-    The enum-string mapping is stored in the static TwoWayHashMap 'map' and 
-    is used internally. Client code should use the exported MAP() static function
-    which returns a const reference to 'map'.
- */ 
-  static_assert(std::is_integral<T>::value && !std::is_same<T,bool>::value, 
-                "Invalid Topic_Enum_Wrapper<T> Type");
+      The enum-string mapping is stored in the static TwoWayHashMap 'map' and 
+      is used internally. Client code should use the exported MAP() static function
+      which returns a const reference to 'map'.
+    */ 
+    static_assert(std::is_integral<T>::value && !std::is_same<T,bool>::value, 
+                  "Invalid Topic_Enum_Wrapper<T> Type");
 
-  Topic_Enum_Wrapper() 
-    {
-    }  
+    Topic_Enum_Wrapper() 
+        {
+        }  
 
-  static const T ADJ_INTGR_BIT  = TOSDB_BIT_SHIFT_LEFT(T,TOSDB_INTGR_BIT);
-  static const T ADJ_QUAD_BIT   = TOSDB_BIT_SHIFT_LEFT(T,TOSDB_QUAD_BIT);
-  static const T ADJ_STRING_BIT = TOSDB_BIT_SHIFT_LEFT(T,TOSDB_STRING_BIT);
-  static const T ADJ_FULL_MASK  = TOSDB_BIT_SHIFT_LEFT(T,TOSDB_TOPIC_BITMASK);
+    static const T ADJ_INTGR_BIT  = TOSDB_BIT_SHIFT_LEFT(T,TOSDB_INTGR_BIT);
+    static const T ADJ_QUAD_BIT   = TOSDB_BIT_SHIFT_LEFT(T,TOSDB_QUAD_BIT);
+    static const T ADJ_STRING_BIT = TOSDB_BIT_SHIFT_LEFT(T,TOSDB_STRING_BIT);
+    static const T ADJ_FULL_MASK  = TOSDB_BIT_SHIFT_LEFT(T,TOSDB_TOPIC_BITMASK);
 
 public:
-  enum class TOPICS 
-      : T { /* 
-             * pack type info into HO nibble of scoped Enum
-             * gaps represent the 'reserved' exported TOS/DDE fields
-             * [ see topics.cpp ] 
-             */
+    enum class TOPICS 
+        : T { /* 
+               * pack type info into HO nibble of scoped Enum
+               * gaps represent the 'reserved' exported TOS/DDE fields
+               * [ see topics.cpp ] 
+               */
     /* BEGIN TOPICS ksxaw9834hr84hf;esij?><  DO NOT EDIT !!! */
     NULL_TOPIC = 0x00, 
     HIGH52 = 0x1,
@@ -350,101 +349,101 @@ public:
     //
     YIELD = 0x152  
     /* END TOPICS ksxaw9834hr84hf;esij?><  DO NOT EDIT !!! */
-  };
+    };
 
-  typedef T enum_value_type; 
-  typedef typename Topic_Enum_Wrapper<T>::TOPICS enum_type;
+    typedef T enum_value_type; 
+    typedef typename Topic_Enum_Wrapper<T>::TOPICS enum_type;
 
-  template<enum_type topic>
-  struct Type{ /* type at compile-time */
-      /* e.g TOS_Topics::Type<TOS_Topics::LAST>::type == ext_price_type */
-      typedef typename std::conditional<
-          ((T)topic & ADJ_STRING_BIT), std::string, 
-          typename std::conditional<
-              (T)topic & ADJ_INTGR_BIT,           
-              typename std::conditional<
-                 (T)topic & ADJ_QUAD_BIT, ext_size_type, def_size_type>::type,
-                 typename std::conditional<
-                      (T)topic & ADJ_QUAD_BIT, 
-                      ext_price_type, def_price_type>::type>::type>::type  type;
-  };
+    template<enum_type topic>
+    struct Type{ /* type at compile-time */
+        /* e.g TOS_Topics::Type<TOS_Topics::LAST>::type == ext_price_type */
+        typedef typename std::conditional<
+            ((T)topic & ADJ_STRING_BIT), std::string, 
+            typename std::conditional<
+                (T)topic & ADJ_INTGR_BIT,           
+                typename std::conditional<
+                    (T)topic & ADJ_QUAD_BIT, ext_size_type, def_size_type>::type,
+                    typename std::conditional<
+                        (T)topic & ADJ_QUAD_BIT, 
+                        ext_price_type, def_price_type>::type>::type>::type  type;
+    };
   
-  static inline type_bits_type 
-  TypeBits(enum_type topic) /* type bits at run-time */
-  { 
-      return ((type_bits_type)(TOSDB_BIT_SHIFT_RIGHT(T, (T)topic)) 
-              & TOSDB_TOPIC_BITMASK); 
-  }
+    static inline type_bits_type 
+    TypeBits(enum_type topic) /* type bits at run-time */
+    { 
+        return ((type_bits_type)(TOSDB_BIT_SHIFT_RIGHT(T, (T)topic)) 
+                & TOSDB_TOPIC_BITMASK); 
+    }
 
-  static size_type 
-  TypeSize(enum_type topic) /* type size at run-time */
-  { 
-      switch(TypeBits(topic)){
-      case TOSDB_STRING_BIT:                 return TOSDB_STR_DATA_SZ;
-      case TOSDB_INTGR_BIT:                  return sizeof(def_size_type);
-      case TOSDB_QUAD_BIT:                   return sizeof(ext_price_type);
-      case TOSDB_INTGR_BIT | TOSDB_QUAD_BIT: return sizeof(ext_size_type);
-      default :                              return sizeof(def_price_type);
-      }; 
-  }
+    static size_type 
+    TypeSize(enum_type topic) /* type size at run-time */
+    { 
+        switch(TypeBits(topic)){
+        case TOSDB_STRING_BIT:                 return TOSDB_STR_DATA_SZ;
+        case TOSDB_INTGR_BIT:                  return sizeof(def_size_type);
+        case TOSDB_QUAD_BIT:                   return sizeof(ext_price_type);
+        case TOSDB_INTGR_BIT | TOSDB_QUAD_BIT: return sizeof(ext_size_type);
+        default :                              return sizeof(def_price_type);
+        }; 
+    }
   
-  static std::string 
-  TypeString(enum_type topic) /* platform-dependent type strings at run-time */
-  {     
-      switch(TypeBits(topic)){
-      case TOSDB_STRING_BIT:                 return typeid(std::string).name();
-      case TOSDB_INTGR_BIT:                  return typeid(def_size_type).name();
-      case TOSDB_QUAD_BIT:                   return typeid(ext_price_type).name();
-      case TOSDB_INTGR_BIT | TOSDB_QUAD_BIT: return typeid(ext_size_type).name();
-      default :                              return typeid(def_price_type).name();
-      }; 
-  }
+    static std::string 
+    TypeString(enum_type topic) /* platform-dependent type strings at run-time */
+    {     
+        switch(TypeBits(topic)){
+        case TOSDB_STRING_BIT:                 return typeid(std::string).name();
+        case TOSDB_INTGR_BIT:                  return typeid(def_size_type).name();
+        case TOSDB_QUAD_BIT:                   return typeid(ext_price_type).name();
+        case TOSDB_INTGR_BIT | TOSDB_QUAD_BIT: return typeid(ext_size_type).name();
+        default :                              return typeid(def_price_type).name();
+        }; 
+    }
 
 #ifdef CUSTOM_HASHER
-  /* we can't guarantee that the particular STL implementation will  
-     provide a default hasher like VS */
-  struct hasher{
-      size_t operator()(const enum_type& t) const { 
-          static_assert(std::is_unsigned<enum_value_type>::value,
-                        "hasher only accepts unsigned integral enum_value_types");
-          return (enum_value_type)t; 
-      }
-  };
-  typedef TwoWayHashMap<enum_type, std::string, false, hasher> topic_map_type;
+    /* we can't guarantee that the particular STL implementation will  
+       provide a default hasher like VS */
+    struct hasher{
+        size_t operator()(const enum_type& t) const { 
+            static_assert(std::is_unsigned<enum_value_type>::value,
+                          "hasher only accepts unsigned integral enum_value_types");
+            return (enum_value_type)t; 
+        }
+    };
+    typedef TwoWayHashMap<enum_type, std::string, false, hasher> topic_map_type;
 #else
-  typedef TwoWayHashMap<enum_type, std::string> topic_map_type;
+    typedef TwoWayHashMap<enum_type, std::string> topic_map_type;
 #endif
 
-  typedef typename topic_map_type::pair1_type  topic_map_entry_type;  
+    typedef typename topic_map_type::pair1_type  topic_map_entry_type;  
 
-  /* 'map' is defined in topics.cpp as part of the _tos-databrige[].dll module;
-     therefore, the client facing lib (tos-databridge[].dll) and the service/engine
-     need to import it, but the former ALSO needs to export it.
+    /* 'map' is defined in topics.cpp as part of the _tos-databrige[].dll module;
+       therefore, the client facing lib (tos-databridge[].dll) and the service/engine
+       need to import it, but the former ALSO needs to export it.
 
-     In this case we define 'map' so the back-end can see it, the client-side lib
-     can import it, and ALSO export the MAP() wrapper to client code.           
+       In this case we define 'map' so the back-end can see it, the client-side lib
+       can import it, and ALSO export the MAP() wrapper to client code.           
      
-     long-story-short, just use MAP() to access the topic-string mapping    */
+       long-story-short, just use MAP() to access the topic-string mapping    */
 
-  /* internally we use map (link w/ _tos-databridge[].dll) */
+    /* internally we use map (link w/ _tos-databridge[].dll) */
 #if defined(THIS_IMPORTS_IMPLEMENTATION) || defined(THIS_EXPORTS_IMPLEMENTATION)
-  static DLL_SPEC_IMPL_ const topic_map_type map;
+    static DLL_SPEC_IMPL_ const topic_map_type map;
 #endif
 
-  /* externally we use the MAP() (link w/ tos-databridge-[].dll) */
-  static DLL_SPEC_IFACE_ const topic_map_type&   
+    /* externally we use the MAP() (link w/ tos-databridge-[].dll) */
+    static DLL_SPEC_IFACE_ const topic_map_type&   
 #if defined(THIS_EXPORTS_INTERFACE) || defined(THIS_DOESNT_IMPORT_INTERFACE)
-  MAP(){ return map; }
+    MAP(){ return map; }
 #else
-  MAP();
+    MAP();
 #endif 
   
-  struct top_less{ /* back-end should use 'map' but attempts to #define 
-                      special versions of top_less won't link w/ client code */      
-      bool operator()(const enum_type& left, const enum_type& right){ 
-          return (MAP()[left] < MAP()[right]); 
-      }
-  };
+    struct top_less{ /* back-end should use 'map' but attempts to #define 
+                        special versions of top_less won't link w/ client code */      
+        bool operator()(const enum_type& left, const enum_type& right){ 
+            return (MAP()[left] < MAP()[right]); 
+        }
+    };
 
 };
 
@@ -874,40 +873,99 @@ template<>
 DLL_SPEC_IFACE_ generic_dts_matrix_type 
 TOSDB_GetTotalFrame<true>(std::string id);
 
+
 /* OSTREAM OVERLOADS - client_out.cpp */
 
-DLL_SPEC_IFACE_ std::ostream& operator<<(std::ostream&, const generic_type&); 
-DLL_SPEC_IFACE_ std::ostream& operator<<(std::ostream&, const DateTimeStamp&); 
-DLL_SPEC_IFACE_ std::ostream& operator<<(std::ostream&, const generic_matrix_type&); 
-DLL_SPEC_IFACE_ std::ostream& operator<<(std::ostream&, const generic_map_type::value_type&); 
-DLL_SPEC_IFACE_ std::ostream& operator<<(std::ostream&, const generic_map_type&); 
-DLL_SPEC_IFACE_ std::ostream& operator<<(std::ostream&, const generic_vector_type&); 
-DLL_SPEC_IFACE_       std::ostream& operator<<(std::ostream&, const dts_vector_type&);
-DLL_SPEC_IFACE_       std::ostream& operator<<(std::ostream&, const generic_dts_matrix_type&); 
-DLL_SPEC_IFACE_       std::ostream& operator<<(std::ostream&, const generic_dts_type&); 
-DLL_SPEC_IFACE_       std::ostream& operator<<(std::ostream&, const generic_dts_map_type&); 
-DLL_SPEC_IFACE_       std::ostream& operator<<(std::ostream&, const generic_dts_vectors_type&); 
+DLL_SPEC_IFACE_ std::ostream& 
+operator<<(std::ostream&, const generic_type&); 
 
-template<typename T>      std::ostream& operator<<(std::ostream&, const std::pair<T,DateTimeStamp>&); 
-template DLL_SPEC_IFACE_  std::ostream& operator<<(std::ostream&, const std::pair<ext_price_type,DateTimeStamp>&);
-template DLL_SPEC_IFACE_  std::ostream& operator<<(std::ostream&, const std::pair<def_price_type,DateTimeStamp>&);
-template DLL_SPEC_IFACE_  std::ostream& operator<<(std::ostream&, const std::pair<ext_size_type,DateTimeStamp>&);
-template DLL_SPEC_IFACE_  std::ostream& operator<<(std::ostream&, const std::pair<def_size_type,DateTimeStamp>&);
-template DLL_SPEC_IFACE_  std::ostream& operator<<(std::ostream&, const std::pair<std::string,DateTimeStamp>&);
+DLL_SPEC_IFACE_ std::ostream& 
+operator<<(std::ostream&, const DateTimeStamp&); 
 
-template<typename T>      std::ostream& operator<<(std::ostream&, const std::vector<T>&);
-template DLL_SPEC_IFACE_  std::ostream& operator<<(std::ostream&, const std::vector<ext_price_type>&);
-template DLL_SPEC_IFACE_  std::ostream& operator<<(std::ostream&, const std::vector<def_price_type>&);
-template DLL_SPEC_IFACE_  std::ostream& operator<<(std::ostream&, const std::vector<ext_size_type>&);
-template DLL_SPEC_IFACE_  std::ostream& operator<<(std::ostream&, const std::vector<def_size_type>&);
-template DLL_SPEC_IFACE_  std::ostream& operator<<(std::ostream&, const std::vector<std::string>&); 
+DLL_SPEC_IFACE_ std::ostream& 
+operator<<(std::ostream&, const generic_matrix_type&); 
 
-template<typename T>      std::ostream& operator<<(std::ostream&, const std::pair<std::vector<T>,dts_vector_type>&);
-template DLL_SPEC_IFACE_  std::ostream& operator<<(std::ostream&, const std::pair<std::vector<ext_price_type>,dts_vector_type>&);
-template DLL_SPEC_IFACE_  std::ostream& operator<<(std::ostream&, const std::pair<std::vector<def_price_type>,dts_vector_type>&);
-template DLL_SPEC_IFACE_  std::ostream& operator<<(std::ostream&, const std::pair<std::vector<ext_size_type>,dts_vector_type>&);
-template DLL_SPEC_IFACE_  std::ostream& operator<<(std::ostream&, const std::pair<std::vector<def_size_type>,dts_vector_type>&);
-template DLL_SPEC_IFACE_  std::ostream& operator<<(std::ostream&, const std::pair<std::vector<std::string>,dts_vector_type>&);
+DLL_SPEC_IFACE_ std::ostream& 
+operator<<(std::ostream&, const generic_map_type::value_type&); 
+
+DLL_SPEC_IFACE_ std::ostream& 
+operator<<(std::ostream&, const generic_map_type&); 
+
+DLL_SPEC_IFACE_ std::ostream& 
+operator<<(std::ostream&, const generic_vector_type&); 
+
+DLL_SPEC_IFACE_ std::ostream& 
+operator<<(std::ostream&, const dts_vector_type&);
+
+DLL_SPEC_IFACE_ std::ostream& 
+operator<<(std::ostream&, const generic_dts_matrix_type&); 
+
+DLL_SPEC_IFACE_ std::ostream& 
+operator<<(std::ostream&, const generic_dts_type&); 
+
+DLL_SPEC_IFACE_ std::ostream& 
+operator<<(std::ostream&, const generic_dts_map_type&); 
+
+DLL_SPEC_IFACE_ std::ostream& 
+operator<<(std::ostream&, const generic_dts_vectors_type&); 
+
+
+template<typename T> std::ostream& 
+operator<<(std::ostream&, const std::pair<T,DateTimeStamp>&); 
+
+template DLL_SPEC_IFACE_ std::ostream& 
+operator<<(std::ostream&, const std::pair<ext_price_type,DateTimeStamp>&);
+
+template DLL_SPEC_IFACE_ std::ostream& 
+operator<<(std::ostream&, const std::pair<def_price_type,DateTimeStamp>&);
+
+template DLL_SPEC_IFACE_ std::ostream& 
+operator<<(std::ostream&, const std::pair<ext_size_type,DateTimeStamp>&);
+
+template DLL_SPEC_IFACE_ std::ostream& 
+operator<<(std::ostream&, const std::pair<def_size_type,DateTimeStamp>&);
+
+template DLL_SPEC_IFACE_ std::ostream& 
+operator<<(std::ostream&, const std::pair<std::string,DateTimeStamp>&);
+
+
+template<typename T> std::ostream& 
+operator<<(std::ostream&, const std::vector<T>&);
+
+template DLL_SPEC_IFACE_ std::ostream& 
+operator<<(std::ostream&, const std::vector<ext_price_type>&);
+
+template DLL_SPEC_IFACE_ std::ostream& 
+operator<<(std::ostream&, const std::vector<def_price_type>&);
+
+template DLL_SPEC_IFACE_ std::ostream& 
+operator<<(std::ostream&, const std::vector<ext_size_type>&);
+
+template DLL_SPEC_IFACE_ std::ostream& 
+operator<<(std::ostream&, const std::vector<def_size_type>&);
+
+template DLL_SPEC_IFACE_ std::ostream& 
+  operator<<(std::ostream&, const std::vector<std::string>&); 
+
+
+template<typename T> std::ostream& 
+operator<<(std::ostream&, const std::pair<std::vector<T>,dts_vector_type>&);
+
+template DLL_SPEC_IFACE_ std::ostream& 
+operator<<(std::ostream&, const std::pair<std::vector<ext_price_type>,dts_vector_type>&);
+
+template DLL_SPEC_IFACE_ std::ostream& 
+operator<<(std::ostream&, const std::pair<std::vector<def_price_type>,dts_vector_type>&);
+
+template DLL_SPEC_IFACE_ std::ostream& 
+operator<<(std::ostream&, const std::pair<std::vector<ext_size_type>,dts_vector_type>&);
+
+template DLL_SPEC_IFACE_ std::ostream& 
+operator<<(std::ostream&, const std::pair<std::vector<def_size_type>,dts_vector_type>&);
+
+template DLL_SPEC_IFACE_ std::ostream& 
+operator<<(std::ostream&, const std::pair<std::vector<std::string>,dts_vector_type>&);
+
 
 /* for C code: create a string of form: "TOSDB_[topic name]_[item name]"  
    only alpha-numerics */

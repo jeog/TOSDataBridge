@@ -23,24 +23,37 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 #include <chrono>
 
 typedef std::lock_guard<std::recursive_mutex> our_rlock_guard_type;
+
+/* sync access to blocks in client_get/client_admin */
 extern std::recursive_mutex global_rmutex;
 
 #define GLOBAL_RLOCK_GUARD our_rlock_guard_type global_rlock_guard_(global_rmutex);
 
+
+/* forward decl - raw_data_block.hpp / raw_data_block.tpp */
 template<typename T,typename T2> class RawDataBlock; 
-typedef RawDataBlock< generic_type, DateTimeStamp> TOSDB_RawDataBlock;
+typedef RawDataBlock<generic_type, DateTimeStamp> TOSDB_RawDataBlock;
 
-typedef std::chrono::duration<long, std::milli>  milli_sec_type;
 
+/*TOSDB's main organizational unit - functionally and conceptually. It's how
+  client_admin and client_get handle 'blocks' that client code creates.
+  
+  TOSDB_RawDataBlock manages all the active items/topics/data */
 typedef struct {
-  TOSDB_RawDataBlock* block;
-  str_set_type        item_precache;
-  topic_set_type      topic_precache;  
-  unsigned long       timeout;
+    TOSDB_RawDataBlock* block;
+    str_set_type        item_precache;
+    topic_set_type      topic_precache;  
+    unsigned long       timeout;
 } TOSDBlock; /* no ptr or const typedefs; force code to state explicitly */
 
-TOS_Topics::TOPICS GetTopicEnum(std::string sTopic); 
-const TOSDBlock*   GetBlockPtr(std::string id);
-const TOSDBlock*   GetBlockOrThrow(std::string id);
+
+inline TOS_Topics::TOPICS 
+GetTopicEnum(std::string sTopic){ return TOS_Topics::map[sTopic]; }
+
+const TOSDBlock*   
+GetBlockPtr(std::string id);
+
+const TOSDBlock*   
+GetBlockOrThrow(std::string id);
 
 #endif

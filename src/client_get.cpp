@@ -379,8 +379,11 @@ TOSDB_GetStreamOccupancy(LPCSTR id, LPCSTR sItem, LPCSTR sTopic, size_type* sz)
     TOSDB_RawDataBlock::stream_const_ptr_type dat;
     TOS_Topics::TOPICS t;
 
-    if(!CheckIDLength(id) || !CheckStringLength(sItem, sTopic))
+    if( !CheckIDLength(id) 
+        || !CheckStringLength(sItem) 
+        || !CheckStringLength(sTopic) ){
         return -1;  
+    }
 
     t = GetTopicEnum(sTopic);
     try{
@@ -427,8 +430,11 @@ TOSDB_GetMarkerPosition(LPCSTR id, LPCSTR sItem, LPCSTR sTopic, long long* pos)
     TOSDB_RawDataBlock::stream_const_ptr_type dat;
     TOS_Topics::TOPICS t;
 
-    if(!CheckIDLength(id) || !CheckStringLength(sItem, sTopic))
+    if( !CheckIDLength(id) 
+        || !CheckStringLength(sItem)
+        || !CheckStringLength(sTopic) ){
         return -1;  
+    }
 
     t = GetTopicEnum(sTopic);
     try{
@@ -477,8 +483,11 @@ TOSDB_IsMarkerDirty(LPCSTR id,
     TOSDB_RawDataBlock::stream_const_ptr_type dat;
     TOS_Topics::TOPICS t;
 
-    if(!CheckIDLength(id) || !CheckStringLength(sItem, sTopic))
+    if( !CheckIDLength(id) 
+        || !CheckStringLength(sItem)
+        || !CheckStringLength(sTopic) ){ 
         return -1;  
+    }
 
     t = GetTopicEnum(sTopic);
     try{
@@ -630,8 +639,11 @@ TOSDB_Get_(LPCSTR id,
            T* dest, 
            pDateTimeStamp datetime)
 { 
-    if(!CheckIDLength(id) || !CheckStringLength(sTopic, sTopic))
+    if( !CheckIDLength(id) 
+        || !CheckStringLength(sItem)
+        || !CheckStringLength(sTopic) ){
         return -1;  
+    }
   
     return TOSDB_Get_(id, sItem, GetTopicEnum(sTopic), indx, dest, datetime);
 }
@@ -693,8 +705,11 @@ TOSDB_GetString(LPCSTR id,
     TOSDB_RawDataBlock::stream_const_ptr_type dat;
     TOS_Topics::TOPICS t;
 
-    if(!CheckIDLength(id) || !CheckStringLength(sItem, sTopic))
+    if( !CheckIDLength(id) 
+        || !CheckStringLength(sItem)
+        || !CheckStringLength(sTopic) ){ 
         return -1;  
+    }
 
     t = GetTopicEnum(sTopic);
     try{
@@ -968,11 +983,13 @@ TOSDB_GetStreamSnapshotStrings(LPCSTR id,
     TOSDB_RawDataBlock::stream_const_ptr_type dat;
     TOS_Topics::TOPICS tTopic;
 
-    if(!CheckIDLength(id) || !CheckStringLength(sItem, sTopic))
+    if( !CheckIDLength(id) 
+        || !CheckStringLength(sItem)
+        || !CheckStringLength(sTopic) ){
         return -1;
+    }
 
-    tTopic = GetTopicEnum(sTopic);  
-  
+    tTopic = GetTopicEnum(sTopic);    
     try{
         GLOBAL_RLOCK_GUARD;
         /* --- CRITICAL SECTION --- */
@@ -1112,8 +1129,11 @@ TOSDB_GetStreamSnapshotStringsFromMarker(LPCSTR id,
     TOSDB_RawDataBlock::stream_const_ptr_type dat;
     TOS_Topics::TOPICS tTopic;
 
-    if(!CheckIDLength(id) || !CheckStringLength(sItem, sTopic))
+    if( !CheckIDLength(id) 
+        || !CheckStringLength(sItem)
+        || !CheckStringLength(sTopic) ){
         return -1;
+    }
 
     tTopic = GetTopicEnum(sTopic);   
     try{

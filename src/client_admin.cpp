@@ -38,10 +38,12 @@ typedef std::tuple<unsigned int, unsigned int,
 typedef std::pair<TOS_Topics::TOPICS, std::string>  buf_id_ty;
 typedef std::map<buf_id_ty, buf_info_ty>            buffers_ty;
 
-typedef std::lock_guard<std::mutex>                 our_lock_guard_type;
+typedef std::lock_guard<std::mutex>                 our_lock_guard_ty;
 
-typedef std::insert_iterator<str_set_type>          str_set_inserter;
-typedef std::insert_iterator<topic_set_type>        topic_set_inserter;
+typedef std::insert_iterator<str_set_type>          str_set_insert_iter_ty;
+typedef std::insert_iterator<topic_set_type>        topic_set_insert_iter_ty;
+
+typedef std::chrono::duration<long, std::milli>     milli_sec_ty;
 
 std::map<std::string,TOSDBlock*>  dde_blocks;
 
@@ -49,7 +51,7 @@ std::map<std::string,TOSDBlock*>  dde_blocks;
 buffers_ty buffers;
 std::mutex buffers_mtx;
   
-#define LOCAL_BUFFERS_LOCK_GUARD our_lock_guard_type buffers_lock_guard_(buffers_mtx)
+#define LOCAL_BUFFERS_LOCK_GUARD our_lock_guard_ty buffers_lock_guard_(buffers_mtx)
 
 /* for 'scheduling' buffer reads */
 steady_clock_type steady_clock;
@@ -311,7 +313,7 @@ Threaded_Init(LPVOID lParam)
         } /* make sure we give up this lock each time through the buffers */
 
         tend = steady_clock.now();
-        tdiff = std::chrono::duration_cast<milli_sec_type>(tend - tbeg).count();    
+        tdiff = std::chrono::duration_cast<milli_sec_ty>(tend - tbeg).count();    
         Sleep(std::min<long>(std::max<long>((buffer_latency - tdiff),0),Glacial)); 
     }
 
@@ -494,7 +496,7 @@ TOSDB_Add(std::string id,
        /* if we have pre-cached items, include them */
        std::set_union(sItems.cbegin(), sItems.cend(),
                       db->item_precache.cbegin(), db->item_precache.cend(),
-                      str_set_inserter(tot_items,tot_items.begin())); 
+                      str_set_insert_iter_ty(tot_items,tot_items.begin())); 
     }else{ 
         tot_items = sItems; /* 'copy', keep sItems available for pre-caching */ 
     }
@@ -503,7 +505,7 @@ TOSDB_Add(std::string id,
         /* if we have pre-cached topics, include them */
         std::set_union(tTopics.cbegin(), tTopics.cend(),
                        db->topic_precache.cbegin(), db->topic_precache.cend(),
-                       topic_set_inserter(tot_topics,tot_topics.begin()),
+                       topic_set_insert_iter_ty(tot_topics,tot_topics.begin()),
                        TOS_Topics::top_less()); 
     }else{ 
         tot_topics = std::move(tTopics); /* move, don't need tTopics anymore */  
@@ -512,19 +514,19 @@ TOSDB_Add(std::string id,
     /* find new items and topics to add */
     std::set_difference(tot_topics.cbegin(), tot_topics.cend(),
                         old_topics.cbegin(), old_topics.cend(),
-                        topic_set_inserter(tdiff,tdiff.begin()),
+                        topic_set_insert_iter_ty(tdiff,tdiff.begin()),
                         TOS_Topics::top_less());
 
     std::set_difference(tot_items.cbegin(), tot_items.cend(),
                         old_items.cbegin(), old_items.cend(),
-                        str_set_inserter(idiff, idiff.begin()));
+                        str_set_insert_iter_ty(idiff, idiff.begin()));
 
     if( !tdiff.empty() ){
         /* if new topics, atleast one item, add them to the block
            add ALL the items (new and old) for each */
         std::set_union(tot_items.cbegin(), tot_items.cend(),
                        old_items.cbegin(), old_items.cend(),
-                       str_set_inserter(iunion, iunion.begin()));
+                       str_set_insert_iter_ty(iunion, iunion.begin()));
         
         is_empty = iunion.empty();
         for(auto & topic : tdiff)
@@ -963,15 +965,15 @@ GetBlockOrThrow(std::string id)
     return db;
 }
 
-
+/*
 TOS_Topics::TOPICS 
 GetTopicEnum(std::string sTopic)
 {
     TOS_Topics::TOPICS t = TOS_Topics::map[sTopic];
     /* why are we logging this ?? 
     if( !(TOS_Topics::enum_value_type)t )
-        TOSDB_Log("TOS_Topic", "TOS_Topic has no corresponding enum type in map"); */ 
+        TOSDB_Log("TOS_Topic", "TOS_Topic has no corresponding enum type in map"); */ /*
     return t;
 }
-
+*/
 
