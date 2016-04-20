@@ -33,13 +33,9 @@ const unsigned int ACL_SIZE         = 96;
 const unsigned int UPDATE_PERIOD    = 2000;  
 const unsigned int MAX_ARG_SIZE     = 20;
     
-LPSTR   SERVICE_NAME = "TOSDataBridge"; 
-LPCSTR  LOG_NAME     = "service-log.log";
-#ifdef _WIN64
-LPCSTR  ENGINE_NAME  = "tos-databridge-engine-x64.exe";
-#else
-LPCSTR  ENGINE_NAME  = "tos-databridge-engine-x86.exe";
-#endif 
+LPSTR   SERVICE_NAME      = "TOSDataBridge"; 
+LPCSTR  LOG_NAME          = "service-log.log";
+LPCSTR  ENGINE_BASE_NAME  = "tos-databridge-engine";
 
 std::string engine_path;
 std::string integrity_level; 
@@ -369,8 +365,14 @@ WinMain(HINSTANCE hInst,
 
     /* add the appropriate engine name to the module path */
     std::string path(module_buf.get()); 
+    std::string serv_ext(path.find_last_of("-"),path.end()); /*-x86 or -x64 */
+    if(serv_ext != "-x86.exe" || serv_ext != "-x64.exe"){
+        TOSDB_LogH("STARTUP", "service path doesn't provide proper extension");
+        return 1;
+    }    
     path.erase(path.find_last_of("\\")); 
-    engine_path.append(path).append("\\").append(ENGINE_NAME); 
+    engine_path = path;
+    engine_path.append("\\").append(ENGINE_NAME).append(serv_ext); 
 
     /* start logging */
     std::string logpath(TOSDB_LOG_PATH);
