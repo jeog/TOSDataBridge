@@ -23,7 +23,7 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 #include <atomic>
 #include "tos_databridge.h"
 #include "engine.hpp"
-#include "dynamic_ipc.hpp"
+#include "ipc.hpp"
 #include "concurrency.hpp"
 
 namespace {
@@ -86,10 +86,10 @@ UpdateStatus(int status, int check_point)
 }
 
 
-int 
-SendMsgWaitForResponse(const unsigned int msg)
+long 
+SendMsgWaitForResponse(long msg)
 {
-    int i;
+    long i;
     unsigned int lcount = 0;
 
     if(!master){
@@ -308,8 +308,8 @@ ServiceMain(DWORD argc, LPSTR argv[])
 
     /* create new process that can communicate with our interface */
     if(!SpawnRestrictedProcess(custom_session)){      
-        std::string serr("failed to fork ");
-        serr.append(ENGINE_NAME);
+        std::string serr("failed to spawn ");
+        serr.append(engine_path);
         TOSDB_LogH("SERVICE-ADMIN", serr.c_str());         
     }else{
         /* on success, update and block */
@@ -350,6 +350,7 @@ ParseArgs(std::vector<std::string>& vec, std::string str)
     }
 }
 
+
 int WINAPI 
 WinMain(HINSTANCE hInst, 
         HINSTANCE hPrevInst, 
@@ -365,7 +366,7 @@ WinMain(HINSTANCE hInst,
 
     /* add the appropriate engine name to the module path */
     std::string path(module_buf.get()); 
-    std::string serv_ext(path.find_last_of("-"),path.end()); /*-x86 or -x64 */
+    std::string serv_ext(path.begin() + path.find_last_of("-"), path.end()); 
     if(serv_ext != "-x86.exe" || serv_ext != "-x64.exe"){
         TOSDB_LogH("STARTUP", "service path doesn't provide proper extension");
         return 1;

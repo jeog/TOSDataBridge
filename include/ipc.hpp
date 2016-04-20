@@ -31,7 +31,7 @@ along with this program.  If not, see http://www.gnu.org/licenses.
    DynamicIPCMaster / Slave are objects that provide a flexible
    means of IPC.  They combine a shared mem mapping and a duplexed
    named-pipe for external use. On construction the Slave creates a 
-   shared memory segment, managed by an ExplicitHeap, accepting allocation 
+   shared memory segment, managed by an SlowHeapManager, accepting allocation 
    requests through an internal named-pipe on its own thread. It waits on 
    the master through a call to wait_for_master(). 
 
@@ -47,8 +47,8 @@ along with this program.  If not, see http://www.gnu.org/licenses.
    The sequence of calls by the master are:
    1) grab_pipe()
    2) insert()  : pass raw buffers, sets or vectors of data
-   3) send()  : pass the shem_chunks returned by insert or a scallar
-   4) recv()  : populate a shem_chunk or scalar with what's passed to send
+   3) send()  : pass the shem_chunks returned by insert or, a long 
+   4) recv()  : populate a shem_chunk, or long, with what's passed to send
    5) remove()  : 'deallocate' the shem_chunks created by insert
    6) release_pipe()
 
@@ -63,7 +63,7 @@ along with this program.  If not, see http://www.gnu.org/licenses.
    shem_chunk { 0, 0 } signals the end of a particular set of transmissions.
 */
 
-/* a simple timed loop that waits on cond == true */
+/* a simple timed loop that waits until 'cond' is false */
 #define IPC_TIMED_WAIT(cond,log_msg,err_code) do{ \
     unsigned int lcount = 0; \
     while(cond){ \
@@ -77,43 +77,47 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 }while(0)
 
 
-class ExplicitHeap{ /* NOT NECESSARY TO BE OPTIMAL, VERY LOW USAGE */
-    typedef unsigned long  _head_type;
-    typedef unsigned char* _ptr_type;    
+class SlowHeapManager{ 
+    /* NOT NECESSARY TO BE OPTIMAL - VERY SMALL HEAP, VERY LOW USAGE */
+    typedef unsigned long  _head_ty;
+    typedef unsigned char* _ptr_ty;    
+    typedef std::pair<size_t, _ptr_ty>  _heap_pair_ty;    
 
-    typedef std::multimap<size_type, _ptr_type> _heap_type;
-    typedef std::set<_ptr_type>                 _set_type;
-    typedef std::pair<size_type, _ptr_type>     _heap_pair_type;    
+    static const unsigned int HEAD_SZ = sizeof(_head_ty);
+    /* make sure offset can fit in an unsigned 4 bytes 
+       AND won't overflow during addition of a 'width' */
+    static const unsigned long MAX_SZ = LONG_MAX;
 
-    static const unsigned int HEAD_SZ = sizeof(_head_type);
-
-    _heap_type _free_heap;
-    _set_type  _allocated_set;
+    std::multimap<size_t, _ptr_ty> _free_heap;
+    std::set<_ptr_ty>              _allocated_set;
 
     inline bool 
     _valid_start(void* start)
     {     
-        return ( this->_allocated_set.find((_ptr_type)start) 
+        return ( this->_allocated_set.find((_ptr_ty)start) 
                  != this->_allocated_set.cend() );
     }
 
 public:     
-    ExplicitHeap(void* beg_addr, size_type sz)
+    SlowHeapManager(void* beg_addr, size_t sz)
         {
-            this->_free_heap.insert(_heap_pair_type(sz, (_ptr_type)beg_addr)); 
+            if(sz > MAX_SZ)
+                throw std::invalid_argument("sz > SlowHeapManager::MAX_SZ");
+
+            this->_free_heap.insert(_heap_pair_ty(sz, (_ptr_ty)beg_addr)); 
         }        
 
-    ~ExplicitHeap() 
+    ~SlowHeapManager() 
         { 
         }
     
     void* 
-    allocate(size_type size);
+    allocate(size_t size);
 
     bool    
     deallocate(void* start);
 
-    size_type     
+    size_t     
     size(void* start);
 
     inline void 
@@ -127,15 +131,15 @@ public:
 class DynamicIPCBase {
 public:
     struct shem_chunk{
-        size_type offset;
-        int sz;
+        long offset; /* should only be unsigned for an actual 'chunk' */                               
+        size_t sz;
         shem_chunk() 
             : 
                 offset(0), 
                 sz(0) 
             {
             }      
-        shem_chunk(size_type offset, size_type sz)
+        shem_chunk(long offset, size_t sz)
             : 
                 offset(offset), 
                 sz(sz) 
@@ -154,43 +158,25 @@ private:
     _recv(shem_chunk& item) const;    
 
     void* 
-    _allocate(size_type sz) const;
+    _allocate(size_t sz) const;
 
     bool   
     _deallocate(void* start) const;
 
-    template<typename C>
-    shem_chunk 
-    _insert(C cont) const
-    {
-        void* blk = nullptr;        
-        C::const_iterator iter_b = cont.cbegin();
-        C::const_iterator iter_e = cont.cend();         
-        size_type sz = sizeof(C::value_type) * cont.size();    
-        
-        blk = _allocate(sz);
-        if(!blk)
-            return shem_chunk(0,0);
-
-        for(int i = 0; iter_b != iter_e; ++i, iter_b++)
-            ((C::value_type*)blk)[i] = *iter_b; 
-
-        return shem_chunk((size_type)blk - (size_type)(this->_mmap_addr), sz);
-    }
-
-protected:
+protected:    
+    static const unsigned long MAX_SZ = LONG_MAX;
     static const unsigned int ALLOC = 1;
     static const unsigned int DEALLOC = 2;
     static const unsigned int PING = 4;
-    static const int          PAUSE = 1000;    
-    static const int          ACL_SIZE = 144;
-    static const char*        KMUTEX_NAME;
-
+    static const int   PAUSE = 1000;    
+    static const int   ACL_SIZE = 144;
+    static const char* KMUTEX_NAME;
+    
     std::string _shem_str, _xtrnl_pipe_str, _intrnl_pipe_str;
     void *_fmap_hndl, *_mmap_addr, *_xtrnl_pipe_hndl, *_intrnl_pipe_hndl, *_mtx;    
-    int _mmap_sz; /* should be unsinged ! */
+    size_t _mmap_sz; /* should be unsinged ! */
 
-    DynamicIPCBase(std::string name, int sz = 0)
+    DynamicIPCBase(std::string name, size_t sz = 0)
         :
 #ifdef KGBLNS_
             _shem_str(std::string("Global\\").append(std::string(name).append("_shem"))),
@@ -206,6 +192,8 @@ protected:
             _mmap_sz(sz),
             _mtx(NULL)
         {            
+            if(sz > MAX_SZ)
+                throw std::invalid_argument("sz > DynamicIPCBase::MAX_SZ");
         }
 
     virtual ~DynamicIPCBase() 
@@ -213,11 +201,26 @@ protected:
         }
 
 public:
+  /* insert/extract take pointers to raw data insead of refs like the rest of
+     the interface; it just seems more intuitive for what's actually happening */
+    template<typename T>
+    shem_chunk 
+    insert(T* data, size_t data_len = 1)
+    {        
+        size_t sz = sizeof(T) * data_len;
+
+        void* blk = _allocate(sz); 
+        if(!blk || memcpy_s(blk, sz, data, sz))
+            return shem_chunk(0,0);
+
+        return shem_chunk((size_t)blk - (size_t)_mmap_addr, sz);        
+    }
+
     template<typename T>
     void 
-    extract(shem_chunk& chunk, T* dest, size_type buf_len) const
+    extract(shem_chunk& chunk, T* dest, size_t buf_len) const
     {
-        void* ptr = shem_ptr(chunk);
+        void* ptr = this->shem_ptr(chunk);
         if(!ptr){
             dest = nullptr;
             return; 
@@ -225,44 +228,23 @@ public:
         memcpy_s(dest, sizeof(T) * buf_len, ptr, chunk.sz);        
     }
     
-    template<typename T>
-    shem_chunk 
-    insert(T* data, size_type data_len = 1)
-    {        
-        size_type sz = sizeof(T) * data_len;
-
-        void* blk = _allocate(sz); 
-        if(!blk || memcpy_s(blk, sz, data, sz))
-            return shem_chunk(0,0);
-
-        return shem_chunk((size_type)blk - (size_type)_mmap_addr, sz);        
-    }
-
-    template<typename T, typename A>
-    inline shem_chunk 
-    insert(std::vector<T,A>& vec) { return _insert(vec); }
-
-    template<typename T, typename E, typename A>
-    inline shem_chunk 
-    insert(std::set<T,E,A>& set) { return _insert(set); }
-
     const DynamicIPCBase& 
-    remove(const shem_chunk chunk) const;
+    remove(const shem_chunk&& chunk) const;
     
     void* 
     shem_ptr(shem_chunk& chunk) const;
 
     void* 
-    ptr(size_type offset) const;
+    ptr(size_t offset) const;
 
-    size_type 
+    size_t 
     offset(void* start) const;
 
     inline bool 
-    send(const int val) const { return this->_send(shem_chunk(val,0)); }
+    send(const long val) const { return this->_send(shem_chunk(val,0)); }
 
     bool 
-    recv(int& val) const;
+    recv(long& val) const;
 
     inline bool 
     send(const shem_chunk& chunk) const { return this->_send(chunk); }
@@ -300,7 +282,7 @@ public:
     void 
     disconnect(int level = 3);
 
-    int
+    long
     grab_pipe();
 
     void 
@@ -314,13 +296,16 @@ public:
 };
 
 class DynamicIPCSlave
-  : public DynamicIPCBase {            
+  : public DynamicIPCBase {  
+    
+    static const int NSECURABLE = 3;
+
     std::unordered_map<Securable, SECURITY_ATTRIBUTES> _sec_attr;
     std::unordered_map<Securable, SECURITY_DESCRIPTOR> _sec_desc;     
     std::unordered_map<Securable, SmartBuffer<void>>   _sids; 
     std::unordered_map<Securable, SmartBuffer<ACL>>    _acls;        
     
-    typedef std::unique_ptr<ExplicitHeap> _uptr_heap_ty;
+    typedef std::unique_ptr<SlowHeapManager> _uptr_heap_ty;
     
     _uptr_heap_ty _uptr_heap;    
     volatile bool _alloc_flag;
@@ -332,7 +317,7 @@ class DynamicIPCSlave
     _listen_for_alloc();
 
 public:         
-    DynamicIPCSlave(std::string name, int sz);
+    DynamicIPCSlave(std::string name, size_t sz);
     virtual ~DynamicIPCSlave();
     
     bool    

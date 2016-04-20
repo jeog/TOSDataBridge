@@ -26,7 +26,7 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 #include <cctype>
 #include "tos_databridge.h"
 #include "engine.hpp"
-#include "dynamic_ipc.hpp"
+#include "ipc.hpp"
 #include "concurrency.hpp"
 
 namespace {
@@ -37,6 +37,7 @@ LPCSTR  LOG_NAME   = "engine-log.log";
 const unsigned int COMM_BUFFER_SIZE = 5; /* opcode + 3 args + {0,0} */
 const unsigned int ACL_SIZE         = 96;
 const unsigned int UPDATE_PERIOD    = 2000;
+const int NSECURABLE = 2;
 
 /* our 'private' messages; OK between 0x0400 and 0x7fff */
 const unsigned int LINK_DDE_ITEM      = 0x0500;
@@ -172,9 +173,9 @@ WINAPI WinMain(HINSTANCE hInst,
     RegisterClass(&clss); 
     
 
-    /* spin-off the windows msg loop that we'll communicate w/ directly via private
-       messages in the main communication loop below, and will respond to return 
-       messages from the TOS platform via DDE messages*/
+    /* spin-off the windows msg loop that we'll communicate w/ directly via 
+       private messages in the main communication loop below; it will also 
+       respond to return DDE messages from the TOS platform */
     msg_thrd = CreateThread(NULL, 0, Threaded_Init, NULL, 0, &msg_thrd_id);
     if(!msg_thrd)
         return -1;  
@@ -205,9 +206,9 @@ WINAPI WinMain(HINSTANCE hInst,
            it will block until master sends a shem_chunk obj      */
         while( !shutdown_flag && slave.recv(shem_buf[indx]) )
         { 
-            /* 'sentinel' shem_buf needs to be {0,0} */
+            /* 'tail' shem_buf needs to be {0,0} */
             if(shem_buf[indx].sz == 0 && shem_buf[indx].offset == 0){  
-                int i;
+                long i;
                 switch(shem_buf[0].offset){
                 case TOSDB_SIG_ADD:
                 {
@@ -218,8 +219,9 @@ WINAPI WinMain(HINSTANCE hInst,
                         TOSDB_LogH("IPC","invalid shem_chunk passed to slave");
                         break;
                     }         
-                    i = AddStream(*(TOS_Topics::TOPICS*)parg1, 
-                                  std::string((char*)parg2), *(size_type*)parg3);           
+                    i = (long)AddStream( *(TOS_Topics::TOPICS*)parg1, 
+                                         std::string((char*)parg2), 
+                                         *(size_type*)parg3 );           
                     slave.send(i);      
                     break;
                 } 
@@ -232,9 +234,9 @@ WINAPI WinMain(HINSTANCE hInst,
                         TOSDB_LogH("IPC","invalid shem_chunk passed to slave");
                         break;
                     }
-                    i = RemoveStream(*(TOS_Topics::TOPICS*)parg1, 
-                                     std::string((char*)parg2), 
-                                     *(size_type*)parg3)  ?  0  :  1;
+                    i = RemoveStream( *(TOS_Topics::TOPICS*)parg1, 
+                                      std::string((char*)parg2), 
+                                      *(size_type*)parg3)  ?  0  :  1;
                     slave.send(i);            
                     break;
                 } 
@@ -283,7 +285,7 @@ WINAPI WinMain(HINSTANCE hInst,
                 parg3 = nullptr;
 
             /* if we overflow the message buffer: reset */
-            }else if(++indx >= COMM_BUFFER_SIZE){
+            }else if(++indx >= COMM_BUFFER_SIZE){ /* <-- we're incrementing indx */
                 TOSDB_LogH("IPC","shem_chunk buffer full, reseting msg loop");
                 indx = 0;        
             }  
@@ -295,6 +297,32 @@ WINAPI WinMain(HINSTANCE hInst,
 }
 
 namespace {    
+
+  
+DWORD WINAPI 
+Threaded_Init(LPVOID lParam)
+{
+    if(!hinstance)
+        hinstance = GetModuleHandle(NULL);
+
+    msg_window = CreateWindow(CLASS_NAME, msg_window_name, WS_OVERLAPPEDWINDOW, 
+                              0, 0, 0, 0, NULL, NULL, hinstance, NULL);  
+
+    if(!msg_window) 
+        return 1; 
+
+    SetEvent(init_event);
+
+    MSG msg = {};   
+    while( GetMessage(&msg, NULL, 0, 0) )
+    {  
+        TranslateMessage(&msg);
+        DispatchMessage(&msg);    
+    }   
+     
+    return 0;
+}
+
 
 int 
 CleanUpMain(int ret_code)
@@ -460,106 +488,61 @@ SetSecurityPolicy()
     SmartBuffer<char>  dom_buf(dom_sz);
     SmartBuffer<void>  sid(sid_sz);  
 
-    sec_attr[SHEM1].nLength = sizeof(SECURITY_ATTRIBUTES);
-    sec_attr[SHEM1].bInheritHandle = FALSE;
-    sec_attr[SHEM1].lpSecurityDescriptor = &sec_desc[SHEM1];
-    sec_attr[MUTEX1].nLength = sizeof(SECURITY_ATTRIBUTES);    
-    sec_attr[MUTEX1].bInheritHandle = FALSE;    
-    sec_attr[MUTEX1].lpSecurityDescriptor = &sec_desc[MUTEX1];
-    
     ret = LookupAccountName(NULL, "Everyone", sid.get(), &sid_sz, 
                             dom_buf.get(), &dom_sz, &dummy);
     if(!ret)    
         return -1;
    
-    ret = memcpy_s(sids[SHEM1].get(), SECURITY_MAX_SID_SIZE, 
-                   sid.get(), SECURITY_MAX_SID_SIZE);
-    if(ret)
-        return -2;
+    for(int i = 0; i < NSECURABLE; ++i){
+        sec_attr[(Securable)i].nLength = sizeof(SECURITY_ATTRIBUTES);
+        sec_attr[(Securable)i].bInheritHandle = FALSE;
+        sec_attr[(Securable)i].lpSecurityDescriptor = &sec_desc[(Securable)i];
 
-    ret = memcpy_s(sids[MUTEX1].get(), SECURITY_MAX_SID_SIZE, 
-                   sid.get(), SECURITY_MAX_SID_SIZE);
-    if(ret)
-        return -2;
-    
-    ret = InitializeSecurityDescriptor(&sec_desc[SHEM1], 
-                                       SECURITY_DESCRIPTOR_REVISION);
-    if(!ret)
-        return -3;
+        /* memcpy 'TRUE' is error */
+        ret = memcpy_s( sids[(Securable)i].get(), SECURITY_MAX_SID_SIZE, 
+                        sid.get(), SECURITY_MAX_SID_SIZE );
+        if(ret)
+            return -2;
 
-    ret  = InitializeSecurityDescriptor(&sec_desc[MUTEX1], 
-                                        SECURITY_DESCRIPTOR_REVISION);
-    if(!ret)
-        return -3;
+        ret = InitializeSecurityDescriptor( &sec_desc[(Securable)i], 
+                                            SECURITY_DESCRIPTOR_REVISION );
+        if(!ret)
+            return -3;
 
-    ret = SetSecurityDescriptorGroup(&sec_desc[SHEM1], 
-                                     sids[SHEM1].get(), FALSE);
-    if(!ret)
-        return -4;    
+        ret = SetSecurityDescriptorGroup( &sec_desc[(Securable)i], 
+                                          sids[(Securable)i].get(), FALSE );
+        if(!ret)
+            return -4;     
 
-    ret = SetSecurityDescriptorGroup(&sec_desc[MUTEX1], 
-                                      sids[MUTEX1].get(), FALSE);
-    if(!ret)
-        return -4;
+        ret = InitializeAcl(acls[(Securable)i].get(), ACL_SIZE, ACL_REVISION);
+        if(!ret)
+            return -5;
+    }
+ 
+    /* add ACEs individually */
 
-    ret = InitializeAcl(acls[SHEM1].get(), ACL_SIZE, ACL_REVISION);
-    if(!ret)
-        return -5;
-
-    ret = InitializeAcl(acls[MUTEX1].get(), ACL_SIZE, ACL_REVISION);
-    if(!ret)
-        return -5;
-
-    ret = AddAccessDeniedAce(acls[SHEM1].get(), ACL_REVISION, 
-                             FILE_MAP_WRITE, sids[SHEM1].get());
+    ret = AddAccessDeniedAce( acls[SHEM1].get(), ACL_REVISION, 
+                              FILE_MAP_WRITE, sids[SHEM1].get() );
     if(!ret)
         return -6;
 
-    ret = AddAccessAllowedAce(acls[SHEM1].get(), ACL_REVISION, 
-                              FILE_MAP_READ, sids[SHEM1].get());
+    ret = AddAccessAllowedAce( acls[SHEM1].get(), ACL_REVISION, 
+                               FILE_MAP_READ, sids[SHEM1].get() );
     if(!ret)
         return -6;
 
-    ret = AddAccessAllowedAce(acls[MUTEX1].get(), ACL_REVISION, 
-                              SYNCHRONIZE, sids[MUTEX1].get());
+    ret = AddAccessAllowedAce( acls[MUTEX1].get(), ACL_REVISION, 
+                               SYNCHRONIZE, sids[MUTEX1].get() );
     if(!ret)
         return -6;
 
-    ret = SetSecurityDescriptorDacl(&sec_desc[SHEM1], TRUE, 
-                                    acls[SHEM1].get(), FALSE);
-    if(!ret)
-        return -7;
+    for(int i = 0; i < NSECURABLE; ++i){
+        ret = SetSecurityDescriptorDacl( &sec_desc[(Securable)i], TRUE, 
+                                         acls[(Securable)i].get(), FALSE );
+        if(!ret)
+            return -7;
+    }
 
-    ret = SetSecurityDescriptorDacl(&sec_desc[MUTEX1], TRUE, 
-                                    acls[MUTEX1].get(), FALSE);
-    if(!ret)
-        return -7;
-
-    return 0;
-}
-
-
-DWORD WINAPI 
-Threaded_Init(LPVOID lParam)
-{
-    if(!hinstance)
-        hinstance = GetModuleHandle(NULL);
-
-    msg_window = CreateWindow(CLASS_NAME, msg_window_name, WS_OVERLAPPEDWINDOW, 
-                              0, 0, 0, 0, NULL, NULL, hinstance, NULL);  
-
-    if(!msg_window) 
-        return 1; 
-
-    SetEvent(init_event);
-
-    MSG msg = {};   
-    while( GetMessage(&msg, NULL, 0, 0) )
-    {  
-        TranslateMessage(&msg);
-        DispatchMessage(&msg);    
-    }   
-     
     return 0;
 }
   
@@ -885,9 +868,10 @@ HandleData(UINT msg, WPARAM wparam, LPARAM lparam)
     BOOL clnt_rel;
     PVOID data;  
     UINT_PTR atom;
-    LPARAM lParamNeg;
+    LPARAM lpneg;
+    int cpret;
 
-    char cp_data[TOSDB_STR_DATA_SZ+1]; /* include CR LF, excluded added \0 */
+    char cp_data[TOSDB_STR_DATA_SZ+1]; /* include CR LF, exclude added \0 */
     char item_atom[TOSDB_MAX_STR_SZ + 1];    
 
     UnpackDDElParam(msg, lparam, (PUINT_PTR)&data, &atom);   
@@ -897,19 +881,18 @@ HandleData(UINT msg, WPARAM wparam, LPARAM lparam)
         || (dde_data->cfFormat != CF_TEXT))
     {   
         /* SEND NEG ACK TO SERVER  - convo already destroyed if NULL */
-        lParamNeg = PackDDElParam(WM_DDE_ACK, 0, (UINT_PTR)atom);         
-        PostMessage((HWND)wparam, WM_DDE_ACK, (WPARAM)msg_window, lParamNeg);
+        lpneg = PackDDElParam(WM_DDE_ACK, 0, (UINT_PTR)atom);         
+        PostMessage((HWND)wparam, WM_DDE_ACK, (WPARAM)msg_window, lpneg);
 
         /* free resources */
         GlobalDeleteAtom((WORD)atom);
-        FreeDDElParam(WM_DDE_ACK, lParamNeg);
+        FreeDDElParam(WM_DDE_ACK, lpneg);
         return; 
     }  
 
-    if( strncpy_s(cp_data, (LPCSTR)(dde_data->Value), TOSDB_STR_DATA_SZ) )
-    {
-        TOSDB_LogH("DDE", "error copying data->value[] string");   
-    }
+    cpret = strncpy_s(cp_data, (LPCSTR)(dde_data->Value), TOSDB_STR_DATA_SZ);
+    if(cpret)    
+        TOSDB_LogH("DDE", "error copying data->Value string");       
 
     if(dde_data->fAckReq){
         /* SEND POS ACK TO SERVER - convo already destroyed if NULL */

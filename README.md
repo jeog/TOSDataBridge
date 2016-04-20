@@ -14,6 +14,11 @@ Obviously the core implementation is not portable, but the python interface does
 - Python3 (optional, for the python wrapper)
 - Some basic Windows knowledge; some basic C, C++, or Python programming knowledge
 
+### Versions
+- - -
+- v0.3 (branch v0.3) : 'stable' version 
+- v0.4 (branch master) : currently undergoing a major refactoring; interface is subject to slight chnages but ALL MAJOR CALLS IN THE C/C++ API WILL REMAIN UNCHANGED ! 
+
 ### Quick Setup
 - - -
 - tosdb-setup.bat will attempt to install the necessary modules/dependencies for you but you should refer to **Installation Details** below for a more detailed explanation

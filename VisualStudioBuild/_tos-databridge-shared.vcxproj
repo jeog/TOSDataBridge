@@ -166,7 +166,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\src\concurrency.cpp" />
-    <ClCompile Include="..\src\dynamic_ipc.cpp" />
+    <ClCompile Include="..\src\ipc.cpp" />
     <ClCompile Include="..\src\logging.cpp" />
     <ClCompile Include="..\src\main.cpp" />
     <ClCompile Include="..\src\topics.cpp" />
@@ -176,7 +176,7 @@
     <ClInclude Include="..\include\concurrency.hpp" />
     <ClInclude Include="..\include\containers.hpp" />
     <ClInclude Include="..\include\data_stream.hpp" />
-    <ClInclude Include="..\include\dynamic_ipc.hpp" />
+    <ClInclude Include="..\include\ipc.hpp" />
     <ClInclude Include="..\include\engine.hpp" />
     <ClInclude Include="..\include\exceptions.hpp" />
     <ClInclude Include="..\include\generic.hpp" />

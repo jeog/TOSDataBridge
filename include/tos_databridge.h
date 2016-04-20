@@ -159,8 +159,8 @@ class DLL_SPEC_IMPL_ WinLockGuard;
 class DLL_SPEC_IMPL_ SignalManager;
 #endif  /* CPP_COND_VAR */
 
-/* IPC - dynamic_ipc.cpp / dynamic_ipc.hpp */
-class DLL_SPEC_IMPL_ ExplicitHeap;
+/* IPC - ipc.cpp / ipc.hpp */
+class DLL_SPEC_IMPL_ SlowHeapManager;
 class DLL_SPEC_IMPL_ DynamicIPCBase;
 class DLL_SPEC_IMPL_ DynamicIPCMaster;
 class DLL_SPEC_IMPL_ DynamicIPCSlave;
@@ -176,6 +176,7 @@ class DLL_SPEC_IMPL_ DynamicIPCSlave;
 
 #define TOSDB_APP_NAME     "TOS"
 #define TOSDB_COMM_CHANNEL "TOSDB_channel_1"
+#define TOSDB_APP_FOLDER   "\\tos-databridge" /* must be < 20 */
 
 typedef const enum{ 
     SHEM1 = 0, 

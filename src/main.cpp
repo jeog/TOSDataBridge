@@ -23,44 +23,48 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 
 char TOSDB_LOG_PATH[MAX_PATH+20];
 
-BOOL WINAPI DllMain(HANDLE mod, DWORD why, LPVOID res)
+BOOL 
+WINAPI DllMain(HANDLE mod, DWORD why, LPVOID res)
 {    
-  switch(why){
-  case DLL_PROCESS_ATTACH:
-  {    
-  LPCSTR app_folder = "\\tos-databridge";
+    switch(why){
+    case DLL_PROCESS_ATTACH:
+    {  
+        /* create our log folder in appdata */
+        GetEnvironmentVariable("APPDATA", TOSDB_LOG_PATH, MAX_PATH+20);         
+        strcat_s(TOSDB_LOG_PATH, TOSDB_APP_FOLDER);
+        CreateDirectory(TOSDB_LOG_PATH, NULL);
 
-  GetEnvironmentVariable("APPDATA", TOSDB_LOG_PATH, MAX_PATH+20); 
-  strcat_s(TOSDB_LOG_PATH, app_folder);
-  CreateDirectory(TOSDB_LOG_PATH, NULL);  
-  strcat_s(TOSDB_LOG_PATH, "\\");
-  TOSDB_StartLogging(
-    std::string(TOSDB_LOG_PATH).append("tos-databridge-shared.log").c_str());
+        /* start logging */
+        std::string lpath(TOSDB_LOG_PATH);
+        lpath.append("\\tos-databridge-shared.log");
+        TOSDB_StartLogging( lpath.c_str() );
+        break;
+    } 
+    case DLL_THREAD_ATTACH: /* no break */
+    case DLL_THREAD_DETACH: /* no break */
+    case DLL_PROCESS_DETACH:/* no break */    
+    default: break;
+    }
 
-  } break;
-  case DLL_THREAD_ATTACH: /* no break */
-  case DLL_THREAD_DETACH: /* no break */
-  case DLL_PROCESS_DETACH:/* no break */    
-  default: break;
-  }
-  return TRUE;
+    return TRUE;
 }
 
 std::string 
 CreateBufferName(std::string sTopic, std::string sItem)
-{ /* 
-   * name of mapping is of form: "TOSDB_[topic name]_[item_name]"  
-   * only alpha-numeric characters (except under-score) 
-   */
-  std::string str("TOSDB_");
-  str.append(sTopic.append("_"+sItem));   
-  str.erase(std::remove_if(str.begin(), str.end(), 
-                           [](char x){ return !isalnum(x) && x != '_'; }), 
-            str.end());
+{     /* 
+      * name of mapping is of form: "TOSDB_[topic name]_[item_name]"  
+      * only alpha-numeric characters (except under-score) 
+      */
+      std::string str("TOSDB_");
+      str.append( sTopic.append("_"+sItem) );
+
+      auto f = [](char x){ return !isalnum(x) && x != '_'; };
+      str.erase(std::remove_if(str.begin(), str.end(), f), str.end());
+
 #ifdef KGBLNS_
-  return std::string("Global\\").append(str);
+      return std::string("Global\\").append(str);
 #else
-  return str;
+      return str;
 #endif
 }
 

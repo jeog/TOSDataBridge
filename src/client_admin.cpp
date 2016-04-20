@@ -26,7 +26,7 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 #include "tos_databridge.h"
 #include "client.hpp"
 #include "raw_data_block.hpp"
-#include "dynamic_ipc.hpp"
+#include "ipc.hpp"
 
 std::recursive_mutex global_rmutex;
 
@@ -79,14 +79,14 @@ _getBlockPtr(std::string id)
 }
 
 
-int 
+long /* returns 0 on sucess */
 RequestStreamOP(TOS_Topics::TOPICS tTopic, 
                 std::string sItem, 
                 unsigned long timeout, 
                 unsigned int opcode)
 /* needs exclusivity but can't block; CALLING CODE MUST LOCK*/
 {
-    int ret;
+    long ret;
     bool ret_stat;  
 
     if(opcode != TOSDB_SIG_ADD && opcode != TOSDB_SIG_REMOVE)
@@ -107,7 +107,7 @@ RequestStreamOP(TOS_Topics::TOPICS tTopic,
 
     ret_stat = master.recv(ret); 
     /* don't remove until we get a response ! */
-    master.remove(arg1).remove(arg2).remove(arg3);
+    master.remove(std::move(arg1)).remove(std::move(arg2)).remove(std::move(arg3));
 
     if(!ret_stat){
         master.release_pipe();
@@ -535,7 +535,7 @@ TOSDB_Add(std::string id,
                 db->topic_precache.insert(topic);
             for(auto & item : iunion)
             {                              /* TRY TO ADD TO BLOCK */
-                if(!RequestStreamOP(topic, item, db->timeout, TOSDB_SIG_ADD)){
+                if( !RequestStreamOP(topic, item, db->timeout, TOSDB_SIG_ADD) ){
                     db->block->add_topic(topic);
                     db->block->add_item(item);
                     db->item_precache.clear();
@@ -846,10 +846,10 @@ TOSDB_CloseBlocks()
 }
 
 
-int 
+int
 TOSDB_DumpSharedBufferStatus()
 {
-    int ret;  
+    long ret;  
     unsigned int lcount = 0;
 
     GLOBAL_RLOCK_GUARD;
@@ -869,7 +869,7 @@ TOSDB_DumpSharedBufferStatus()
     }
     master.release_pipe();
 
-    return ret;
+    return (int)ret;
     /* --- CRITICAL SECTION --- */
 }
 
