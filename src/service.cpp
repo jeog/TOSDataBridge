@@ -372,7 +372,7 @@ WinMain(HINSTANCE hInst,
     }    
     path.erase(path.find_last_of("\\")); 
     engine_path = path;
-    engine_path.append("\\").append(ENGINE_NAME).append(serv_ext); 
+    engine_path.append("\\").append(ENGINE_BASE_NAME).append(serv_ext); 
 
     /* start logging */
     std::string logpath(TOSDB_LOG_PATH);
