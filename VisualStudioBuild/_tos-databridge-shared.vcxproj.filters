@@ -44,9 +44,6 @@
     <ClInclude Include="..\include\data_stream.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\include\engine.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\include\generic.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>

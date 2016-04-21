@@ -124,8 +124,7 @@ typedef struct{
     long       micro_second;
 } DateTimeStamp, *pDateTimeStamp;
 
-
-/* for tosdb/setup.py ! DO NOT REMOVE ! */
+/* NEED for tosdb/setup.py !!! DO NOT REMOVE !!! */
 #define TOSDB_INTGR_BIT ((type_bits_type)0x80)
 #define TOSDB_QUAD_BIT ((type_bits_type)0x40)
 #define TOSDB_STRING_BIT ((type_bits_type)0x20)
@@ -138,10 +137,10 @@ typedef struct{
 #define TOSDB_BLOCK_ID_SZ  63 
 #define TOSDB_MAX_BLOCK_SZ INT_MAX 
 #define TOSDB_DEF_LATENCY Fast
-/* for tosdb/setup.py ! DO NOT REMOVE ! */ 
+/* NEED for tosdb/setup.py !!! DO NOT REMOVE !!! */ 
 
 
-/* following block will only be declared for our 'back-end';
+/* following block will contain back-end stuff shared by various mods;
    to access you should define 'THIS_IMPORTS_IMPLEMENTATION'  */
 #if defined(THIS_EXPORTS_IMPLEMENTATION) || defined(THIS_IMPORTS_IMPLEMENTATION)
 
@@ -165,6 +164,8 @@ class DLL_SPEC_IMPL_ DynamicIPCBase;
 class DLL_SPEC_IMPL_ DynamicIPCMaster;
 class DLL_SPEC_IMPL_ DynamicIPCSlave;
 
+#define TOSDB_COMM_CHANNEL "TOSDB_channel_1"
+
 #define TOSDB_SIG_ADD 1
 #define TOSDB_SIG_REMOVE 2
 #define TOSDB_SIG_PAUSE 3
@@ -173,10 +174,6 @@ class DLL_SPEC_IMPL_ DynamicIPCSlave;
 #define TOSDB_SIG_DUMP 6
 #define TOSDB_SIG_GOOD 7 
 #define TOSDB_SIG_BAD 8 
-
-#define TOSDB_APP_NAME     "TOS"
-#define TOSDB_COMM_CHANNEL "TOSDB_channel_1"
-#define TOSDB_APP_FOLDER   "\\tos-databridge" /* must be < 20 */
 
 typedef const enum{ 
     SHEM1 = 0, 
@@ -195,6 +192,8 @@ typedef struct{
     volatile unsigned int end_offset;  /* logical location (after header) */ 
     volatile unsigned int next_offset; /* logical location of next write */  
 } BufferHead, *pBufferHead; 
+
+extern char  DLL_SPEC_IMPL_  TOSDB_LOG_PATH[ MAX_PATH+20 ]; 
 
 #endif /* THIS_EXPORTS_IMPLEMENTATION || THIS_IMPORTS_IMPLEMENTATION */
 
@@ -977,8 +976,6 @@ DLL_SPEC_IMPL_ std::string
 SysTimeString();
 
 #endif /* __cplusplus */
-
-extern char  DLL_SPEC_IMPL_  TOSDB_LOG_PATH[ MAX_PATH+20 ]; 
 
 /* if logging is not enabled high severity events will be sent to std::cerr */ 
 typedef enum{ low = 0, high }Severity;  

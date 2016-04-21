@@ -25,15 +25,39 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 #include <iomanip>
 #include <cctype>
 #include "tos_databridge.h"
-#include "engine.hpp"
 #include "ipc.hpp"
 #include "concurrency.hpp"
 
-namespace {
+namespace { 
+
+  /* !!! 'buffer_lock_guard_' is reserved inside this namespace !!! */
+  /* !!! 'topic_lock_guard_' is reserved inside this namespace !!! */
+
+typedef struct{
+    void*        hfile;    /* handle to mapping */
+    void*        raw_addr; /* physical location in our process space */
+    unsigned int raw_sz;   /* physical size of the buffer */
+    void*        hmtx;  
+} StreamBuffer, *pStreamBuffer;
+
+typedef std::map<std::string, size_t>                recount_ty;
+typedef std::pair<std::string , TOS_Topics::TOPICS>  id_ty;
+typedef std::map<TOS_Topics::TOPICS, recount_ty>     topics_ref_ty;
+typedef std::map<id_ty, StreamBuffer>                buffers_ty;
+
+typedef TwoWayHashMap<TOS_Topics::TOPICS, HWND, true,
+                      std::hash<TOS_Topics::TOPICS>,
+                      std::hash<HWND>,
+                      std::equal_to<TOS_Topics::TOPICS>,
+                      std::equal_to<HWND> >               convos_ty;
+
 
 LPCSTR  CLASS_NAME = "DDE_CLIENT_WINDOW";
 LPCSTR  LOG_NAME   = "engine-log.log";  
+LPCSTR  APP_NAME   = "TOS";
   
+const system_clock_type  system_clock;
+
 const unsigned int COMM_BUFFER_SIZE = 5; /* opcode + 3 args + {0,0} */
 const unsigned int ACL_SIZE         = 96;
 const unsigned int UPDATE_PERIOD    = 2000;
@@ -59,14 +83,17 @@ SmartBuffer<ACL> acls[] = {
     SmartBuffer<ACL>(ACL_SIZE), 
     SmartBuffer<ACL>(ACL_SIZE) 
 };   
-  
-buffers_type buffers;  
-topics_type  topics; 
-convos_types convos; 
+
+buffers_ty    buffers;  
+topics_ref_ty topic_refs; 
+convos_ty     convos; 
 
 LightWeightMutex topic_mtx;
 LightWeightMutex buffer_mtx;
 SignalManager    ack_signals;
+
+#define BUFFER_LOCK_GUARD WinLockGuard buffer_lock_guard_(buffer_mtx)
+#define TOPIC_LOCK_GUARD WinLockGuard topic_lock_guard_(topic_mtx)
 
 HANDLE init_event      =  NULL;
 HANDLE msg_thrd        =  NULL;
@@ -77,6 +104,10 @@ LPCSTR msg_window_name =  "TOSDB_ENGINE_MSG_WNDW";
 volatile bool shutdown_flag =  false;  
 volatile bool pause_flag    =  false;
 volatile bool is_service    =  true;
+
+/* forward decl (see end of source) */
+template<typename T>
+class DDE_Data;
 
 template<typename T> 
 int  
@@ -135,11 +166,8 @@ WndProc(HWND, UINT, WPARAM, LPARAM);
 };
 
 
-int 
-WINAPI WinMain(HINSTANCE hInst, 
-               HINSTANCE hPrevInst, 
-               LPSTR lpCmdLn, 
-               int nShowCmd)
+int WINAPI 
+WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLn, int nShowCmd)
 {    
     void *parg1, *parg2, *parg3;
     int err;
@@ -353,8 +381,8 @@ AddStream(TOS_Topics::TOPICS tTopic,
     if( !(TOS_Topics::enum_value_type)tTopic )
         return -1;
 
-    auto topic_iter = topics.find(tTopic);  
-    if(topic_iter == topics.end()){ /* if topic isn't in our global mapping */ 
+    auto topic_iter = topic_refs.find(tTopic);  
+    if(topic_iter == topic_refs.end()){ /* if topic isn't in our global mapping */ 
 
         ATOM topic_atom;
         ATOM app_atom;
@@ -363,7 +391,7 @@ AddStream(TOS_Topics::TOPICS tTopic,
         init_event = CreateEvent(NULL, FALSE, FALSE, NULL);          
         sTopic = TOS_Topics::map[ tTopic ];  
         topic_atom = GlobalAddAtom(sTopic.c_str());
-        app_atom = GlobalAddAtom(TOSDB_APP_NAME);
+        app_atom = GlobalAddAtom(APP_NAME);
 
         ack_signals.set_signal_ID(TOS_Topics::map[ tTopic ]); 
 
@@ -384,9 +412,9 @@ AddStream(TOS_Topics::TOPICS tTopic,
             err = -2;       
      
         if(!err){
-            topics[tTopic] = refcount_type();
+            topic_refs[tTopic] = recount_ty();
             if( PostItem(sItem, tTopic, timeout) ){
-                topics[tTopic][sItem] = 1;
+                topic_refs[tTopic][sItem] = 1;
                 if(!CreateBuffer(tTopic, sItem))
                     err = -4;     
             }else{       
@@ -413,9 +441,9 @@ AddStream(TOS_Topics::TOPICS tTopic,
     switch(err){ /* unwind if it fails during creation */   
     case -4:    
         PostCloseItem(sItem, tTopic, timeout);
-        topics[tTopic].erase(sItem);
+        topic_refs[tTopic].erase(sItem);
     case -3:
-        if( !topics[tTopic].empty() ) 
+        if( !topic_refs[tTopic].empty() ) 
             break;        
     case -2:        
         TearDownTopic(tTopic, timeout);      
@@ -433,8 +461,8 @@ RemoveStream(TOS_Topics::TOPICS tTopic,
     if( !(TOS_Topics::enum_value_type)tTopic )
         return false;
 
-    auto topic_iter = topics.find(tTopic);  
-    if( topic_iter == topics.end() ) /* if topic is in our global mapping */    
+    auto topic_iter = topic_refs.find(tTopic);  
+    if( topic_iter == topic_refs.end() ) /* if topic is in our global mapping */    
         return false;    
 
     auto item_iter = topic_iter->second.find(sItem);
@@ -459,14 +487,14 @@ RemoveStream(TOS_Topics::TOPICS tTopic,
 void 
 CloseAllStreams(unsigned long timeout)
 { /* need to iterate through copies */  
-    topics_type t_copy;
-    refcount_type rc_copy;
+    topics_ref_ty t_copy;
+    recount_ty rc_copy;
 
-    std::insert_iterator<topics_type> tii(t_copy, t_copy.begin());
-    std::copy(topics.begin(), topics.end(), tii);
+    std::insert_iterator<topics_ref_ty> tii(t_copy, t_copy.begin());
+    std::copy(topic_refs.begin(), topic_refs.end(), tii);
 
     for(const auto& topic: t_copy){
-        std::insert_iterator<refcount_type> rii(rc_copy,rc_copy.begin());
+        std::insert_iterator<recount_ty> rii(rc_copy,rc_copy.begin());
         std::copy(topic.second.begin(), topic.second.end(), rii);
         for(const auto& item : rc_copy){
             RemoveStream(topic.first, item.first, timeout);    
@@ -590,7 +618,7 @@ void
 TearDownTopic(TOS_Topics::TOPICS tTopic, unsigned long timeout)
 {  
     PostMessage(msg_window, CLOSE_CONVERSATION, (WPARAM)convos[tTopic], NULL);        
-    topics.erase(tTopic); 
+    topic_refs.erase(tTopic); 
     convos.remove(tTopic);  
 }
 
@@ -603,7 +631,7 @@ CreateBuffer(TOS_Topics::TOPICS tTopic,
     StreamBuffer buf;
     std::string name;
 
-    id_type id(sItem, tTopic);  
+    id_ty id(sItem, tTopic);  
 
     if(buffers.find(id) != buffers.end())
         return false;
@@ -643,7 +671,7 @@ CreateBuffer(TOS_Topics::TOPICS tTopic,
                      + ((buf.raw_sz - ptmp->beg_offset) / ptmp->elem_size) 
                      * ptmp->elem_size ;
 
-    buffers.insert(buffers_type::value_type(id,buf));
+    buffers.insert(buffers_ty::value_type(id,buf));
     return true;
 }
 
@@ -651,10 +679,10 @@ CreateBuffer(TOS_Topics::TOPICS tTopic,
 bool 
 DestroyBuffer(TOS_Topics::TOPICS tTopic, std::string sItem)
 {   
-    WinLockGuard lock(buffer_mtx);
+    BUFFER_LOCK_GUARD;
     /* ---CRITICAL SECTION --- */
     /* don't allow buffer to be destroyed while we're writing to it */
-    auto buf_iter = buffers.find(id_type(sItem,tTopic));
+    auto buf_iter = buffers.find(id_ty(sItem,tTopic));
     if( buf_iter != buffers.end() )
     { 
         UnmapViewOfFile(buf_iter->second.raw_addr);
@@ -671,13 +699,13 @@ DestroyBuffer(TOS_Topics::TOPICS tTopic, std::string sItem)
 void 
 DeAllocKernResources() /* only called if we're forced to exit abruptly */
 {  
-  WinLockGuard lock(buffer_mtx);
-  /* ---CRITICAL SECTION --- */
-  for(buffers_type::value_type & buf : buffers){
-      DestroyBuffer(buf.first.second, buf.first.first);
-  }
-  CloseHandle(init_event);
-   /* ---CRITICAL SECTION --- */
+    BUFFER_LOCK_GUARD;
+    /* ---CRITICAL SECTION --- */
+    for(buffers_ty::value_type & buf : buffers){
+        DestroyBuffer(buf.first.second, buf.first.first);
+    }
+    CloseHandle(init_event);
+    /* ---CRITICAL SECTION --- */
 }
 
 
@@ -699,15 +727,15 @@ RouteToBuffer(DDE_Data<T> data)
     pBufferHead head;  
     int err = 0;
 
-    WinLockGuard _lock_(buffer_mtx);
+    BUFFER_LOCK_GUARD;
     /* ---(INTRA-PROCESS) CRITICAL SECTION --- */
-    auto bufIter = buffers.find(id_type(data.item,data.topic));
-    if(bufIter == buffers.end())  
+    auto buf_iter = buffers.find(id_ty(data.item,data.topic));
+    if(buf_iter == buffers.end())  
         return -1;
 
-    head = (pBufferHead)(bufIter->second.raw_addr);
+    head = (pBufferHead)(buf_iter->second.raw_addr);
   
-    WaitForSingleObject(bufIter->second.hmtx, INFINITE);
+    WaitForSingleObject(buf_iter->second.hmtx, INFINITE);
     /* ---(INTER-PROCESS) CRITICAL SECTION --- */
     ValToBuf((void*)((char*)head + head->next_offset), data.data);
     *(pDateTimeStamp)((char*)head + head->next_offset 
@@ -721,9 +749,18 @@ RouteToBuffer(DDE_Data<T> data)
     }
 
     /* ---(INTER-PROCESS) CRITICAL SECTION --- */
-    ReleaseMutex(bufIter->second.hmtx);
+    ReleaseMutex(buf_iter->second.hmtx);
     return err;  
     /* ---(INTRA-PROCESS) CRITICAL SECTION --- */
+}
+
+void /* in place 'safe' strlwr */
+str_to_lower(char* str, size_t max)
+{
+    while(str && max--){
+        str[0] = tolower(str[0]);
+        ++str;
+    }
 }
 
 LRESULT CALLBACK 
@@ -828,18 +865,31 @@ WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             GlobalGetAtomName((ATOM)(pho), topic_atom, (TOSDB_MAX_STR_SZ + 1)); 
             GlobalGetAtomName((ATOM)(plo), app_atom, (TOSDB_MAX_STR_SZ + 1));
 
-            strcpy_s(app_str_lower, TOSDB_APP_NAME);      
+            strcpy_s(app_str_lower, APP_NAME);       
+
+           /* not sure why we were using these
             _strlwr_s(app_atom, TOSDB_MAX_STR_SZ); 
-            _strlwr_s(app_str_lower, TOSDB_MAX_STR_SZ);       
-    
+            _strlwr_s(app_str_lower, TOSDB_MAX_STR_SZ); */ 
+
+            str_to_lower(app_atom, TOSDB_MAX_STR_SZ); 
+            str_to_lower(app_str_lower, TOSDB_MAX_STR_SZ); 
+
             if( strcmp(app_atom, app_str_lower) )
                 break;   
 
-            convos_types::pair1_type cp(TOS_Topics::map[topic_atom],(HWND)wParam);
+            convos_ty::pair1_type cp(TOS_Topics::map[topic_atom],(HWND)wParam);
             convos.insert(std::move(cp));       
 
             ack_signals.signal(topic_atom, true);
         }else{
+            /* IF SOMETHING FUNDAMENTAL SEEMS BROKEN LOOK HERE ...
+
+               The logic in here is a bit... tenuous.  The DDE behavior 
+               doesn't exactly follow the MSDN docs. We had to more-or-less
+               go trial-and-error to see how to handle communication 
+               with the server. Whether or not this relies on impl details
+               is left to be seen.           
+            */
             UnpackDDElParam(message,lParam, (PUINT_PTR)&plo, (PUINT_PTR)&pho); 
             GlobalGetAtomName((ATOM)(pho), item_atom, (TOSDB_MAX_STR_SZ + 1)); 
             if(plo == 0x0000){
@@ -860,6 +910,99 @@ WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
     return 0;
 }
+
+
+template<typename T>
+class DDE_Data {
+    static const system_clock_type::time_point EPOCH_TP;
+  
+    DDE_Data(const DDE_Data<T>&);
+    DDE_Data& operator=(const DDE_Data<T>&);
+
+    void 
+    _init_datetime();  
+
+public:
+    TOS_Topics::TOPICS topic;
+    pDateTimeStamp time;
+    bool valid_datetime;
+    std::string item;  
+    T data;
+    
+    DDE_Data(const TOS_Topics::TOPICS topic, 
+             std::string item, 
+             const T d, 
+             bool datetime) 
+      :
+          topic(topic),
+          item(item),
+          data(d), 
+          time(new DateTimeStamp),
+          valid_datetime(datetime)
+      {
+          if(datetime) 
+              _init_datetime();      
+      }
+
+    ~DDE_Data() 
+        { 
+            if(time) 
+                delete time; 
+        }
+
+    DDE_Data(DDE_Data<T>&& d)
+        :
+            topic(d.topic),
+            item(d.item),
+            data(d.data),
+            time(d.time),
+            valid_datetime(d.valid_datetime)
+        {    
+            d.time = nullptr;
+        }
+
+    DDE_Data& 
+    operator=(DDE_Data<T>&& d)
+    {
+        this->topic = d.topic;
+        this->item = d.item;
+        this->data = d.data;
+        this->valid_datetime = d.valid_datetime;
+        this->time = d.time;
+        d.time = nullptr;
+
+        return *this;
+    }
+}; 
+
+template<typename T> 
+const system_clock_type::time_point  
+DDE_Data<T>::EPOCH_TP; 
+
+template<typename T>
+void 
+DDE_Data<T>::_init_datetime()
+{
+    system_clock_type::time_point now; 
+    std::chrono::seconds sec;
+    micro_sec_type ms;    
+    time_t t;
+
+    /* current timepoint*/
+    now = system_clock.now(); 
+    /* number of ms since epoch */
+    ms = std::chrono::duration_cast<micro_sec_type, 
+                                    system_clock_type::rep, 
+                                    system_clock_type::period>(now - EPOCH_TP);
+    /* this is necessary to avoid issues w/ conversions to C time */
+    sec = std::chrono::duration_cast< std::chrono::seconds >(ms);
+    /* ms since last second */
+    time->micro_second = (long)((ms % micro_sec_type::period::den).count());  
+    /* get the ctime by adjusting epoch by seconds since */
+    t = system_clock.to_time_t(EPOCH_TP + sec);  
+    localtime_s(&time->ctime_struct, &t);      
+}
+
 
 void 
 HandleData(UINT msg, WPARAM wparam, LPARAM lparam)
@@ -989,9 +1132,9 @@ void DumpBufferStatus()
          << std::endl;
 
     {
-        WinLockGuard lock(topic_mtx);
+        TOPIC_LOCK_GUARD;
         /* --- CRITICAL SECTION --- */
-        for(const auto & t : topics)
+        for(const auto & t : topic_refs)
         {
             for(const auto & i : t.second){
                 lout << std::setw(log_col_width[0]) << std::left 
@@ -1009,7 +1152,7 @@ void DumpBufferStatus()
          << std::setw(log_col_width[4])<< std::left << "Handle" << std::endl;
 
     {
-        WinLockGuard lock(buffer_mtx);
+        BUFFER_LOCK_GUARD;
         /* --- CRITICAL SECTION --- */
         for(const auto & b : buffers){
             lout << std::setw(log_col_width[3]) << std::left 
@@ -1022,5 +1165,7 @@ void DumpBufferStatus()
 
     lout<< " --- END END END --- "<<std::endl;  
 }
+
+
 
 };

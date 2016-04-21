@@ -15,8 +15,8 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see http://www.gnu.org/licenses.
 */
 
-#ifndef JO_TOSDB_DYNAMIC_IPC
-#define JO_TOSDB_DYNAMIC_IPC
+#ifndef JO_TOSDB_IPC
+#define JO_TOSDB_IPC
 
 #include <map>
 #include <set>

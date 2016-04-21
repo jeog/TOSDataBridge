@@ -21,22 +21,30 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 #include <string>
 #include <algorithm>
 
-char TOSDB_LOG_PATH[MAX_PATH+20];
+/* this will be defined/exported for ALL (implemenation) modules */
+/* extern */ char TOSDB_LOG_PATH[MAX_PATH+20];
 
-BOOL 
-WINAPI DllMain(HANDLE mod, DWORD why, LPVOID res)
+namespace {
+const char* LOG_FOLDER = "\\tos-databridge";  /* must be < 20 */
+const char* LOG_FILE_NAME = "\\tos-databridge-shared.log";
+};
+
+
+BOOL WINAPI 
+DllMain(HANDLE mod, DWORD why, LPVOID res)
 {    
     switch(why){
     case DLL_PROCESS_ATTACH:
     {  
-        /* create our log folder in appdata */
+        /* create our log folder in appdata and define TOSDB_LOG_PATH
+           for all other implemenation modules */
         GetEnvironmentVariable("APPDATA", TOSDB_LOG_PATH, MAX_PATH+20);         
-        strcat_s(TOSDB_LOG_PATH, TOSDB_APP_FOLDER);
+        strcat_s(TOSDB_LOG_PATH, LOG_FOLDER);
         CreateDirectory(TOSDB_LOG_PATH, NULL);
 
-        /* start logging */
+        /* start 'our' log */
         std::string lpath(TOSDB_LOG_PATH);
-        lpath.append("\\tos-databridge-shared.log");
+        lpath.append(LOG_FILE_NAME);
         TOSDB_StartLogging( lpath.c_str() );
         break;
     } 

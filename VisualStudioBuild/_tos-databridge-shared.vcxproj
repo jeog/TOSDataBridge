@@ -177,7 +177,6 @@
     <ClInclude Include="..\include\containers.hpp" />
     <ClInclude Include="..\include\data_stream.hpp" />
     <ClInclude Include="..\include\ipc.hpp" />
-    <ClInclude Include="..\include\engine.hpp" />
     <ClInclude Include="..\include\exceptions.hpp" />
     <ClInclude Include="..\include\generic.hpp" />
     <ClInclude Include="..\include\raw_data_block.hpp" />

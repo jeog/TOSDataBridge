@@ -17,7 +17,7 @@ Obviously the core implementation is not portable, but the python interface does
 ### Versions
 - - -
 - v0.3 (branch v0.3) : 'stable' version 
-- v0.4 (branch master) : currently undergoing a major refactoring; interface is subject to slight chnages but ALL MAJOR CALLS IN THE C/C++ API WILL REMAIN UNCHANGED ! 
+- v0.4 (branch master) : currently undergoing a major refactoring - interface is subject to slight change. But, **all of the major C/C++ API types/calls/objects will remain the same.** 
 
 ### Quick Setup
 - - -
