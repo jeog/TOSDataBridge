@@ -213,7 +213,8 @@ public:
         if(!blk || memcpy_s(blk, sz, data, sz))
             return shem_chunk(0,0);
 
-        return shem_chunk((size_t)blk - (size_t)_mmap_addr, sz);        
+		/* cast to long OK; blk can't be > LONG_MAX from _mmap_addr */
+        return shem_chunk((long)((size_t)blk - (size_t)_mmap_addr), sz);        
     }
 
     template<typename T>

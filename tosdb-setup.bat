@@ -24,13 +24,7 @@ IF /I "%2"=="admin" (
 )
 
 
-IF "%1"=="x64" (
-    echo + Copying _tos-databridge-shared-x64.dll to %WINDIR% ...
-    COPY /-Y .\bin\Release\x64\_tos-databridge-shared-x64.dll %WINDIR%    
-    IF ERRORLEVEL 1 (
-        echo - Copy failed, exiting setup...
-        EXIT /B 1
-    )    
+IF "%1"=="x64" (  
     echo + Checking for VC++ Redistributable Files ...
     IF %bCRTfiles%==false (        
         echo ++ Not Found. Installing VC++ Redistributable ...
@@ -41,20 +35,15 @@ IF "%1"=="x64" (
         )
     )
     echo + Creating TOSDataBridge Service ...
-    SC delete TOSDataBridge 1>NUL 2>NUL 
+    SC stop TOSDataBridge 1>NUL 2>NUL    
+    SC delete TOSDataBridge 1>NUL 2>NUL   
     SC create TOSDataBridge binPath= %cd%\\bin\\Release\\x64\\tos-databridge-serv-x64.exe%servCmd% 
     IF ERRORLEVEL 1 (
         echo - SC create failed, exiting setup...
         EXIT /B 1
     )    
 ) else ( 
-    IF "%1"=="x86" (
-        echo + Copying _tos-databridge-shared-x86.dll to %WINDIR% ...
-        COPY /-Y .\bin\Release\Win32\_tos-databridge-shared-x86.dll %WINDIR%        
-        IF ERRORLEVEL 1 (
-            echo - Copy failed, exiting setup...
-            EXIT /B 1
-        )    
+    IF "%1"=="x86" (  
         echo + Checking for VC++ Redistributable Files ...
         IF EXIST C:/Windows/SysWOW64 set bCRTfiles=false
         IF EXIST C:/Windows/SysWOW64/msvcr110.dll (
@@ -71,6 +60,7 @@ IF "%1"=="x64" (
             )
         )        
         echo + Creating TOSDataBridge Service ...
+        SC delete TOSDataBridge 1>NUL 2>NUL
         SC delete TOSDataBridge 1>NUL 2>NUL         
         SC create TOSDataBridge binPath= %cd%\bin\Release\Win32\tos-databridge-serv-x86.exe%servCmd% 
         IF ERRORLEVEL 1 (

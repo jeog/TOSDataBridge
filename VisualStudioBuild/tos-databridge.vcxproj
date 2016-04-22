@@ -21,7 +21,7 @@
   <PropertyGroup Label="Globals">
     <ProjectGuid>{2C63A7B0-C01A-408F-A51D-1A92EB6786D0}</ProjectGuid>
     <RootNamespace>tosdatabridge</RootNamespace>
-    <ProjectName>tos-databridge-0.2</ProjectName>
+    <ProjectName>tos-databridge-0.4</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -108,7 +108,7 @@
       <SubSystem>Windows</SubSystem>
       <AdditionalLibraryDirectories>$(SolutionDir)..\bin\$(Configuration)\$(Platform)\</AdditionalLibraryDirectories>
       <ProgramDatabaseFile>$(SolutionDir)..\symbols\$(Configuration)\$(TargetName).pdb</ProgramDatabaseFile>
-      <AdditionalOptions>/export:NewStrings /export:DeleteStrings /export:TOSDB_StartLogging /export:TOSDB_StopLogging /export:TOSDB_ClearLog /export:TOSDB_Log_  /export:CheckIDLength /export:CheckStringLength /export:CheckStringLengths</AdditionalOptions>
+      <AdditionalOptions>/export:NewStrings /export:DeleteStrings  /export:TOSDB_Log_ /export:TOSDB_LogEx_ /export:CheckIDLength /export:CheckStringLength /export:CheckStringLengths</AdditionalOptions>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -129,7 +129,7 @@
       <SubSystem>Windows</SubSystem>
       <AdditionalLibraryDirectories>$(SolutionDir)..\bin\$(Configuration)\$(Platform)\</AdditionalLibraryDirectories>
       <ProgramDatabaseFile>$(SolutionDir)..\symbols\$(Configuration)\$(TargetName).pdb</ProgramDatabaseFile>
-      <AdditionalOptions>/export:NewStrings /export:DeleteStrings /export:TOSDB_StartLogging /export:TOSDB_StopLogging /export:TOSDB_ClearLog /export:TOSDB_Log_  /export:CheckIDLength /export:CheckStringLength /export:CheckStringLengths</AdditionalOptions>
+      <AdditionalOptions>/export:NewStrings /export:DeleteStrings  /export:TOSDB_Log_ /export:TOSDB_LogEx_ /export:CheckIDLength /export:CheckStringLength /export:CheckStringLengths</AdditionalOptions>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -154,7 +154,7 @@
       <SubSystem>Windows</SubSystem>
       <AdditionalLibraryDirectories>$(SolutionDir)..\bin\$(Configuration)\$(Platform)\</AdditionalLibraryDirectories>
       <ProgramDatabaseFile>$(SolutionDir)..\symbols\$(Configuration)\$(TargetName).pdb</ProgramDatabaseFile>
-      <AdditionalOptions>/export:NewStrings /export:DeleteStrings /export:TOSDB_StartLogging /export:TOSDB_StopLogging /export:TOSDB_ClearLog /export:TOSDB_Log_  /export:CheckIDLength /export:CheckStringLength /export:CheckStringLengths</AdditionalOptions>
+      <AdditionalOptions>/export:NewStrings /export:DeleteStrings  /export:TOSDB_Log_ /export:TOSDB_LogEx_ /export:CheckIDLength /export:CheckStringLength /export:CheckStringLengths</AdditionalOptions>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -179,7 +179,7 @@
       <SubSystem>Windows</SubSystem>
       <AdditionalLibraryDirectories>$(SolutionDir)..\bin\$(Configuration)\$(Platform)\</AdditionalLibraryDirectories>
       <ProgramDatabaseFile>$(SolutionDir)..\symbols\$(Configuration)\$(TargetName).pdb</ProgramDatabaseFile>
-      <AdditionalOptions>/export:NewStrings /export:DeleteStrings /export:TOSDB_StartLogging /export:TOSDB_StopLogging /export:TOSDB_ClearLog /export:TOSDB_Log_  /export:CheckIDLength /export:CheckStringLength /export:CheckStringLengths</AdditionalOptions>
+      <AdditionalOptions>/export:NewStrings /export:DeleteStrings  /export:TOSDB_Log_ /export:TOSDB_LogEx_ /export:CheckIDLength /export:CheckStringLength /export:CheckStringLengths</AdditionalOptions>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>

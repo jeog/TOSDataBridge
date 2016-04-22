@@ -394,22 +394,22 @@ DynamicIPCSlave::DynamicIPCSlave(std::string name, size_t sz)
     { 
         /* allocate underlying objects */
         for(int i = 0; i < NSECURABLE; ++i){ 
-            _sec_attr[(Securable)i] = SECURITY_ATTRIBUTES();
-            _sec_desc[(Securable)i] = SECURITY_DESCRIPTOR();    
-            _sids[(Securable)i]     = SmartBuffer<void>(SECURITY_MAX_SID_SIZE);
-            _acls[(Securable)i]     = SmartBuffer<ACL>(ACL_SIZE);        
+            this->_sec_attr[(Securable)i] = SECURITY_ATTRIBUTES();
+            this->_sec_desc[(Securable)i] = SECURITY_DESCRIPTOR();    
+            this->_sids[(Securable)i]     = SmartBuffer<void>(SECURITY_MAX_SID_SIZE);
+            this->_acls[(Securable)i]     = SmartBuffer<ACL>(ACL_SIZE);        
         }         
 
         /* initialize object security */
-        if( _set_security() )
+        if( this->_set_security() )
             throw std::exception("DynamicIPCSlave failed to initialize security");
 
         this->_mtx = CreateMutex(&(this->_sec_attr[MUTEX1]), FALSE, KMUTEX_NAME);
-        if(!_mtx){
+        if( !this->_mtx ){
             IPC_SLAVE_ERROR("CreateMutex in slave constructor failed");       
             throw std::exception("DynamicIPCSlave failed to create mutex");
         }
-                
+           
         this->_intrnl_pipe_hndl = CreateNamedPipe(this->_intrnl_pipe_str.c_str(), 
                                                   PIPE_ACCESS_DUPLEX,
                                                   PIPE_TYPE_MESSAGE 

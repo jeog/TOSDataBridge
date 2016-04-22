@@ -21,14 +21,8 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 #include <string>
 #include <algorithm>
 
-/* this will be defined/exported for ALL (implemenation) modules */
-/* extern */ char TOSDB_LOG_PATH[MAX_PATH+20];
-
-namespace {
-const char* LOG_FOLDER = "\\tos-databridge";  /* must be < 20 */
-const char* LOG_FILE_NAME = "\\tos-databridge-shared.log";
-};
-
+/* this will be defined/exported for ALL (implemenation) modules; */                             
+/* extern */ char TOSDB_LOG_PATH[MAX_PATH+40];
 
 BOOL WINAPI 
 DllMain(HANDLE mod, DWORD why, LPVOID res)
@@ -36,16 +30,21 @@ DllMain(HANDLE mod, DWORD why, LPVOID res)
     switch(why){
     case DLL_PROCESS_ATTACH:
     {  
-        /* create our log folder in appdata and define TOSDB_LOG_PATH
-           for all other implemenation modules */
-        GetEnvironmentVariable("APPDATA", TOSDB_LOG_PATH, MAX_PATH+20);         
-        strcat_s(TOSDB_LOG_PATH, LOG_FOLDER);
+     /* either use a relative(local) log path or create a log folder in 
+        appdata; define TOSDB_LOG_PATH for all other implemenation modules */
+#ifdef LOCAL_LOG_PATH	/* add error checks */
+        GetModuleFileName(NULL, TOSDB_LOG_PATH, MAX_PATH);
+		std::string lp(TOSDB_LOG_PATH);
+		std::string nlp(lp.begin(),lp.begin() + lp.find_last_of('\\'));
+		nlp.append(LOCAL_LOG_PATH);
+		int i = sizeof(*TOSDB_LOG_PATH);
+		memset(TOSDB_LOG_PATH,0,(MAX_PATH+40)* sizeof(*TOSDB_LOG_PATH));
+		strcpy(TOSDB_LOG_PATH, nlp.c_str());    		
+#else
+        GetEnvironmentVariable("APPDATA", TOSDB_LOG_PATH, MAX_PATH);         
+        strcat_s(TOSDB_LOG_PATH, "\\tos-databridge\\"); /* needs to be < 40 char */
+#endif	        
         CreateDirectory(TOSDB_LOG_PATH, NULL);
-
-        /* start 'our' log */
-        std::string lpath(TOSDB_LOG_PATH);
-        lpath.append(LOG_FILE_NAME);
-        TOSDB_StartLogging( lpath.c_str() );
         break;
     } 
     case DLL_THREAD_ATTACH: /* no break */

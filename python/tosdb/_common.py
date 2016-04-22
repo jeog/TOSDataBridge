@@ -537,7 +537,7 @@ def abort_init_after_warn():
         
 # convert type_bits to string and ctypes type
 def _type_switch(type_bits):
-  if type_bits == INTGR_BIT + QUAD_BIT: # why add, not logical OR ??
+  if type_bits == INTGR_BIT | QUAD_BIT: 
     return ("LongLong", _longlong_)
   elif type_bits == INTGR_BIT:
     return ("Long", _long_)

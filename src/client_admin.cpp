@@ -30,7 +30,9 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 
 std::recursive_mutex global_rmutex;
 
-namespace { /* 'buffers_lock_guard_' is reserved inside this namespace */
+namespace { 
+  
+  /* !!! 'buffers_lock_guard_' is reserved inside this namespace !!! */
 
 typedef std::tuple<unsigned int, unsigned int,  
                    std::set<const TOSDBlock*>, 
@@ -38,12 +40,12 @@ typedef std::tuple<unsigned int, unsigned int,
 typedef std::pair<TOS_Topics::TOPICS, std::string>  buf_id_ty;
 typedef std::map<buf_id_ty, buf_info_ty>            buffers_ty;
 
-typedef std::lock_guard<std::mutex>                 our_lock_guard_ty;
-
 typedef std::insert_iterator<str_set_type>          str_set_insert_iter_ty;
 typedef std::insert_iterator<topic_set_type>        topic_set_insert_iter_ty;
 
 typedef std::chrono::duration<long, std::milli>     milli_sec_ty;
+
+LPCSTR LOG_NAME   = "client-log.log";
 
 std::map<std::string,TOSDBlock*>  dde_blocks;
 
@@ -51,7 +53,8 @@ std::map<std::string,TOSDBlock*>  dde_blocks;
 buffers_ty buffers;
 std::mutex buffers_mtx;
   
-#define LOCAL_BUFFERS_LOCK_GUARD our_lock_guard_ty buffers_lock_guard_(buffers_mtx)
+#define LOCAL_BUFFERS_LOCK_GUARD \
+    std::lock_guard<std::mutex> buffers_lock_guard_(buffers_mtx)
 
 /* for 'scheduling' buffer reads */
 steady_clock_type steady_clock;
@@ -332,10 +335,10 @@ DllMain(HANDLE mod, DWORD why, LPVOID res) /* ENTRY POINT */
     switch(why){
     case DLL_PROCESS_ATTACH:
         /* ! NO AUTO-CONNECT ! need blocking ops deep into ->try_for_slave()   */
-        {         
-            std::string f( std::string(TOSDB_LOG_PATH) 
-                           + std::string("client-log.log") );
-            TOSDB_StartLogging(f.c_str());   
+        {      
+			      std::string logpath(TOSDB_LOG_PATH);
+            logpath.append(LOG_NAME);
+            StartLogging(logpath.c_str());  
         } 
         break;   
     case DLL_THREAD_ATTACH: 
@@ -355,6 +358,7 @@ DllMain(HANDLE mod, DWORD why, LPVOID res) /* ENTRY POINT */
                 }
                 TOSDB_Disconnect();  
             }
+			StopLogging();
         } 
         break;    
     default: 
@@ -374,7 +378,7 @@ TOSDB_Connect()
         return 0;
 
     if( !master.try_for_slave() ){
-       TOSDB_Log_Raw_("could not connect with slave");
+       TOSDB_Log_Raw("could not connect with slave");
         return -1;
     }  
 
@@ -383,7 +387,7 @@ TOSDB_Connect()
 
     buffer_thread = CreateThread(0, 0, Threaded_Init, 0, 0, &buffer_thread_id);
     if(!buffer_thread){
-        TOSDB_Log_Raw_("error initializing communication thread");        
+        TOSDB_Log_Raw("error initializing communication thread");        
         return -2;  
     }
 
@@ -481,8 +485,15 @@ TOSDB_Add(std::string id,
     if( !master.connected() || !aware_of_connection.load() ){
         TOSDB_LogH("IPC", "not connected to slave/server");
         return -2;
-    }  
-  
+    }    
+	
+	/* remove NULL topics */
+    auto is_null = [&](TOS_Topics::TOPICS t){ 
+                       return t == TOS_Topics::TOPICS::NULL_TOPIC; 
+	               };    
+    tTopics.erase( std::remove_if(tTopics.begin(), tTopics.end(), is_null), 
+                   tTopics.end() );	
+
     GLOBAL_RLOCK_GUARD;
     /* --- CRITICAL SECTION --- */
 
@@ -687,6 +698,8 @@ TOSDB_RemoveTopic(std::string id, TOS_Topics::TOPICS tTopic)
         return -3;
     }   
 
+	/* this will return an error if we have topic in precache but not in block...
+	   do we want that ?? */
     if( db->block->has_topic(tTopic) ){
         for(const std::string & item : db->block->items())
         {

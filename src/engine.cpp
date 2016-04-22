@@ -40,9 +40,9 @@ typedef struct{
     void*        hmtx;  
 } StreamBuffer, *pStreamBuffer;
 
-typedef std::map<std::string, size_t>                recount_ty;
+typedef std::map<std::string, size_t>                refcount_ty;
 typedef std::pair<std::string , TOS_Topics::TOPICS>  id_ty;
-typedef std::map<TOS_Topics::TOPICS, recount_ty>     topics_ref_ty;
+typedef std::map<TOS_Topics::TOPICS, refcount_ty>    topics_ref_ty;
 typedef std::map<id_ty, StreamBuffer>                buffers_ty;
 
 typedef TwoWayHashMap<TOS_Topics::TOPICS, HWND, true,
@@ -117,7 +117,7 @@ int
 MainCommLoop(); 
 
 void 
-TearDownTopic(TOS_Topics::TOPICS tTopic, size_type timeout);
+TearDownTopic(TOS_Topics::TOPICS tTopic, unsigned long timeout);
 
 bool 
 DestroyBuffer(TOS_Topics::TOPICS tTopic, std::string sItem);
@@ -135,22 +135,22 @@ void
 DumpBufferStatus();
 
 void 
-CloseAllStreams(size_type timeout);
+CloseAllStreams(unsigned long timeout);
 
 int  
 SetSecurityPolicy();   
 
 int  
-AddStream(TOS_Topics::TOPICS tTopic,std::string sItem,size_type timeout);
+AddStream(TOS_Topics::TOPICS tTopic,std::string sItem, unsigned long timeout);
 
 bool 
-RemoveStream(TOS_Topics::TOPICS tTopic,std::string sItem,size_type timeout);
+RemoveStream(TOS_Topics::TOPICS tTopic,std::string sItem, unsigned long timeout);
   
 bool 
-PostItem(std::string sItem,TOS_Topics::TOPICS tTopic,size_type timeout);
+PostItem(std::string sItem,TOS_Topics::TOPICS tTopic, unsigned long timeout);
 
 bool 
-PostCloseItem(std::string sItem,TOS_Topics::TOPICS tTopic, size_type timeout);   
+PostCloseItem(std::string sItem,TOS_Topics::TOPICS tTopic, unsigned long timeout);   
 
 bool 
 CreateBuffer(TOS_Topics::TOPICS tTopic, 
@@ -173,13 +173,15 @@ WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLn, int nShowCmd)
     int err;
     size_t indx;    
 
+	/* start logging */
+    std::string logpath(TOSDB_LOG_PATH);    
+    logpath.append(std::string(LOG_NAME));
+    StartLogging( logpath.c_str() ); 
+
     /* the other side of our IPC channel (see client_admin.cpp) */
     DynamicIPCSlave slave(TOSDB_COMM_CHANNEL, TOSDB_SHEM_BUF_SZ);
-    DynamicIPCSlave::shem_chunk shem_buf[COMM_BUFFER_SIZE];
-    
-    /* start logging - TOSDB_LOG_PATH defined in main.cpp */
-    std::string flog(std::string(TOSDB_LOG_PATH) + std::string(LOG_NAME));
-    TOSDB_StartLogging( flog.c_str() );
+    DynamicIPCSlave::shem_chunk shem_buf[COMM_BUFFER_SIZE];   
+
 
     /* if we get the noservice arg we will run as a pure executable */
     if(!strcmp(lpCmdLn,"--noservice"))
@@ -249,7 +251,7 @@ WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLn, int nShowCmd)
                     }         
                     i = (long)AddStream( *(TOS_Topics::TOPICS*)parg1, 
                                          std::string((char*)parg2), 
-                                         *(size_type*)parg3 );           
+                                         *(unsigned long*)parg3 );           
                     slave.send(i);      
                     break;
                 } 
@@ -264,7 +266,7 @@ WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLn, int nShowCmd)
                     }
                     i = RemoveStream( *(TOS_Topics::TOPICS*)parg1, 
                                       std::string((char*)parg2), 
-                                      *(size_type*)parg3)  ?  0  :  1;
+                                      *(unsigned long*)parg3)  ?  0  :  1;
                     slave.send(i);            
                     break;
                 } 
@@ -321,6 +323,7 @@ WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLn, int nShowCmd)
         }  
     }  
     CloseAllStreams(TOSDB_DEF_TIMEOUT);
+	StopLogging();
     return CleanUpMain(0);      
 }
 
@@ -412,7 +415,7 @@ AddStream(TOS_Topics::TOPICS tTopic,
             err = -2;       
      
         if(!err){
-            topic_refs[tTopic] = recount_ty();
+            topic_refs[tTopic] = refcount_ty();
             if( PostItem(sItem, tTopic, timeout) ){
                 topic_refs[tTopic][sItem] = 1;
                 if(!CreateBuffer(tTopic, sItem))
@@ -488,13 +491,13 @@ void
 CloseAllStreams(unsigned long timeout)
 { /* need to iterate through copies */  
     topics_ref_ty t_copy;
-    recount_ty rc_copy;
+    refcount_ty rc_copy;
 
     std::insert_iterator<topics_ref_ty> tii(t_copy, t_copy.begin());
     std::copy(topic_refs.begin(), topic_refs.end(), tii);
 
     for(const auto& topic: t_copy){
-        std::insert_iterator<recount_ty> rii(rc_copy,rc_copy.begin());
+        std::insert_iterator<refcount_ty> rii(rc_copy,rc_copy.begin());
         std::copy(topic.second.begin(), topic.second.end(), rii);
         for(const auto& item : rc_copy){
             RemoveStream(topic.first, item.first, timeout);    
@@ -1112,7 +1115,7 @@ HandleData(UINT msg, WPARAM wparam, LPARAM lparam)
 
 void DumpBufferStatus()
 {  
-    const size_type log_col_width[5] = { 30, 30, 10, 60, 16};  
+    const size_t log_col_width[5] = { 30, 30, 10, 60, 16};  
    
     std::string   time_now(SysTimeString());  
     std::string   lpath(TOSDB_LOG_PATH);

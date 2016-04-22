@@ -66,6 +66,7 @@ along with this program.  If not, see http://www.gnu.org/licenses.
      typedef char*       LPSTR          */
 #include <time.h>
 #include <limits.h>
+#include <stdint.h>
 
 #ifdef __cplusplus
 
@@ -87,17 +88,18 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 #define KGBLNS_
 #endif
 
-/* the core types implemented by the data engine: engine-core.cpp */
+/* the core types implemented by the data engine: engine-core.cpp 
+
+   when using large blocks the size difference between 
+   4 and 8 byte scalars can make a big difference */
 typedef long       def_size_type; 
 typedef long long  ext_size_type;
 typedef float      def_price_type;
 typedef double     ext_price_type;
 
-/* guarantees for the Python wrapper 
- * we probably want uint_32 for size_type, uint_8 for type_bits_type 
- * not a problem since sizeof(long) == 4 on Windows */
-typedef unsigned long size_type;
-typedef unsigned char type_bits_type;
+/* guarantees for the Python wrapper */
+typedef uint32_t size_type;
+typedef uint8_t type_bits_type;
 
 struct TypeSizeAsserts_{ 
     /* sanity checks */
@@ -138,7 +140,6 @@ typedef struct{
 #define TOSDB_MAX_BLOCK_SZ INT_MAX 
 #define TOSDB_DEF_LATENCY Fast
 /* NEED for tosdb/setup.py !!! DO NOT REMOVE !!! */ 
-
 
 /* following block will contain back-end stuff shared by various mods;
    to access you should define 'THIS_IMPORTS_IMPLEMENTATION'  */
@@ -193,7 +194,25 @@ typedef struct{
     volatile unsigned int next_offset; /* logical location of next write */  
 } BufferHead, *pBufferHead; 
 
-extern char  DLL_SPEC_IMPL_  TOSDB_LOG_PATH[ MAX_PATH+20 ]; 
+/* we still need to export this for DumpBufferStatus in engine.cpp */
+extern char  DLL_SPEC_IMPL_  TOSDB_LOG_PATH[ MAX_PATH+40 ]; 
+
+/* we'll log to a relative directory - REQUIRES A STABLE DIRECTORY TREE */
+#define LOCAL_LOG_PATH "\\..\\..\\..\\log\\" /* needs to be < 40 char */
+
+/* LOGGING - logging.cpp */
+
+DLL_SPEC_IMPL_ void  
+TOSDB_Log_Raw(LPCSTR); /* impl only (doesn't sync/block) */
+
+EXT_SPEC_  DLL_SPEC_IMPL_ void  
+StartLogging(LPCSTR fname);
+
+EXT_SPEC_  DLL_SPEC_IMPL_ void  
+StopLogging();
+
+EXT_SPEC_  DLL_SPEC_IMPL_ void  
+ClearLog();
 
 #endif /* THIS_EXPORTS_IMPLEMENTATION || THIS_IMPORTS_IMPLEMENTATION */
 
@@ -977,31 +996,18 @@ SysTimeString();
 
 #endif /* __cplusplus */
 
-/* if logging is not enabled high severity events will be sent to std::cerr */ 
 typedef enum{ low = 0, high }Severity;  
 
-/* LOGGING - logging.cpp */
+/* when building tos-databridge[].dll these calls need to be both imported( from _tosd-databridge-[].dll)
+   and exported (from tos-databridge[].dll)  -  they must use /export:[func name] during link */ 
+/* if logging is not enabled high severity events will be sent to std::cerr */ 
 
-/* 'internal' versions, use the MACROS below */
+/* use the macros (below) instead */
 EXT_SPEC_  DLL_SPEC_IMPL_ void  
 TOSDB_Log_(DWORD , DWORD, Severity, LPCSTR, LPCSTR); 
 
 EXT_SPEC_  DLL_SPEC_IMPL_ void  
 TOSDB_LogEx_(DWORD , DWORD, Severity, LPCSTR, LPCSTR, DWORD); 
-
-DLL_SPEC_IMPL_ void  
-TOSDB_Log_Raw_(LPCSTR);
-
-/* when building tos-databridge[].dll these calls need to be both imported( from _tosd-databridge-[].dll)
-   and exported (from tos-databridge[].dll)  -  they must use /export:[func name] during link */ 
-EXT_SPEC_  DLL_SPEC_IMPL_ void  
-TOSDB_StartLogging(LPCSTR fname);
-
-EXT_SPEC_  DLL_SPEC_IMPL_ void  
-TOSDB_StopLogging();
-
-EXT_SPEC_  DLL_SPEC_IMPL_ void  
-TOSDB_ClearLog();
 
 #define TOSDB_LogH(tag,desc) \
 TOSDB_Log_(GetCurrentProcessId(), GetCurrentThreadId(), high, tag, desc)

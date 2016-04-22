@@ -95,6 +95,7 @@ SendMsgWaitForResponse(long msg)
     if(!master){
         master = mstr_ptr_ty( new DynamicIPCMaster(TOSDB_COMM_CHANNEL) );
         master->try_for_slave();
+		// ERROR CHECK
         IPC_TIMED_WAIT( master->grab_pipe() <= 0,
                         "SendMsgWaitForResponse timed out",
                         -1 );     
@@ -327,35 +328,25 @@ ServiceMain(DWORD argc, LPSTR argv[])
 
 void 
 ParseArgs(std::vector<std::string>& vec, std::string str)
-{
-    std::string arg, rem;
+{    
     std::string::size_type i = str.find_first_of(' '); 
 
-    if(i == std::string::npos)
-        return;
-
-    if(i == 0){
-        ParseArgs(vec,str.substr(1,-1));
-        return;
-    }
-
-    if(i < str.size()){
-        arg = str.substr(0,i);
-        rem = str.substr(++i,str.size());
-        vec.push_back(arg);
-        ParseArgs(vec,rem);
-    }else{
+    if( str.empty() ){ /* done */
+		    return;
+    }else if(i == std::string::npos){ /* only 1 str */
         vec.push_back(str);
-        return ;
+        return;
+    }else if(i == 0){ /* trim initial space(s) */
+        ParseArgs(vec, str.substr(1,-1));
+        return;
+    }else{ /* atleast 2 strings */
+        vec.push_back(str.substr(0,i));
+        ParseArgs(vec, str.substr(i+1,str.size()));
     }
 }
 
-
 int WINAPI 
-WinMain(HINSTANCE hInst, 
-        HINSTANCE hPrevInst, 
-        LPSTR lpCmdLn, 
-        int nShowCmd)
+WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLn, int nShowCmd)
 {     
     std::string cmd_str(lpCmdLn);
     std::vector<std::string> args;    
@@ -364,21 +355,26 @@ WinMain(HINSTANCE hInst,
     SmartBuffer<CHAR> module_buf(MAX_PATH);
     GetModuleFileName(NULL, module_buf.get(), MAX_PATH);
 
+	  /* start  logging */
+    std::string logpath(TOSDB_LOG_PATH);
+    logpath.append(LOG_NAME);
+    StartLogging(logpath.c_str()); 
+
     /* add the appropriate engine name to the module path */
     std::string path(module_buf.get()); 
     std::string serv_ext(path.begin() + path.find_last_of("-"), path.end()); 
-    if(serv_ext != "-x86.exe" || serv_ext != "-x64.exe"){
+#ifdef _DEBUG
+    if(serv_ext != "-x86_d.exe" && serv_ext != "-x64_d.exe"){
+#else
+    if(serv_ext != "-x86.exe" && serv_ext != "-x64.exe"){
+#endif	
         TOSDB_LogH("STARTUP", "service path doesn't provide proper extension");
         return 1;
-    }    
+    }
+
     path.erase(path.find_last_of("\\")); 
     engine_path = path;
     engine_path.append("\\").append(ENGINE_BASE_NAME).append(serv_ext); 
-
-    /* start logging */
-    std::string logpath(TOSDB_LOG_PATH);
-    logpath.append(LOG_NAME);
-    TOSDB_StartLogging(logpath.c_str()); 
 
     GetSystemInfo(&sys_info);    
     ParseArgs(args,cmd_str);
@@ -386,7 +382,7 @@ WinMain(HINSTANCE hInst,
     size_t argc = args.size();
     int admin_pos = 0;
     int no_service_pos = 0;
-
+	
     /* look for --admin and/or --noservice args */
     if(argc > 0 && args[0] == "--admin")            
         admin_pos = 1;
@@ -397,9 +393,10 @@ WinMain(HINSTANCE hInst,
         no_service_pos = 1;
     else if(argc > 1 && args[1] == "--noservice") 
         no_service_pos = 2;
-
-    /* look for custom_session arg */
-    switch(argc){
+        
+    switch(argc){ /* look for custom_session arg */
+	  case 0:
+		    break;
     case 1:
         if(admin_pos == 0 && no_service_pos == 0)
             custom_session = std::stoi(args[0]);
@@ -415,11 +412,21 @@ WinMain(HINSTANCE hInst,
         if(admin_pos > 0 && no_service_pos > 0)
             custom_session = std::stoi(args[2]);
         break;
-    default:
-        TOSDB_LogH("STARTUP","invalid # of args");
+    default:		
+		    std::string serr("invalid # of args: ");
+        serr.append(std::to_string(argc));
+        TOSDB_LogH("STARTUP",serr.c_str());
         return 1;
     }     
     
+	  std::stringstream ss_args;
+	  ss_args << "cmd_str: " << cmd_str << " argc: " << std::to_string(argc) 
+            << " custom_session: " << std::to_string(custom_session) 
+            << " admin_pos: " << std::to_string(admin_pos) 
+            << " no_service_pos: " << std::to_string(no_service_pos);
+		    
+    TOSDB_LogH("SERVICE-ARGS", ss_args.str().c_str() );
+
     integrity_level = admin_pos > 0 
                     ? "High Mandatory Level" 
                     : "Medium Mandatory Level"; 
@@ -439,12 +446,12 @@ WinMain(HINSTANCE hInst,
             {NULL,NULL}
         };
         TOSDB_Log("STARTUP", "tos-databridge-engine.exe starting(AS A SERVICE)");
-                 /* START SERVICE */
+        /* START SERVICE */	
         if( !StartServiceCtrlDispatcher(dTable) )
             TOSDB_LogH("STARTUP", "StartServiceCtrlDispatcher() failed");
     }
 
-    TOSDB_StopLogging();
+    StopLogging();
     return 0;
 }
     

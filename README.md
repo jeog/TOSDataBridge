@@ -17,7 +17,7 @@ Obviously the core implementation is not portable, but the python interface does
 ### Versions
 - - -
 - v0.3 (branch v0.3) : 'stable' version 
-- v0.4 (branch master) : currently undergoing a major refactoring - interface is subject to slight change. But, **all of the major C/C++ API types/calls/objects will remain the same.** 
+- v0.4 (branch master) : currently undergoing a major refactoring - **interface is subject to slight change.** 
 
 ### Quick Setup
 - - -
@@ -86,7 +86,7 @@ Obviously the core implementation is not portable, but the python interface does
 
     - ***tos-databridge-0.4-[x86|x64].dll*** : The library/interface that client code uses to access TOSDB. Review tos-databridge.h, and the sections below, for all the necessary calls, types, and objects.
 
-    - ***_tos-databridge-shared-[x86|x64].dll*** : A back-end library that provides custom concurrency and IPC objects; logging and utilities; as well as the Topic-String mapping. It needs to be in the right path for other modules that are dependent on it. (see below)
+    - ***_tos-databridge-[x86|x64].dll*** : A back-end library that provides custom concurrency and IPC objects; logging and utilities; as well as the Topic-String mapping. It needs to be in the right path for other modules that are dependent on it. (see below)
 
     - ***tos-databridge-shell-[x86|x64]*** : A crude 'shell' used to interact directly with the library calls; for testing and debugging.
 
@@ -142,8 +142,7 @@ The following sections will outline how to setup TOSDB's core C/C++ libraries. A
     Example 3: C:\TOSDataBridge\> tosdb-setup.bat x64 admin 2
     ```
 
-7. The setup script is going to do a few things: 
-    - move _tos-databridge-shared[].dll(s) to the Windows Directory (%WINDIR%). This is generally not the best idea but we don't know the details of what and where you'll link from so we are doing this for convenience. If you create your own executables you can update your PATH environment variable or setup application specific paths in the registry and move this file there; 
+7. The setup script is going to do a few things:     
     - make sure you have the appropriate run-time libraries installed; if not the appropriate redist executable will be run to install them. (If this fails you can do this manually by downloading the most recent VC++ Redistributable from Microsoft); 
     - create the Windows Service.
  

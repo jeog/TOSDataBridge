@@ -59,7 +59,9 @@ from ctypes import WinDLL as _WinDLL, \
                    c_ubyte as _uchar_, \
                    c_int as _int_, \
                    c_void_p as _pvoid_, \
-                   c_uint as _uint_
+                   c_uint as _uint_, \
+                   c_uint_32 as _uint32_, \
+                   c_uint_8 as _uint8_
 
 _pchar_ = _PTR_(_char_)
 _ppchar_ = _PTR_(_pchar_)  
@@ -144,7 +146,7 @@ def connect():
 
 def connected():
   """ Returns true if there is an active connection to the library """
-  i = _lib_call("TOSDB_IsConnected", ret_type=_ulong_, error_check=False)
+  i = _lib_call("TOSDB_IsConnected", ret_type=_uint_, error_check=False)
   return bool(i)
          
        
@@ -178,17 +180,17 @@ def Init(dllpath=None, root="C:\\", bypass_check=False):
 
 def get_block_limit():
   """ Returns the block limit of C/C++ RawDataBlock factory """
-  return _lib_call("TOSDB_GetBlockLimit", ret_type=_ulong_, error_check=False)
+  return _lib_call("TOSDB_GetBlockLimit", ret_type=_uint32_, error_check=False)
 
 
 def set_block_limit(new_limit):
   """ Changes the block limit of C/C++ RawDataBlock factory """
-  _lib_call("TOSDB_SetBlockLimit", new_limit, ret_type=_ulong_, error_check=False)
+  _lib_call("TOSDB_SetBlockLimit", new_limit, ret_type=_uint32_, error_check=False)
 
 
 def get_block_count():
   """ Returns the count of current instantiated blocks """
-  return _lib_call("TOSDB_GetBlockCount", ret_type=_ulong_, error_check=False)
+  return _lib_call("TOSDB_GetBlockCount", ret_type=_uint32_, error_check=False)
 
 
 def type_bits(topic):
@@ -198,7 +200,7 @@ def type_bits(topic):
   returns -> value that can be logical &'d with type bit contstants 
   (ex. QUAD_BIT)
   """
-  tybits = _uchar_()
+  tybits = _uint8_()
   _lib_call("TOSDB_GetTypeBits", topic.upper().encode("ascii"), _pointer(tybits))
 
   return tybits.value
@@ -303,13 +305,13 @@ class TOSDB_DataBlock(_TOSDB_DataBlock):
 
 
   def _item_count(self):       
-    i_count = _ulong_()
+    i_count = _uint32_()
     _lib_call("TOSDB_GetItemCount", self._name, _pointer(i_count))
     return i_count.value
 
 
   def _topic_count(self):        
-    t_count = _ulong_()
+    t_count = _uint32_()
     _lib_call("TOSDB_GetTopicCount", self._name, _pointer(t_count))
     return t_count.value
 
@@ -326,7 +328,7 @@ class TOSDB_DataBlock(_TOSDB_DataBlock):
 
   @_doxtend(_TOSDB_DataBlock) # __doc__ from ABC _TOSDB_DataBlock
   def get_block_size(self):          
-    b_size = _ulong_()
+    b_size = _uint32_()
     _lib_call("TOSDB_GetBlockSize", self._name, _pointer(b_size))
     return b_size.value
     
@@ -343,14 +345,14 @@ class TOSDB_DataBlock(_TOSDB_DataBlock):
     topic = topic.upper()
     self._valid_item(item)
     self._valid_topic(topic)
-    occ = _ulong_()
+    occ = _uint32_()
     
     _lib_call("TOSDB_GetStreamOccupancy", 
               self._name, 
               item.encode("ascii"),
               topic.encode("ascii"), 
               _pointer(occ),
-              arg_list=[_str_, _str_, _str_, _PTR_(_ulong_)])
+              arg_list=[_str_, _str_, _str_, _PTR_(_uint32_)])
     
     return occ.value
     
@@ -366,7 +368,7 @@ class TOSDB_DataBlock(_TOSDB_DataBlock):
               strs_array, 
               size, 
               str_max + 1, 
-              arg_list=[_str_, _ppchar_, _ulong_, _ulong_])
+              arg_list=[_str_, _ppchar_, _uint32_, _uint32_])
     
     return [_cast_cstr(s) for s in strs_array]            
        
@@ -382,7 +384,7 @@ class TOSDB_DataBlock(_TOSDB_DataBlock):
               strs_array, 
               size, 
               str_max + 1, 
-              arg_list=[_str_,  _ppchar_, _ulong_, _ulong_])               
+              arg_list=[_str_,  _ppchar_, _uint32_, _uint32_])               
     
     return [_cast_cstr(s) for s in strs_array] 
       
@@ -392,7 +394,8 @@ class TOSDB_DataBlock(_TOSDB_DataBlock):
     mtup = tuple(s.encode("ascii").upper() for s in items)
     items_type = _str_ * len(mtup)
     citems = items_type(*mtup)
-    _lib_call("TOSDB_AddItems", self._name, citems, len(mtup))    
+    _lib_call("TOSDB_AddItems", self._name, citems, len(mtup), 
+              arg_list=[_str_,  _ppchar_, _uint32_])    
             
     if not self._items and not self._topics:
       self._topics = self.topics() # in case topics came out of pre-cache
@@ -404,7 +407,8 @@ class TOSDB_DataBlock(_TOSDB_DataBlock):
     mtup = tuple(s.encode("ascii").upper() for s in topics)
     topics_type = _str_ * len(mtup)
     ctopics = topics_type(*mtup)
-    _lib_call("TOSDB_AddTopics", self._name, ctopics, len(mtup))  
+    _lib_call("TOSDB_AddTopics", self._name, ctopics, len(mtup), 
+              arg_list=[_str_,  _ppchar_, _uint32_])  
 
     if not self._items and not self._topics:
       self._items = self.items() # in case items came out of pre-cache
@@ -461,7 +465,7 @@ class TOSDB_DataBlock(_TOSDB_DataBlock):
                 data_str_max + 1,
                 _pointer(dts) if date_time else _PTR_(_DateTimeStamp)(),
                 arg_list=[_str_,  _str_, _str_, _long_, _pchar_,
-                          _ulong_, _PTR_(_DateTimeStamp)])   
+                          _uint32_, _PTR_(_DateTimeStamp)])   
    
       if date_time :
         return (ret_str.value.decode(), TOSDB_DateTime(dts))
@@ -537,7 +541,7 @@ class TOSDB_DataBlock(_TOSDB_DataBlock):
                 dtss if date_time else _PTR_(_DateTimeStamp)(),
                 end, 
                 beg,
-                arg_list=[_str_, _str_, _str_, _ppchar_, _ulong_, _ulong_, 
+                arg_list=[_str_, _str_, _str_, _ppchar_, _uint32_, _uint32_, 
                           _PTR_(_DateTimeStamp), _long_, _long_ ])   
 
       if date_time:
@@ -557,7 +561,7 @@ class TOSDB_DataBlock(_TOSDB_DataBlock):
                 dtss if date_time else _PTR_(_DateTimeStamp)(),
                 end, 
                 beg,
-                arg_list=[_str_, _str_, _str_, _PTR_(tytup[1]), _ulong_, 
+                arg_list=[_str_, _str_, _str_, _PTR_(tytup[1]), _uint32_, 
                           _PTR_(_DateTimeStamp), _long_, _long_ ]) 
      
       if date_time:
@@ -632,7 +636,7 @@ class TOSDB_DataBlock(_TOSDB_DataBlock):
                 dtss if date_time else _PTR_(_DateTimeStamp)(),     
                 beg, 
                 _pointer(get_size),
-                arg_list=[_str_, _str_, _str_, _ppchar_, _ulong_, _ulong_,
+                arg_list=[_str_, _str_, _str_, _ppchar_, _uint32_, _uint32_,
                           _PTR_(_DateTimeStamp), _long_, _PTR_(_long_)]) 
          
       get_size = get_size.value
@@ -660,7 +664,7 @@ class TOSDB_DataBlock(_TOSDB_DataBlock):
                 dtss if date_time else _PTR_(_DateTimeStamp)(),     
                 beg, 
                 _pointer(get_size),
-                arg_list=[_str_, _str_, _str_, _PTR_(tytup[1]), _ulong_, 
+                arg_list=[_str_, _str_, _str_, _PTR_(tytup[1]), _uint32_, 
                           _PTR_(_DateTimeStamp), _long_, _PTR_(_long_)]) 
     
       get_size = get_size.value
@@ -709,8 +713,8 @@ class TOSDB_DataBlock(_TOSDB_DataBlock):
                 labs_array if labels else _ppchar_(), 
                 label_str_max + 1,
                 dtss if date_time else _PTR_(_DateTimeStamp)(),
-                arg_list=[_str_, _str_, _ppchar_, _ulong_, _ulong_, _ppchar_, 
-                          _ulong_, _PTR_(_DateTimeStamp)])       
+                arg_list=[_str_, _str_, _ppchar_, _uint32_, _uint32_,
+                          _ppchar_, _uint32_, _PTR_(_DateTimeStamp)])       
 
       if labels:
         l_map = map(_cast_cstr, labs_array)
@@ -737,8 +741,8 @@ class TOSDB_DataBlock(_TOSDB_DataBlock):
                 labs_array if labels else _ppchar_(), 
                 label_str_max + 1,
                 dtss if date_time else _PTR_(_DateTimeStamp)(),       
-                arg_list=[_str_, _str_, _PTR_(tytup[1]), _ulong_, _ppchar_, 
-                          _ulong_, _PTR_(_DateTimeStamp)])    
+                arg_list=[_str_, _str_, _PTR_(tytup[1]), _uint32_, _ppchar_, 
+                          _uint32_, _PTR_(_DateTimeStamp)])    
   
       if labels:   
         l_map = map(_cast_cstr, labs_array)
@@ -783,8 +787,8 @@ class TOSDB_DataBlock(_TOSDB_DataBlock):
               labs_array if labels else _ppchar_(), 
               label_str_max + 1,
               dtss if date_time else _PTR_(_DateTimeStamp)(),
-              arg_list=[_str_, _str_, _ppchar_, _ulong_, _ulong_, _ppchar_, 
-                        _ulong_, _PTR_(_DateTimeStamp)])    
+              arg_list=[_str_, _str_, _ppchar_, _uint32_, _uint32_,
+                        _ppchar_, _uint32_, _PTR_(_DateTimeStamp)])    
 
     if labels:
       l_map = map(_cast_cstr, labs_array)

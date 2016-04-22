@@ -98,7 +98,7 @@
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>$(SolutionDir)..\bin\$(Configuration)\$(Platform)\</AdditionalLibraryDirectories>
-      <AdditionalDependencies>tos-databridge-0.2-x86_d.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>tos-databridge-0.4-x86_d.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SubSystem>NotSet</SubSystem>
       <ProgramDatabaseFile>$(SolutionDir)..\symbols\$(Configuration)\$(TargetName).pdb</ProgramDatabaseFile>
     </Link>
@@ -115,7 +115,7 @@
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>tos-databridge-0.2-x64_d.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>tos-databridge-0.4-x64_d.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(SolutionDir)..\bin\$(Configuration)\$(Platform)\</AdditionalLibraryDirectories>
       <ProgramDatabaseFile>$(SolutionDir)..\symbols\$(Configuration)\$(TargetName).pdb</ProgramDatabaseFile>
       <SubSystem>NotSet</SubSystem>
@@ -138,7 +138,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalLibraryDirectories>$(SolutionDir)..\bin\$(Configuration)\$(Platform)\</AdditionalLibraryDirectories>
-      <AdditionalDependencies>tos-databridge-0.2-x86.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>tos-databridge-0.4-x86.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ProgramDatabaseFile>$(SolutionDir)..\symbols\$(Configuration)\$(TargetName).pdb</ProgramDatabaseFile>
       <SubSystem>NotSet</SubSystem>
     </Link>
@@ -159,7 +159,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>tos-databridge-0.2-x64.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>tos-databridge-0.4-x64.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(SolutionDir)..\bin\$(Configuration)\$(Platform)\</AdditionalLibraryDirectories>
       <ProgramDatabaseFile>$(SolutionDir)..\symbols\$(Configuration)\$(TargetName).pdb</ProgramDatabaseFile>
       <SubSystem>NotSet</SubSystem>
