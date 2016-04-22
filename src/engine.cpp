@@ -181,8 +181,7 @@ WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLn, int nShowCmd)
     /* the other side of our IPC channel (see client_admin.cpp) */
     DynamicIPCSlave slave(TOSDB_COMM_CHANNEL, TOSDB_SHEM_BUF_SZ);
     DynamicIPCSlave::shem_chunk shem_buf[COMM_BUFFER_SIZE];   
-
-
+    
     /* if we get the noservice arg we will run as a pure executable */
     if(!strcmp(lpCmdLn,"--noservice"))
         is_service = false;
@@ -235,13 +234,13 @@ WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLn, int nShowCmd)
         /* slave.recv() MUST follow evaluation of shutdown_flag; 
            it will block until master sends a shem_chunk obj      */
         while( !shutdown_flag && slave.recv(shem_buf[indx]) )
-        { 
+        {      
             /* 'tail' shem_buf needs to be {0,0} */
             if(shem_buf[indx].sz == 0 && shem_buf[indx].offset == 0){  
                 long i;
                 switch(shem_buf[0].offset){
                 case TOSDB_SIG_ADD:
-                {
+                {                 
                     parg1 = slave.shem_ptr(shem_buf[1]); 
                     parg2 = slave.shem_ptr(shem_buf[2]); 
                     parg3 = slave.shem_ptr(shem_buf[3]);
@@ -256,7 +255,7 @@ WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLn, int nShowCmd)
                     break;
                 } 
                 case TOSDB_SIG_REMOVE:
-                {
+                {                  
                     parg1 = slave.shem_ptr(shem_buf[1]); 
                     parg2 = slave.shem_ptr(shem_buf[2]); 
                     parg3 = slave.shem_ptr(shem_buf[3]);
@@ -271,8 +270,8 @@ WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLn, int nShowCmd)
                     break;
                 } 
                 case TOSDB_SIG_PAUSE:
-                {
-                    TOSDB_Log("IPC", "TOSDB_SIG_PAUSE message received");
+                {                    
+                    TOSDB_Log("SERVICE-MSG", "TOSDB_SIG_PAUSE message received");
                     if(is_service){      
                         pause_flag = true;
                         slave.send(TOSDB_SIG_GOOD);              
@@ -281,7 +280,7 @@ WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLn, int nShowCmd)
                 } 
                 case TOSDB_SIG_CONTINUE:
                 {           
-                    TOSDB_Log("IPC", "TOSDB_SIG_CONTINUE message received");          
+                    TOSDB_Log("SERVICE-MSG", "TOSDB_SIG_CONTINUE message received");          
                     if(is_service){
                         pause_flag = false;              
                         slave.send(TOSDB_SIG_GOOD);            
@@ -290,17 +289,17 @@ WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLn, int nShowCmd)
                 } 
                 case TOSDB_SIG_STOP:
                 {           
-                    TOSDB_Log("IPC", "TOSDB_SIG_STOP message received");         
+                    TOSDB_Log("SERVICE-MSG", "TOSDB_SIG_STOP message received");         
                     if(is_service){
                         shutdown_flag = true;
-                        TOSDB_Log("IPC", "shutdown flag set");
+                        TOSDB_Log("CONTROL", "shutdown flag set");
                         slave.send(TOSDB_SIG_GOOD);
                     }
                     break;
                 } 
                 case TOSDB_SIG_DUMP:
                 {
-                    TOSDB_Log("IPC", "TOSDB_SIG_DUMP message received");
+                    TOSDB_Log("SERVICE-MSG", "TOSDB_SIG_DUMP message received");
                     DumpBufferStatus();
                     slave.send(0);
                     break;
@@ -322,8 +321,10 @@ WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLn, int nShowCmd)
 
         }  
     }  
+    TOSDB_LogH("CONTROL","out of run loop");
+    TOSDB_LogH("CONTROL","closing all streams");
     CloseAllStreams(TOSDB_DEF_TIMEOUT);
-	StopLogging();
+	  StopLogging();
     return CleanUpMain(0);      
 }
 
@@ -361,7 +362,7 @@ CleanUpMain(int ret_code)
     if(ret_code) 
         TOSDB_LogEx("SHUTDOWN", "engine exiting because of error", ret_code);
     else
-        TOSDB_Log("SHUTDOWN", "engine exiting");
+        TOSDB_LogH("SHUTDOWN", "engine exiting");
 
     if(msg_window)
         DestroyWindow(msg_window);

@@ -76,7 +76,7 @@ _getBlockPtr(std::string id)
     try{        
         return dde_blocks.at(id);
     }catch(...){ 
-        TOSDB_Log("TOSDBlock", "TOSDBlock does not exist.");
+        TOSDB_Log("BLOCK", "TOSDBlock does not exist.");
         return NULL; 
     }
 }
@@ -439,7 +439,7 @@ TOSDB_CreateBlock(LPCSTR id,
     /* --- CRITICAL SECTION --- */
 
     if( GetBlockPtr(id) ){
-        TOSDB_LogH("TOSDBlock", "TOSDBlock with this ID already exists");
+        TOSDB_LogH("BLOCK", "TOSDBlock with this ID already exists");
         return -3; 
     }
 
@@ -450,13 +450,13 @@ TOSDB_CreateBlock(LPCSTR id,
     try{
         db->block = TOSDB_RawDataBlock::CreateBlock(sz, is_datetime); 
     }catch(TOSDB_DataBlockLimitError&){
-        TOSDB_LogH("TOSDBlock", "attempt to exceed block limit");
+        TOSDB_LogH("BLOCK", "attempt to exceed block limit");
     }catch(std::exception& e){
-        TOSDB_LogH("TOSDBlock", e.what());
+        TOSDB_LogH("BLOCK", e.what());
     }
    
     if(!db->block){
-        TOSDB_LogH("DataBlock", "creation error, TOSDBlock will be destroyed.");
+        TOSDB_LogH("BLOCK", "creation error, TOSDBlock will be destroyed.");
         delete db;
         return -4;
     }   
@@ -689,12 +689,12 @@ TOSDB_RemoveTopic(std::string id, TOS_Topics::TOPICS tTopic)
 
     db = _getBlockPtr(id);
     if(!db){
-        TOSDB_LogH("TOSDBlock", "block doesn't exist");
+        TOSDB_LogH("BLOCK", "block doesn't exist");
         return -3;
     }   
 
     if( !(TOS_Topics::enum_value_type)(tTopic) ){
-        TOSDB_LogH("TOSDBlock", "NULL topic");
+        TOSDB_LogH("TOPIC", "NULL topic");
         return -3;
     }   
 
@@ -740,13 +740,13 @@ TOSDB_RemoveItem(LPCSTR id, LPCSTR sItem)
     /* --- CRITICAL SECTION --- */
 
     if( !CheckIDLength(id) ){
-        TOSDB_LogH("TOSDBlock", "invalid id length");
+        TOSDB_LogH("BLOCK", "invalid id length");
         return -2;
     }  
 
     db = _getBlockPtr(id);
     if(!db){
-        TOSDB_LogH("TOSDBlock", "block doesn't exist");
+        TOSDB_LogH("BLOCK", "block doesn't exist");
         return -2;
     }  
 
@@ -796,13 +796,13 @@ TOSDB_CloseBlock(LPCSTR id)
     /* --- CRITICAL SECTION --- */
 
     if( !CheckIDLength(id) ){
-        TOSDB_LogH("TOSDBlock", "invalid id length");
+        TOSDB_LogH("BLOCK", "invalid id length");
         return -2;
     }  
 
     db = _getBlockPtr(id);
     if(!db){
-        TOSDB_LogH("TOSDBlock", "block doesn't exist");
+        TOSDB_LogH("BLOCK", "block doesn't exist");
         return -2;
     }  
 
@@ -825,7 +825,7 @@ TOSDB_CloseBlock(LPCSTR id)
                                  (LPVOID)db->block, 0, &(del_thrd_id));
     if(!del_thrd_hndl){
         err = -3;
-        TOSDB_LogH("Threading", "using main thread to clean-up(THIS MAY BLOCK)"); 
+        TOSDB_LogH("THREAD", "using main thread to clean-up(THIS MAY BLOCK)"); 
         BlockCleanup((LPVOID)db->block);
     }
 
@@ -960,7 +960,7 @@ GetBlockPtr(const std::string id)
     try{      
         return dde_blocks.at(id);
     }catch(...){ 
-        TOSDB_Log("TOSDBlock", "block doesn't exist");
+        TOSDB_Log("BLOCK", "block doesn't exist");
         return NULL; 
     }
 }

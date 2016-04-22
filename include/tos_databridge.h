@@ -83,6 +83,7 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 
 #endif /* __cplusplus */
 
+#define KERNEL_GLOBAL_NAMESPACE
 /* if we need to prefix our inter-Session kernel objects with 'Global\' */
 #if defined(KERNEL_GLOBAL_NAMESPACE) || defined(_DEBUG)
 #define KGBLNS_
@@ -202,7 +203,7 @@ extern char  DLL_SPEC_IMPL_  TOSDB_LOG_PATH[ MAX_PATH+40 ];
 
 /* LOGGING - logging.cpp */
 
-DLL_SPEC_IMPL_ void  
+DLL_SPEC_IMPL_ void    /* TODO make same frmt as all other log funcs */
 TOSDB_Log_Raw(LPCSTR); /* impl only (doesn't sync/block) */
 
 EXT_SPEC_  DLL_SPEC_IMPL_ void  

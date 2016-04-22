@@ -251,7 +251,7 @@ long
 DynamicIPCMaster::grab_pipe()
 {
     long ret;
-
+      
     this->_mtx = OpenMutex(SYNCHRONIZE, FALSE, KMUTEX_NAME);
     if( !this->_mtx ){
         IPC_MASTER_ERROR("OpenMutex failed in grab_pipe"); 
@@ -314,13 +314,17 @@ DynamicIPCMaster::release_pipe()
 bool 
 DynamicIPCMaster::try_for_slave()
 {    
+    long pipe_ret;
+
     this->disconnect(); 
      
-    this->_mmap_sz = this->grab_pipe();
-    if(this->_mmap_sz <= 0){             
+    pipe_ret = this->grab_pipe();
+    if(pipe_ret <= 0){             
         IPC_MASTER_ERROR("grab_pipe in try_for_slave failed");
         this->disconnect(0);        
         return false;
+    }else{ /* grab_pipe will return slaves _mmap_sz on sucess */
+        this->_mmap_sz = pipe_ret;
     }
    
     this->_fmap_hndl = OpenFileMapping(FILE_MAP_WRITE, 0, this->_shem_str.c_str()); 
@@ -403,7 +407,7 @@ DynamicIPCSlave::DynamicIPCSlave(std::string name, size_t sz)
         /* initialize object security */
         if( this->_set_security() )
             throw std::exception("DynamicIPCSlave failed to initialize security");
-
+             
         this->_mtx = CreateMutex(&(this->_sec_attr[MUTEX1]), FALSE, KMUTEX_NAME);
         if( !this->_mtx ){
             IPC_SLAVE_ERROR("CreateMutex in slave constructor failed");       

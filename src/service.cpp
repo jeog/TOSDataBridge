@@ -22,7 +22,6 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 #include <memory>
 #include <atomic>
 #include "tos_databridge.h"
-#include "engine.hpp"
 #include "ipc.hpp"
 #include "concurrency.hpp"
 
@@ -71,14 +70,14 @@ UpdateStatus(int status, int check_point)
 
     if( !SetServiceStatus(service_status_hndl, &service_status) )
     {
-        TOSDB_LogH("SERVICE-UPDATE","error setting status");
+        TOSDB_LogH("ADMIN","error setting status");
         service_status.dwCurrentState = SERVICE_STOPPED;
         service_status.dwWin32ExitCode = ERROR_SERVICE_SPECIFIC_ERROR;
         service_status.dwServiceSpecificExitCode = 2;
         ++service_status.dwCheckPoint;
 
         if( !SetServiceStatus(service_status_hndl, &service_status) ){
-            TOSDB_LogH("SERVICE-UPDATE", "fatal error handling service error");
+            TOSDB_LogH("ADMIN", "fatal error handling service error");
             TerminateProcess(engine_pinfo.hProcess, EXIT_FAILURE);            
             ExitProcess(EXIT_FAILURE);
         }
@@ -115,15 +114,15 @@ ServiceController(DWORD cntrl)
     {            
         shutdown_flag = true;
 
-        TOSDB_Log("SERVICE-CNTRL","SERVICE_STOP_PENDING");
+        TOSDB_Log("STATE","SERVICE_STOP_PENDING");
         UpdateStatus(SERVICE_STOP_PENDING, -1); 
 
         if(pause_flag){ /* if we're paused... get it to continue silently */                
             if( SendMsgWaitForResponse(TOSDB_SIG_CONTINUE) != TOSDB_SIG_GOOD )            
-                TOSDB_Log("SERVICE-ADMIN", "error resuming paused thread to stop it");              
+                TOSDB_Log("ADMIN", "error resuming paused thread to stop it");              
         }
         if( SendMsgWaitForResponse(TOSDB_SIG_STOP) != TOSDB_SIG_GOOD )        
-            TOSDB_Log("SERVICE-ADMIN","BAD_SIG returned from core process");   
+            TOSDB_Log("ADMIN","BAD_SIG returned from core process");   
 
         break;
     }     
@@ -133,14 +132,14 @@ ServiceController(DWORD cntrl)
             break;
         pause_flag = true;
 
-        TOSDB_Log("SERVICE-CNTRL","SERVICE_PAUSE_PENDING");
+        TOSDB_Log("STATE","SERVICE_PAUSE_PENDING");
         UpdateStatus(SERVICE_PAUSE_PENDING, -1);
              
         if( SendMsgWaitForResponse(TOSDB_SIG_PAUSE) == TOSDB_SIG_GOOD ){
-            TOSDB_Log("SERVICE-CNTRL","SERVICE_PAUSED");
+            TOSDB_Log("STATE","SERVICE_PAUSED");
             UpdateStatus(SERVICE_PAUSED, -1);
         }else{            
-            TOSDB_LogH("SERVICE-ADMIN", "engine failed to confirm pause msg");                        
+            TOSDB_LogH("ADMIN", "engine failed to confirm pause msg");                        
         }
 
         break;
@@ -150,20 +149,20 @@ ServiceController(DWORD cntrl)
         if(!pause_flag)
             break;    
         
-        TOSDB_Log("SERVICE-CNTRL","SERVICE_CONTINUE_PENDING");
+        TOSDB_Log("STATE","SERVICE_CONTINUE_PENDING");
         UpdateStatus(SERVICE_CONTINUE_PENDING, -1);
 
         if(!master){
-            TOSDB_LogH("SERVICE-ADMIN","we don't own the slave");
+            TOSDB_LogH("ADMIN","we don't own the slave");
             break;
         }            
 
         if( SendMsgWaitForResponse(TOSDB_SIG_CONTINUE) == TOSDB_SIG_GOOD ){
-            TOSDB_Log("SERVICE-CNTRL","SERVICE_RUNNING");
+            TOSDB_Log("STATE","SERVICE_RUNNING");
             UpdateStatus(SERVICE_RUNNING, -1);
             pause_flag = false;
         }else{
-            TOSDB_Log("SERVICE-ADMIN","BAD_SIG returned from core process");
+            TOSDB_Log("ADMIN","BAD_SIG returned from core process");
         }
 
         master->release_pipe();
@@ -176,7 +175,7 @@ ServiceController(DWORD cntrl)
     }    
 }
 
-#define SPAWN_LOG_EX(msg) TOSDB_LogEx("SpawnRestrictedProcess",msg,GetLastError())
+#define SPAWN_LOG_EX(msg) TOSDB_LogEx("SPAWN",msg,GetLastError())
 
 bool 
 SpawnRestrictedProcess(int session = -1)
@@ -286,18 +285,18 @@ ServiceMain(DWORD argc, LPSTR argv[])
 
     service_status_hndl = RegisterServiceCtrlHandler(SERVICE_NAME, ServiceController); 
     if(!service_status_hndl){
-        TOSDB_LogH("SERVICE-ADMIN","failed to register control handler, exiting");
+        TOSDB_LogH("ADMIN","failed to register control handler, exiting");
         service_status.dwCurrentState = SERVICE_STOPPED;
         service_status.dwWin32ExitCode = ERROR_SERVICE_SPECIFIC_ERROR;
         service_status.dwServiceSpecificExitCode = 1;
         UpdateStatus(SERVICE_STOPPED, -1);
         return;
     }
-    TOSDB_Log("SERVICE-ADMIN","successfully registered control handler");
+    TOSDB_Log("ADMIN","successfully registered control handler");
 
     SetServiceStatus(service_status_hndl, &service_status);
-    TOSDB_Log("SERVICE-CNTRL","SERVICE_START_PENDING");
-    TOSDB_Log("SERVICE-ADMIN","starting service update loop on its own thread");
+    TOSDB_Log("STATE","SERVICE_START_PENDING");
+    TOSDB_Log("ADMIN","starting service update loop on its own thread");
         
     std::async( std::launch::async, /* spin off the basic service update loop */
                 [&]{
@@ -311,11 +310,11 @@ ServiceMain(DWORD argc, LPSTR argv[])
     if(!SpawnRestrictedProcess(custom_session)){      
         std::string serr("failed to spawn ");
         serr.append(engine_path);
-        TOSDB_LogH("SERVICE-ADMIN", serr.c_str());         
+        TOSDB_LogH("ADMIN", serr.c_str());         
     }else{
         /* on success, update and block */
         UpdateStatus(SERVICE_RUNNING, -1);
-        TOSDB_Log("SERVICE-CNTRL","SERVICE_RUNNING");
+        TOSDB_Log("STATE","SERVICE_RUNNING");
         WaitForSingleObject(engine_pinfo.hProcess, INFINITE);
     }
 
@@ -323,7 +322,7 @@ ServiceMain(DWORD argc, LPSTR argv[])
     UpdateStatus(SERVICE_STOPPED, 0);
     /* !! IF WE GET HERE WE WILL SHUTDOWN !!*/
 
-    TOSDB_Log("SERVICE-CNTRL","SERVICE_STOPPED");    
+    TOSDB_Log("STATE","SERVICE_STOPPED");    
 }
 
 void 
@@ -425,7 +424,7 @@ WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLn, int nShowCmd)
             << " admin_pos: " << std::to_string(admin_pos) 
             << " no_service_pos: " << std::to_string(no_service_pos);
 		    
-    TOSDB_LogH("SERVICE-ARGS", ss_args.str().c_str() );
+    TOSDB_Log("ARGS", ss_args.str().c_str() );
 
     integrity_level = admin_pos > 0 
                     ? "High Mandatory Level" 
