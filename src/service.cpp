@@ -338,26 +338,20 @@ void WINAPI ServiceMain(DWORD argc, LPSTR argv[])
 
 void ParseArgs(std::vector<std::string>& vec, std::string str)
 {
-  std::string arg, rem;
-  std::string::size_type i = str.find_first_of(' '); 
+    std::string::size_type i = str.find_first_of(' '); 
 
-  if(i == std::string::npos)
-    return;
-
-  if(i == 0){
-    ParseArgs(vec,str.substr(1,-1));
-    return;
-  }
-
-  if(i < str.size()){
-    arg = str.substr(0,i);
-    rem = str.substr(++i,str.size());
-    vec.push_back(arg);
-    ParseArgs(vec,rem);
-  }else{
-    vec.push_back(str);
-    return ;
-  }
+    if( str.empty() ){ /* done */
+		    return;
+    }else if(i == std::string::npos){ /* only 1 str */
+        vec.push_back(str);
+        return;
+    }else if(i == 0){ /* trim initial space(s) */
+        ParseArgs(vec, str.substr(1,-1));
+        return;
+    }else{ /* atleast 2 strings */
+        vec.push_back(str.substr(0,i));
+        ParseArgs(vec, str.substr(i+1,str.size()));
+    }
 }
 
 int WINAPI WinMain(HINSTANCE hInst, 
