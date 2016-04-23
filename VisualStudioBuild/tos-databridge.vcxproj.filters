@@ -24,5 +24,12 @@
     <ClCompile Include="..\src\client_get.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\client_out.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\src\data_stream.tpp" />
+    <ClInclude Include="..\src\raw_data_block.tpp" />
   </ItemGroup>
 </Project>

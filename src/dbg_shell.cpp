@@ -295,13 +295,13 @@ int main(int argc, char* argv[])
       if(cmmnd == "GetBlockIDs")
       {              
         size_type bCount = TOSDB_GetBlockCount();
-        char** strArray = AllocStrArray(bCount, TOSDB_BLOCK_ID_SZ);
+        char** strArray = NewStrings(bCount, TOSDB_BLOCK_ID_SZ);
         int ret = TOSDB_GetBlockIDs(strArray,bCount,TOSDB_BLOCK_ID_SZ);
         if(ret) std::cout<< "error: "<<ret<<std::endl;
         else
           for(size_type i = 0; i < bCount; ++i)
             std::cout<< strArray[i] <<std::endl;
-        DeallocStrArray(strArray, bCount);
+        DeleteStrings(strArray, bCount);
         continue;
       }
       if(cmmnd == "GetBlockIDsCPP")
@@ -419,7 +419,7 @@ int main(int argc, char* argv[])
         int ret =  TOSDB_Add(
               block, 
               str_set_type(itemArray,nItems), 
-              topic_set_type(topicArray,nTopics,[=](LPCSTR str){ return TOS_Topics::map[str];}));
+              topic_set_type(topicArray,nTopics,[=](LPCSTR str){ return TOS_Topics::MAP()[str];}));
         if(ret) std::cout<< "error: "<< ret <<std::endl;
         else std::cout<< "Success!"<<std::endl;
         del_cstr_items();
@@ -432,7 +432,7 @@ int main(int argc, char* argv[])
         prompt>> block;
         prompt<<"topic: ";
         prompt>> topic;    
-        int ret =  TOSDB_AddTopic(block, TOS_Topics::map[topic]);
+        int ret =  TOSDB_AddTopic(block, TOS_Topics::MAP()[topic]);
         if(ret) std::cout<< "error: "<< ret <<std::endl;
         else std::cout<< "Success!"<<std::endl;
         continue;
@@ -445,7 +445,7 @@ int main(int argc, char* argv[])
         int ret = TOSDB_AddTopics(
               block, 
               topic_set_type(topicArray, nTopics, 
-              [=](LPCSTR str){ return TOS_Topics::map[str]; }));
+              [=](LPCSTR str){ return TOS_Topics::MAP()[str]; }));
         if(ret) std::cout<< "error: "<< ret <<std::endl;
         else std::cout<< "Success!"<<std::endl;
         del_cstr_topics();
@@ -493,7 +493,7 @@ int main(int argc, char* argv[])
         prompt>> block;
         prompt<<"topic: ";
         prompt>> topic;    
-        int ret =  TOSDB_RemoveTopic(block, TOS_Topics::map[topic]);
+        int ret =  TOSDB_RemoveTopic(block, TOS_Topics::MAP()[topic]);
         if(ret) std::cout<< "error: "<< ret <<std::endl;
         else std::cout<< "Success!"<<std::endl;
         continue;
@@ -539,13 +539,13 @@ int main(int argc, char* argv[])
         prompt<<"block id: ";
         prompt>> block;
         size_type topicLen = TOSDB_GetTopicCount(block);
-        char** strArray = AllocStrArray(topicLen, TOSDB_MAX_STR_SZ);
+        char** strArray = NewStrings(topicLen, TOSDB_MAX_STR_SZ);
         int ret = TOSDB_GetTopicNames(block.c_str(),strArray,topicLen,TOSDB_MAX_STR_SZ);
         if(ret) std::cout<< "error: "<< ret <<std::endl;
         else 
           for(size_type i = 0; i < topicLen; ++i)
             std::cout<< strArray[i] <<std::endl;
-        DeallocStrArray(strArray, topicLen);
+        DeleteStrings(strArray, topicLen);
         continue;
       }
       if(cmmnd == "GetItemNames")
@@ -553,13 +553,13 @@ int main(int argc, char* argv[])
         prompt<<"block id: ";
         prompt>> block;
         size_type itemLen = TOSDB_GetItemCount(block);
-        char** strArray = AllocStrArray(itemLen, TOSDB_MAX_STR_SZ);
+        char** strArray = NewStrings(itemLen, TOSDB_MAX_STR_SZ);
         int ret = TOSDB_GetItemNames(block.c_str(),strArray,itemLen,TOSDB_MAX_STR_SZ);
         if(ret) std::cout<< "error: "<< ret <<std::endl;
         else 
           for(size_type i = 0; i < itemLen; ++i)
             std::cout<< strArray[i] <<std::endl;
-        DeallocStrArray(strArray, itemLen);
+        DeleteStrings(strArray, itemLen);
         continue;
       }
       if(cmmnd == "GetTopicNamesCPP")
@@ -588,7 +588,7 @@ int main(int argc, char* argv[])
         prompt>> block;      
         topic_set_type topSet = TOSDB_GetTopicEnums(block);
         for(auto & t : topSet)
-          std::cout<< (TOS_Topics::enum_value_type)t <<' '<< TOS_Topics::map[t] << std::endl;
+          std::cout<< (TOS_Topics::enum_value_type)t <<' '<< TOS_Topics::MAP()[t] << std::endl;
         continue;
       }
       if(cmmnd == "GetPreCachedTopicNamesCPP")
@@ -615,7 +615,7 @@ int main(int argc, char* argv[])
         prompt>> block;      
         topic_set_type topSet = TOSDB_GetPreCachedTopicEnums(block);
         for(auto & t : topSet)
-          std::cout<< (TOS_Topics::enum_value_type)t << TOS_Topics::map[t] << std::endl;
+          std::cout<< (TOS_Topics::enum_value_type)t << TOS_Topics::MAP()[t] << std::endl;
         continue;
       }    
       if(cmmnd == "GetTypeBits")
@@ -642,14 +642,14 @@ int main(int argc, char* argv[])
       {
         prompt<<"topic: ";
         prompt>> topic;      
-        std::cout<< TOSDB_GetTypeBits(TOS_Topics::map[topic])<<std::endl;       
+        std::cout<< TOSDB_GetTypeBits(TOS_Topics::MAP()[topic])<<std::endl;       
         continue;
       }
       if(cmmnd == "GetTypeStringCPP")
       {      
         prompt<<"topic: ";
         prompt>> topic;
-        std::cout<< TOSDB_GetTypeString(TOS_Topics::map[topic])<<std::endl;      
+        std::cout<< TOSDB_GetTypeString(TOS_Topics::MAP()[topic])<<std::endl;      
         continue;
       }
 
@@ -682,7 +682,7 @@ int main(int argc, char* argv[])
       if(cmmnd == "GetStreamOccupancyCPP")
       {
         get_block_item_topic();    
-        std::cout<< TOSDB_GetStreamOccupancy(block, item, TOS_Topics::map[topic])<<std::endl;    
+        std::cout<< TOSDB_GetStreamOccupancy(block, item, TOS_Topics::MAP()[topic])<<std::endl;    
         continue;
       }
       if(cmmnd == "GetMarkerPosition")
@@ -697,7 +697,7 @@ int main(int argc, char* argv[])
       if(cmmnd == "GetMarkerPositionCPP")
       {
         get_block_item_topic();    
-        std::cout<< TOSDB_GetMarkerPosition(block, item, TOS_Topics::map[topic])<<std::endl;    
+        std::cout<< TOSDB_GetMarkerPosition(block, item, TOS_Topics::MAP()[topic])<<std::endl;    
         continue;
       }
       if(cmmnd == "IsMarkerDirty")
@@ -712,7 +712,7 @@ int main(int argc, char* argv[])
       if(cmmnd == "IsMarkerDirty")
       {      
         get_block_item_topic(); 
-        std::cout<< std::boolalpha << TOSDB_IsMarkerDirty(block, item,TOS_Topics::map[topic]) <<std::endl;
+        std::cout<< std::boolalpha << TOSDB_IsMarkerDirty(block, item,TOS_Topics::MAP()[topic]) <<std::endl;
         continue;
       }
       if(cmmnd == "DumpBufferStatus")
@@ -809,7 +809,7 @@ int main(int argc, char* argv[])
         get_block_item_topic();
         prompt<<"length of array to pass: ";
         prompt>>len;
-        char** dataRay = AllocStrArray(len, TOSDB_STR_DATA_SZ - 1);
+        char** dataRay = NewStrings(len, TOSDB_STR_DATA_SZ - 1);
         dtsRay = new DateTimeStamp[len];
         prompt<<"beginning datastream index: ";
         prompt>>beg;
@@ -819,7 +819,7 @@ int main(int argc, char* argv[])
                                                  dataRay,len,TOSDB_STR_DATA_SZ,dtsRay,end,beg);
         if(ret) std::cout<<"error: "<<ret<<std::endl;
         else deal_with_stream_data(len, dataRay,false);
-        DeallocStrArray(dataRay, len);
+        DeleteStrings(dataRay, len);
         delete dtsRay;
         continue;
       }
@@ -888,7 +888,7 @@ int main(int argc, char* argv[])
         get_block_item_topic();
         prompt<<"length of array to pass: ";
         prompt>>len;
-        char** dataRay = AllocStrArray(len, TOSDB_STR_DATA_SZ - 1);
+        char** dataRay = NewStrings(len, TOSDB_STR_DATA_SZ - 1);
         dtsRay = new DateTimeStamp[len];
         prompt<<"beginning datastream index: ";
         prompt>>beg;         
@@ -897,7 +897,7 @@ int main(int argc, char* argv[])
           TOSDB_STR_DATA_SZ,dtsRay,beg, &get_size);
         if(ret) std::cout<<"error: "<<ret<<std::endl;
         else deal_with_stream_data(len, dataRay,false);
-        DeallocStrArray(dataRay, len);
+        DeleteStrings(dataRay, len);
         delete dtsRay;
         continue;
       }
@@ -914,9 +914,9 @@ int main(int argc, char* argv[])
         std::cin.get();
         prompt>> dtsB ;
         if(dtsB == 'y')
-          std::cout<< TOSDB_GetItemFrame<true>(block,TOS_Topics::map[topic]);
+          std::cout<< TOSDB_GetItemFrame<true>(block,TOS_Topics::MAP()[topic]);
         else
-          std::cout<< TOSDB_GetItemFrame<false>(block,TOS_Topics::map[topic]);          
+          std::cout<< TOSDB_GetItemFrame<false>(block,TOS_Topics::MAP()[topic]);          
         std::cout<<std::endl;
         continue;
       }
@@ -948,8 +948,8 @@ int main(int argc, char* argv[])
         prompt>> topic;    
         size_type nItems;
         TOSDB_GetItemCount(block.c_str(), &nItems);
-        char** dataRay = AllocStrArray(nItems, TOSDB_STR_DATA_SZ - 1);
-        char** labelRay = AllocStrArray(nItems, TOSDB_STR_DATA_SZ - 1);    
+        char** dataRay = NewStrings(nItems, TOSDB_STR_DATA_SZ - 1);
+        char** labelRay = NewStrings(nItems, TOSDB_STR_DATA_SZ - 1);    
         dtsRay = new DateTimeStamp[ nItems ];
         int ret = TOSDB_GetItemFrameStrings(block.c_str(),topic.c_str(),dataRay,nItems,
                                             TOSDB_STR_DATA_SZ,labelRay,TOSDB_STR_DATA_SZ,dtsRay);
@@ -957,8 +957,8 @@ int main(int argc, char* argv[])
         else 
           for(size_type i = 0; i < nItems; ++i)
             std::cout<<' '<<labelRay[i]<<' '<<dataRay[i]<<' '<<dtsRay[i]<<std::endl;
-        DeallocStrArray(dataRay, nItems);
-        DeallocStrArray(labelRay, nItems);
+        DeleteStrings(dataRay, nItems);
+        DeleteStrings(labelRay, nItems);
         delete dtsRay;
         continue;      
       }  
@@ -971,8 +971,8 @@ int main(int argc, char* argv[])
         prompt>> item;    
         size_type nItems;
         TOSDB_GetItemCount(block.c_str(), &nItems);
-        char** dataRay = AllocStrArray(nTopics, TOSDB_STR_DATA_SZ -1);
-        char** labelRay = AllocStrArray(nTopics, TOSDB_STR_DATA_SZ - 1);  
+        char** dataRay = NewStrings(nTopics, TOSDB_STR_DATA_SZ -1);
+        char** labelRay = NewStrings(nTopics, TOSDB_STR_DATA_SZ - 1);  
         dtsRay = new DateTimeStamp[ nTopics ];
         int ret = TOSDB_GetTopicFrameStrings(block.c_str(),item.c_str(),dataRay,nTopics,
                                              TOSDB_STR_DATA_SZ,labelRay,TOSDB_STR_DATA_SZ,dtsRay);
@@ -980,8 +980,8 @@ int main(int argc, char* argv[])
         else
           for(size_type i = 0; i < nTopics; ++i)
             std::cout<<labelRay[i]<<' '<<dataRay[i]<<' '<<dtsRay[i]<<std::endl;
-        DeallocStrArray(dataRay, nTopics);
-        DeallocStrArray(labelRay, nTopics);
+        DeleteStrings(dataRay, nTopics);
+        DeleteStrings(labelRay, nTopics);
         delete dtsRay;
         continue;      
       }
@@ -1107,7 +1107,7 @@ void get_cstr_items()
 {  
   prompt<<"how many items? ";
   prompt>> nItems;
-  itemArray = AllocStrArray(nItems, TOSDB_MAX_STR_SZ);
+  itemArray = NewStrings(nItems, TOSDB_MAX_STR_SZ);
   for(size_type i = 0; i < nItems; ++i)
   {
     prompt<<"item #"<<i+1<<": ";
@@ -1119,7 +1119,7 @@ void get_cstr_topics()
 {  
   prompt<<"how many topics? ";
   prompt>> nTopics;
-  topicArray = AllocStrArray(nTopics, TOSDB_MAX_STR_SZ);
+  topicArray = NewStrings(nTopics, TOSDB_MAX_STR_SZ);
   for(size_type i = 0; i < nTopics; ++i)
   {
     prompt<<"topic #"<<i+1<<": ";
@@ -1129,11 +1129,11 @@ void get_cstr_topics()
 }
 void del_cstr_items()
 {
-  DeallocStrArray(itemArray, nItems);
+  DeleteStrings(itemArray, nItems);
 }
 void del_cstr_topics()
 {
-  DeallocStrArray(topicArray, nTopics);
+  DeleteStrings(topicArray, nTopics);
 }
 
 template<typename T>
@@ -1144,9 +1144,9 @@ void _get()
   std::cin.get();
   prompt>> dtsB ;  
   if(dtsB == 'y')
-    std::cout<< TOSDB_Get<T,true>(block, item, TOS_Topics::map[topic], indx)<<std::endl;    
+    std::cout<< TOSDB_Get<T,true>(block, item, TOS_Topics::MAP()[topic], indx)<<std::endl;    
   else
-    std::cout<< TOSDB_Get<T,false>(block.c_str(),item.c_str(),TOS_Topics::map[topic],indx)<<std::endl;            
+    std::cout<< TOSDB_Get<T,false>(block.c_str(),item.c_str(),TOS_Topics::MAP()[topic],indx)<<std::endl;            
 }
 template<typename T>
 void _get(int(*func)(LPCSTR,LPCSTR,LPCSTR,long,T*,pDateTimeStamp))
@@ -1185,9 +1185,9 @@ void _getStreamSnapshot()
   std::cin.get();
   prompt>> dtsB ;
   if(dtsB == 'y')      
-    std::cout<<TOSDB_GetStreamSnapshot<T,true>(block.c_str(),item.c_str(),TOS_Topics::map[topic],end,beg);
+    std::cout<<TOSDB_GetStreamSnapshot<T,true>(block.c_str(),item.c_str(),TOS_Topics::MAP()[topic],end,beg);
   else
-    std::cout<<TOSDB_GetStreamSnapshot<T,false>(block.c_str(),item.c_str(),TOS_Topics::map[topic],end,beg);            
+    std::cout<<TOSDB_GetStreamSnapshot<T,false>(block.c_str(),item.c_str(),TOS_Topics::MAP()[topic],end,beg);            
   std::cout<<std::endl;
 }
 template<typename T>

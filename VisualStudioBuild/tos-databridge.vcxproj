@@ -21,7 +21,7 @@
   <PropertyGroup Label="Globals">
     <ProjectGuid>{2C63A7B0-C01A-408F-A51D-1A92EB6786D0}</ProjectGuid>
     <RootNamespace>tosdatabridge</RootNamespace>
-    <ProjectName>tos-databridge-0.2</ProjectName>
+    <ProjectName>tos-databridge-0.4</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -104,11 +104,11 @@
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>_tos-databridge-static-x86_d.lib;_tos-databridge-shared-x86_d.lib</AdditionalDependencies>
+      <AdditionalDependencies>_tos-databridge-x86_d.lib</AdditionalDependencies>
       <SubSystem>Windows</SubSystem>
       <AdditionalLibraryDirectories>$(SolutionDir)..\bin\$(Configuration)\$(Platform)\</AdditionalLibraryDirectories>
       <ProgramDatabaseFile>$(SolutionDir)..\symbols\$(Configuration)\$(TargetName).pdb</ProgramDatabaseFile>
-      <AdditionalOptions>/export:AllocStrArray /export:DeallocStrArray /export:TOSDB_StartLogging /export:TOSDB_StopLogging /export:TOSDB_ClearLog /export:TOSDB_Log_  /export:TOSDB_DEF_TIMEOUT /export:TOSDB_MIN_TIMEOUT /export:TOSDB_SHEM_BUF_SZ /export:TOSDB_BLOCK_ID_SZ </AdditionalOptions>
+      <AdditionalOptions>/export:NewStrings /export:DeleteStrings  /export:TOSDB_Log_ /export:TOSDB_LogEx_ /export:CheckIDLength /export:CheckStringLength /export:CheckStringLengths</AdditionalOptions>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -125,11 +125,11 @@
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>_tos-databridge-static-x64_d.lib;_tos-databridge-shared-x64_d.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>_tos-databridge-x64_d.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SubSystem>Windows</SubSystem>
       <AdditionalLibraryDirectories>$(SolutionDir)..\bin\$(Configuration)\$(Platform)\</AdditionalLibraryDirectories>
       <ProgramDatabaseFile>$(SolutionDir)..\symbols\$(Configuration)\$(TargetName).pdb</ProgramDatabaseFile>
-      <AdditionalOptions>/export:AllocStrArray /export:DeallocStrArray /export:TOSDB_StartLogging /export:TOSDB_StopLogging /export:TOSDB_ClearLog /export:TOSDB_Log_  /export:TOSDB_DEF_TIMEOUT /export:TOSDB_MIN_TIMEOUT /export:TOSDB_SHEM_BUF_SZ /export:TOSDB_BLOCK_ID_SZ </AdditionalOptions>
+      <AdditionalOptions>/export:NewStrings /export:DeleteStrings  /export:TOSDB_Log_ /export:TOSDB_LogEx_ /export:CheckIDLength /export:CheckStringLength /export:CheckStringLengths</AdditionalOptions>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -139,7 +139,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>..\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\src;..\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <CompileAsManaged>false</CompileAsManaged>
       <PreprocessorDefinitions>THIS_IMPORTS_IMPLEMENTATION;THIS_EXPORTS_INTERFACE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <DisableSpecificWarnings>
@@ -150,11 +150,11 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>_tos-databridge-static-x86.lib;_tos-databridge-shared-x86.lib</AdditionalDependencies>
+      <AdditionalDependencies>_tos-databridge-x86.lib</AdditionalDependencies>
       <SubSystem>Windows</SubSystem>
       <AdditionalLibraryDirectories>$(SolutionDir)..\bin\$(Configuration)\$(Platform)\</AdditionalLibraryDirectories>
       <ProgramDatabaseFile>$(SolutionDir)..\symbols\$(Configuration)\$(TargetName).pdb</ProgramDatabaseFile>
-      <AdditionalOptions>/export:AllocStrArray /export:DeallocStrArray /export:TOSDB_StartLogging /export:TOSDB_StopLogging /export:TOSDB_ClearLog /export:TOSDB_Log_  /export:TOSDB_DEF_TIMEOUT /export:TOSDB_MIN_TIMEOUT /export:TOSDB_SHEM_BUF_SZ /export:TOSDB_BLOCK_ID_SZ </AdditionalOptions>
+      <AdditionalOptions>/export:NewStrings /export:DeleteStrings  /export:TOSDB_Log_ /export:TOSDB_LogEx_ /export:CheckIDLength /export:CheckStringLength /export:CheckStringLengths</AdditionalOptions>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -175,17 +175,31 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>_tos-databridge-static-x64.lib;_tos-databridge-shared-x64.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>_tos-databridge-x64.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SubSystem>Windows</SubSystem>
       <AdditionalLibraryDirectories>$(SolutionDir)..\bin\$(Configuration)\$(Platform)\</AdditionalLibraryDirectories>
       <ProgramDatabaseFile>$(SolutionDir)..\symbols\$(Configuration)\$(TargetName).pdb</ProgramDatabaseFile>
-      <AdditionalOptions>/export:AllocStrArray /export:DeallocStrArray /export:TOSDB_StartLogging /export:TOSDB_StopLogging /export:TOSDB_ClearLog /export:TOSDB_Log_  /export:TOSDB_DEF_TIMEOUT /export:TOSDB_MIN_TIMEOUT /export:TOSDB_SHEM_BUF_SZ /export:TOSDB_BLOCK_ID_SZ </AdditionalOptions>
+      <AdditionalOptions>/export:NewStrings /export:DeleteStrings  /export:TOSDB_Log_ /export:TOSDB_LogEx_ /export:CheckIDLength /export:CheckStringLength /export:CheckStringLengths</AdditionalOptions>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\src\client_admin.cpp" />
+    <ClCompile Include="..\src\client_out.cpp" />
     <ClCompile Include="..\src\generic.cpp" />
     <ClCompile Include="..\src\client_get.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\src\data_stream.tpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</ExcludedFromBuild>
+      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</DeploymentContent>
+      <FileType>Document</FileType>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\src\raw_data_block.tpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</ExcludedFromBuild>
+      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</DeploymentContent>
+    </ClInclude>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

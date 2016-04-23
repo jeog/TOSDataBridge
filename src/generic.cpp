@@ -15,55 +15,65 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see http://www.gnu.org/licenses.
 */
 
-#include "tos_databridge.h"
+//#include "tos_databridge.h"
 #include "generic.hpp"
 
-namespace JO{
-
-Generic& Generic::operator=(const Generic& gen)
+TOSDB_Generic& 
+TOSDB_Generic::operator=(const TOSDB_Generic& gen)
 {
-  if ((*this) != gen){  
-    _type_val = gen._type_val;
-    _type_bsz = gen._type_bsz;
-
-    if(_sub) 
-      delete _sub;
-
-    _sub_deep_copy(*this, gen);
-  }
-  return *this;    
+    if ((*this) != gen){  
+      this->_type_val = gen._type_val;
+      this->_type_bsz = gen._type_bsz;
+      if(this->_sub) 
+          delete this->_sub;
+      this->_sub_deep_copy(gen);
+    }
+    return *this;    
 }
 
-Generic& Generic::operator=(Generic&& gen)
+TOSDB_Generic& 
+TOSDB_Generic::operator=(TOSDB_Generic&& gen)
 {
-  delete _sub;
+    delete this->_sub;
 
-  _sub = gen._sub;
-  _type_val = gen._type_val;
-  _type_bsz = gen._type_bsz;
-  gen._sub = nullptr;
-  gen._type_val = VOID_;
-  gen._type_bsz = 0;
+    this->_sub = gen._sub;
+    this->_type_val = gen._type_val;
+    this->_type_bsz = gen._type_bsz;
 
-  return *this;
+    gen._sub = nullptr;
+    gen._type_val = VOID_;
+    gen._type_bsz = 0;
+
+    return *this;
 }
 
-void Generic::_sub_deep_copy(Generic& dest, const Generic& src)
+void 
+TOSDB_Generic::_sub_deep_copy(const TOSDB_Generic& src)
 {      
-  if(src._type_val == STRING_)
-    dest._sub = new std::string(*((std::string*)src._sub));
-  else{
-    dest._sub = malloc(src._type_bsz);
-    memcpy_s(dest._sub, src._type_bsz, src._sub, src._type_bsz);
-  }
+    if(src._type_val == STRING_){
+        this->_sub = new std::string(*((std::string*)src._sub));
+    }else{
+        this->_sub = malloc(src._type_bsz);        
+        /* NO CHECK: if we can't allocate 4 or 8 bytes 
+                     we'll blow up a million other places */
+        memcpy(this->_sub, src._sub,  src._type_bsz);
+    }
 }
 
-std::string Generic::as_string() const
+std::string 
+TOSDB_Generic::as_string() const
 {
-  if(this->is_integer())             return std::to_string(as_long_long());
-  else if(this->is_floating_point()) return std::to_string(as_double());   
-  else if(this->is_string())         return *((std::string*)this->_sub);
-  else                               return std::string();
+    if( this->is_integer() )             
+        return std::to_string(this->as_long_long());
+
+    else if( this->is_floating_point() ) 
+        return std::to_string(this->as_double());  
+
+    else if( this->is_string() )         
+        return *((std::string*)(this->_sub));
+
+    else                               
+        return std::string();
 }
 
-};
+

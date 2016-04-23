@@ -19,30 +19,40 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 #define JO_TOSDB_CLIENT
 
 #include "tos_databridge.h"
-#include  <mutex>
+#include <mutex>
+#include <chrono>
 
-typedef std::lock_guard<std::recursive_mutex> our_rlock_guard_type;
+/* sync access to blocks in client_get/client_admin */
 extern std::recursive_mutex global_rmutex;
 
-#define GLOBAL_RLOCK_GUARD our_rlock_guard_type our_rlock_guard(global_rmutex);
+#define GLOBAL_RLOCK_GUARD \
+    std::lock_guard<std::recursive_mutex> global_rlock_guard_(global_rmutex);
 
+
+/* forward decl - raw_data_block.hpp / raw_data_block.tpp */
 template<typename T,typename T2> class RawDataBlock; 
-typedef RawDataBlock< generic_type, DateTimeStamp> TOSDB_RawDataBlock;
+typedef RawDataBlock<generic_type, DateTimeStamp> TOSDB_RawDataBlock;
 
+
+/*TOSDB's main organizational unit - functionally and conceptually. It's how
+  client_admin and client_get handle 'blocks' that client code creates.
+  
+  TOSDB_RawDataBlock manages all the active items/topics/data */
 typedef struct {
-  TOSDB_RawDataBlock* block;
-  str_set_type        item_precache;
-  topic_set_type      topic_precache;  
-  unsigned long       timeout;
+    TOSDB_RawDataBlock* block;
+    str_set_type        item_precache;
+    topic_set_type      topic_precache;  
+    unsigned long       timeout;
 } TOSDBlock; /* no ptr or const typedefs; force code to state explicitly */
 
-bool CheckIDLength(LPCSTR id);
-bool CheckStringLength(LPCSTR str);
-bool CheckStringLength(LPCSTR str, LPCSTR str2);
-bool CheckStringLengths(LPCSTR* str, size_type items_len);
 
-TOS_Topics::TOPICS GetTopicEnum(std::string sTopic); 
-const TOSDBlock*   GetBlockPtr(std::string id);
-const TOSDBlock*   GetBlockOrThrow(std::string id);
+inline TOS_Topics::TOPICS 
+GetTopicEnum(std::string sTopic){ return TOS_Topics::map[sTopic]; }
+
+const TOSDBlock*   
+GetBlockPtr(std::string id);
+
+const TOSDBlock*   
+GetBlockOrThrow(std::string id);
 
 #endif

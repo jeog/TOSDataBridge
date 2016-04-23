@@ -99,7 +99,7 @@
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>$(SolutionDir)..\bin\$(Configuration)\$(Platform)\</AdditionalLibraryDirectories>
-      <AdditionalDependencies>_tos-databridge-static-x86_d.lib;_tos-databridge-shared-x86_d.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>_tos-databridge-x86_d.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SubSystem>Windows</SubSystem>
       <ProgramDatabaseFile>$(SolutionDir)..\symbols\$(Configuration)\$(TargetName).pdb</ProgramDatabaseFile>
       <UACExecutionLevel>RequireAdministrator</UACExecutionLevel>
@@ -117,7 +117,7 @@
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>$(SolutionDir)..\bin\$(Configuration)\$(Platform)\</AdditionalLibraryDirectories>
-      <AdditionalDependencies>_tos-databridge-static-x64_d.lib;_tos-databridge-shared-x64_d.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>_tos-databridge-x64_d.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SubSystem>Windows</SubSystem>
       <ProgramDatabaseFile>$(SolutionDir)..\symbols\$(Configuration)\$(TargetName).pdb</ProgramDatabaseFile>
       <UACExecutionLevel>RequireAdministrator</UACExecutionLevel>
@@ -139,7 +139,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalLibraryDirectories>$(SolutionDir)..\bin\$(Configuration)\$(Platform)\</AdditionalLibraryDirectories>
-      <AdditionalDependencies>_tos-databridge-static-x86.lib;_tos-databridge-shared-x86.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>_tos-databridge-x86.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SubSystem>Windows</SubSystem>
       <ProgramDatabaseFile>$(SolutionDir)..\symbols\$(Configuration)\$(TargetName).pdb</ProgramDatabaseFile>
       <UACExecutionLevel>RequireAdministrator</UACExecutionLevel>
@@ -161,7 +161,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalLibraryDirectories>$(SolutionDir)..\bin\$(Configuration)\$(Platform)\</AdditionalLibraryDirectories>
-      <AdditionalDependencies>_tos-databridge-static-x64.lib;_tos-databridge-shared-x64.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>_tos-databridge-x64.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SubSystem>Windows</SubSystem>
       <ProgramDatabaseFile>$(SolutionDir)..\symbols\$(Configuration)\$(TargetName).pdb</ProgramDatabaseFile>
       <UACExecutionLevel>RequireAdministrator</UACExecutionLevel>

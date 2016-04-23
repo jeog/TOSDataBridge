@@ -24,9 +24,9 @@ IF [%3] == [] (
 IF "%1"=="x86" (
   set "CMDpath=\bin"
   set "OURlibdir=!RELdir!\Win32"
-  set "OURlibstub=!RELdir!\Win32\tos-databridge-0.2-x86.lib"
-  set "OURdllname=tos-databridge-0.2-x86.dll"
-  set "OURdll2name=_tos-databridge-shared-x86.dll"
+  set "OURlibstub=!RELdir!\Win32\tos-databridge-0.4-x86.lib"
+  set "OURdllname=tos-databridge-0.4-x86.dll"
+  set "OURdll2name=_tos-databridge-x86.dll"
   set "OURdllpath=!RELdir!\Win32\!OURdllname!"
   set "OURdll2path=!RELdir!\Win32\!OURdll2name!"
   set "VCvars=bin\VCvars32.bat"
@@ -37,9 +37,9 @@ IF "%1"=="x86" (
   IF "%1"=="x64" (
     set "CMDpath=\bin\x86_amd64"    
     set "OURlibdir=!RELdir!\x64"
-    set "OURlibstub=!RELdir!\x64\tos-databridge-0.2-x64.lib"
-    set "OURdllname=tos-databridge-0.2-x64.dll"
-    set "OURdll2name=_tos-databridge-shared-x64.dll"
+    set "OURlibstub=!RELdir!\x64\tos-databridge-0.4-x64.lib"
+    set "OURdllname=tos-databridge-0.4-x64.dll"
+    set "OURdll2name=_tos-databridge-x64.dll"
     set "OURdllpath=!RELdir!\x64\!OURdllname!"
     set "OURdll2path=!RELdir!\x64\!OURdll2name!"
     set "VCvars=bin\x86_amd64\VCvarsx86_amd64.bat"
@@ -107,7 +107,7 @@ IF NOT EXIST "%VSINSTALLDIR%" (
 )
 
 echo.
-echo Clearning Files...
+echo Clearing Files...
 del *.exe *.obj *.dll *.lib *.pdb 2>NUL
 
 echo.

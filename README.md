@@ -1,4 +1,4 @@
-## TOSDataBridge v0.2 
+## TOSDataBridge v0.4 
 - - -
 TOSDataBridge (TOSDB) is an open-source collection of resources for 'scraping' real-time streaming data off of TDAmeritrade's ThinkOrSwim(TOS) platform, providing C, C++, and Python interfaces. Users of the TOS platform - with some basic programming/scripting knowledge - can use these tools to populate their own databases with market data; analyze large data-sets in real-time; test and debug other financial apps; or even build extensions on top of it.
 
@@ -14,6 +14,35 @@ Obviously the core implementation is not portable, but the python interface does
 - Python3 (optional, for the python wrapper)
 - Some basic Windows knowledge; some basic C, C++, or Python programming knowledge
 
+### Versions
+- - -
+- v0.3 (branch v0.3) : 'stable' version  **contains up-to-date binaries/signatures**
+
+- v0.4 (branch master) : currently undergoing a major refactoring - interface is subject to slight change. **may contain some binaries**
+
+    ##### What's new:
+    - merge 'static' and 'shared' backend libs into a single dll (don't move to C:/Windows in tosdb-setup.bat)
+    - move template implementation code from data_streams.hpp and raw_data_block.hpp to src/data_streams.tpp and src/raw_data_block.tpp, respectively
+    - move logging files to a local 'log' folder (make path relative to binaries)
+    - remove Start/Stop/Clear log API functions; forcing all client log data to log/client-log.log
+    - improve readability: prototype style, spacing etc; remove uncessary headers
+    - remove unecessary concurrency and IPC code; improve type issues
+    - simplify exceptions, move global exceptions to exceptions.hpp 
+    - simplify the topic-string mapping, how it's defined/exported
+
+    ##### What's next (pre v1.0) :
+    - simplify the main header: tos_databridge.h
+    - simplify the API 
+    - remove (or atleast improve) the pre-caching behavior of blocks
+    - consider an 'intermediate' API between client lib and engine, allowing users to inject their own callbacks/hooks for handling raw data from the engine
+
+    ##### Other Stuff
+    - If you simply want the core functionality and/or need the most up-to-date pre-compiled binaries - with the small(est) chance of running into bugs - use v0.3. 
+    - If you want the latest-and-greatest features, improvements etc. - don't mind building your own and dealing with more bugs - go w/ master. 
+    - Major changes will generally lead to a new version/branch, but not necessarily the label of 'stable'. Minor changes may or may not use a seperate branch that will be merged back into master.
+    - Contributions - testing, bug fixes, suggestions, extensions, whatever - are always welcome. 
+
+
 ### Quick Setup
 - - -
 - tosdb-setup.bat will attempt to install the necessary modules/dependencies for you but you should refer to **Installation Details** below for a more detailed explanation
@@ -26,7 +55,7 @@ Obviously the core implementation is not portable, but the python interface does
 
     - [x86|x64] : the version to build (required)
     - [admin] : does your TOS platform require elevation? (optional) 
-    - [session] : override the service's attempt to determine the session id when exiting from session-0 isolation. MOST USERS SHOULDN'T WORRY ABOUT THIS unless they plan to run in a non-standard environment (e.g an EC2 instance). The tos-databridge-engine.exe[] binary needs to run in the same session as the ThinkOrSwim platform. (optional)
+    - [session] : override the service's attempt to determine the session id when exiting from session-0 isolation. **MOST USERS SHOULDN'T WORRY ABOUT THIS** unless they plan to run in a non-standard environment (e.g an EC2 instance). The tos-databridge-engine.exe[] binary needs to run in the same session as the ThinkOrSwim platform. (optional)
 
     ##### Python Wrapper (optional)
     ```
@@ -48,7 +77,7 @@ Obviously the core implementation is not portable, but the python interface does
 ##### For C/C++:
 - Include tos_databridge.h header in your code (if C++ make sure containers.hpp and generic.hpp can be found by the compiler)
 - Use the library calls detailed in the **C/C++ Interface...** sections below
-- Link with *tos-databridge-0.2-[x86|x64].dll*
+- Link with *tos-databridge-0.4-[x86|x64].dll*
 - Build
 - Run
 
@@ -73,17 +102,15 @@ Obviously the core implementation is not portable, but the python interface does
 
 - **/bin** 
    
-     (Pre-)Compiled binaries by build type. (No debug builds)
+     (Pre-)Compiled binaries by build type. (No debug builds) **master branch may or may not contain all, or any**
 
     - ***tos-databridge-serv-[x86|x64].exe*** : The service process that spawns and controls the main engine described below. This program is run as a typical windows service with SYSTEM privileges; as such its intended role is very limited. (For debugging) pass the --noservice arg to run as a pure executable. 
 
     - ***tos-databridge-engine-[x86|x64].exe*** : The main engine - spawned from tos-databridge-serv.exe - that interacts with the TOS platform and our DLL(below). It runs with a lower(ed) integrity level and reduced privileges. 
 
-    - ***tos-databridge-0.2-[x86|x64].dll*** : The library/interface that client code uses to access TOSDB. Review tos-databridge.h, and the sections below, for all the necessary calls, types, and objects.
+    - ***tos-databridge-0.4-[x86|x64].dll*** : The library/interface that client code uses to access TOSDB. Review tos-databridge.h, and the sections below, for all the necessary calls, types, and objects.
 
-    - ***_tos-databridge-shared-[x86|x64].dll*** : A back-end library that provides custom concurrency and IPC objects, as well as the Topic-String mapping. It needs to be in the right path for other modules that are dependent on it. (see below)
-
-    - ***_tos-databridge-static-[x86|x64].lib*** : A statically linked back-end library that provides some basic logging and utility functions shared between the modules.
+    - ***_tos-databridge-[x86|x64].dll*** : A back-end library that provides custom concurrency and IPC objects; logging and utilities; as well as the Topic-String mapping. It needs to be in the right path for other modules that are dependent on it. (see below)
 
     - ***tos-databridge-shell-[x86|x64]*** : A crude 'shell' used to interact directly with the library calls; for testing and debugging.
 
@@ -93,19 +120,21 @@ Obviously the core implementation is not portable, but the python interface does
 
     Files relevant to the python wrapper.
 
-    - **tosdb/** : A python package that serves as a wrapper around *tos-databridge-0.2-[x86|x64].dll*. It provides a more object oriented, simplified means of accessing the core functionality.
+    - **tosdb/** : A python package that serves as a wrapper around *tos-databridge-0.4-[x86|x64].dll*. It provides a more object oriented, simplified means of accessing the core functionality.
 
     - **tosdb/cli_scripts/** : Python scripts built on top of the python wrapper.
 
 - **/sigs** 
 
-    The detached signature for each binary; sha256 checksums for binaries, signatures, and the jeog.dev public key
+    The detached signature for each binary; sha256 checksums for binaries, signatures, and the jeog.dev public key; **master branch may or may not contain all, or any**
 
 - **/res** 
 
     Miscellaneous resources
 
+- **/log** 
 
+    All log files and dumps
 
 ### Build Notes
 - - -
@@ -117,7 +146,7 @@ Obviously the core implementation is not portable, but the python interface does
 
 ### Installation Details
 - - -
-The following sections will outline how to setup TOSDB's core C/C++ libraries. At the end of this section is a screen-shot of all the relevant commands for using the x64 binaries. **If you're only interested in using the python wrapper you still need to follow these steps. If you're looking to use the virtual python interface (and have already followed these steps - and those from the Python Wrapper section - on a windows system) you can skip to the Python Wrapper section.**
+The following sections will outline how to setup TOSDB's core C/C++ libraries. At the end of this section is a screen-shot of all the relevant commands for using the x64 binaries. **If you're only interested in using the python wrapper you still need to follow these steps**
 
 1. Move the unzipped tos-databridge folder to its permanent location(our's is in C:/ for convenience.) If you change it in the future you'll need to redo some of these steps because the Service module relies on an absolute path.
 
@@ -139,8 +168,7 @@ The following sections will outline how to setup TOSDB's core C/C++ libraries. A
     Example 3: C:\TOSDataBridge\> tosdb-setup.bat x64 admin 2
     ```
 
-7. The setup script is going to do a few things: 
-    - move _tos-databridge-shared[].dll(s) to the Windows Directory (%WINDIR%). This is generally not the best idea but we don't know the details of what and where you'll link from so we are doing this for convenience. If you create your own executables you can update your PATH environment variable or setup application specific paths in the registry and move this file there; 
+7. The setup script is going to do a few things:     
     - make sure you have the appropriate run-time libraries installed; if not the appropriate redist executable will be run to install them. (If this fails you can do this manually by downloading the most recent VC++ Redistributable from Microsoft); 
     - create the Windows Service.
  
@@ -151,7 +179,7 @@ The following sections will outline how to setup TOSDB's core C/C++ libraries. A
     - *SC pause TOSDataBridge* - this will pause the service. All the data collected so far will still exist but the engine will stop recording new data in the buffers. It should still be shown as a running process but its status should be Paused. It's not recommended you pause the service.
     - *SC continue TOSDataBridge* - this should continue a paused service. All the data collected so far will still exist, the engine will start recording new data into the buffers, but you will have missed any streaming data while paused. The service should return to the Running state.
     
-10. (***SKIP IF ONLY USING PYTHON***) Include the tos_databridge.h header in your code ( if its C++ make sure the compiler can find containers.hpp and generic.hpp ) and adjust the link settings to import the tos-databridge-0.2-[].lib stub. (If you run into trouble review the VisualStudio settings for tos-databridge-shell[].exe as they should resemble what you're trying to do.)
+10. (***SKIP IF ONLY USING PYTHON***) Include the tos_databridge.h header in your code ( if its C++ make sure the compiler can find containers.hpp, generic.hpp, and exceptions.hpp. ) and adjust the link settings to import the tos-databridge-0.4-[].lib stub. (If you run into trouble review the VisualStudio settings for tos-databridge-shell[].exe as they should resemble what you're trying to do.)
    
 11. (***SKIP IF ONLY USING PYTHON***) Jump down to the next section for some of the basic library calls to add to your program.
    
@@ -165,33 +193,21 @@ The python wrapper is a simpler, yet still robust, way to get started with the u
 
 > **IMPORTANT:** tosdb was only written to be compatible with python3
 
-
-> **IMPLEMENTATION NOTE:** tosdb uses ctypes.py to load the tos-databridge[].dll library, which depends on _tos-databridge-shared[].dll. That's why we manually copied the latter to your %WINDIR% directory in the 'Installation Details' section above.
-
 Make sure the build of the modules you installed in the 'Installation Details' section matches your python build. Open a python shell and look to see if it says 32 bit or 64 bit on the top. 32 bit needs x86 modules; 64 bit needs x64. If they don't match redo the earlier steps. From a command prompt navigate to the tos-databridge/python directory and enter:
       
 `C:\TOSDataBridge\python\> python setup.py install`
 
 Remeber, if installing on a non-windows system to utilize the virtual interface you'll still need to install on a (physically or virtually) networked windows sytem.
 
-> **IMPLEMENTATION NOTE:** We recently shifted from providing (low-level) constants via a C++ extension to having the setup.py script automatically pull constants and topic enum values from tos_databridge.h to generate _tosdb.py, all in pure python. This avoids a number of portability and build issues.
-
 tosdb/ is structured as a package with the bulk of its code in \__init__.py and \_win.py , the latter holding the non-portable parts that \__init__.py will import if it determines it's being run on a windows sytem. This structure allows you to simply import the package(*import tosdb*) or, if needed, extensions like intervalize.py(*from tosdb import intervalize*). Once imported you'll have to initialize it, which requires the path of tos-databridge[].dll or the root directory it's going to search in for the latest version. Please see tosdb/tutorial.md for a walk-through with screen-shots.
 
-> **IMPORTANT:**  There is a minor issue with how python uses the underlying library to deallocate shared resources used by it and the Service. tosdb attemps to handle this implicity in most methods, or explicity via the object's **`__del__()`** method. The problem with the **`__del__()`** method is two-fold: 
+> **IMPORTANT:**  There is a minor issue with how python uses the underlying library to deallocate shared resources, mostly because of python's use of refcounts. WE STRONGLY RECOMMEND you call clean_up() before exiting to be sure all shared resources have been properly dealt with. If this is not possible - the program terminates abruptly, for instance - there's a chance you've got dangling/orphaned resources. 
 
->    1. a del call only decrements the ref-count of the object, it doesn't necessarily call **`__del__()`** and the underlying **`TOSDB_CloseBlock()`**, and 
-
->    2. on exit() the underlying call may fail. In some cases there appears to be no attempt to call the objects **`__del__()`** methods or free the underlying library.
-
-> Because of all this WE STRONGLY RECOMMEND you call clean_up() before exiting to be sure all shared resources have been properly dealt with. If this is not possible - the program terminates abruptly, for instance - there's a chance you've got dangling/orphaned resources. 
-
-> You can check the state of these resources, at any time, with tos-databridge-shell[].exe: 
+> You can dump the state of these resources to a file in /log using tos-databridge-shell[].exe: 
 ``` 
    [--> Connect
    [--> DumpBufferStatus
 ```
-> this creates a dump file in the Systems appdata folder.
 
 
 ### C/C++ Interface ::: Administrative Calls
@@ -242,22 +258,6 @@ Because the data-engine behind the blocks handles a number of types it's necessa
        \\ data is a long long (ext_size_type)
     
 Make sure you don't simply check a bit with logical AND when what you really want is to check the entire type_bits_type value. In this example checking for the INTGR_BIT will return true for def_size_type AND ext_size_type. **`TOSDB_GetTypeString()`** provides a string of the type for convenience.
-
-> **IMPORTANT:** Because the core library can only run on Windows we make certain type assumptions that are checked in tos_databridge.h; client code should understand and respect these assumptions.
-```
-...
-struct{ 
-  static_assert(sizeof(def_size_type) >= 4,"sizeof(def_size_type) < 4");
-  static_assert(sizeof(ext_size_type) == 8,"sizeof(ext_size_type) != 8");
-  static_assert(sizeof(def_price_type) >= 4,"sizeof(def_price_type) < 4");
-  static_assert(sizeof(ext_price_type) == 8,"sizeof(ext_price_type) != 8");
-  static_assert(sizeof(size_type) == 4,"sizeof(size_type) != 4");
-  static_assert(sizeof(type_bits_type) == 1,"sizeof(type_bits_type) != 1");
-}TypeSizeAsserts_;
-... 
-``` 
-   
-.
 
 
 > **IMPLEMENTATION NOTE:** The client-side library extracts data from the Service (tos-databridge-engine[].exe) through a series of protected kernel objects in the global namespace, namely a read-only shared memory segment and a mutex. The Service receives data messages from the TOS DDE server and immediately locks the mutex, writes them into the shared memory buffer, and unlocks the mutex. At the same time the library loops through its blocks and item-topic pairs looking to see what buffers have been updated, acquiring the mutex, and reading the buffers, if necessary. 
@@ -343,13 +343,11 @@ The C calls require pointers to arrays of appropriate type, with the dimensions 
 
 ### C/C++ Interface ::: Logging, Exceptions & Stream Overloads
 - - -
-The library exports some logging functions that dovetail with its use of custom exception classes. Pass a file-name to **`TOSDB_StartLogging()`** to begin. **`TOSDB_LogH()`** and **`TOSDB_Log()`** will log high and low priority messages, respectively. Pass two strings: a tag that provides a short general category of what's being logged and a detailed description. **`TOSDB_LogEx()`** has an additional argument generally used for an error code like one returned from *GetLastError()*. If **`TOSDB_StartLogging()`** hasn't been called and a high-priority event(\_LogH, \_LogEx) is logged, the info will be sent to std::cerr. **`TOSDB_Log_Raw_()`** only takes a single string, doesn't format anything, doesn't provide additional information and, more importantly, doesn't block. **`TOSDB_ClearLog()`** and **`TOSDB_StopLogging()`** have the expected effects.
+The library exports some logging functions that dovetail with its use of custom exception classes. Most of the modules use these logging functions internally. The files are sent to appropriately named .log files in /log. Client code is sent to /log/client-log.log by using the following calls:  **`TOSDB_LogH()`** and **`TOSDB_Log()`** will log high and low priority messages, respectively. Pass two strings: a tag that provides a short general category of what's being logged and a detailed description. **`TOSDB_LogEx()`** has an additional argument generally used for an error code like one returned from *GetLastError()*. 
 
-Most of the modules use these logging functions internally. The files are sent to appropriately named .log files that reside in a /tos-databridge folder in the 'appdata' path for the particular user(the path string returned from the APPDATA environment variable). The service and engine executables, being run by the system account, will write to different paths ("C:/Windows/System32/config/systemprofile/appdata...") than the modules run by the user.
+The library also defines an exception hierarchy (exceptions.hpp) derived from TOSDB_Error and std::exception. C++ code can catch them and respond accordingly; the base class provides threadID(), processID(), tag(), and info() methods as well as the inherited what() from std::exception. 
 
-The library also defines an exception hierarchy derived from TOSDB_Error and std::exception. C++ code can catch them and respond accordingly; the base class provides threadID(), processID(), tag(), and info() methods as well as the inherited what() from std::exception. Namespace data_stream (see data_stream.hpp for the implementation details) also provides some exceptions that, when possible, are caught internally and wrapped in TOSDB_Error.
-
-There are operator\<\< overloads for most of the custom objects and containers returned by the **`TOSDB_Get...`** calls.
+There are operator\<\< overloads (client_out.cpp) for most of the custom objects and containers returned by the **`TOSDB_Get...`** calls.
 
 
 ### Important Details & Provisos
@@ -384,9 +382,9 @@ There are operator\<\< overloads for most of the custom objects and containers r
 
 - **Block Size and Memory:** As mentioned you need to use some sense when creating blocks. As a simple example: let's say you want LAST,BID,ASK for 100 symbols. If you were to create a block of size 1,000,000, WITHOUT DateTime, you would need to allocate over 2.4 GB of memory - not good. As a general rule keep data-streams of similar desired size in the same block, and use new blocks as necessary. In our example if you only need 1,000,000 LAST elems for 10 items and 100 for everything else create 2 blocks: 1) a block of size 1,000,000 with those 10 items and the topic LAST; 2) a block of size 100 with all 100 items and the three topics. Then you would only need a little over 80 MB. Really you could create three blocks to avoid any overlap but in this case its only a minor performance and space improvement and not worth worth the inconvenience.
 
-- **Inter-Process Communication(IPC):** The current means of IPC is a complicated mess. It uses a pair of master/slave objects that share two duplexed named pipes and a shared memory segment.  Because of all the moving parts and the waiting / blocking involved there will be connection issues while trying to debug as one thread hits a break-point causing part of the IPC mechanism's wait to expire. Internally the client library continually calls the masters ->connected() method which is built to fail easily, for any number of reasons. Debugging certain areas of code will make this connected call fail, shuting down communication between master and slave. In certain cases, where one side of the connection is waiting on a message via a pipe you'll get a deadlock.
+- **Inter-Process Communication(IPC):** Uses a pair of master/slave objects that share two duplexed named pipes and a shared memory segment.  Internally the client library continually calls the masters ->connected() method which is built to fail easily, for any number of reasons.
 
-- **Asymmetric Responsibilities & Leaks:** An issue related to the previous is the fact that the connection probing only works one way, from master to slave. The slave(which is owned by the Service) therefore may know that one of the clients isn't there and handle a disconnection, it just doesn't know what stream objects they are responsible for. Internally all it does st keep a ref-count to the streams it's been asked to create and obviously write the necessary data into the appropriate shared memory segments. To see the status of the service and if there are stranded or dangling streams open up the debug shell and use **`TOSDB_DumpSharedBufferStatus`** to dump all the current stream information to a file in the same directly as the internal logs(see above) for debugging. Until a number of these issues are worked out it's recommended to stop and re-start the Service whenever a client executable that has active blocks and streams fails in a way that may not allow it to send TOSDB_SIG_REMOVE messages to the Service.
+- **Asymmetric Responsibilities & Leaks:** Connection 'probing' only works one way, from master to slave. The slave(which is owned by the Service) therefore may know that one of the clients isn't there and handle a disconnection, it just doesn't know what stream objects they are responsible for. Internally all it does is keep a ref-count to the streams it's been asked to create and obviously write the necessary data into the appropriate shared memory segments. To see the status of the service and if there are stranded or dangling streams open up the debug shell and use **`TOSDB_DumpSharedBufferStatus`** to dump all the current stream information to /log . 
 
 - **DateTimeStamp:** There are some issues with the DateTimeStamps attached to data. The first and most important is THESE ARE NOT OFFICIAL STAMPS FROM THE EXCHANGE, they are manually created once the TOS DDE server returns the data. Secondly they use the system clock to assure high_resolution( the micro-seconds field) and therefore there is no guarantee that the clock is accurate or won't change between stamps, as is made by the STL's std::steady_clock. We've also had some issues converting high resolution time-points to C time when micro_seconds are close to 0 that we think is solved by casting the micro_seconds duration to seconds and adding that back to the epoch before converting to C time.
 
@@ -398,12 +396,9 @@ There are operator\<\< overloads for most of the custom objects and containers r
 
 - **Stream Nomenclature:** Somewhat stupidly we termed the IPC data-buffers where all the DDE data is written 'Streams', see AddStream in engine.cpp. These are not to be confused with the data-streams that are collected in the blocks which store the client specified amounts of data. At some point we will change the names to avoid confusion but we'll try use data-streams to refer to ones in the block and Streams or BufferStreams to refer to the others.
 
-- **size_type:** Throughout you may see the use of a size_type in some ugly and seemingly unnecessary casts. Since we are creating 32 and 64 bit binaries which define size_t differently we wanted a guaranteed byte width for python code passing size and pointer-to-size arguments through ctypes.
-
-- **Concurrency:** TOSDB attemptts to manage and synchronize multiple threads, processes, and shared resources while providing a set of substantive guarantees for calling the underlying library functions from multiple threads. Unfortunately the library has not undergone enough testing to make any such guarantees, despite having the framework in place.
 
 
-### Glossary
+### Glossary - Important Interface Objects, Types, and Constants
 - - -
 Variable                 | Description
 ------------------------ | -------------
@@ -413,9 +408,8 @@ data-stream              | the historical data for each item-topic entry (see da
 frame                    | all the items, topics, or matrix of both, for a particular index( only index of 0 is currently implemented )
 TOS_Topics               | a specialization that provides a scoped enum containing all the topics( TOS data fields), a mapping to the relevant strings, and some utilities. This is the recommended way for C++ calling code to pass topics. Inside the high-order bits of the enum value are the type bit constants TPC..[ ] which can be checked directly or via one of the aptly named public utilities
 DateTimeStamp            | struct that wraps the C library tm struct, and adds a micro-second field
-BufferHead               | struct that aligns with the front of the Stream Buffers in shared memory providing info on the buffer to the client
+ info on the buffer to the client
 ILSet<>                  | wrapper around std::set<> type that provides additional means of construction / copy / move / assignment
-TwoWayHashMap<>          |mapping that allows values to be indexed both ways, using custom hashes, with a thread-safe specialization
 UpdateLatency            | Enum of milliseconds values the client library waits before re-checking buffers
 generic_type             | custom generic type (generic.hpp/cpp)
 generic_dts_type         | pair of generic and DateTimeStamp
@@ -434,24 +428,10 @@ def_price_type           | default price type for data ( float )
 ext_price_type           | extended price type for data ( double )
 size_type                | explicit size type for Python Wrapper ( unsigned long )
 type_bits_type           | bits set in an unsigned char to indicate the underlying type of a TOS_Topics::TOPICS
-TOSDB_APP_NAME           | name of the DDE Application ( TOS )
-TOSDB_COMM_CHANNEL       | name of the DynamicIPC communication mechanism
-TOSDB_LOG_PATH           | path derived from users and system's %APPDATA%, for log files to be sent
 TOSDB_INTGR_BIT          | type bits for an integral data type
 TOSDB_QUAD_BIT           | type bits for an 8-byte data type
 TOSDB_STRING_BIT         | type bits for a string data type
 TOSDB_TOPIC_BITMASK      | logical OR of all the type bits
-TOSDB_SIG_ADD            | message sent to the data engine to add a stream/connection to TOS
-TOSDB_SIG_REMOVE         | message sent to the data engine to remove a stream/connection to TOS
-TOSDB_SIG_PAUSE          | message sent to the data engine from the service to pause
-TOSDB_SIG_CONTINUE       | message sent to the data engine from the service to continue
-TOSDB_SIG_STOP           | message sent to the data engine from the service to stop
-TOSDB_SIG_DUMP           | message sent to the data engine to dump the buffer data
-TOSDB_SIG_GOOD           | signal sent between data engine and service
-TOSDB_SIG_BAD            | signal sent between data engine and service
-TOSDB_MIN_TIMEOUT        | minimum timeout period for the locks/latches/signals used to for internal communication / synchronization
-TOSDB_DEF_TIMEOUT        | default timeout for above
-TOSDB_SHEM_BUF_SZ        | size in bytes of the buffer that the data engine will write to
 TOSDB_MAX_STR_SZ         | maximum string size for client input (items, topics etc) among other strings
 TOSDB_STR_DATA_SZ        | maximum size of char buffer pulled from DDE server and pushed into a data-stream of std::strings (everything larger is truncated)
 TOSDB_BLOCK_ID_SZ        | maximum string size for the name/ID of a TOSDBlock
