@@ -67,11 +67,11 @@ CreateBufferName(std::string sTopic, std::string sItem)
 
       auto f = [](char x){ return !isalnum(x) && x != '_'; };
       str.erase(std::remove_if(str.begin(), str.end(), f), str.end());
-
-#ifdef KGBLNS_
-      return std::string("Global\\").append(str);
-#else
+     
+#ifdef NO_KGBLNS
       return str;
+#else
+      return std::string("Global\\").append(str);
 #endif
 }
 

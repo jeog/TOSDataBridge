@@ -163,7 +163,7 @@ private:
     bool   
     _deallocate(void* start) const;
 
-protected:    
+protected:        
     static const unsigned long MAX_SZ = LONG_MAX;
     static const unsigned int ALLOC = 1;
     static const unsigned int DEALLOC = 2;
@@ -178,13 +178,13 @@ protected:
 
     DynamicIPCBase(std::string name, size_t sz = 0)
         :
-#ifdef KGBLNS_
-            _shem_str(std::string("Global\\").append(std::string(name).append("_shem"))),
-#else
+#ifdef NO_KGBLNS
             _shem_str(std::string(name).append("_shem")),
+#else
+            _shem_str(std::string("Global\\").append(name).append("_shem")),            
 #endif
-            _xtrnl_pipe_str(std::string("\\\\.\\pipe\\").append(std::string(name).append("_pipe"))),
-            _intrnl_pipe_str(std::string("\\\\.\\pipe\\").append(std::string(name).append("pipe_intrnl"))), 
+            _xtrnl_pipe_str(std::string("\\\\.\\pipe\\").append(name).append("_pipe")),
+            _intrnl_pipe_str(std::string("\\\\.\\pipe\\").append(name).append("_pipe_intrnl")), 
             _fmap_hndl(NULL),
             _mmap_addr(NULL),
             _xtrnl_pipe_hndl(INVALID_HANDLE_VALUE),
@@ -213,7 +213,7 @@ public:
         if(!blk || memcpy_s(blk, sz, data, sz))
             return shem_chunk(0,0);
 
-		/* cast to long OK; blk can't be > LONG_MAX from _mmap_addr */
+		    /* cast to long OK; blk can't be > LONG_MAX from _mmap_addr */
         return shem_chunk((long)((size_t)blk - (size_t)_mmap_addr), sz);        
     }
 

@@ -119,10 +119,12 @@ SlowHeapManager::size(void* start)
     return *(_head_ty*)(p); 
 }
 
-#ifdef KGBLNS_
-const char* DynamicIPCBase::KMUTEX_NAME = "Global\\DynamicIPC_Master_MUTEX1";
+
+const char* DynamicIPCBase::KMUTEX_NAME =   
+#ifdef NO_KGBLNS
+  "DynamicIPC_Master_MUTEX1";
 #else
-const char* DynamicIPCBase::KMUTEX_NAME = "DynamicIPC_Master_MUTEX1";
+  "Global\\DynamicIPC_Master_MUTEX1";
 #endif
 
 void* 

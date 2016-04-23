@@ -84,13 +84,15 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 #endif /* __cplusplus */
 
 
-#if !defined(_DEBUG) || defined(KERNEL_GLOBAL_NAMESPACE)
+#ifdef NO_KERNEL_GLOBAL_NAMESPACE
 /* because the service operates in session #0 and the engine/client code 
-   will run in session #1 (or higher) we need to use the global namespace 
-   for mutexes and file-mapping kernel objects (not the case during debug) */
-#define KGBLNS_
+   will run in session #1 (or higher) we, in most cases, need to use the 
+   global namespace for mutexes and file-mapping kernel objects  
+   
+   In rare cases(debugging service in same session) we should
+   define NO_KERNEL_GLOBAL_NAMESPACE to use the local namespace        */
+#define NO_KGBLNS
 #endif
-
 
 /* the core types implemented by the data engine: engine-core.cpp 
 

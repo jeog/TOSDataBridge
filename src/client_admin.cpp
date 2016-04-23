@@ -45,6 +45,8 @@ typedef std::insert_iterator<topic_set_type>        topic_set_insert_iter_ty;
 
 typedef std::chrono::duration<long, std::milli>     milli_sec_ty;
 
+typedef DynamicIPCMaster::shem_chunk                shem_chunk_ty;
+
 LPCSTR LOG_NAME   = "client-log.log";
 
 std::map<std::string,TOSDBlock*>  dde_blocks;
@@ -82,15 +84,19 @@ _getBlockPtr(std::string id)
 }
 
 
-long /* returns 0 on sucess */
+long 
 RequestStreamOP(TOS_Topics::TOPICS tTopic, 
                 std::string sItem, 
                 unsigned long timeout, 
                 unsigned int opcode)
-/* needs exclusivity but can't block; CALLING CODE MUST LOCK*/
+/* needs exclusivity but can't block; CALLING CODE MUST LOCK
+   returns 0 on sucess
+         < 0 on IPC error
+         = 1 if the engine fails to do what is requested */
 {
     long ret;
     bool ret_stat;  
+    shem_chunk_ty arg1, arg2, arg3;
 
     if(opcode != TOSDB_SIG_ADD && opcode != TOSDB_SIG_REMOVE)
         return -1;              
@@ -99,14 +105,13 @@ RequestStreamOP(TOS_Topics::TOPICS tTopic,
                    "RequestStreamOP timed out trying to grab pipe", 
                    -2);    
 
-    DynamicIPCMaster::shem_chunk arg1 = master.insert(&tTopic);
-    DynamicIPCMaster::shem_chunk arg2 = master.insert(sItem.c_str(), 
-                                                      (size_type)sItem.size() + 1); 
-    DynamicIPCMaster::shem_chunk arg3 = master.insert(&timeout);
+    /* need to stay alive until we can remove(below) */
+    arg1 = master.insert(&tTopic);
+    arg2 = master.insert(sItem.c_str(), sItem.size() + 1); 
+    arg3 = master.insert(&timeout);
 
-    master << DynamicIPCMaster::shem_chunk(opcode, 0) 
-           << arg1 << arg2 << arg3 
-           << DynamicIPCMaster::shem_chunk(0,0);    
+    master << shem_chunk_ty(opcode, 0) << arg1 << arg2 << arg3 
+           << shem_chunk_ty(0,0);    
 
     ret_stat = master.recv(ret); 
     /* don't remove until we get a response ! */
@@ -118,8 +123,10 @@ RequestStreamOP(TOS_Topics::TOPICS tTopic,
         return -3;
     }
     master.release_pipe();
+
     return ret;
 }
+
 
 void 
 CaptureBuffer(TOS_Topics::TOPICS tTopic, 
@@ -358,7 +365,7 @@ DllMain(HANDLE mod, DWORD why, LPVOID res) /* ENTRY POINT */
                 }
                 TOSDB_Disconnect();  
             }
-			StopLogging();
+            StopLogging();
         } 
         break;    
     default: 
@@ -467,12 +474,10 @@ TOSDB_CreateBlock(LPCSTR id,
 }
 
 
-/* adding sets of topics and strings, dealing with pre-cache; 
-   all Add_ methods end up here  */
 int 
-TOSDB_Add(std::string id, 
-          str_set_type sItems, 
-          topic_set_type tTopics)
+TOSDB_Add(std::string id, str_set_type sItems, topic_set_type tTopics)
+/* adding sets of topics and strings, dealing with pre-cache; 
+   all Add_ methods end up in here  */
 {
     topic_set_type tdiff, old_topics, tot_topics;
     str_set_type   idiff, old_items,  tot_items, iunion;
@@ -487,17 +492,22 @@ TOSDB_Add(std::string id,
         return -2;
     }    
 	
-	/* remove NULL topics */
+	  /* remove NULL topics */
     auto is_null = [&](TOS_Topics::TOPICS t){ 
                        return t == TOS_Topics::TOPICS::NULL_TOPIC; 
-	               };    
+	                 };    
     tTopics.erase( std::remove_if(tTopics.begin(), tTopics.end(), is_null), 
                    tTopics.end() );	
+
+    /* fail if both are empty - note: this could result from NULL topics */
+    if( sItems.empty() && tTopics.empty() )
+        return -1; /* closer to bad param than anything else */
 
     GLOBAL_RLOCK_GUARD;
     /* --- CRITICAL SECTION --- */
 
-    if(!(db = _getBlockPtr(id)))
+    db = _getBlockPtr(id);
+    if(!db)
         return -3;
 
     old_topics = db->block->topics();
@@ -872,8 +882,7 @@ TOSDB_DumpSharedBufferStatus()
                    "TOSDB_DumpSharedBufferStatus timeout trying to grab pipe",
                    -1);
   
-    master << DynamicIPCMaster::shem_chunk(TOSDB_SIG_DUMP, 0) 
-           << DynamicIPCMaster::shem_chunk(0,0);
+    master << shem_chunk_ty(TOSDB_SIG_DUMP, 0) << shem_chunk_ty(0,0);
 
     if( !master.recv(ret) ){
         master.release_pipe();
