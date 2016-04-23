@@ -83,11 +83,14 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 
 #endif /* __cplusplus */
 
-#define KERNEL_GLOBAL_NAMESPACE
-/* if we need to prefix our inter-Session kernel objects with 'Global\' */
-#if defined(KERNEL_GLOBAL_NAMESPACE) || defined(_DEBUG)
+
+#if !defined(_DEBUG) || defined(KERNEL_GLOBAL_NAMESPACE)
+/* because the service operates in session #0 and the engine/client code 
+   will run in session #1 (or higher) we need to use the global namespace 
+   for mutexes and file-mapping kernel objects (not the case during debug) */
 #define KGBLNS_
 #endif
+
 
 /* the core types implemented by the data engine: engine-core.cpp 
 
