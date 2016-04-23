@@ -16,7 +16,7 @@ Obviously the core implementation is not portable, but the python interface does
 
 ### Versions
 - - -
-- v0.3 (branch v0.3) : 'stable' version 
+- v0.3 (branch v0.3) : 'stable' version  **contains binaries/signatures**
 
 - v0.4 (branch master) : currently undergoing a major refactoring - **interface is subject to slight change.**
 
@@ -37,8 +37,8 @@ Obviously the core implementation is not portable, but the python interface does
     - consider an 'intermediate' API between client lib and engine, allowing users to inject their own callbacks/hooks for handling raw data from the engine
 
     ##### Other Stuff
-    - Ff you simply want the core functionality - with the small(est) chance of running into bugs - use v0.3. 
-    - If you want the latest-and-greatest features, improvements etc. - and don't mind a bit of real-time 'grimey-ness' - go w/ master. 
+    - If you simply want the core functionality and/or pre-compiled binaries - with the small(est) chance of running into bugs - use v0.3. 
+    - If you want the latest-and-greatest features, improvements etc. - don't mind building your own and a bit of real-time 'grimey-ness' - go w/ master. 
     - Major changes will generally lead to a new version/branch, but not necessarily the label of 'stable'. Minor changes may or may not use a seperate branch that will be merged back into master.
     - Contributions - testing, bug fixes, suggestions, extensions, whatever - are always welcome. 
 
@@ -102,7 +102,7 @@ Obviously the core implementation is not portable, but the python interface does
 
 - **/bin** 
    
-     (Pre-)Compiled binaries by build type. (No debug builds)
+     (Pre-)Compiled binaries by build type. (No debug builds) **all branches EXCEPT master**
 
     - ***tos-databridge-serv-[x86|x64].exe*** : The service process that spawns and controls the main engine described below. This program is run as a typical windows service with SYSTEM privileges; as such its intended role is very limited. (For debugging) pass the --noservice arg to run as a pure executable. 
 
@@ -126,7 +126,7 @@ Obviously the core implementation is not portable, but the python interface does
 
 - **/sigs** 
 
-    The detached signature for each binary; sha256 checksums for binaries, signatures, and the jeog.dev public key
+    The detached signature for each binary; sha256 checksums for binaries, signatures, and the jeog.dev public key **all branches EXCEPT master**
 
 - **/res** 
 
