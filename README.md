@@ -18,21 +18,21 @@ Obviously the core implementation is not portable, but the python interface does
 - - -
 Major changes will generally lead to a new version/branch, but not necessarily the label of 'stable'. Minor changes may or may not use a seperate branch that will be merged back into master when deemed 'usable'.  
 
-- **v0.3 (branch 'v0.3')**
+- v0.3 (branch 'v0.3')
     - 'stable' version  
     - *** ***contains up-to-date binaries/signatures*** ***
     - use the README from the v0.3 branch (instead of this one)
 
-- **v0.4 (branch 'master')**
+- v0.4 (branch 'master')
     - currently undergoing a major refactoring 
     - interface is subject to slight change 
     - *** ***may contain some binaries(no signatures)*** ***
 
-- **What version should I use?**
+- What version should I use?
     - v0.3 : If you simply want the core functionality - and/or need the most up-to-date pre-compiled binaries - with the small(est) chance of running into bugs.
     - v0.4/master : If you want the latest-and-greatest features, improvements etc., don't mind building your own and dealing with more bugs, or may want to contribute.     
 
-- **Upcoming (pre v1.0) versions will look to:**
+- Upcoming (pre v1.0) versions will look to:
     - simplify the main header: tos_databridge.h
     - simplify the API 
     - remove (or atleast improve) the pre-caching behavior of blocks
@@ -389,22 +389,19 @@ There are operator\<\< overloads (client_out.cpp) for most of the custom objects
 
 - **Closing Large Blocks:** Currently Closing/Destroying large blocks(1,000,000+ combined data-stream elements) involves a large number of internal deallocations/destructions and becomes quite CPU intensive. The process is spun-off into its own thread but this may fail, returning to the main thread when the library is being freed, or block the python interpreter regardless of when or how it's called. One alternative is to utilize **`TOSDB_SetBlockSize() / set_block_size()`** to massively shrink the block/data-streams before closing the block. Internally the data-stream deque objects calls .resize() and .shrink_to_fit() but there are no guarantees as to if and when the actual memory will be deallocated so use caution when creating large blocks, especially those with many topics and items as the number of data-streams is a multiple of the two.
 
-- **Block Size and Memory:** As mentioned you need to use some sense when creating blocks. As a simple example: let's say you want LAST,BID,ASK for 100 symbols. If you were to create a block of size 1,000,000, WITHOUT DateTime, you would need to allocate over 2.4 GB of memory - not good. As a general rule keep data-streams of similar desired size in the same block, and use new blocks as necessary. In our example if you only need 1,000,000 LAST elems for 10 items and 100 for everything else create 2 blocks: 1) a block of size 1,000,000 with those 10 items and the topic LAST; 2) a block of size 100 with all 100 items and the three topics. Then you would only need a little over 80 MB. Really you could create three blocks to avoid any overlap but in this case its only a minor performance and space improvement and not worth worth the inconvenience.
+- **Block Size and Memory:** As mentioned you need to use some sense when creating blocks. As a simple example: let's say you want LAST,BID,ASK for 100 symbols. If you were to create a block of size 1,000,000, WITHOUT DateTime, you would need to allocate over 2.4 GB of memory - not good. As a general rule keep data-streams of similar desired size in the same block, and use new blocks as necessary. In our example if you only need 1,000,000 LAST elems for 10 items and 100 for everything else create 2 blocks: 1) a block of size 1,000,000 with those 10 items and the topic LAST; 2) a block of size 100 with all 100 items and the three topics. Then you would only need a little over 80 MB. (Really you could create three blocks to avoid any overlap but in this case its only a minor performance and space improvement and not worth worth the inconvenience.)
 
 - **Inter-Process Communication(IPC):** Uses a pair of master/slave objects that share two duplexed named pipes and a shared memory segment.  Internally the client library continually calls the masters ->connected() method which is built to fail easily, for any number of reasons.
 
 - **Asymmetric Responsibilities & Leaks:** Connection 'probing' only works one way, from master to slave. The slave(which is owned by the Service) therefore may know that one of the clients isn't there and handle a disconnection, it just doesn't know what stream objects they are responsible for. Internally all it does is keep a ref-count to the streams it's been asked to create and obviously write the necessary data into the appropriate shared memory segments. To see the status of the service and if there are stranded or dangling streams open up the debug shell and use **`TOSDB_DumpSharedBufferStatus`** to dump all the current stream information to /log . 
 
-- **DateTimeStamp:** There are some issues with the DateTimeStamps attached to data. The first and most important is THESE ARE NOT OFFICIAL STAMPS FROM THE EXCHANGE, they are manually created once the TOS DDE server returns the data. Secondly they use the system clock to assure high_resolution( the micro-seconds field) and therefore there is no guarantee that the clock is accurate or won't change between stamps, as is made by the STL's std::steady_clock. We've also had some issues converting high resolution time-points to C time when micro_seconds are close to 0 that we think is solved by casting the micro_seconds duration to seconds and adding that back to the epoch before converting to C time.
+- **DateTimeStamp:** THESE ARE NOT OFFICIAL STAMPS FROM THE EXCHANGE, they are manually created once the TOS DDE server returns the data. They use the system clock to assure high_resolution( the micro-seconds field) and therefore there is no guarantee that the clock is accurate or won't change between stamps, as is made by the STL's std::steady_clock. 
 
 - **Bad Items & Topics:** The implementation can easily handle bad topics passed to a call since it has a large mapping of the allowed topic strings mapped to enum values for TOS_Topics. If a passed string is mapped to a NULL_TOPIC then it can be rejected, or even if it is passed it won't get a positive ACK from the server and should be rejected. Bad item strings on the other hand are a bit of a problem. The DDE server is supposed to respond with a negative ACK if the item is invalid but TOS responds with a positive ACK and a 'N/A' string. If you look in the internally generated engine.log file after passing a bad item you may see entries like "invalid stod argument" which is the engine trying to convert that N/A into the appropriate numerical type. Currently it's up to the user to deal with passing bad Items. Obviously this is not ideal but hey, that's life.
 
-- **Pre-Caching:** As mentioned earlier the block requires at least one valid topic AND item, otherwise it can't hold a data-stream. Because of this if only items(topics) are added, or all topics(items) are removed, any of those, or the remaining, items(topics) are held in a pre-cache which is then emptied when a valid topic(item) is added. This has two important consequences: 1) pre-cached entries are assumed to be valid until they come out and are sent to the engine and 2) when using the set of TOSDB_Get...[Name] C/C++ calls or get_items/topics() python calls you will NOT see pre-cached items. This can be particularly confusing if you remove all the items from a block and then want to check what topics remain as they have all been removed until an item is re-entered. Currently there are C++ calls to check the pre-cached but not C or python versions.
+- **Pre-Caching:** As mentioned the block requires at least one valid topic AND item, otherwise it can't hold a data-stream. Because of this if only items(topics) are added, or all topics(items) are removed, any of those, or the remaining, items(topics) are held in a pre-cache which is then emptied when a valid topic(item) is added. This has two important consequences: 1) pre-cached entries are assumed to be valid until they come out and are sent to the engine and 2) when using the set of TOSDB_Get...[Name] C/C++ calls or get_items/topics() python calls you will NOT see pre-cached items. This can be particularly confusing if you remove all the items from a block and then want to check what topics remain, as they have all been removed until an item is re-entered. Currently there are C++ calls to check the pre-cached but not C or python versions.
 
-- **SendMessage vs. SendMessageTimeout:** To initiate a topic with the TOS server we should send out a broadcast message via the SendMessage() system call. This call is built to block to insure the client has had a chance to deal with the ACK message. For some reason, it's deadlocking, so we've been forced to use SendMessageTimeout() with an arbitrary 500 millisecond timeout. Therefore until this gets fixed adding topics will introduce an amount of latency in milliseconds = 500 x # of topics.
-
-- **Stream Nomenclature:** Somewhat stupidly we termed the IPC data-buffers where all the DDE data is written 'Streams', see AddStream in engine.cpp. These are not to be confused with the data-streams that are collected in the blocks which store the client specified amounts of data. At some point we will change the names to avoid confusion but we'll try use data-streams to refer to ones in the block and Streams or BufferStreams to refer to the others.
-
+- **SendMessage vs. SendMessageTimeout:** To initiate a topic with the TOS server we should send out a broadcast message via the SendMessage() system call. This call is built to block to insure the client has had a chance to deal with the ACK message. For some reason, it's deadlocking, so we've been forced to use SendMessageTimeout() with an arbitrary 500 millisecond timeout. Therefore, until this gets fixed adding topics will introduce an amount of latency in milliseconds = 500 x # of topics.
 
 
 ### Glossary - Important Interface Objects, Types, and Constants
@@ -430,12 +427,12 @@ generic_dts_map_type     | mapping of item/topic strings and generic_dts_type
 generic_dts_matrix_type  | mapping of item/topic strings and generic_dts_map_type
 str_set_type             | instantiation of ILSet<> for std::string
 topic_set_type           | instantiation of ILSet<> for TOS_Topics::TOPICS
-def_size_type            | default size type for data ( long )
-ext_size_type            | extend size type for data ( long long )
-def_price_type           | default price type for data ( float )
-ext_price_type           | extended price type for data ( double )
-size_type                | explicit size type for Python Wrapper ( unsigned long )
-type_bits_type           | bits set in an unsigned char to indicate the underlying type of a TOS_Topics::TOPICS
+def_size_type            | default size type for data (long)
+ext_size_type            | extend size type for data (long long)
+def_price_type           | default price type for data (float)
+ext_price_type           | extended price type for data (double)
+size_type                | explicit size type for Python Wrapper (uint32_t)
+type_bits_type           | bits set in an unsigned char to indicate the underlying type of a TOS_Topics::TOPICS (uint8_t)
 TOSDB_INTGR_BIT          | type bits for an integral data type
 TOSDB_QUAD_BIT           | type bits for an 8-byte data type
 TOSDB_STRING_BIT         | type bits for a string data type
