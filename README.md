@@ -416,8 +416,7 @@ items                    | strings of symbols to be added (e.g. GE, SPY, GOOG )
 data-stream              | the historical data for each item-topic entry (see data_stream.hpp)
 frame                    | all the items, topics, or matrix of both, for a particular index( only index of 0 is currently implemented )
 TOS_Topics               | a specialization that provides a scoped enum containing all the topics( TOS data fields), a mapping to the relevant strings, and some utilities. This is the recommended way for C++ calling code to pass topics. Inside the high-order bits of the enum value are the type bit constants TPC..[ ] which can be checked directly or via one of the aptly named public utilities
-DateTimeStamp            | struct that wraps the C library tm struct, and adds a micro-second field
- info on the buffer to the client
+DateTimeStamp            | struct that wraps the C library tm struct, and adds a micro-second field info on the buffer to the client
 ILSet<>                  | wrapper around std::set<> type that provides additional means of construction / copy / move / assignment
 UpdateLatency            | Enum of milliseconds values the client library waits before re-checking buffers
 generic_type             | custom generic type (generic.hpp/cpp)
