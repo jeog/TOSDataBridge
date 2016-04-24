@@ -67,10 +67,11 @@ Major changes will generally lead to a new version/branch, but not necessarily t
     ```
     (Admin) C:\> SC start TOSDataBridge
     ```
+   (see #9 in the 'Installation Details' section for more info on using the service.)
 3. Log on to your TOS platform
 
 ##### For C/C++:
-- Include tos_databridge.h header in your code (if C++ make sure containers.hpp and generic.hpp can be found by the compiler)
+- Include tos_databridge.h header in your code 
 - Use the library calls detailed in the **C/C++ Interface...** sections below
 - Link with *tos-databridge-0.4-[x86|x64].dll*
 - Build
@@ -126,7 +127,7 @@ Even if you are not comfortable contributing code, simply reporting bugs or ques
 
 - **/sigs** 
 
-    The detached signature for each binary; sha256 checksums for binaries, signatures, and the jeog.dev public key; **master branch may or may not contain all, or any**
+    The detached signature for each binary; sha256 checksums for binaries, signatures, and the jeog.dev public key; **(master branch may or may not contain all, or any)**
 
 - **/res** 
 
@@ -139,20 +140,19 @@ Even if you are not comfortable contributing code, simply reporting bugs or ques
 ### Build Notes
 - - -
 
-- Object code and logs are placed into an intermediate sub-directory of /VisualStudioBuild of form /$(Configuration)/$(Platform). After the object code is linked the binaries are sent to a sub-directory of /bin of form /$(Configuration)/$(Platform) and the symbol files are sent to /symbols/$(Configuration).
+- Object code and logs are placed into an intermediate sub-directory of /VisualStudioBuild of form /$(Configuration)/$(Platform). After the object code is linked the binaries are sent to a sub-directory of /bin of form /$(Configuration)/$(Platform) and the symbol files (if applicable) are sent to /symbols/$(Configuration).
 
 - There are 32 and 64 bit (Win32 and x64) binaries included along with the relevant configurations in the VisualStudio solution. Debug versions have a "_d" suffix to avoid collisions. It's up to the user to choose and use the correct builds for ALL modules. The python library will search for the underlying DLL (-x64 vs. -x86) that matches the build of that version of python.
 
 
 ### Installation Details
 - - -
-The following sections will outline how to setup TOSDB's core C/C++ libraries. At the end of this section is a (slightly out-dated) screen-shot of all the relevant commands for using the x64 binaries. **If you're only interested in using the python wrapper you still need to follow these steps**
 
 1. Move the unzipped tos-databridge folder to its permanent location(our's is in C:/ for convenience.) If you change it in the future you'll need to redo some of these steps because the Service module relies on an absolute path.
 
 2. Determine the appropriate build you'll need: 32-bit(x86) or 64-bit(x64). ***Make sure you don't mix and match in future steps, python will automatically look for a version that matches its own build.***
  
-3. (Optional) Compile the appropriate binaries if building from source.  The easiest way to do this is open the .sln file in /VisualStudioBuild, go to the appropriate build, and select 'build'. (If this fails, try 'clean' and then 'build'.)
+3. (***Optional***) Compile the appropriate binaries if building from source.  The easiest way is to use VisualStudio: open the .sln file in /VisualStudioBuild, go to the appropriate build, and select 'build'. (If this fails, try 'clean' and then 'build'.)
    
 4. Determine if your TOS platform runs under elevated privileges (does it ask for an admin password before starting?)
    
@@ -175,9 +175,17 @@ The following sections will outline how to setup TOSDB's core C/C++ libraries. A
  
 8. Before we continue it's a good idea, possibly necessary, to add the tos-databridge binaries, or the whole directory, to your anti-virus's 'white-list'. ***There's a good chance that if you don't do this tos-databridge-engine[].exe, at the very least, may be stopped and/or deleted for 'suspicious' behavior.***
   
-9.  After the Windows Service has been successfully created run ```C:\> 'SC start TOSDataBridge'``` . Returned text and various system utilities should confirms this. (SEE THE SCREEN-SHOT BELOW) Some other commands you may need:
+9.  After the Windows Service has been successfully created run: 
+
+    ```C:\> 'SC start TOSDataBridge'```  
+
+    Returned text and various system utilities should confirms the service is running, (see screen-shot below).
+
+    ***To avoid this step in the future simply leave the service running and/or set it to start automatically on system startup.*** (Go to the services tool, with Admin priveleges, right-click the TOSDataBridge entry, go to properties and change the startup method.)
+
+    Some other commands you may need:
     - *SC stop TOSDataBridge* - this will stop the service. All the data collected so far will still exist but the engine will sever its connection to TOS and exit.  It should no longer be shown as a running process and its status should be Stopped.
-    - *SC pause TOSDataBridge* - this will pause the service. All the data collected so far will still exist but the engine will stop recording new data in the buffers. It should still be shown as a running process but its status should be Paused. It's not recommended you pause the service.
+    - *SC pause TOSDataBridge* - this will pause the service. All the data collected so far will still exist but the engine will stop recording new data in the buffers. It should still be shown as a running process but its status should be Paused. ***It's not recommended you pause the service.***
     - *SC continue TOSDataBridge* - this should continue a paused service. All the data collected so far will still exist, the engine will start recording new data into the buffers, but you will have missed any streaming data while paused. The service should return to the Running state.
     
 10. (***SKIP IF ONLY USING PYTHON***) Include the tos_databridge.h header in your code ( if its C++ make sure the compiler can find containers.hpp, generic.hpp, and exceptions.hpp. ) and adjust the link settings to import the tos-databridge-0.4-[].lib stub. (If you run into trouble review the VisualStudio settings for tos-databridge-shell[].exe as they should resemble what you're trying to do.)
@@ -357,7 +365,7 @@ There are operator\<\< overloads (client_out.cpp) for most of the custom objects
 
     1. Clean up: close blocks, call clean_up etc. 
     2. Exit your program
-    3. Stop the Service 
+    3. Stop the Service (optional)
     4. Close TOS platform
 
     Once you've done (i) the remaining order is less important. (The Service is built to work with multiple instantiations of the client library, maintaining ref-counts to shared resources. Just because you cleaned up doesn't mean another instance has, or vice-versa.)
