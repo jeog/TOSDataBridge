@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Express 2012 for Windows Desktop
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "tos-databridge-0.2", "tos-databridge.vcxproj", "{2C63A7B0-C01A-408F-A51D-1A92EB6786D0}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "tos-databridge-0.4", "tos-databridge.vcxproj", "{2C63A7B0-C01A-408F-A51D-1A92EB6786D0}"
 	ProjectSection(ProjectDependencies) = postProject
 		{ADBF916E-83D6-4FD2-8CF6-306B032E428B} = {ADBF916E-83D6-4FD2-8CF6-306B032E428B}
 	EndProjectSection
@@ -16,7 +16,7 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "tos-databridge-shell", "tos
 		{2C63A7B0-C01A-408F-A51D-1A92EB6786D0} = {2C63A7B0-C01A-408F-A51D-1A92EB6786D0}
 	EndProjectSection
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "_tos-databridge", "_tos-databridge-shared.vcxproj", "{ADBF916E-83D6-4FD2-8CF6-306B032E428B}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "_tos-databridge", "_tos-databridge.vcxproj", "{ADBF916E-83D6-4FD2-8CF6-306B032E428B}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "tos-databridge-engine", "tos-databridge-engine-core.vcxproj", "{607451BD-7C91-4990-BC7D-A363B5E70A35}"
 	ProjectSection(ProjectDependencies) = postProject
