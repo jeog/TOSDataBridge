@@ -39,6 +39,10 @@ IF "%1"=="x64" (
         echo - Can't find "%cd%\\bin\\Release\\x64\\tos-databridge-serv-x64.exe", exiting setup...
         EXIT /B 1
     )
+    IF NOT EXIST %cd%\\bin\\Release\\x64\\tos-databridge-engine-x64.exe (
+        echo - Can't find "%cd%\\bin\\Release\\x64\\tos-databridge-engine-x64.exe", exiting setup...
+        EXIT /B 1
+    )
     echo + Creating TOSDataBridge Service ...
     SC stop TOSDataBridge 1>NUL 2>NUL    
     SC delete TOSDataBridge 1>NUL 2>NUL   
@@ -69,6 +73,10 @@ IF "%1"=="x64" (
             echo - Can't find "%cd%\\bin\\Release\\Win32\\tos-databridge-serv-x86.exe", exiting setup...
             EXIT /B 1
         )   
+        IF NOT EXIST %cd%\\bin\\Release\\Win32\\tos-databridge-engine-x86.exe (
+            echo - Can't find "%cd%\\bin\\Release\\Win32\\tos-databridge-engine-x86.exe", exiting setup...
+            EXIT /B 1
+        ) 
         echo + Creating TOSDataBridge Service ...
         SC delete TOSDataBridge 1>NUL 2>NUL
         SC delete TOSDataBridge 1>NUL 2>NUL         

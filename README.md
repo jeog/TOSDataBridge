@@ -16,32 +16,27 @@ Obviously the core implementation is not portable, but the python interface does
 
 ### Versions
 - - -
-- v0.3 (branch v0.3) : 'stable' version  **contains up-to-date binaries/signatures**
+Major changes will generally lead to a new version/branch, but not necessarily the label of 'stable'. Minor changes may or may not use a seperate branch that will be merged back into master when deemed 'usable'.  
 
-- v0.4 (branch master) : currently undergoing a major refactoring - interface is subject to slight change. **may contain some binaries**
+- **v0.3 (branch 'v0.3')**
+    - 'stable' version  
+    - *** ***contains up-to-date binaries/signatures*** ***
+    - use the README from the v0.3 branch (instead of this one)
 
-    ##### What's new:
-    - merge 'static' and 'shared' backend libs into a single dll (don't move to C:/Windows in tosdb-setup.bat)
-    - move template implementation code from data_streams.hpp and raw_data_block.hpp to src/data_streams.tpp and src/raw_data_block.tpp, respectively
-    - move logging files to a local 'log' folder (make path relative to binaries)
-    - remove Start/Stop/Clear log API functions; forcing all client log data to log/client-log.log
-    - improve readability: prototype style, spacing etc; remove uncessary headers
-    - remove unecessary concurrency and IPC code; improve type issues
-    - simplify exceptions, move global exceptions to exceptions.hpp 
-    - simplify the topic-string mapping, how it's defined/exported
+- **v0.4 (branch 'master')**
+    - currently undergoing a major refactoring 
+    - interface is subject to slight change 
+    - *** ***may contain some binaries(no signatures)*** ***
 
-    ##### What's next (pre v1.0) :
+- **What version should I use?**
+    - v0.3 : If you simply want the core functionality - and/or need the most up-to-date pre-compiled binaries - with the small(est) chance of running into bugs.
+    - v0.4/master : If you want the latest-and-greatest features, improvements etc., don't mind building your own and dealing with more bugs, or may want to contribute.     
+
+- **Upcoming (pre v1.0) versions will look to:**
     - simplify the main header: tos_databridge.h
     - simplify the API 
     - remove (or atleast improve) the pre-caching behavior of blocks
     - consider an 'intermediate' API between client lib and engine, allowing users to inject their own callbacks/hooks for handling raw data from the engine
-
-    ##### Other Stuff
-    - If you simply want the core functionality and/or need the most up-to-date pre-compiled binaries - with the small(est) chance of running into bugs - use v0.3. 
-    - If you want the latest-and-greatest features, improvements etc. - don't mind building your own and dealing with more bugs - go w/ master. 
-    - Major changes will generally lead to a new version/branch, but not necessarily the label of 'stable'. Minor changes may or may not use a seperate branch that will be merged back into master.
-    - Contributions - testing, bug fixes, suggestions, extensions, whatever - are always welcome. 
-
 
 ### Quick Setup
 - - -
@@ -85,6 +80,11 @@ Obviously the core implementation is not portable, but the python interface does
 - Open a python shell/interpreter or create a script
 - import tosdb
 
+### Contributions
+---
+This project grew out of personal need and is only maintained by a single person. Contributions - testing, bug fixes, suggestions, extensions, whatever - are always welcome. If you want to contribute a non-trivial fix, new module, extension etc. it's recommended you communicate the intention first to avoid unnecessary and/or conflicting work.
+
+Even if you are not comfortable contributing code, simply reporting bugs or questioning (seemingly) idiotic or unintuitive interface design can be very helpful. Chances are, if you think something is an issue, others will too.
 
 ### Contents
 - - -
@@ -102,15 +102,15 @@ Obviously the core implementation is not portable, but the python interface does
 
 - **/bin** 
    
-     (Pre-)Compiled binaries by build type. (No debug builds) **master branch may or may not contain all, or any**
+     Compiled (release only) binaries by build type. **(master branch may, or may not, contain all, or any)**
 
-    - ***tos-databridge-serv-[x86|x64].exe*** : The service process that spawns and controls the main engine described below. This program is run as a typical windows service with SYSTEM privileges; as such its intended role is very limited. (For debugging) pass the --noservice arg to run as a pure executable. 
+    - ***tos-databridge-serv-[x86|x64].exe*** : The service process that spawns and controls the main engine described below. This program is run as a typical windows service with SYSTEM privileges; as such its intended role is very limited. 
 
     - ***tos-databridge-engine-[x86|x64].exe*** : The main engine - spawned from tos-databridge-serv.exe - that interacts with the TOS platform and our DLL(below). It runs with a lower(ed) integrity level and reduced privileges. 
 
     - ***tos-databridge-0.4-[x86|x64].dll*** : The library/interface that client code uses to access TOSDB. Review tos-databridge.h, and the sections below, for all the necessary calls, types, and objects.
 
-    - ***_tos-databridge-[x86|x64].dll*** : A back-end library that provides custom concurrency and IPC objects; logging and utilities; as well as the Topic-String mapping. It needs to be in the right path for other modules that are dependent on it. (see below)
+    - ***_tos-databridge-[x86|x64].dll*** : A back-end library that provides custom concurrency and IPC objects; logging and utilities; as well as the Topic-String mapping. 
 
     - ***tos-databridge-shell-[x86|x64]*** : A crude 'shell' used to interact directly with the library calls; for testing and debugging.
 
@@ -146,13 +146,13 @@ Obviously the core implementation is not portable, but the python interface does
 
 ### Installation Details
 - - -
-The following sections will outline how to setup TOSDB's core C/C++ libraries. At the end of this section is a screen-shot of all the relevant commands for using the x64 binaries. **If you're only interested in using the python wrapper you still need to follow these steps**
+The following sections will outline how to setup TOSDB's core C/C++ libraries. At the end of this section is a (slightly out-dated) screen-shot of all the relevant commands for using the x64 binaries. **If you're only interested in using the python wrapper you still need to follow these steps**
 
 1. Move the unzipped tos-databridge folder to its permanent location(our's is in C:/ for convenience.) If you change it in the future you'll need to redo some of these steps because the Service module relies on an absolute path.
 
 2. Determine the appropriate build you'll need: 32-bit(x86) or 64-bit(x64). ***Make sure you don't mix and match in future steps, python will automatically look for a version that matches its own build.***
  
-3. (Optional) Compile the appropriate binaries if building from source.
+3. (Optional) Compile the appropriate binaries if building from source.  The easiest way to do this is open the .sln file in /VisualStudioBuild, go to the appropriate build, and select 'build'. (If this fails, try 'clean' and then 'build'.)
    
 4. Determine if your TOS platform runs under elevated privileges (does it ask for an admin password before starting?)
    
@@ -170,6 +170,7 @@ The following sections will outline how to setup TOSDB's core C/C++ libraries. A
 
 7. The setup script is going to do a few things:     
     - make sure you have the appropriate run-time libraries installed; if not the appropriate redist executable will be run to install them. (If this fails you can do this manually by downloading the most recent VC++ Redistributable from Microsoft); 
+    - make sure you have the appropriate -serv and -engine binaries in /bin
     - create the Windows Service.
  
 8. Before we continue it's a good idea, possibly necessary, to add the tos-databridge binaries, or the whole directory, to your anti-virus's 'white-list'. ***There's a good chance that if you don't do this tos-databridge-engine[].exe, at the very least, may be stopped and/or deleted for 'suspicious' behavior.***
