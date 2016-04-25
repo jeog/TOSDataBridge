@@ -11,8 +11,7 @@ Obviously the core implementation is not portable, but the python interface does
 - Windows for the core implementation(tested on Windows 7 SP1, Vista SP2,and Server 2008 R2.) The python interface is available to any system running python3(also tested on Debian/Linux-3.2.)
 - TDAmeritrade's ThinkOrSwim(TOS) platform that exposes DDE functionality (the Window's verion)
 - VC++ 2012 Redistributable (included)
-- Python3 (optional, for the python wrapper)
-- Some basic Windows knowledge; some basic C, C++, or Python programming knowledge
+- Some basic Windows knowledge; some basic C, C++, or Python(3) programming knowledge
 
 ### Versions
 - - -
@@ -20,8 +19,8 @@ Major changes will generally lead to a new version/branch, but not necessarily t
 
 - v0.3 (branch 'v0.3')
     - 'stable' version  
-    - *** ***contains up-to-date binaries/signatures*** ***
     - use the README from the v0.3 branch (instead of this one)
+    - *** ***contains up-to-date binaries/signatures*** ***
 
 - v0.4 (branch 'master')
     - currently undergoing a major refactoring 
@@ -83,7 +82,7 @@ Major changes will generally lead to a new version/branch, but not necessarily t
 
 ### Contributions
 ---
-This project grew out of personal need and is only maintained by a single person. Contributions - testing, bug fixes, suggestions, extensions, whatever - are always welcome. If you want to contribute a non-trivial fix, new module, extension etc. it's recommended you communicate the intention first to avoid unnecessary and/or conflicting work.
+This project grew out of personal need and is maintained by a single developer. Contributions - testing, bug fixes, suggestions, extensions, whatever - are always welcome. If you want to contribute a non-trivial fix, module, extension etc. it's recommended you communicate the intention first to avoid unnecessary and/or conflicting work.
 
 Even if you are not comfortable contributing code, simply reporting bugs or questioning (seemingly) idiotic or unintuitive interface design can be very helpful. Chances are, if you think something is an issue, others will too.
 
@@ -127,7 +126,7 @@ Even if you are not comfortable contributing code, simply reporting bugs or ques
 
 - **/sigs** 
 
-    The detached signature for each binary; sha256 checksums for binaries, signatures, and the jeog.dev public key; **(master branch may or may not contain all, or any)**
+    The detached signature for each binary; sha256 checksums for binaries, signatures, and the jeog.dev public key; **(master branch may, or may not, contain all, or any)**
 
 - **/res** 
 
