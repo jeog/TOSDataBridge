@@ -35,7 +35,7 @@ from platform import system as _system
 from contextlib import contextmanager as _contextmanager
 
 from os import walk as _walk, stat as _stat, curdir as _curdir, \
-               listdir as _listdir, sep as _sep
+               listdir as _listdir, sep as _sep, path as _path
 
 from re import compile as _compile, search as _search, match as _match, \
                split as _split
@@ -60,14 +60,15 @@ from ctypes import WinDLL as _WinDLL, \
                    c_int as _int_, \
                    c_void_p as _pvoid_, \
                    c_uint as _uint_, \
-                   c_uint_32 as _uint32_, \
-                   c_uint_8 as _uint8_
+                   c_uint32 as _uint32_, \
+                   c_uint8 as _uint8_
 
 _pchar_ = _PTR_(_char_)
 _ppchar_ = _PTR_(_pchar_)  
 _cast_cstr = lambda x: _cast(x,_str_).value.decode() 
 
 DLL_BASE_NAME = "tos-databridge"
+DLL_DEPENDS1_NAME = "_tos-databridge"
 SYS_ARCH_TYPE = "x64" if (_log(_maxsize * 2, 2) > 33) else "x86"
 MIN_MARGIN_OF_SAFETY = 10
 
@@ -77,8 +78,11 @@ _VER_SFFX = '[\d]{1,2}.[\d]{1,2}'
 _REGEX_VER_SFFX = _compile('-' + _VER_SFFX + '-')
 _REGEX_DLL_NAME = \
   _compile('^('+DLL_BASE_NAME + '-)' + _VER_SFFX + '-' + SYS_ARCH_TYPE +'(.dll)$')
+
+
            
 _dll = None
+_dll_depend1 = None
 
 ## we added a lock to the _call() from VTOSDB_DataBlock
 ##   how do we want to handle concurrent calls at this level ?
@@ -104,9 +108,13 @@ def init(dllpath=None, root="C:\\", bypass_check=False):
     mtup = tuple(( x[0].split('.')[1],x[1]) \
                    for x in vers if x[0].split('.')[0] == vers_max )         
     mtup_max = max(mtup)[0]
-    rel = set(x[1] for x in mtup if x[0] == mtup_max)  
+    rel = set(x[1] for x in mtup if x[0] == mtup_max)
 
-  try:
+  def _get_depends1_dll_path(dllpath):
+    d = _path.dirname(dllpath)
+    return d + "/" + DLL_DEPENDS1_NAME + "-" + SYS_ARCH_TYPE + ".dll"
+  
+  try:   
     if dllpath is None:
       matcher = _partial(_match, _REGEX_DLL_NAME)  # regex match function
       for nfile in map(matcher, _listdir(_curdir)):
@@ -125,8 +133,13 @@ def init(dllpath=None, root="C:\\", bypass_check=False):
       d = dict(zip(map(lambda x: _stat(x).st_mtime, rel), rel)) 
       rec = max(d)
       dllpath = d[rec]
+
+    dllpath_depends1 = _get_depends1_dll_path(dllpath)
+    _dll_depend1 = _WinDLL(dllpath_depends1)
     _dll = _WinDLL(dllpath)
+    
     print("+ Using Module ", dllpath)
+    print("+ Using Module ", dllpath_depends1)
     print("+ Last Update ", _asctime(_localtime(_stat(dllpath).st_mtime)))
     if connect():
       print("+ Succesfully Connected to Service \ Engine")       
