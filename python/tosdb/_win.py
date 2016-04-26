@@ -44,7 +44,7 @@ if _system() not in ["Windows","windows","WINDOWS"]:
   print("error: tosdb/_win.py is for windows only !", file=_stderr)
   exit(1)
 
-from ctypes import WinDLL as _WinDLL, \
+from ctypes import CDLL as _CDLL, \
                    cast as _cast, \
                    pointer as _pointer, \
                    create_string_buffer as _BUF_, \
@@ -123,7 +123,7 @@ def init(dllpath=None, root="C:\\", bypass_check=False):
       d = dict(zip(map(lambda x: _stat(x).st_mtime, rel), rel)) 
       rec = max(d)
       dllpath = d[rec]
-    _dll = _WinDLL(dllpath)
+    _dll = _CDLL(dllpath)
     print("+ Using Module ", dllpath)
     print("+ Last Update ", _asctime(_localtime(_stat(dllpath).st_mtime)))
     if connect():
