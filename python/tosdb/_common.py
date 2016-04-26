@@ -392,7 +392,10 @@ class TOSDB_DateTime(
 
   def __init__(self, obj, micro_second=0):
     if isinstance(obj, _DateTimeStamp):
-      self._mktime = _mktime(TOSDB_DateTime._to_struct_time(obj))          
+      try:
+        self._mktime = _mktime(TOSDB_DateTime._to_struct_time(obj))
+      except:
+        self._mktime = 0
     elif isinstance(obj, _struct_time):
       self._mktime = _mktime(obj)
     elif isinstance(obj, TOSDB_DateTime):
