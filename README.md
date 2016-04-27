@@ -27,15 +27,7 @@ Major changes will generally lead to a new version/branch, but not necessarily t
     - interface is subject to slight change 
     - *** ***may contain some binaries(no signatures)*** ***
 
-- What version should I use?
-    - v0.3 : If you simply want the core functionality - and/or need the most up-to-date pre-compiled binaries - with the small(est) chance of running into bugs.
-    - v0.4/master : If you want the latest-and-greatest features, improvements etc., don't mind building your own and dealing with more bugs, or may want to contribute.     
-
-- Upcoming (pre v1.0) versions will look to:
-    - simplify the main header: tos_databridge.h
-    - simplify the API 
-    - remove (or atleast improve) the pre-caching behavior of blocks
-    - consider an 'intermediate' API between client lib and engine, allowing users to inject their own callbacks/hooks for handling raw data from the engine
+If you simply want the core functionality - and/or need the most up-to-date pre-compiled binaries - with the small(est) chance of running into bugs, use v0.3 (branch v0.3). If you want the latest-and-greatest features, improvements etc., don't mind building your own and dealing with more bugs, or may want to contribute, use v0.4 (branch master).     
 
 ### Quick Setup
 - - -
@@ -86,6 +78,13 @@ This project grew out of personal need and is maintained by a single developer. 
 
 Even if you are not comfortable contributing code, simply reporting bugs or questioning (seemingly) idiotic or unintuitive interface design can be very helpful. Chances are, if you think something is an issue, others will too.
 
+### Upcoming Changes
+- - -
+- simplify the main header: tos_databridge.h
+- simplify the API 
+- remove (or atleast improve) the pre-caching behavior of blocks
+- consider an 'intermediate' API between client lib and engine, allowing users to inject their own callbacks/hooks for handling raw data from the engine
+
 ### Contents
 - - -
 - **/include** 
@@ -115,6 +114,10 @@ Even if you are not comfortable contributing code, simply reporting bugs or ques
     - ***tos-databridge-shell-[x86|x64]*** : A crude 'shell' used to interact directly with the library calls; for testing and debugging.
 
     *(Going forward we'll exclude the build suffix (i.e. -x64 ) for syntactic convenience. We'll replace it with [] in an attempt to avoid confusion. Unless stated explicitly, if sensible, assume that both builds apply.)*
+
+- **/Symbols** 
+   
+    Symbol (.pdb) files **(master branch may, or may not, contain all, or any)**
 
 - **/python** 
 
