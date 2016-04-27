@@ -115,10 +115,10 @@ VInit: version of Init for the virtual layer
  **only needed if init/vinit() fails to call this for us
 """
 
-
 from ._common import * 
 from ._common import _DateTimeStamp, _TOSDB_DataBlock, _type_switch
 from .doxtend import doxtend as _doxtend
+from ._auth import *
 
 from collections import namedtuple as _namedtuple
 from threading import Thread as _Thread, Lock as _Lock
@@ -142,14 +142,17 @@ _virtual_hub = None
 _virtual_hub_addr = None
 _virtual_admin_sock = None # <- what happens when we exit the client side ?
 
+DEFAULT_PASSWORD = "default_pass"
+
 _vCREATE     = 'CREATE'
 _vCALL       = 'CALL'
 _vFAILURE    = 'FAILURE'
 _vFAIL_EXC   = '1'
+_vFAIL_AUTH  = '2'
 _vSUCCESS    = 'SUCCESS'
 _vSUCCESS_NT = 'SUCCESS_NT'
-_vCONN_BLOCK = 'CONN_BLOCK'
-_vCONN_ADMIN = 'CONN_ADMIN'
+_vCONN_BLOCK = 'CONN_BLOCK' # requires authentication
+_vCONN_ADMIN = 'CONN_ADMIN' # requires authentication
 
 _vALLOWED_ADMIN = ('init','connect','connected','clean_up','get_block_limit', 
                    'set_block_limit','get_block_count','type_bits','type_string')
@@ -249,7 +252,8 @@ def admin_close(): # do we need to signal the server ?
   _virtual_admin_sock = None 
 
 
-def admin_init(address, poll_interval=DEF_TIMEOUT):
+
+def admin_init(address, poll_interval=DEF_TIMEOUT,password=DEFAULT_PASSWORD):
   """ Initialize virtual admin calls (e.g vinit(), vconnect()) 
 
   address:: tuple(str,int) :: (host/address of the windows implementation, port)
@@ -260,12 +264,63 @@ def admin_init(address, poll_interval=DEF_TIMEOUT):
   _virtual_hub_addr = _check_and_resolve_address(address)
   _virtual_admin_sock = _socket.socket()
   _virtual_admin_sock.settimeout(poll_interval / 1000)
-  try:
-    _virtual_admin_sock.connect(_virtual_hub_addr)
+  try:    
+    _virtual_admin_sock.connect(_virtual_hub_addr)     
+    if not _handle_auth_cli(_virtual_admin_sock,DEFAULT_PASSWORD):
+      raise TOSDB_VirtualizationError("authentication failed", "admin_init")
     _vcall(_pack_msg(_vCONN_ADMIN), _virtual_admin_sock, _virtual_hub_addr)
   except:
     admin_close()
     raise
+
+import time
+def _handle_auth_cli(my_sock,password):
+    # hash password
+    hashed_pass = hash_password(password)
+    # recv random sequence from server 
+    try:
+        rand_seq = _recv_tcp(my_sock) #raw (no need to unpack)
+    except _socket.timeout as e:
+        raise TOSDB_VirtualizationError("socket timed out receiving random sequence")         
+    # check size of rand_seq
+    if len(rand_seq) != RAND_SEQ_SZ:
+      raise TOSDB_VirtualizationError("rand_seq != RAND_SEQ_SZ")
+    # encrypt random sequence using hashed password
+    crypt_rand_seq = encrypt_randseq(hashed_pass, rand_seq)   
+    # send that back to server
+    _send_tcp(my_sock, crypt_rand_seq) #raw (no need to pack) 
+    # see if it worked
+    try:
+      ret = _recv_tcp(my_sock)
+      ret = ret.decode()   
+    except _socket.timeout as e:
+      raise TOSDB_VirtualizationError("socket timed out receiving status")        
+    return (ret == _vSUCCESS)
+
+def _handle_auth_serv(my_sock,password):
+    # generate random sequence
+    rseq = generate_randseq()    
+    # send to client
+    _send_tcp(my_sock, rseq)
+    # get back the encrypted version
+    try:
+        crypt_seq_cli = _recv_tcp(my_sock) #raw (no need to unpack)
+    except _socket.timeout as e:
+        raise TOSDB_VirtualizationError("socket timed out receive encrypted random sequence") 
+    hashed_pass = hash_password(password)
+    our_crypt_seq = encrypt_randseq(hashed_pass, rseq)
+    # compare ours w/ the clients
+    print( our_crypt_seq )
+    print( crypt_seq_cli )
+    if our_crypt_seq == crypt_seq_cli:  
+        print("authentication attempt suceeded!")
+        _send_tcp(my_sock, _vSUCCESS.encode())
+        return True  
+    print("authentication attempt failed!")
+    _send_tcp(my_sock, _vFAILURE.encode())
+    return False
+    
+         
 
 
 def _admin_call(method, *arg_buffer):
@@ -597,14 +652,14 @@ def enable_virtualization(address, poll_interval=DEF_TIMEOUT):
           self._virtual_admin_server.stop()
       ### --- _shutdown_servers --- ###
       def _handle_msg(dat,conn):
-        try:
+        try:          
           dat = _unpack_msg(dat)[0].decode()          
-          if dat == _vCONN_BLOCK:           
+          if dat == _vCONN_BLOCK:    
             vserv = _VTOS_BlockServer(conn, self._poll_interval,
                                       self._virtual_block_servers.discard)
             self._virtual_block_servers.add(vserv)
             vserv.start()
-          elif dat == _vCONN_ADMIN:           
+          elif dat == _vCONN_ADMIN:                      
             if self._virtual_admin_server:
               self._virtual_admin_server.stop()            
             self._virtual_admin_server = \
@@ -622,7 +677,13 @@ def enable_virtualization(address, poll_interval=DEF_TIMEOUT):
       self._rflag = True      
       while self._rflag:        
         try:          
-          conn = self._my_sock.accept()        
+          conn = self._my_sock.accept() 
+###################################################
+          if not _handle_auth_serv(conn[0],DEFAULT_PASSWORD):            
+            #_send_tcp(conn[0], rmsg) 
+            conn[0].close()
+            continue
+###################################################       
           dat = _recv_tcp(conn[0])
           _handle_msg(dat, conn)
         except _socket.timeout:           
