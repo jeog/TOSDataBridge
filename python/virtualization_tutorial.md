@@ -5,6 +5,8 @@ This tutorial attempts to show simple example usage of the tosdb virtual layer. 
 
 For this tutorial we are using TOS in a Windows virtual machine. We've set up a host-only network adapter and assigned an address of 192.168.56.101 to this guest machine, and 192.168.56.1 to the host(linux) machine. We've also added a firewall rule allowing TCP IN to port 55555 from our host address. The screen shots are of the 'local'/guest/windows side; the code blocks are of the 'remote'/host/linux side. 
 
+**IMPORTANT:** The virtual layer is **NOT SECURE** and should only be used on internal networks. We haven't implemented any type of connection authentication mechanism and it would be prudent to assume the virtual server could be exploited for remote code execution.
+
 ---
 
 ##### Local Interactive Init

@@ -1,4 +1,4 @@
-/* 
+fdisk/* 
 Copyright (C) 2014 Jonathon Ogden   < jeog.dev@gmail.com >
 
 This program is free software: you can redistribute it and/or modify
@@ -151,12 +151,12 @@ typedef struct{
    to access you should define 'THIS_IMPORTS_IMPLEMENTATION'  */
 #if defined(THIS_EXPORTS_IMPLEMENTATION) || defined(THIS_IMPORTS_IMPLEMENTATION)
 
-/* forward declarations for _tos-databridge-shared.dll */
+#ifdef __cplusplus
+/* forward declarations for _tos-databridge.dll */
 
-/* CONCURRENCY - concurrency.cpp / concurrency.hpp 
-
-   define CPP_COND_VAR to use portable sync objects built on std::condition_variable,
-  (doesn't work properly in VS2012: throws access violation)    */
+/* CONCURRENCY - concurrency.cpp / concurrency.hpp - define CPP_COND_VAR to use 
+   portable sync objects built on std::condition_variable. (doesn't work 
+   properly in VS2012: throws access violation)    */
 #ifdef CPP_COND_VAR
 class DLL_SPEC_IMPL_ SignalManager
 #else
@@ -170,6 +170,8 @@ class DLL_SPEC_IMPL_ SlowHeapManager;
 class DLL_SPEC_IMPL_ DynamicIPCBase;
 class DLL_SPEC_IMPL_ DynamicIPCMaster;
 class DLL_SPEC_IMPL_ DynamicIPCSlave;
+
+#endif /*__cplusplus */
 
 #define TOSDB_COMM_CHANNEL "TOSDB_channel_1"
 
@@ -1040,3 +1042,4 @@ EXT_SPEC_  DLL_SPEC_IMPL_ unsigned int
 CheckStringLengths(LPCSTR* str, size_type items_len);
 
 #endif /* JO_TOSDB_DATABRIDGE */
+

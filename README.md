@@ -84,6 +84,7 @@ Even if you are not comfortable contributing code, simply reporting bugs or ques
 - simplify the API 
 - remove (or atleast improve) the pre-caching behavior of blocks
 - consider an 'intermediate' API between client lib and engine, allowing users to inject their own callbacks/hooks for handling raw data from the engine
+- add authentication mechanism to virtual-layer connections
 
 ### Contents
 - - -
@@ -210,6 +211,8 @@ Make sure the build of the modules you installed in the 'Installation Details' s
 
 Remeber, if installing on a non-windows system to utilize the virtual interface you'll still need to install on a (physically or virtually) networked windows sytem.
 
+> **IMPORTANT:** The virtual layer is **NOT SECURE** and should only be used on internal networks. We haven't implemented any type of connection authentication mechanism and it would be prudent to assume the virtual server could be exploited for remote code execution
+
 tosdb/ is structured as a package with the bulk of its code in \__init__.py and \_win.py , the latter holding the non-portable parts that \__init__.py will import if it determines it's being run on a windows sytem. This structure allows you to simply import the package(*import tosdb*) or, if needed, extensions like intervalize.py(*from tosdb import intervalize*). Once imported you'll have to initialize it, which requires the path of tos-databridge[].dll or the root directory it's going to search in for the latest version. Please see tosdb/tutorial.md for a walk-through with screen-shots.
 
 > **IMPORTANT:**  There is a minor issue with how python uses the underlying library to deallocate shared resources, mostly because of python's use of refcounts. WE STRONGLY RECOMMEND you call clean_up() before exiting to be sure all shared resources have been properly dealt with. If this is not possible - the program terminates abruptly, for instance - there's a chance you've got dangling/orphaned resources. 
@@ -219,7 +222,6 @@ tosdb/ is structured as a package with the bulk of its code in \__init__.py and 
    [--> Connect
    [--> DumpBufferStatus
 ```
-
 
 ### C/C++ Interface ::: Administrative Calls
 - - -
