@@ -19,6 +19,7 @@ from ._tosdb import *
 from .meta_enum import MetaEnum 
 
 import sys as _sys
+import struct as _struct
 from collections import namedtuple as _namedtuple
 from abc import ABCMeta as _ABCMeta, abstractmethod as _abstractmethod
 
@@ -323,6 +324,28 @@ class TOSDB_ImplErrorWrapper({clss}):
     pass
   return our_obj
 
+def _recv_tcp(sock):
+  packedlen = _recvall_tcp(sock, 8)
+  if not packedlen:
+    return None
+  dlen = _struct.unpack('Q', packedlen)[0]
+  return _recvall_tcp(sock, dlen)
+
+
+def _recvall_tcp(sock, n):
+  data = b''
+  while len(data) < n:
+    p = sock.recv(n - len(data))
+    if not p:
+      return None
+    data += p
+  return data
+
+
+def _send_tcp(sock, data):
+  dl = len(data)
+  msg = _struct.pack('Q',len(data)) + data
+  return sock.sendall(msg)
 
 class _DateTimeStamp(_Structure):
   """ Our 'private' C stdlib date-time struct w/ added micro-second field """

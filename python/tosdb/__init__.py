@@ -116,7 +116,8 @@ VInit: version of Init for the virtual layer
 """
 
 from ._common import * 
-from ._common import _DateTimeStamp, _TOSDB_DataBlock, _type_switch
+from ._common import _DateTimeStamp, _TOSDB_DataBlock, _type_switch, \
+                     _recvall_tcp, _recv_tcp, _send_tcp
 from .doxtend import doxtend as _doxtend
 from ._auth import *
 
@@ -142,8 +143,6 @@ _virtual_hub = None
 _virtual_hub_addr = None
 _virtual_admin_sock = None # <- what happens when we exit the client side ?
 
-DEFAULT_PASSWORD = "default_pass"
-
 _vCREATE     = 'CREATE'
 _vCALL       = 'CALL'
 _vFAILURE    = 'FAILURE'
@@ -153,6 +152,9 @@ _vSUCCESS    = 'SUCCESS'
 _vSUCCESS_NT = 'SUCCESS_NT'
 _vCONN_BLOCK = 'CONN_BLOCK' # requires authentication
 _vCONN_ADMIN = 'CONN_ADMIN' # requires authentication
+_vREQUIRE_AUTH = 'REQUIRE_AUTH'
+_vREQUIRE_NOAUTH = 'NOREQUIRE_AUTH'
+_vACK_AUTH = 'ACK_AUTH'
 
 _vALLOWED_ADMIN = ('init','connect','connected','clean_up','get_block_limit', 
                    'set_block_limit','get_block_count','type_bits','type_string')
@@ -252,75 +254,40 @@ def admin_close(): # do we need to signal the server ?
   _virtual_admin_sock = None 
 
 
+# this throws all kind of ways
+def _handle_req_from_server(sock,password):
+  ret = _recv_tcp(sock)
+  _send_tcp(sock, b'1') # ack
+  if ret.decode() == _vREQUIRE_AUTH:     
+    if password is not None:     
+      good_auth = handle_auth_cli(sock,password)
+      if not good_auth:
+        raise TOSDB_VirtualizationError("authentication failed", "admin_init")
+    else:
+      raise TOSDB_VirtualizationError("server requires authentiaction") 
 
-def admin_init(address, poll_interval=DEF_TIMEOUT,password=DEFAULT_PASSWORD):
+
+def admin_init(address, password=None, poll_interval=DEF_TIMEOUT):
   """ Initialize virtual admin calls (e.g vinit(), vconnect()) 
 
   address:: tuple(str,int) :: (host/address of the windows implementation, port)
+  password:: str :: password for authentication(None for no authentication)
   """  
   global _virtual_hub_addr, _virtual_admin_sock
   if _virtual_admin_sock:
     raise TOSDB_VirtualizationError("virtual admin socket already exists")  
+  if password is not None:
+    check_password(password)
   _virtual_hub_addr = _check_and_resolve_address(address)
   _virtual_admin_sock = _socket.socket()
-  _virtual_admin_sock.settimeout(poll_interval / 1000)
-  try:    
-    _virtual_admin_sock.connect(_virtual_hub_addr)     
-    if not _handle_auth_cli(_virtual_admin_sock,DEFAULT_PASSWORD):
-      raise TOSDB_VirtualizationError("authentication failed", "admin_init")
+  _virtual_admin_sock.settimeout(poll_interval / 1000) 
+  try: 
+    _virtual_admin_sock.connect(_virtual_hub_addr) 
+    _handle_req_from_server(_virtual_admin_sock,password)
     _vcall(_pack_msg(_vCONN_ADMIN), _virtual_admin_sock, _virtual_hub_addr)
   except:
     admin_close()
     raise
-
-import time
-def _handle_auth_cli(my_sock,password):
-    # hash password
-    hashed_pass = hash_password(password)
-    # recv random sequence from server 
-    try:
-        rand_seq = _recv_tcp(my_sock) #raw (no need to unpack)
-    except _socket.timeout as e:
-        raise TOSDB_VirtualizationError("socket timed out receiving random sequence")         
-    # check size of rand_seq
-    if len(rand_seq) != RAND_SEQ_SZ:
-      raise TOSDB_VirtualizationError("rand_seq != RAND_SEQ_SZ")
-    # encrypt random sequence using hashed password
-    crypt_rand_seq = encrypt_randseq(hashed_pass, rand_seq)   
-    # send that back to server
-    _send_tcp(my_sock, crypt_rand_seq) #raw (no need to pack) 
-    # see if it worked
-    try:
-      ret = _recv_tcp(my_sock)
-      ret = ret.decode()   
-    except _socket.timeout as e:
-      raise TOSDB_VirtualizationError("socket timed out receiving status")        
-    return (ret == _vSUCCESS)
-
-def _handle_auth_serv(my_sock,password):
-    # generate random sequence
-    rseq = generate_randseq()    
-    # send to client
-    _send_tcp(my_sock, rseq)
-    # get back the encrypted version
-    try:
-        crypt_seq_cli = _recv_tcp(my_sock) #raw (no need to unpack)
-    except _socket.timeout as e:
-        raise TOSDB_VirtualizationError("socket timed out receive encrypted random sequence") 
-    hashed_pass = hash_password(password)
-    our_crypt_seq = encrypt_randseq(hashed_pass, rseq)
-    # compare ours w/ the clients
-    print( our_crypt_seq )
-    print( crypt_seq_cli )
-    if our_crypt_seq == crypt_seq_cli:  
-        print("authentication attempt suceeded!")
-        _send_tcp(my_sock, _vSUCCESS.encode())
-        return True  
-    print("authentication attempt failed!")
-    _send_tcp(my_sock, _vFAILURE.encode())
-    return False
-    
-         
 
 
 def _admin_call(method, *arg_buffer):
@@ -340,17 +307,26 @@ class VTOSDB_DataBlock(_TOSDB_DataBlock):
   """ The main object for storing TOS data. (VIRTUAL)   
 
   address:: tuple(str,int) :: (host/address of the windows implementation, port)
+  password:: str :: password for authentication(None for no authentication)
   size: how much historical data to save
   date_time: should block include date-time stamp with each data-point?
   timeout: how long to wait for responses from TOS-DDE server 
 
   Please review the attached README.html for details.
   """  
-  def __init__(self, address, size=1000, date_time=False, timeout=DEF_TIMEOUT):         
+  def __init__(self, address, password=None, size=1000, date_time=False, 
+               timeout=DEF_TIMEOUT):         
     self._hub_addr = _check_and_resolve_address(address)
     self._my_sock = _socket.socket()
     self._my_sock.settimeout(timeout / 1000)
-    self._my_sock.connect(self._hub_addr)    
+    if password is not None:
+      check_password(password)
+    self._my_sock.connect(self._hub_addr)  
+    try:
+      _handle_req_from_server(self._my_sock,password)
+    except:
+      self._my_sock.close()
+      raise
     self._call_LOCK = _Lock()
     _vcall(_pack_msg(_vCONN_BLOCK), self._my_sock, self._hub_addr)      
     # in case __del__ is called during socket op
@@ -501,7 +477,12 @@ class VTOSDB_DataBlock(_TOSDB_DataBlock):
           return _pickle.loads(ret_b[1])
       
 
-def enable_virtualization(address, poll_interval=DEF_TIMEOUT):
+def enable_virtualization(address, password=None, poll_interval=DEF_TIMEOUT):
+  """ enable virtualization on host system
+
+  address:: tuple(str,int) :: (address of the host system, port)
+  password:: str :: password for authentication(None for no authentication)
+  """  
   global _virtual_hub    
 
   ## --- NESTED CLASS _VTOS_BlockServer --- ##
@@ -677,16 +658,26 @@ def enable_virtualization(address, poll_interval=DEF_TIMEOUT):
       self._rflag = True      
       while self._rflag:        
         try:          
-          conn = self._my_sock.accept() 
-###################################################
-          if not _handle_auth_serv(conn[0],DEFAULT_PASSWORD):            
-            #_send_tcp(conn[0], rmsg) 
-            conn[0].close()
-            continue
-###################################################       
+          conn = self._my_sock.accept()                   
+          # indicate whether client needs to authenticate         
+          amsg = _vREQUIRE_AUTH if password is not None else _vREQUIRE_NOAUTH        
+          _send_tcp(conn[0], amsg.encode())
+          conn[0].settimeout(poll_interval / 1000)         
+          try:
+            ret = _recv_tcp(conn[0]) # get an ack (of anything) or timeout             
+            if password is not None:
+              ### AUTHENTICATE ###
+              good_auth = handle_auth_serv(conn,password)                       
+              if not good_auth:
+                raise Exception()
+              ### AUTHENTICATE ###
+          except:
+            conn[0].close()        
+            continue                 
+          conn[0].settimeout(None)
           dat = _recv_tcp(conn[0])
           _handle_msg(dat, conn)
-        except _socket.timeout:           
+        except _socket.timeout:                      
           continue        
         except: # anything else... shutdown the hub
           print("Unhandled exception in _VTOS_Hub, terminated", file=_stderr)
@@ -697,6 +688,8 @@ def enable_virtualization(address, poll_interval=DEF_TIMEOUT):
 
   try:    
     if _virtual_hub is None:
+      if password is not None:
+        check_password(password)
       _virtual_hub = _VTOS_Hub(address, poll_interval)
       _virtual_hub.start()    
   except Exception as e:
@@ -750,30 +743,6 @@ def _loadnamedtuple(nt):
   name,keys,vals = _pickle.loads(nt)
   ty = _namedtuple(name, keys)
   return ty(*vals)
-
-
-def _recv_tcp(sock):
-  packedlen = _recvall_tcp(sock, 8)
-  if not packedlen:
-    return None
-  dlen = _struct.unpack('Q', packedlen)[0]
-  return _recvall_tcp(sock, dlen)
-
-
-def _recvall_tcp(sock, n):
-  data = b''
-  while len(data) < n:
-    p = sock.recv(n - len(data))
-    if not p:
-      return None
-    data += p
-  return data
-
-
-def _send_tcp(sock, data):
-  dl = len(data)
-  msg = _struct.pack('Q',len(data)) + data
-  return sock.sendall(msg)
 
 
 def _pack_msg(*parts):   
