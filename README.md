@@ -140,6 +140,10 @@ Even if you are not comfortable contributing code, simply reporting bugs or ques
 
     All log files and dumps
 
+- **/prov** 
+
+    Provisional code that is being worked on outside the main build tree
+
 ### Build Notes
 - - -
 

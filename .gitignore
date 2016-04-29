@@ -2,6 +2,7 @@
 ## project specific
 ###################
 *.tosdb
+prov/tmp*
 
 #################
 ## Eclipse

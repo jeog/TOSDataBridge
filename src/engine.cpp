@@ -125,9 +125,6 @@ DestroyBuffer(TOS_Topics::TOPICS tTopic, std::string sItem);
 void 
 HandleData(UINT msg, WPARAM wparam, LPARAM lparam);
 
-void 
-DeAllocKernResources();
-
 int  
 CleanUpMain(int ret_code);
 
@@ -696,19 +693,6 @@ DestroyBuffer(TOS_Topics::TOPICS tTopic, std::string sItem)
         return true;
     }
     return false;
-    /* ---CRITICAL SECTION --- */
-}
-
-
-void 
-DeAllocKernResources() /* only called if we're forced to exit abruptly */
-{  
-    BUFFER_LOCK_GUARD;
-    /* ---CRITICAL SECTION --- */
-    for(buffers_ty::value_type & buf : buffers){
-        DestroyBuffer(buf.first.second, buf.first.first);
-    }
-    CloseHandle(init_event);
     /* ---CRITICAL SECTION --- */
 }
 

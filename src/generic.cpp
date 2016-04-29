@@ -15,7 +15,6 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see http://www.gnu.org/licenses.
 */
 
-//#include "tos_databridge.h"
 #include "generic.hpp"
 
 TOSDB_Generic& 
@@ -63,17 +62,20 @@ TOSDB_Generic::_sub_deep_copy(const TOSDB_Generic& src)
 std::string 
 TOSDB_Generic::as_string() const
 {
-    if( this->is_integer() )             
-        return std::to_string(this->as_long_long());
-
-    else if( this->is_floating_point() ) 
-        return std::to_string(this->as_double());  
-
-    else if( this->is_string() )         
-        return *((std::string*)(this->_sub));
-
-    else                               
-        return std::string();
+   switch(this->_type_val){
+   case(LONG_):
+       return std::to_string(*((long*)this->_sub));
+   case(LONG_LONG_):
+       return std::to_string(*((long long*)this->_sub));
+   case(FLOAT_):
+       return std::to_string(*((float*)this->_sub));
+   case(DOUBLE_):
+       return std::to_string(*((double*)this->_sub));
+   case(STRING_):
+       return *((std::string*)(this->_sub));
+   default:
+       return std::string();
+   };
 }
 
 
