@@ -94,7 +94,7 @@ SendMsgWaitForResponse(long msg)
     if(!master){
         master = mstr_ptr_ty( new DynamicIPCMaster(TOSDB_COMM_CHANNEL) );
         master->try_for_slave();
-		// ERROR CHECK
+        // ERROR CHECK
         IPC_TIMED_WAIT( master->grab_pipe() <= 0,
                         "SendMsgWaitForResponse timed out",
                         -1 );     
@@ -263,9 +263,14 @@ SpawnRestrictedProcess(int session = -1)
         }else{ 
             ret = true; 
         }
-    }            
-    if(tkn_hndl) CloseHandle(tkn_hndl);
-    if(ctkn_hndl) CloseHandle(ctkn_hndl);     
+    }   
+         
+    if(tkn_hndl) 
+        CloseHandle(tkn_hndl);
+
+    if(ctkn_hndl) 
+        CloseHandle(ctkn_hndl);     
+
     return ret;
 }    
 };
@@ -318,9 +323,9 @@ ServiceMain(DWORD argc, LPSTR argv[])
         WaitForSingleObject(engine_pinfo.hProcess, INFINITE);
     }
 
-    /* !! IF WE GET HERE WE WILL SHUTDOWN !!*/
+    /* !! IF WE GET HERE WE WILL SHUTDOWN !! */
     UpdateStatus(SERVICE_STOPPED, 0);
-    /* !! IF WE GET HERE WE WILL SHUTDOWN !!*/
+    /* !! IF WE GET HERE WE WILL SHUTDOWN !! */
 
     TOSDB_Log("STATE","SERVICE_STOPPED");    
 }
@@ -332,7 +337,7 @@ ParseArgs(std::vector<std::string>& vec, std::string str)
     std::string::size_type i = str.find_first_of(' '); 
 
     if( str.empty() ){ /* done */
-		    return;
+        return;
     }else if(i == std::string::npos){ /* only 1 str */
         vec.push_back(str);
         return;
@@ -355,7 +360,7 @@ WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLn, int nShowCmd)
     SmartBuffer<CHAR> module_buf(MAX_PATH);
     GetModuleFileName(NULL, module_buf.get(), MAX_PATH);
 
-	  /* start  logging */
+    /* start  logging */
     std::string logpath(TOSDB_LOG_PATH);
     logpath.append(LOG_NAME);
     StartLogging(logpath.c_str()); 
@@ -383,6 +388,7 @@ WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLn, int nShowCmd)
     int admin_pos = 0;
     int no_service_pos = 0;
 	
+
     /* look for --admin and/or --noservice args */
     if(argc > 0 && args[0] == "--admin")            
         admin_pos = 1;
@@ -394,9 +400,10 @@ WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLn, int nShowCmd)
     else if(argc > 1 && args[1] == "--noservice") 
         no_service_pos = 2;
         
+
     switch(argc){ /* look for custom_session arg */
-	  case 0:
-		    break;
+    case 0:
+        break;
     case 1:
         if(admin_pos == 0 && no_service_pos == 0)
             custom_session = std::stoi(args[0]);
@@ -412,15 +419,15 @@ WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLn, int nShowCmd)
         if(admin_pos > 0 && no_service_pos > 0)
             custom_session = std::stoi(args[2]);
         break;
-    default:		
-		    std::string serr("invalid # of args: ");
+    default:
+        std::string serr("invalid # of args: ");
         serr.append(std::to_string(argc));
         TOSDB_LogH("STARTUP",serr.c_str());
         return 1;
     }     
-    
-	  std::stringstream ss_args;
-	  ss_args << "cmd_str: " << cmd_str << " argc: " << std::to_string(argc) 
+   
+    std::stringstream ss_args;
+    ss_args << "cmd_str: " << cmd_str << " argc: " << std::to_string(argc) 
             << " custom_session: " << std::to_string(custom_session) 
             << " admin_pos: " << std::to_string(admin_pos) 
             << " no_service_pos: " << std::to_string(no_service_pos);
@@ -434,6 +441,7 @@ WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLn, int nShowCmd)
     /* populate the engine command and if --noservice is passed jump right into
        the engine via SpawnRestrictedProcess; otherwise Start the service which
        will handle that for us */
+
     if(no_service_pos > 0){
         strcpy_s(engine_cmd,"--noservice");
         is_service = false;

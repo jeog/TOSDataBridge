@@ -48,16 +48,17 @@ class TOSDB_Generic{
      note: we don't hold a 'void' object per-se; when an object holding a string 
            is 'moved' we set the _type_val to TYVAL_VOID so the destructor knows 
            not to free the junk _sub then points at                           */
+
     static const int TYVAL_VOID      = 0;
     static const int TYVAL_LONG      = 1;
     static const int TYVAL_LONG_LONG = 2;
     static const int TYVAL_FLOAT     = 3;
     static const int TYVAL_DOUBLE    = 4;
-    static const int TYVAL_STRING    = 5;
+    static const int TYVAL_STRING    = 5;  
   
-  
-  /* max string length we support is 255 chars */
+  /* max string length we support is 255 chars (why?) */
     static const int STR_MAX = UCHAR_MAX - 1;
+
   /* the (max) byte size of our internal representation */
     static const int SUB_SZ  = 8;
 
@@ -164,14 +165,14 @@ public:
                 delete *(std::string**)(this->_sub); 
         }
 
-    inline bool 
+    inline bool /* same type AND value */
     operator==(const TOSDB_Generic& gen) const
     {
         return ( this->_type_val == gen._type_val ) 
                && ( this->as_string() == gen.as_string() );
     }
 
-    inline bool 
+    inline bool /* different type OR value */
     operator!=(const TOSDB_Generic& gen) const 
     {
         return !(this->operator==(gen));

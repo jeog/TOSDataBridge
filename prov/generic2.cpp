@@ -36,11 +36,11 @@ TOSDB_Generic::TOSDB_Generic(TOSDB_Generic&& gen)
     :      
         _type_val( gen._type_val )
     {                
-        /* we are stealing the scalar value OR the string pointer */           
+      /* we are stealing the scalar value OR the string pointer */           
         memcpy(this->_sub, gen._sub, SUB_SZ);      
-        /* keep gen's carcas from screwing us if it had a string ptr */          
-        memset(gen._sub, 0, SUB_SZ);
-        /* and change its type to keep it's destructor from a bad free */
+
+      /* leave the pointer but set _type_val to VOID to avoid bad free; ptr is an 
+         implementation detail of the moved object that we can safely ignore */
         gen._type_val = TYVAL_VOID;            
     }
 
@@ -79,20 +79,21 @@ TOSDB_Generic::operator=(const TOSDB_Generic& gen)
 TOSDB_Generic& 
 TOSDB_Generic::operator=(TOSDB_Generic&& gen)
 {
-    /* not sure if this is optimal or its better to branch(as above) and move
-       the string object in, allowing gen's destructor to delete 
+  /* not sure if this is optimal or its better to branch(as above) and move
+     the string object in, allowing gen's destructor to delete 
 
-       although, this way is a lot cleaner than 2 nested conditionals*/
+     although, this way is a lot cleaner than 2 nested conditionals*/
+
     if(this->_type_val == TYVAL_STRING)
         delete *(std::string**)this->_sub; 
      
     this->_type_val = gen._type_val;
 
-    /* we are stealing the scalar value OR the string pointer */           
-    memcpy(this->_sub, gen._sub, SUB_SZ);      
-    /* keep gen's carcas from screwing us if it had a string ptr */          
-    memset(gen._sub, 0, SUB_SZ);
-    /* and change its type to keep it's destructor from doing the same */
+  /* we are stealing the scalar value OR the string pointer */           
+    memcpy(this->_sub, gen._sub, SUB_SZ);    
+       
+  /* leave the pointer but set _type_val to VOID to avoid bad free; ptr is an 
+     implementation detail of the moved object that we can safely ignore */
     gen._type_val = TYVAL_VOID;
 
     return *this;
