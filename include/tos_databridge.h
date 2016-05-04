@@ -34,7 +34,7 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 
 #ifdef __cplusplus
 #define EXT_C_SPEC extern "C"
-/* not sure the effect but it does make things a bit clearer */
+/* make things a bit clearer */
 #define NO_THROW __declspec(nothrow) 
 #else 
 #define EXT_C_SPEC 
@@ -77,6 +77,9 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 #include <chrono>
 #include <thread>
 #include <memory>
+
+/* forward declaration for generic.hpp */
+//class DLL_SPEC_IFACE TOSDB_Generic;
 
 #include "containers.hpp"/*custom client-facing containers */
 #include "generic.hpp"  /* our 'generic' type */
@@ -230,9 +233,6 @@ ClearLog();
 typedef std::chrono::steady_clock  steady_clock_type;
 typedef std::chrono::system_clock  system_clock_type;
 typedef std::chrono::microseconds  micro_sec_type; 
-
-/* forward declaration for generic.hpp */
-class DLL_SPEC_IFACE TOSDB_Generic;
 
 /* Generic STL Types returned by the interface(below) */ 
 typedef TOSDB_Generic                                     generic_type;

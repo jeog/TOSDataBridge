@@ -20,29 +20,93 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 
 #include <sstream>
 #include <string>
+#include <iostream>
 #include <typeinfo>
 #include <math.h>
+#include <limits.h>
+#include <string.h>
+#include <stdint.h>
 
+/* why can't we just forward decl in tos_databridge.h ? */
+#if defined(THIS_EXPORTS_INTERFACE)
+#define DLL_SPEC_IFACE __declspec (dllexport)
+#elif defined(THIS_DOESNT_IMPORT_INTERFACE)
+#define DLL_SPEC_IFACE 
+#else 
+#define DLL_SPEC_IFACE __declspec (dllimport) /* default == import */
+#endif /* INTERFACE */
 
-class TOSDB_Generic{
-    static const int VOID_      = 0;
-    static const int LONG_      = 1;
-    static const int LONG_LONG_ = 2;
-    static const int FLOAT_     = 3;
-    static const int DOUBLE_    = 4;
-    static const int STRING_    = 5;
+template<typename T> /* forward decl */
+inline T
+CastGenericFromString(std::string& str);
 
-    static const int STR_MAX    = UCHAR_MAX - 1;
+/* 
+    TODO: optimize move semantics 
+*/
 
-    void* _sub;
+class DLL_SPEC_IFACE TOSDB_Generic{  
+
+  /* The types we support. Because the biggest object we hold is 8-bytes, we 
+     need to store the type (1-byte), and we are 8-byte aligned we have plenty 
+     of space to expand the supported types and/or cache helper data. Of course, 
+     the internal logic may get a bit cloudier...         
+
+     by using sequential ints the compiler *should* build constant-time lookup
+     tables for the switch statements we use to branch depending on type  
+
+     note: we don't hold a 'void' object per-se; when an object holding a string 
+           is 'moved' we set the _type_val to TYVAL_VOID so the destructor knows 
+           not to free the junk _sub then points at                           */
+
+    static const int TYVAL_VOID      = 0;
+    static const int TYVAL_LONG      = 1;
+    static const int TYVAL_LONG_LONG = 2;
+    static const int TYVAL_FLOAT     = 3;
+    static const int TYVAL_DOUBLE    = 4;
+    static const int TYVAL_STRING    = 5;  
+  
+  /* max string length we support is 255 chars (why?) */
+    static const int STR_MAX = UCHAR_MAX - 1;
+
+  /* the (max) byte size of our internal representation */
+    static const int SUB_SZ  = 8;
+
+  /* raw mem holding our 'object' - 
+     an array of byte objects seems the logical way to represent this */
+    uint8_t _sub[SUB_SZ];
+
+  /* the type of our 'object' - 
+     we can expand this to 64 bits because of alignment*/
     unsigned char _type_val;
-    /* have some space from alignment so we'll cache the size */
-    unsigned char _type_bsz; 
 
-    template<typename T> T     
-    _val_switch() const;
-
-    void _sub_deep_copy(const TOSDB_Generic& src);
+  /* _val_switch handles casts internally and supports most of the public 
+    interface; should be fast, comprehensive, and safe (in that order, i think) */
+    template< typename T >  
+    T     
+    _val_switch() const
+    {
+        try{
+            switch(this->_type_val){
+            case TYVAL_LONG:            
+            case TYVAL_LONG_LONG: 
+                return (T)(*(long long*)(this->_sub)); 
+            case TYVAL_FLOAT:                
+            case TYVAL_DOUBLE:    
+                return (T)(*(double*)(this->_sub)); 
+            case TYVAL_STRING:    
+                return (T)CastGenericFromString<T>(**(std::string**)(this->_sub));                      
+            default: throw;
+            }
+        }catch(...){
+            std::ostringstream s;
+            s << "error casting generic to < " << typeid(T).name() << " >";
+#ifdef __GNUC__
+            throw std::bad_cast();
+#else /* GNU doesn't like */
+            throw std::bad_cast(s.str().c_str());
+#endif
+       }
+   }
 
 public:  
     template<typename T>
@@ -56,178 +120,163 @@ public:
     };
 
     explicit TOSDB_Generic(long val)
-        :
-            _sub( new long(val) ),
-            _type_val( LONG_ ),
-            _type_bsz( sizeof(long) )
+        :           
+            _type_val( TYVAL_LONG )
         {      
+          
+            *((long long*)this->_sub) = val;
         }
 
     explicit TOSDB_Generic(long long val)
         :
-            _sub( new long long(val) ),
-            _type_val( LONG_LONG_ ),
-            _type_bsz( sizeof(long long) )
-        {
+            _type_val( TYVAL_LONG_LONG )
+        {      
+          
+            *((long long*)this->_sub) = val;
         }
 
     explicit TOSDB_Generic(float val)
         :
-            _sub( new float(val) ),
-            _type_val( FLOAT_ ),
-            _type_bsz( sizeof(float) )
-        {
+            _type_val( TYVAL_FLOAT )
+        {      
+          
+            *((double*)this->_sub) = val;
         }
 
     explicit TOSDB_Generic(double val)
         :
-            _sub( new double(val) ),
-            _type_val( DOUBLE_ ),
-            _type_bsz( sizeof(double) )
-        {
+            _type_val( TYVAL_DOUBLE )
+        {      
+          
+            *((double*)this->_sub) = val;
         }
 
     explicit TOSDB_Generic(std::string str)
-        :   
-            /* let string class handle details for us */
-            _sub( new std::string(str.substr(0,STR_MAX)) ),            
-            _type_val( STRING_ ) /*,
-            _type_bsz( 0 ) <- superfluous */
-        {    
+        : /* ! must be able to delete (std::string*)_sub at ANY TIME !*/                         
+            _type_val( TYVAL_STRING )  
+        { /* let string do all the heavy lifting */            
+            *((std::string**)(this->_sub)) = new std::string(str.substr(0,STR_MAX)); 
+        } 
+
+    TOSDB_Generic(const TOSDB_Generic& gen);
+
+    TOSDB_Generic(TOSDB_Generic&& gen);
+
+    TOSDB_Generic& 
+    operator=(const TOSDB_Generic& gen);
+
+    TOSDB_Generic& 
+    operator=(TOSDB_Generic&& gen);
+
+    ~TOSDB_Generic() 
+        { 
+            if( this->is_string() ) 
+                delete *(std::string**)(this->_sub); 
         }
 
-    TOSDB_Generic(TOSDB_Generic&& gen)
-        :
-            _sub( gen._sub ),
-            _type_val( gen._type_val ),
-            _type_bsz( gen._type_bsz )
-        {    
-            gen._sub  = nullptr;
-            gen._type_val = VOID_;
-            gen._type_bsz = 0;
-        }
+    inline bool /* same type AND value */
+    operator==(const TOSDB_Generic& gen) const
+    {
+        return ( this->_type_val == gen._type_val ) 
+               && ( this->as_string() == gen.as_string() );
+    }
 
-    TOSDB_Generic(const TOSDB_Generic& gen)
-        : 
-            _type_val( gen._type_val ),
-            _type_bsz( gen._type_bsz )
-        {  
-            this->_sub_deep_copy(gen);        
-        }  
+    inline bool /* different type OR value */
+    operator!=(const TOSDB_Generic& gen) const 
+    {
+        return !(this->operator==(gen));
+    }
 
-  TOSDB_Generic& 
-  operator=(const TOSDB_Generic& gen);
+    size_t 
+    size() const;
 
-  TOSDB_Generic& 
-  operator=(TOSDB_Generic&& gen);
+    inline bool 
+    is_float() const { return (this->_type_val == TYVAL_FLOAT); }  
 
-  ~TOSDB_Generic() 
-      { 
-          if(this->_sub) 
-              delete this->_sub; 
-      }
+    inline bool 
+    is_double() const { return (this->_type_val == TYVAL_DOUBLE); }  
 
-  inline bool 
-  operator==(const TOSDB_Generic& gen) const
-  {
-      return ( (this->_type_val == gen._type_val) 
-                && (this->as_string() == gen.as_string()) );
-  }
+    inline bool 
+    is_long() const { return (this->_type_val == TYVAL_LONG); }
 
-  inline bool 
-  operator!=(const TOSDB_Generic& gen) const 
-  {
-      return !(this->operator==(gen));
-  }
+    inline bool 
+    is_long_long() const { return (this->_type_val == TYVAL_LONG_LONG); }  
 
-  inline size_t 
-  size() const { return this->_type_bsz; }
+    inline bool 
+    is_string() const { return (this->_type_val == TYVAL_STRING); }
 
-  inline bool 
-  is_float() const { return (this->_type_val == FLOAT_); }  
+    inline bool 
+    is_floating_point() const 
+    { 
+        return this->_type_val == TYVAL_FLOAT 
+               || this->_type_val == TYVAL_DOUBLE; 
+    }
 
-  inline bool 
-  is_double() const { return (this->_type_val == DOUBLE_); }  
+    inline bool 
+    is_integer() const 
+    { 
+        return this->_type_val == TYVAL_LONG 
+               || this->_type_val == TYVAL_LONG_LONG; 
+    }
 
-  inline bool 
-  is_long() const { return (this->_type_val == LONG_); }
+    inline long      
+    as_long() const { return this->_val_switch<long>(); }
 
-  inline bool 
-  is_long_long() const { return (this->_type_val == LONG_LONG_); }  
+    inline long long 
+    as_long_long() const { return this->_val_switch<long long>(); }
 
-  inline bool 
-  is_string() const { return (this->_type_val == STRING_); }
+    inline float     
+    as_float() const { return this->_val_switch<float>(); }
 
-  inline bool 
-  is_floating_point() const 
-  { 
-      return (this->_type_val == FLOAT_ || this->_type_val == DOUBLE_); 
-  }
+    inline double    
+    as_double() const { return this->_val_switch<double>(); }
 
-  inline bool 
-  is_integer() const 
-  { 
-      return (this->_type_val == LONG_ || this->_type_val == LONG_LONG_); 
-  }
+    std::string      
+    as_string() const; 
 
-  inline long      
-  as_long() const { return this->_val_switch<long>(); }
+    inline operator  
+    long() const { return this->_val_switch<long>(); }
 
-  inline long long 
-  as_long_long() const { return this->_val_switch<long long>(); }
+    inline operator  
+    long long() const { return this->_val_switch<long long>(); }
 
-  inline float     
-  as_float() const { return this->_val_switch<float>(); }
+    inline operator  
+    float() const { return this->_val_switch<float>(); }
 
-  inline double    
-  as_double() const { return this->_val_switch<double>(); }
+    inline operator  
+    double() const { return this->_val_switch<double>(); }      
 
-  std::string      
-  as_string() const; /*generic.cpp*/
-
-  inline operator  
-  long() const { return this->as_long(); }
-
-  inline operator  
-  long long() const { return this->as_long_long(); }
-
-  inline operator  
-  float() const { return this->as_float(); }
-
-  inline operator  
-  double() const { return this->as_double(); }      
-
-  inline operator  
-  std::string() const { return this->as_string(); }
+    inline operator  
+    std::string() const { return this->as_string(); }
 };  
 
 
 template<typename T>
-T 
-TOSDB_Generic::_val_switch() const
-{
-    try{
-        switch(this->_type_val){
-        case LONG_:      
-            return (T)(*(long*)(this->_sub)); 
-        case LONG_LONG_: 
-            return (T)(*(long long*)(this->_sub)); 
-        case FLOAT_:     
-            return (T)(*(float*)(this->_sub)); 
-        case DOUBLE_:    
-            return (T)(*(double*)(this->_sub)); 
-        case STRING_:    
-            return (T)(std::is_floating_point<T>::value 
-                        ? std::stod(*(std::string*)(this->_sub)) 
-                        : std::stoll(*(std::string*)(this->_sub)));
-        default: throw;
-        }
-    }catch(...){
-        std::ostringstream s;
-        s << "error casting generic to < " << typeid(T).name() << " >";
-        throw std::bad_cast(s.str().c_str());
-    }
-}
+inline T
+CastGenericFromString(std::string& str) 
+{ 
+    static_assert(TOSDB_Generic::Type_Check<T>::value,
+                  "don't know how to cast to this type"); 
+}  
 
+template<>
+inline long long
+CastGenericFromString<long long>(std::string& str) { return std::stoll(str); }
+
+template<>
+inline long
+CastGenericFromString<long>(std::string& str) { return std::stol(str); }
+
+template<>
+inline double
+CastGenericFromString<double>(std::string& str) { return std::stod(str); }
+
+template<>
+inline float
+CastGenericFromString<float>(std::string& str) { return std::stof(str); }
+
+template<>
+inline std::string
+CastGenericFromString<std::string>(std::string& str) { return std::string(str); }
 
 #endif

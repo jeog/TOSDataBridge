@@ -185,8 +185,8 @@
   <ItemGroup>
     <ClCompile Include="..\src\client_admin.cpp" />
     <ClCompile Include="..\src\client_out.cpp" />
-    <ClCompile Include="..\src\generic.cpp" />
     <ClCompile Include="..\src\client_get.cpp" />
+    <ClCompile Include="..\src\generic.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\src\data_stream.tpp">
