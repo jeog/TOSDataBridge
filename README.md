@@ -17,7 +17,7 @@ Obviously the core implementation is not portable, but the python interface does
 - - -
 Major changes will generally lead to a new version/branch, but not necessarily the label of 'stable'. Minor changes may or may not use a seperate branch that will be merged back into master when deemed 'usable'.  
 
-- **v0.3** (branch 'v0.3') - 'stable' version, use the README from branch v0.3 branch \*\*
+- **v0.3** (branch 'v0.3') - 'stable' version, use the README from branch 'v0.3' \*\*
 
 - **v0.4** (branch 'master') - pre-release development, interface subject to slight change 
     
