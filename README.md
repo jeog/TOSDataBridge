@@ -17,17 +17,13 @@ Obviously the core implementation is not portable, but the python interface does
 - - -
 Major changes will generally lead to a new version/branch, but not necessarily the label of 'stable'. Minor changes may or may not use a seperate branch that will be merged back into master when deemed 'usable'.  
 
-- v0.3 (branch 'v0.3')
-    - 'stable' version  
-    - use the README from the v0.3 branch (instead of this one)
-    - *** ***contains up-to-date binaries/signatures*** ***
+- **v0.3** (branch 'v0.3') - 'stable' version, use the README from branch v0.3 branch \*\*
 
-- v0.4 (branch 'master')
-    - currently undergoing a major refactoring 
-    - interface is subject to slight change 
-    - *** ***may contain some binaries(no signatures)*** ***
-
+- **v0.4** (branch 'master') - pre-release development, interface subject to slight change 
+    
 If you simply want the core functionality - and/or need the most up-to-date pre-compiled binaries - with the small(est) chance of running into bugs, use v0.3 (branch v0.3). If you want the latest-and-greatest features, improvements etc., don't mind building your own and dealing with more bugs, or may want to contribute, use v0.4 (branch master).     
+
+\*\* **contains up-to-date binaries/signatures**
 
 ### Quick Setup
 - - -
