@@ -78,7 +78,7 @@ IF "%1"=="x64" (
             EXIT /B 1
         )  
         echo + Creating TOSDataBridge Service ...
-        SC delete TOSDataBridge 1>NUL 2>NUL
+        SC stop TOSDataBridge 1>NUL 2>NUL
         SC delete TOSDataBridge 1>NUL 2>NUL         
         SC create TOSDataBridge binPath= %cd%\bin\Debug\Win32\tos-databridge-serv-x86_d.exe%servCmd% 
         IF ERRORLEVEL 1 (
