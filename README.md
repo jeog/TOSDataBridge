@@ -23,11 +23,11 @@ Major changes will generally lead to a new version/branch, but not necessarily t
     
 If you simply want the core functionality - and/or need the most up-to-date pre-compiled binaries - with the small(est) chance of running into bugs, use v0.3 (branch v0.3). If you want the latest-and-greatest features, improvements etc., don't mind building your own and dealing with more bugs, or may want to contribute, use v0.4 (branch master).     
 
-\*\* **contains up-to-date binaries/signatures**
+\*\* *contains up-to-date binaries/signatures*
 
 ### Quick Setup
 - - -
-- tosdb-setup.bat will attempt to install the necessary modules/dependencies for you but you should refer to **Installation Details** below for a more detailed explanation
+- tosdb-setup.bat will attempt to install the necessary modules/dependencies for you but you should refer to **[Installation Details](https://github.com/jeog/TOSDataBridge#installation-details)** below for a more detailed explanation
 - Be sure to know what build you need(x86 vs x64); it should match your system, all the modules you'll need, and your version of Python(if you plan on using the python wrapper)
 
     ##### Core C/C++ Libraries
@@ -38,6 +38,12 @@ If you simply want the core functionality - and/or need the most up-to-date pre-
     - [x86|x64] : the version to build (required)
     - [admin] : does your TOS platform require elevation? (optional) 
     - [session] : override the service's attempt to determine the session id when exiting from session-0 isolation. **MOST USERS SHOULDN'T WORRY ABOUT THIS** unless they plan to run in a non-standard environment (e.g an EC2 instance). The tos-databridge-engine.exe[] binary needs to run in the same session as the ThinkOrSwim platform. (optional)
+
+    ```
+    Example 1: C:\TOSDataBridge\> tosdb-setup.bat x86
+    Example 2: C:\TOSDataBridge\> tosdb-setup.bat x64 admin
+    Example 3: C:\TOSDataBridge\> tosdb-setup.bat x64 admin 2
+    ```
 
     ##### Python Wrapper (optional)
     ```
