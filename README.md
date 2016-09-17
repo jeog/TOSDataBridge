@@ -229,6 +229,7 @@ tosdb/ is structured as a package with the bulk of its code in \__init__.py and 
    [--> DumpBufferStatus
 ```
 
+&nbsp;
 
 ### C/C++ Interface ::: Administrative Calls
 - - -
