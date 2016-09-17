@@ -221,7 +221,6 @@ Remeber, if installing on a non-windows system to utilize the virtual interface 
 
 tosdb/ is structured as a package with the bulk of its code in \__init__.py and \_win.py , the latter holding the non-portable parts that \__init__.py will import if it determines it's being run on a windows sytem. This structure allows you to simply import the package(*import tosdb*) or, if needed, extensions like intervalize.py(*from tosdb import intervalize*). Once imported you'll have to initialize it, which requires the path of tos-databridge[].dll or the root directory it's going to search in for the latest version. Please see [python/tutorial.md](./python/tutorial.md)  for a walk-through with screen-shots.
 
-&nbsp;
 > **IMPORTANT:**  There is a minor issue with how python uses the underlying library to deallocate shared resources, mostly because of python's use of refcounts. WE STRONGLY RECOMMEND you call clean_up() before exiting to be sure all shared resources have been properly dealt with. If this is not possible - the program terminates abruptly, for instance - there's a chance you've got dangling/orphaned resources. 
 
 > You can dump the state of these resources to a file in /log using tos-databridge-shell[].exe: 
@@ -230,7 +229,6 @@ tosdb/ is structured as a package with the bulk of its code in \__init__.py and 
    [--> DumpBufferStatus
 ```
 
-&nbsp;
 
 ### C/C++ Interface ::: Administrative Calls
 - - -
@@ -239,6 +237,7 @@ Once the Service is running start by calling **`TOSDB_Connect()`** which will re
 &nbsp;
 > **IMPORTANT:** 'Connected' only means there is a connection between the client/library and the engine/service, NOT that the engine/service can communicate with the TOS platform (or TOS is retrieving data from its server). If, for instance, TOS is not running or it's running with elevated privileges(and you didn't pass 'admin' to the setup script) you may be 'connected' but not able to communicate with the TOS platform. 
 
+&nbsp;
 > **IMPLEMENTATION NOTE:** Be careful: **`TOSDB_IsConnected()`** returns an unsigned int that represents a boolean value; most of the other C admin calls return a signed int to indicate error(non-0) or success(0). Boolean values will be represented by unsigned int return values for C and bool values for C++. 
 
 &nbsp;
