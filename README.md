@@ -27,7 +27,7 @@ If you simply want the core functionality - and/or need the most up-to-date pre-
 
 ### Quick Setup
 - - -
-- tosdb-setup.bat will attempt to install the necessary modules/dependencies for you but you should refer to **[Installation Details](https://github.com/jeog/TOSDataBridge#installation-details)** below for a more detailed explanation
+- tosdb-setup.bat will attempt to install the necessary modules/dependencies for you but you should refer to **[Installation Details](#installation-details)** below for a more detailed explanation
 - Be sure to know what build you need(x86 vs x64); it should match your system, all the modules you'll need, and your version of Python(if you plan on using the python wrapper)
 
     ##### Core C/C++ Libraries
@@ -60,12 +60,12 @@ If you simply want the core functionality - and/or need the most up-to-date pre-
     ```
     (Admin) C:\> SC start TOSDataBridge
     ```
-   (see #9 in the [Installation Details](https://github.com/jeog/TOSDataBridge#installation-details) section for more info on using the service.)
+   (see #9 in the [Installation Details](#installation-details) section for more info on using the service.)
 3. Log on to your TOS platform
 
 ##### For C/C++:
 - Include tos_databridge.h header in your code 
-- Use the library calls detailed in the **[C/C++ Interface...](https://github.com/jeog/TOSDataBridge#cc-interface--administrative-calls)** sections below
+- Use the library calls detailed in the **[C/C++ Interface...](#cc-interface--administrative-calls)** sections below
 - Link with *tos-databridge-0.4-[x86|x64].dll*
 - Build
 - Run
@@ -211,7 +211,7 @@ The python wrapper is a simpler, yet still robust, way to get started with the u
 
 > **IMPORTANT:** tosdb was only written to be compatible with python3
 
-Make sure the build of the modules you installed in the [Installation Details](https://github.com/jeog/TOSDataBridge#installation-details)  section matches your python build. Open a python shell and look to see if it says 32 bit or 64 bit on the top. 32 bit needs x86 modules; 64 bit needs x64. If they don't match redo the earlier steps. From a command prompt navigate to the tos-databridge/python directory and enter:
+Make sure the build of the modules you installed in the [Installation Details](#installation-details)  section matches your python build. Open a python shell and look to see if it says 32 bit or 64 bit on the top. 32 bit needs x86 modules; 64 bit needs x64. If they don't match redo the earlier steps. From a command prompt navigate to the tos-databridge/python directory and enter:
       
 `C:\TOSDataBridge\python\> python setup.py install`
 
@@ -219,7 +219,7 @@ Remeber, if installing on a non-windows system to utilize the virtual interface 
 
 > **IMPORTANT:** The virtual layer is **NOT SECURE** and should only be used on internal networks. We haven't implemented any type of connection authentication mechanism and it would be prudent to assume the virtual server could be exploited for remote code execution
 
-tosdb/ is structured as a package with the bulk of its code in \__init__.py and \_win.py , the latter holding the non-portable parts that \__init__.py will import if it determines it's being run on a windows sytem. This structure allows you to simply import the package(*import tosdb*) or, if needed, extensions like intervalize.py(*from tosdb import intervalize*). Once imported you'll have to initialize it, which requires the path of tos-databridge[].dll or the root directory it's going to search in for the latest version. Please see [python/tutorial.md](https://github.com/jeog/TOSDataBridge/blob/master/python/tutorial.md)  for a walk-through with screen-shots.
+tosdb/ is structured as a package with the bulk of its code in \__init__.py and \_win.py , the latter holding the non-portable parts that \__init__.py will import if it determines it's being run on a windows sytem. This structure allows you to simply import the package(*import tosdb*) or, if needed, extensions like intervalize.py(*from tosdb import intervalize*). Once imported you'll have to initialize it, which requires the path of tos-databridge[].dll or the root directory it's going to search in for the latest version. Please see [python/tutorial.md](./python/tutorial.md)  for a walk-through with screen-shots.
 
 > **IMPORTANT:**  There is a minor issue with how python uses the underlying library to deallocate shared resources, mostly because of python's use of refcounts. WE STRONGLY RECOMMEND you call clean_up() before exiting to be sure all shared resources have been properly dealt with. If this is not possible - the program terminates abruptly, for instance - there's a chance you've got dangling/orphaned resources. 
 
