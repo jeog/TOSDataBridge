@@ -12,6 +12,9 @@ There are a number of comments inside the screen-shots that help explain what we
 ![](./../res/tosdb_tutorial_1.png)
 
 - import tosdb and experiment with two different ways to initialize
+
+**IMPORTANT:** Before you can successfully connect you must have the underlying TOSDataBridge Service and TOS platform running, with the correct privileges, using the appropriate build(x86 vs x64) for your version of python. Refer to [Installation Details](../README.md#installation-details) for more details.
+
 - use some of the global admin calls
 - create/delete a TOSDB_DataBlock and examine it's contents
 - view our first TOSDB_ exception (see _common.py) 
