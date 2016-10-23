@@ -182,7 +182,7 @@ Even if you are not comfortable contributing code, simply reporting bugs or ques
   
 9.  After the Windows Service has been successfully created run: 
 
-    ```C:\> 'SC start TOSDataBridge'```  
+    ```C:\> SC start TOSDataBridge```  
 
     Returned text and various system utilities should confirms the service is running, (see screen-shot below).
 
@@ -192,14 +192,17 @@ Even if you are not comfortable contributing code, simply reporting bugs or ques
     - *SC stop TOSDataBridge* - this will stop the service. All the data collected so far will still exist but the engine will sever its connection to TOS and exit.  It should no longer be shown as a running process and its status should be Stopped.
     - *SC pause TOSDataBridge* - this will pause the service. All the data collected so far will still exist but the engine will stop recording new data in the buffers. It should still be shown as a running process but its status should be Paused. ***It's not recommended you pause the service.***
     - *SC continue TOSDataBridge* - this should continue a paused service. All the data collected so far will still exist, the engine will start recording new data into the buffers, but you will have missed any streaming data while paused. The service should return to the Running state.
-    
+
+    (note: some of the particulars in these (older) screen-shots may be different for newer versions)    
+    ![](./res/SCss1.png)
+
 10. (***SKIP IF ONLY USING PYTHON***) Include the tos_databridge.h header in your code ( if its C++ make sure the compiler can find containers.hpp, generic.hpp, and exceptions.hpp. ) and adjust the link settings to import the tos-databridge-0.4-[].lib stub. (If you run into trouble review the VisualStudio settings for tos-databridge-shell[].exe as they should resemble what you're trying to do.)
    
 11. (***SKIP IF ONLY USING PYTHON***) Jump down to the next section for some of the basic library calls to add to your program.
    
 12. Make sure the TOS Platform is running, execute your program or start the python wrapper(see below).
 
-![](./res/SCss1.png)
+
 
 ### Python Wrapper
 - - -
