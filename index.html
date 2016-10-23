@@ -59,13 +59,9 @@
 <p>Major changes will generally lead to a new version/branch, but not necessarily the label of 'stable'. Minor changes may or may not use a seperate branch that will be merged back into master when deemed 'usable'.  </p>
 
 <ul>
-<li><p><strong>v0.3</strong> (branch 'v0.3') - 'stable' version, use the README from branch 'v0.3' **</p></li>
-<li><p><strong>v0.4</strong> (branch 'master') - pre-release development, interface subject to slight change </p></li>
+<li><p><strong>v0.3</strong> (branch 'v0.3') - 'stable' version that guarantees up-to-date binaries/signatures (use the README from branch 'v0.3') </p></li>
+<li><p><strong>v0.4</strong> (branch 'master') - pre-release development version that may not have up-to-date binaries/signatures </p></li>
 </ul>
-
-<p>If you simply want the core functionality - and/or need the most up-to-date pre-compiled binaries - with the small(est) chance of running into bugs, use v0.3 (branch v0.3). If you want the latest-and-greatest features, improvements etc., don't mind building your own and dealing with more bugs, or may want to contribute, use v0.4 (branch master).     </p>
-
-<p>** <em>contains up-to-date binaries/signatures</em></p>
 
 <h3>
 <a id="quick-setup" class="anchor" href="#quick-setup" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Quick Setup</h3>
@@ -86,9 +82,15 @@
 <ul>
 <li>[x86|x64] : the version to build (required)</li>
 <li>[admin] : does your TOS platform require elevation? (optional) </li>
-<li>[session] : override the service's attempt to determine the session id when exiting from session-0 isolation. <strong>MOST USERS SHOULDN'T WORRY ABOUT THIS</strong> unless they plan to run in a non-standard environment (e.g an EC2 instance). The tos-databridge-engine.exe[] binary needs to run in the same session as the ThinkOrSwim platform. (optional)</li>
+<li>[session] : override the service's attempt to determine the session id when exiting from session-0 isolation. <strong>MOST USERS SHOULDN'T WORRY ABOUT THIS</strong> unless they plan to run in a non-standard environment (e.g an EC2 instance). The tos-databridge-engine.exe[] binary needs to run in the same session as the ThinkOrSwim platform. <a href=https://blogs.technet.microsoft.com/askperf/2007/07/24/sessions-desktops-and-windows-stations> An explanation of Sessions, Desktops, and Stations. </a> (optional)</li>
 </ul>
 
+<pre><code>Example 1: C:\TOSDataBridge\> tosdb-setup.bat x86 <br>
+Example 2:: C:\TOSDataBridge\> tosdb-setup.bat x64 admin <br>
+Example 3: C:\TOSDataBridge\> tosdb-setup.bat x64 admin 2
+</code>
+</pre>
+  
 <h5>
 <a id="python-wrapper-optional" class="anchor" href="#python-wrapper-optional" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Python Wrapper (optional)</h5>
 
