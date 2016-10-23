@@ -33,7 +33,7 @@ Major changes will generally lead to a new version/branch, but not necessarily t
 
     - [x86|x64] : the version to build (required)
     - [admin] : does your TOS platform require elevation? (optional) 
-    - [session] : override the service's attempt to determine the session id when exiting from session-0 isolation. **MOST USERS SHOULDN'T WORRY ABOUT THIS** unless they plan to run in a non-standard environment (e.g an EC2 instance). The tos-databridge-engine.exe[] binary needs to run in the same session as the ThinkOrSwim platform. [An explanation of Sessions, Desktops, and Stations.](https://blogs.technet.microsoft.com/askperf/2007/07/24/sessions-desktops-and-windows-stations/) (optional)
+    - [session] : override the service's attempt to determine the session id when exiting from session-0 isolation. The tos-databridge-engine.exe[] binary needs to run in the same session as the ThinkOrSwim platform. **Most users shouldn't worry about this** unless they plan to run in a non-standard environment (e.g an EC2 instance).  [An explanation of Sessions, Desktops, and Stations.](https://blogs.technet.microsoft.com/askperf/2007/07/24/sessions-desktops-and-windows-stations/) (optional)
  
     ```
     Example 1: C:\TOSDataBridge\> tosdb-setup.bat x86
