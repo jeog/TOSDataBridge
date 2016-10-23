@@ -82,11 +82,11 @@
 <ul>
 <li>[x86|x64] : the version to build (required)</li>
 <li>[admin] : does your TOS platform require elevation? (optional) </li>
-<li>[session] : override the service's attempt to determine the session id when exiting from session-0 isolation. <strong>MOST USERS SHOULDN'T WORRY ABOUT THIS</strong> unless they plan to run in a non-standard environment (e.g an EC2 instance). The tos-databridge-engine.exe[] binary needs to run in the same session as the ThinkOrSwim platform. <a href=https://blogs.technet.microsoft.com/askperf/2007/07/24/sessions-desktops-and-windows-stations> An explanation of Sessions, Desktops, and Stations. </a> (optional)</li>
+<li>[session] : override the service's attempt to determine the session id when exiting from session-0 isolation. The tos-databridge-engine.exe[] binary needs to run in the same session as the ThinkOrSwim platform. <strong>Most users shouldn't worry about this</strong> unless they plan to run in a non-standard environment (e.g an EC2 instance). <a href=https://blogs.technet.microsoft.com/askperf/2007/07/24/sessions-desktops-and-windows-stations> An explanation of Sessions, Desktops, and Stations. </a> (optional)</li>
 </ul>
 
 <pre><code>Example 1: C:\TOSDataBridge\> tosdb-setup.bat x86 
-Example 2:: C:\TOSDataBridge\> tosdb-setup.bat x64 admin 
+Example 2: C:\TOSDataBridge\> tosdb-setup.bat x64 admin 
 Example 3: C:\TOSDataBridge\> tosdb-setup.bat x64 admin 2 </code>
 </pre>
   
@@ -116,7 +116,7 @@ Example 3: C:\TOSDataBridge\> tosdb-setup.bat x64 admin 2 </code>
 <pre><code>(Admin) C:\&gt; SC start TOSDataBridge
 </code></pre>
 
-<p>(see #9 in the <a href=https://github.com/jeog/TOSDataBridge#installation-details> 'Installation Details' section </a> for more info on using the service.)</p>
+<p>(consider having the service begin automatically on startup to avoid this step in the future; see #9 in the <a href=https://github.com/jeog/TOSDataBridge#installation-details> 'Installation Details' section </a> for more info on using the service.)</p>
 </li>
 <li>Log on to your TOS platform</li>
 </ol>
