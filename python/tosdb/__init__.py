@@ -345,6 +345,20 @@ class VTOSDB_DataBlock(_TOSDB_DataBlock):
     return self._call(_vCALL, 'topics', str_max) 
 
 
+### --- BEGIN --- Oct 30 2016
+
+  @_doxtend(_TOSDB_DataBlock) # __doc__ from ABC _TOSDB_DataBlock
+  def items_precached(self, str_max = MAX_STR_SZ):
+    return self._call(_vCALL, 'items_precached', str_max)         
+
+
+  @_doxtend(_TOSDB_DataBlock) # __doc__ from ABC _TOSDB_DataBlock
+  def topics_precached(self,  str_max = MAX_STR_SZ):
+    return self._call(_vCALL, 'topics_precached', str_max) 
+
+### --- END --- Oct 30 2016
+
+
   @_doxtend(_TOSDB_DataBlock) # __doc__ from ABC _TOSDB_DataBlock
   def add_items(self, *items):       
     self._call(_vCALL, 'add_items', *items)     

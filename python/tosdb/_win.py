@@ -335,6 +335,23 @@ class TOSDB_DataBlock(_TOSDB_DataBlock):
     return t_count.value
 
 
+### --- BEGIN --- Oct 30 2016
+
+  def _item_precache_count(self):       
+    i_count = _uint32_()
+    _lib_call("TOSDB_GetPreCachedItemCount", self._name, _pointer(i_count),
+              arg_types=(_str_,_PTR_(_uint32_)))
+    return i_count.value
+
+
+  def _topic_precache_count(self):        
+    t_count = _uint32_()
+    _lib_call("TOSDB_GetPreCachedTopicCount", self._name, _pointer(t_count),
+              arg_types=(_str_,_PTR_(_uint32_)))
+
+### --- END --- Oct 30 2016
+
+
   @_doxtend(_TOSDB_DataBlock) # __doc__ from ABC _TOSDB_DataBlock
   def info(self):      
     return {"Name": self._name.decode('ascii'), 
@@ -409,7 +426,43 @@ class TOSDB_DataBlock(_TOSDB_DataBlock):
     
     return [_cast_cstr(s) for s in strs_array] 
       
- 
+
+### --- BEGIN --- Oct 30 2016
+
+  @_doxtend(_TOSDB_DataBlock) # __doc__ from ABC _TOSDB_DataBlock
+  def items_precached(self, str_max=MAX_STR_SZ):  
+    size = self._item_precache_count()  
+    strs = [_BUF_(str_max + 1) for _ in range(size)]      
+    strs_array = (_pchar_* size)(*[ _cast(s, _pchar_) for s in strs]) 
+    
+    _lib_call("TOSDB_GetPreCachedItemNames", 
+              self._name, 
+              strs_array, 
+              size, 
+              str_max + 1, 
+              arg_types=(_str_, _ppchar_, _uint32_, _uint32_))
+    
+    return [_cast_cstr(s) for s in strs_array]            
+       
+       
+  @_doxtend(_TOSDB_DataBlock) # __doc__ from ABC _TOSDB_DataBlock
+  def topics_precached(self,  str_max=MAX_STR_SZ):
+    size = self._topic_pre_cache_count()
+    strs = [_BUF_(str_max + 1) for _ in range(size)]     
+    strs_array = (_pchar_* size)(*[ _cast(s, _pchar_) for s in strs])   
+        
+    _lib_call("TOSDB_GetPreCachedTopicNames", 
+              self._name, 
+              strs_array, 
+              size, 
+              str_max + 1, 
+              arg_types=(_str_,  _ppchar_, _uint32_, _uint32_))               
+    
+    return [_cast_cstr(s) for s in strs_array] 
+      
+### --- END --- Oct 30 2016
+
+
   @_doxtend(_TOSDB_DataBlock) # __doc__ from ABC _TOSDB_DataBlock   
   def add_items(self, *items):              
     mtup = tuple(s.encode("ascii").upper() for s in items)

@@ -561,11 +561,23 @@ TOSDB_GetTopicNames(LPCSTR id, LPSTR* dest, size_type array_len, size_type str_l
 EXT_C_SPEC DLL_SPEC_IFACE NO_THROW int            
 TOSDB_GetItemNames(LPCSTR id, LPSTR* dest, size_type array_len, size_type str_len);
 
-//EXT_C_SPEC DLL_SPEC_IFACE NO_THROW int          
-//TOSDB_GetPreCachedTopicNames(LPCSTR id, LPSTR* dest, size_type str_len, size_type array_len);
 
-//EXT_C_SPEC DLL_SPEC_IFACE NO_THROW int          
-//TOSDB_GetPreCachedItemNames(LPCSTR id, LPSTR* dest, size_type str_len, size_type array_len);
+/*** --- BEGIN --- Oct 30 2016 ***/
+
+EXT_C_SPEC DLL_SPEC_IFACE NO_THROW int           
+TOSDB_GetPreCachedItemCount(LPCSTR id, size_type* count);
+
+EXT_C_SPEC DLL_SPEC_IFACE NO_THROW int           
+TOSDB_GetPreCachedTopicCount(LPCSTR id, size_type* count);
+
+EXT_C_SPEC DLL_SPEC_IFACE NO_THROW int          
+TOSDB_GetPreCachedTopicNames(LPCSTR id, LPSTR* dest, size_type array_len, size_type str_len);
+
+EXT_C_SPEC DLL_SPEC_IFACE NO_THROW int          
+TOSDB_GetPreCachedItemNames(LPCSTR id, LPSTR* dest, size_type array_len, size_type str_len);
+
+/*** --- END --- Oct 30 2016 ***/
+
 
 EXT_C_SPEC DLL_SPEC_IFACE NO_THROW int            
 TOSDB_GetTypeBits(LPCSTR sTopic, type_bits_type* type_bits);

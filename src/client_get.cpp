@@ -181,6 +181,109 @@ TOSDB_GetItemNames(LPCSTR id, LPSTR* dest, size_type array_len, size_type str_le
     /* --- CRITICAL SECTION --- */
 }
 
+
+/*** --- BEGIN --- Oct 30 2016 ***/
+
+int 
+TOSDB_GetPreCachedItemCount(LPCSTR id, size_type* count)
+{
+    try{
+        if(!CheckIDLength(id))
+            return -1;
+
+        GLOBAL_RLOCK_GUARD;
+        /* --- CRITICAL SECTION --- */
+        *count = GetBlockOrThrow(id)->item_precache.size();
+        return 0;
+        /* --- CRITICAL SECTION --- */
+    }
+    catch(...){ 
+        return -2; 
+    }
+}
+
+int 
+TOSDB_GetPreCachedTopicCount(LPCSTR id, size_type* count)
+{
+    try{
+        if(!CheckIDLength(id))
+            return -1;
+
+        GLOBAL_RLOCK_GUARD;
+        /* --- CRITICAL SECTION --- */
+        *count = GetBlockOrThrow(id)->topic_precache.size();
+        return 0;
+        /* --- CRITICAL SECTION --- */
+    }
+    catch(...){ 
+        return -2; 
+    }
+}
+
+
+int 
+TOSDB_GetPreCachedTopicNames(LPCSTR id, LPSTR* dest, size_type array_len, size_type str_len)
+{
+    const TOSDBlock *db;
+    topic_set_type topics;
+    int i, err;
+
+    if(!CheckIDLength(id))
+        return -1;
+
+    GLOBAL_RLOCK_GUARD;
+    /* --- CRITICAL SECTION --- */
+    db = GetBlockPtr(id);
+    if (!db) 
+        return -2;
+
+    topics = db->topic_precache();  
+    if (array_len < topics.size()) 
+        return -3;  
+
+    i = err = 0;
+    for(auto & t : topics){
+        err = strcpy_s(dest[i++], str_len,TOS_Topics::map[t].c_str());
+        if(err)
+            return err;     
+    }
+    return err;
+    /* --- CRITICAL SECTION --- */
+}
+
+int 
+TOSDB_GetPreCachedItemNames(LPCSTR id, LPSTR* dest, size_type array_len, size_type str_len)
+{
+    const TOSDBlock *db;
+    str_set_type items;
+    int i, err;
+
+    if(!CheckIDLength(id))
+        return -1;
+
+    GLOBAL_RLOCK_GUARD;
+    /* --- CRITICAL SECTION --- */
+    db = GetBlockPtr(id);
+    if (!db) 
+        return -2;
+
+    items = db->item_precache();   
+    if (array_len < items.size()) 
+        return -3;   
+ 
+    i = err = 0;
+    for(auto & item : items){
+        err = strcpy_s(dest[i++], str_len, item.c_str());
+        if(err)
+            return err;
+    }
+    return err;
+    /* --- CRITICAL SECTION --- */
+}
+
+/*** --- END --- Oct 30 2016 ***/
+
+
 int 
 TOSDB_GetTypeBits(LPCSTR sTopic, type_bits_type* type_bits)
 {
