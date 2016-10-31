@@ -224,8 +224,7 @@ TOSDB_GetPreCachedTopicCount(LPCSTR id, size_type* count)
 int 
 TOSDB_GetPreCachedTopicNames(LPCSTR id, LPSTR* dest, size_type array_len, size_type str_len)
 {
-    const TOSDBlock *db;
-    topic_set_type topics;
+    const TOSDBlock *db;    
     int i, err;
 
     if(!CheckIDLength(id))
@@ -236,13 +235,12 @@ TOSDB_GetPreCachedTopicNames(LPCSTR id, LPSTR* dest, size_type array_len, size_t
     db = GetBlockPtr(id);
     if (!db) 
         return -2;
-
-    topics = db->topic_precache();  
-    if (array_len < topics.size()) 
+        
+    if (array_len < db->topic_precache.size()) 
         return -3;  
 
     i = err = 0;
-    for(auto & t : topics){
+    for(auto & t : db->topic_precache){
         err = strcpy_s(dest[i++], str_len,TOS_Topics::map[t].c_str());
         if(err)
             return err;     
@@ -254,8 +252,7 @@ TOSDB_GetPreCachedTopicNames(LPCSTR id, LPSTR* dest, size_type array_len, size_t
 int 
 TOSDB_GetPreCachedItemNames(LPCSTR id, LPSTR* dest, size_type array_len, size_type str_len)
 {
-    const TOSDBlock *db;
-    str_set_type items;
+    const TOSDBlock *db;    
     int i, err;
 
     if(!CheckIDLength(id))
@@ -266,13 +263,12 @@ TOSDB_GetPreCachedItemNames(LPCSTR id, LPSTR* dest, size_type array_len, size_ty
     db = GetBlockPtr(id);
     if (!db) 
         return -2;
-
-    items = db->item_precache();   
-    if (array_len < items.size()) 
+        
+    if (array_len < db->item_precache.size()) 
         return -3;   
  
     i = err = 0;
-    for(auto & item : items){
+    for(auto & item : db->item_precache){
         err = strcpy_s(dest[i++], str_len, item.c_str());
         if(err)
             return err;
@@ -447,6 +443,30 @@ TOSDB_GetTopicCount(std::string id)
     return GetBlockOrThrow(id)->block->topic_count();
     /* --- CRITICAL SECTION --- */
 }
+
+
+/*** --- BEGIN --- Oct 30 2016 ***/
+
+size_type 
+TOSDB_GetPreCachedItemCount(std::string id)
+{
+    GLOBAL_RLOCK_GUARD;
+    /* --- CRITICAL SECTION --- */
+    return  GetBlockOrThrow(id)->item_precache.size();
+    /* --- CRITICAL SECTION --- */
+}
+
+size_type 
+TOSDB_GetPreCachedTopicCount(std::string id)
+{
+    GLOBAL_RLOCK_GUARD;
+    /* --- CRITICAL SECTION --- */
+    return GetBlockOrThrow(id)->topic_precache.size();
+    /* --- CRITICAL SECTION --- */
+}
+
+/*** --- END --- Oct 30 2016 ***/
+
 
 void 
 TOSDB_SetBlockSize(std::string id, size_type sz)

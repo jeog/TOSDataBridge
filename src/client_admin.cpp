@@ -708,8 +708,7 @@ TOSDB_RemoveTopic(std::string id, TOS_Topics::TOPICS tTopic)
         return -3;
     }   
 
-	/* this will return an error if we have topic in precache but not in block...
-	   do we want that ?? */
+	  /* OCT 30 2016 --- if not in block, check if in pre-cache, before returning error */
     if( db->block->has_topic(tTopic) ){
         for(const std::string & item : db->block->items())
         {
@@ -726,7 +725,7 @@ TOSDB_RemoveTopic(std::string id, TOS_Topics::TOPICS tTopic)
                 db->block->remove_item(item); 
             }  
         }
-    }else{
+    }else if(db->topic_precache.find(tTopic) == db->topic_precache.end() ){
         err = -4;  
     }
 
@@ -763,6 +762,7 @@ TOSDB_RemoveItem(LPCSTR id, LPCSTR sItem)
     if( !CheckStringLength(sItem) )
         return -3;
 
+    /* OCT 30 2016 --- if not in block, check if in pre-cache, before returning error */
     if( db->block->has_item(sItem) ){
         for(const TOS_Topics::TOPICS topic : db->block->topics())
         {
@@ -779,7 +779,7 @@ TOSDB_RemoveItem(LPCSTR id, LPCSTR sItem)
                 db->block->remove_topic(topic);
             }
         }
-    }else{
+    }else if(db->item_precache.find(sItem) == db->item_precache.end() ){
         err = -4;  
     }
 

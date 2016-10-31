@@ -80,7 +80,7 @@ Even if you are not comfortable contributing code, simply reporting bugs or ques
 - - -
 - simplify the main header: tos_databridge.h
 - simplify the API 
-- remove (or atleast improve) the pre-caching behavior of blocks
+- remove (or atleast improve) the pre-caching behavior of blocks (***DONE Oct 30 2016***)
 - consider an 'intermediate' API between client lib and engine, allowing users to inject their own callbacks/hooks for handling raw data from the engine
 - add authentication mechanism to virtual-layer connections
 
@@ -153,7 +153,7 @@ Even if you are not comfortable contributing code, simply reporting bugs or ques
 ### Installation Details
 - - -
 
-1. Move the unzipped tos-databridge folder to its permanent location(our's is in C:/ for convenience.) If you change it in the future you'll need to redo some of these steps because the Service module relies on an absolute path.
+1. Move the unzipped tos-databridge folder to its permanent location. If you change it in the future you'll need to redo some of these steps because the Service module relies on an absolute path.
 
 2. Determine the appropriate build you'll need: 32-bit(x86) or 64-bit(x64). ***Make sure you don't mix and match in future steps, python will automatically look for a version that matches its own build.***
  

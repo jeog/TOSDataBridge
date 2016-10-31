@@ -648,6 +648,16 @@ TOSDB_GetTypeBits(TOS_Topics::TOPICS tTopic);
 DLL_SPEC_IFACE std::string     
 TOSDB_GetTypeString(TOS_Topics::TOPICS tTopic);
 
+/*** --- BEGIN --- Oct 30 2016 ***/
+
+DLL_SPEC_IFACE size_type       
+TOSDB_GetPreCachedItemCount(std::string id);
+
+DLL_SPEC_IFACE size_type       
+TOSDB_GetPreCachedTopicCount(std::string id);
+
+/*** --- END --- Oct 30 2016 ***/
+
 DLL_SPEC_IFACE size_type       
 TOSDB_GetItemCount(std::string id);
 

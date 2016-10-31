@@ -43,12 +43,22 @@ IF "%1"=="x64" (
         echo - Can't find "%cd%\\bin\\Release\\x64\\tos-databridge-engine-x64.exe", exiting setup...
         EXIT /B 1
     )
-    echo + Creating TOSDataBridge Service ...
+    echo + stop old TOSDataBridge Service ...
     SC stop TOSDataBridge 1>NUL 2>NUL    
+    timeout /t 3 /nobreak
+    echo.
+    echo + delete old TOSDataBridge Service ...
     SC delete TOSDataBridge 1>NUL 2>NUL   
+    timeout /t 3 /nobreak
+    echo.
+    echo + Creating TOSDataBridge Service ...
     SC create TOSDataBridge binPath= %cd%\\bin\\Release\\x64\\tos-databridge-serv-x64.exe%servCmd% 
     IF ERRORLEVEL 1 (
         echo - SC create failed, exiting setup...
+        echo - Try running this setup script again. If that fails you may need to manually stop/delete old service:
+        echo -     SC stop TOSDataBridge
+        echo -     SC delete TOSDataBridge
+        echo - Then run the setup script again.
         EXIT /B 1
     )    
 ) else ( 
@@ -77,12 +87,22 @@ IF "%1"=="x64" (
             echo - Can't find "%cd%\\bin\\Release\\Win32\\tos-databridge-engine-x86.exe", exiting setup...
             EXIT /B 1
         ) 
-        echo + Creating TOSDataBridge Service ...
+        echo + stop old TOSDataBridge Service ...
         SC stop TOSDataBridge 1>NUL 2>NUL
-        SC delete TOSDataBridge 1>NUL 2>NUL         
+        timeout /t 3 /nobreak
+        echo.
+        echo + delete old TOSDataBridge Service ...
+        SC delete TOSDataBridge 1>NUL 2>NUL 
+        timeout /t 3 /nobreak
+        echo.        
+        echo + Creating TOSDataBridge Service ...
         SC create TOSDataBridge binPath= %cd%\bin\Release\Win32\tos-databridge-serv-x86.exe%servCmd% 
         IF ERRORLEVEL 1 (
             echo - SC create failed, exiting setup...
+            echo - Try running this setup script again. If that fails you may need to manually stop/delete old service:
+            echo -     SC stop TOSDataBridge
+            echo -     SC delete TOSDataBridge
+            echo - Then run the setup script again.
             EXIT /B 1
         )    
     ) else (
