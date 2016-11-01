@@ -30,16 +30,18 @@ DllMain(HANDLE mod, DWORD why, LPVOID res)
     switch(why){
     case DLL_PROCESS_ATTACH:
     {  
-     /* either use a relative(local) log path or create a log folder in 
-        appdata; define TOSDB_LOG_PATH for all other implemenation modules */
+     /* 
+        either use a relative(local) log path or create a log folder in 
+        appdata; define TOSDB_LOG_PATH for all other implemenation modules 
+      */
 #ifdef LOCAL_LOG_PATH	/* add error checks */
         GetModuleFileName(NULL, TOSDB_LOG_PATH, MAX_PATH);
-		std::string lp(TOSDB_LOG_PATH);
-		std::string nlp(lp.begin(),lp.begin() + lp.find_last_of('\\'));
-		nlp.append(LOCAL_LOG_PATH);
-		int i = sizeof(*TOSDB_LOG_PATH);
-		memset(TOSDB_LOG_PATH,0,(MAX_PATH+40)* sizeof(*TOSDB_LOG_PATH));
-		strcpy(TOSDB_LOG_PATH, nlp.c_str());    		
+        std::string lp(TOSDB_LOG_PATH);
+        std::string nlp(lp.begin(),lp.begin() + lp.find_last_of('\\'));
+        nlp.append(LOCAL_LOG_PATH);
+        int i = sizeof(*TOSDB_LOG_PATH);
+        memset(TOSDB_LOG_PATH,0,(MAX_PATH+40)* sizeof(*TOSDB_LOG_PATH));
+        strcpy(TOSDB_LOG_PATH, nlp.c_str());    		
 #else
         GetEnvironmentVariable("APPDATA", TOSDB_LOG_PATH, MAX_PATH);         
         strcat_s(TOSDB_LOG_PATH, "\\tos-databridge\\"); /* needs to be < 40 char */
@@ -75,29 +77,35 @@ CreateBufferName(std::string sTopic, std::string sItem)
 #endif
 }
 
+std::string
+BuildLogPath(std::string name)
+{
+    return std::string(TOSDB_LOG_PATH) + name;
+}
+
 char** 
 NewStrings(size_t num_strs, size_t strs_len)
 {
-  char** strs = new char*[num_strs];
+    char** strs = new char*[num_strs];
 
-  for(size_t i = 0; i < num_strs; ++i)
-    strs[i] = new char[strs_len + 1];
+    for(size_t i = 0; i < num_strs; ++i)
+        strs[i] = new char[strs_len + 1];
 
-  return strs;
+    return strs;
 }
 
 void 
 DeleteStrings(char** str_array, size_t num_strs)
 {
-  if(!str_array)
-    return;
+    if(!str_array)
+      return;
 
-  while(num_strs--){  
-    if(str_array[num_strs])
-      delete[] str_array[num_strs];    
-  }
+    while(num_strs--){  
+        if(str_array[num_strs])
+          delete[] str_array[num_strs];    
+    }
 
-  delete[] str_array;
+    delete[] str_array;
 }
 
 

@@ -30,8 +30,8 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 
 namespace { 
 
-  /* !!! 'buffer_lock_guard_' is reserved inside this namespace !!! */
-  /* !!! 'topic_lock_guard_' is reserved inside this namespace !!! */
+/* !!! 'buffer_lock_guard_' is reserved inside this namespace !!! */
+/* !!! 'topic_lock_guard_' is reserved inside this namespace !!! */
 
 typedef struct{
     void*        hfile;    /* handle to mapping */
@@ -1087,10 +1087,10 @@ HandleData(UINT msg, WPARAM wparam, LPARAM lparam)
         }     
         };
     }catch(const std::out_of_range& e){      
-        TOSDB_LogH("DDE", e.what());
+        TOSDB_Log("DDE", e.what());
     }catch(const std::invalid_argument& e){    
         std::string serr(e.what());
-        TOSDB_LogH("DDE", serr.append(" Value:: ").append(cp_data).c_str());
+        TOSDB_Log("DDE", serr.append(" Value:: ").append(cp_data).c_str());
     }catch(...){    
         throw TOSDB_DDE_Error("unexpected error handling dde data");
     }  

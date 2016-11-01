@@ -50,7 +50,7 @@ inline TOS_Topics::TOPICS
 GetTopicEnum(std::string sTopic){ return TOS_Topics::map[sTopic]; }
 
 const TOSDBlock*   
-GetBlockPtr(std::string id);
+GetBlockPtr(std::string id, bool log=true);
 
 const TOSDBlock*   
 GetBlockOrThrow(std::string id);

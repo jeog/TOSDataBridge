@@ -175,6 +175,17 @@ class DLL_SPEC_IMPL DynamicIPCBase;
 class DLL_SPEC_IMPL DynamicIPCMaster;
 class DLL_SPEC_IMPL DynamicIPCSlave;
 
+/* for C code: create a string of form: "TOSDB_[topic name]_[item name]"  
+   only alpha-numerics */
+DLL_SPEC_IMPL std::string 
+CreateBufferName(std::string sTopic, std::string sItem);
+
+DLL_SPEC_IMPL std::string
+BuildLogPath(std::string name);
+
+DLL_SPEC_IMPL std::string 
+SysTimeString();
+
 #endif /*__cplusplus */
 
 #define TOSDB_COMM_CHANNEL "TOSDB_channel_1"
@@ -209,7 +220,8 @@ typedef struct{
 /* we still need to export this for DumpBufferStatus in engine.cpp */
 extern char  DLL_SPEC_IMPL  TOSDB_LOG_PATH[ MAX_PATH+40 ]; 
 
-/* we'll log to a relative directory - REQUIRES A STABLE DIRECTORY TREE */
+/* we'll log to a relative directory - REQUIRES A STABLE DIRECTORY TREE 
+   this will be relative to the back-end lib: _tos-databridge-[].dll */
 #define LOCAL_LOG_PATH "\\..\\..\\..\\log\\" /* needs to be < 40 char */
 
 /* LOGGING - logging.cpp */
@@ -227,6 +239,9 @@ EXT_C_SPEC  DLL_SPEC_IMPL  void
 ClearLog();
 
 #endif /* THIS_EXPORTS_IMPLEMENTATION || THIS_IMPORTS_IMPLEMENTATION */
+
+EXT_C_SPEC DLL_SPEC_IFACE NO_THROW int
+TOSDB_GetClientLogPath(char* path, size_type sz);
 
 #ifdef __cplusplus
 
@@ -1015,15 +1030,6 @@ operator<<(std::ostream&, const std::pair<std::vector<def_size_type>,dts_vector_
 
 template DLL_SPEC_IFACE std::ostream& 
 operator<<(std::ostream&, const std::pair<std::vector<std::string>,dts_vector_type>&);
-
-
-/* for C code: create a string of form: "TOSDB_[topic name]_[item name]"  
-   only alpha-numerics */
-DLL_SPEC_IMPL std::string 
-CreateBufferName(std::string sTopic, std::string sItem);
-
-DLL_SPEC_IMPL std::string 
-SysTimeString();
 
 #endif /* __cplusplus */
 

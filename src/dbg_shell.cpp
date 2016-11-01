@@ -159,7 +159,11 @@ int main(int argc, char* argv[])
   std::cout<<"[-- NOTE: Topics/Items are case sensitive; use upper-case   --]" <<std::endl;
   std::cout<<"[--                                                         --]" <<std::endl;
   std::cout<<"[-------------------------------------------------------------]" <<std::endl;
-  std::cout<<std::endl;
+
+  char lpath[MAX_PATH+40+40];
+  TOSDB_GetClientLogPath(lpath,MAX_PATH+40+40);
+  std::cout<<"LOG: " << lpath << std::endl << std::endl;
+
   while(1)
   {    
     try

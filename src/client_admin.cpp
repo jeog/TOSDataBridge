@@ -32,11 +32,12 @@ std::recursive_mutex global_rmutex;
 
 namespace { 
   
-  /* !!! 'buffers_lock_guard_' is reserved inside this namespace !!! */
+/* !!! 'buffers_lock_guard_' is reserved inside this namespace !!! */
 
 typedef std::tuple<unsigned int, unsigned int,  
                    std::set<const TOSDBlock*>, 
                    HANDLE, HANDLE>                  buf_info_ty;
+
 typedef std::pair<TOS_Topics::TOPICS, std::string>  buf_id_ty;
 typedef std::map<buf_id_ty, buf_info_ty>            buffers_ty;
 
@@ -71,18 +72,16 @@ DynamicIPCMaster master(TOSDB_COMM_CHANNEL);
 /* atomic flag that supports IPC connectivity */
 std::atomic<bool> aware_of_connection(false);  
 
-/* get our block (or NULL) internally */
+/* get our block (or NULL) to modify internally */
 TOSDBlock* 
 _getBlockPtr(std::string id)
 { 
     try{        
         return dde_blocks.at(id);
-    }catch(...){ 
-        TOSDB_Log("BLOCK", "TOSDBlock does not exist.");
+    }catch(...){     
         return NULL; 
     }
 }
-
 
 long 
 RequestStreamOP(TOS_Topics::TOPICS tTopic, 
@@ -118,8 +117,8 @@ RequestStreamOP(TOS_Topics::TOPICS tTopic,
     master.remove(std::move(arg1)).remove(std::move(arg2)).remove(std::move(arg3));
 
     if(!ret_stat){
-        master.release_pipe();
-        TOSDB_LogH("IPC","recv failed; problem with connection");
+        master.release_pipe(); /* switch to non-blocking(raw) logging */
+        TOSDB_Log_Raw("IPC; recv failed; problem with connection");        
         return -3;
     }
     master.release_pipe();
@@ -332,8 +331,9 @@ Threaded_Init(LPVOID lParam)
     buffer_thread = NULL;
     buffer_thread_id = 0;
     return 0;
-  }
-};
+}
+
+}; /* namespace */
 
 
 BOOL WINAPI 
@@ -343,9 +343,8 @@ DllMain(HANDLE mod, DWORD why, LPVOID res) /* ENTRY POINT */
     case DLL_PROCESS_ATTACH:
         /* ! NO AUTO-CONNECT ! need blocking ops deep into ->try_for_slave()   */
         {      
-			      std::string logpath(TOSDB_LOG_PATH);
-            logpath.append(LOG_NAME);
-            StartLogging(logpath.c_str());  
+            std::string p = BuildLogPath(LOG_NAME);	                  
+            StartLogging(p.c_str());  
         } 
         break;   
     case DLL_THREAD_ATTACH: 
@@ -375,17 +374,21 @@ DllMain(HANDLE mod, DWORD why, LPVOID res) /* ENTRY POINT */
     return TRUE;
 }
 
+/* Nov 1 2016: Change (non-blocking) raw log calls to regular (blocking) 
 
+   We should be able to block in here as long as this is not called from DllMain
+
+   !!! BUGS IN IPC (after NOV 1 2016) WE SHOULD LOOK HERE FIRST !!! */
 int 
-TOSDB_Connect()
+TOSDB_Connect() 
 {  
     unsigned int lcount = 0;
 
     if(master.connected() && aware_of_connection.load())
         return 0;
 
-    if( !master.try_for_slave() ){
-       TOSDB_Log_Raw("could not connect with slave");
+    if(!master.try_for_slave()){
+        TOSDB_LogH("IPC","TOSDB_Connect(): could not connect with slave");
         return -1;
     }  
 
@@ -394,7 +397,7 @@ TOSDB_Connect()
 
     buffer_thread = CreateThread(0, 0, Threaded_Init, 0, 0, &buffer_thread_id);
     if(!buffer_thread){
-        TOSDB_Log_Raw("error initializing communication thread");        
+        TOSDB_LogH("IPC","TOSDB_Connect(): error initializing communication thread");        
         return -2;  
     }
 
@@ -445,7 +448,7 @@ TOSDB_CreateBlock(LPCSTR id,
     GLOBAL_RLOCK_GUARD;
     /* --- CRITICAL SECTION --- */
 
-    if( GetBlockPtr(id) ){
+    if( GetBlockPtr(id,false) ){
         TOSDB_LogH("BLOCK", "TOSDBlock with this ID already exists");
         return -3; 
     }
@@ -507,8 +510,10 @@ TOSDB_Add(std::string id, str_set_type sItems, topic_set_type tTopics)
     /* --- CRITICAL SECTION --- */
 
     db = _getBlockPtr(id);
-    if(!db)
+    if(!db){
+        TOSDB_LogH("BLOCK", "block doesn't exist");
         return -3;
+    }
 
     old_topics = db->block->topics();
     old_items = db->block->items(); 
@@ -938,6 +943,18 @@ TOSDB_GetLatency()
 }
 
 
+int
+TOSDB_GetClientLogPath(char* path, size_type sz)
+{       
+    std::string p = BuildLogPath(LOG_NAME); 
+    size_type psz = p.size() + 1; /* for /n */
+
+    if(sz < psz)
+        return psz; 
+    
+    return strcpy_s(path,psz,p.c_str()) ? -1 : 0;
+}
+
 unsigned long 
 TOSDB_SetLatency(UpdateLatency latency) 
 {
@@ -964,12 +981,15 @@ TOSDB_SetLatency(UpdateLatency latency)
 
 
 const TOSDBlock* 
-GetBlockPtr(const std::string id)
+GetBlockPtr(const std::string id,bool log)
 {
     try{      
         return dde_blocks.at(id);
     }catch(...){ 
-        TOSDB_Log("BLOCK", "block doesn't exist");
+        if(log){
+            std::string msg = "block " + id + " doesn't exist";
+            TOSDB_LogH("BLOCK", msg.c_str());
+        }
         return NULL; 
     }
 }
@@ -980,7 +1000,7 @@ GetBlockOrThrow(std::string id)
 {
     const TOSDBlock* db;
 
-    db = GetBlockPtr(id);
+    db = GetBlockPtr(id,false);
     if(!db) 
         throw TOSDB_DataBlockError("block doesn't exist");
  
