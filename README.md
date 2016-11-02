@@ -109,6 +109,8 @@ Obviously the core implementation is not portable, but the python interface does
 
     The detached signature for each binary; sha256 checksums for binaries, signatures, and the jeog.dev public key; **(master branch may, or may not, contain all, or any)**
 
+    *NOTE: as of v0.4 the old jeog.dev.key expired and was renamed jeog.dev.key.old where appropriate; the new key has been uploaded and won't expire.*
+
 - **/res** 
 
     Miscellaneous resources
