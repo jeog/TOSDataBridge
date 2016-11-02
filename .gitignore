@@ -3,6 +3,7 @@
 ###################
 *.tosdb
 prov/tmp*
+python/tosdb/_tosdb.py
 
 #################
 ## Eclipse

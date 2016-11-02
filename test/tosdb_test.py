@@ -15,8 +15,8 @@
 #   <http://www.gnu.org/licenses/>.
 
 import tosdb
-from argparse import ArgumentParser as _ArgumentParser
-from sys import stderr as _stderr
+from sys import stderr as _stderr, maxsize as _maxsize
+from math import log as _log
 from random import choice as _rchoice
 from time import sleep as _sleep
 
@@ -25,18 +25,11 @@ T_ITEMS = ['SPY','GOOG','QQQ']
 T_TOPICS = ['LAST','LASTX','VOLUME','LAST_SIZE','PUT_CALL_RATIO']
 bsize = 100
 
+ARCH_RELEASE_TYPE = "x64" if (_log(_maxsize * 2, 2) > 33) else "Win32"
+
 def init():
-  global args
-  parser = _ArgumentParser()
-  parser.add_argument('build', type=str, help='build: x86 or x64')
-  args = parser.parse_args()
-
-  if args.build not in ('x86','x64'):
-      print('invalid build argument', file=_stderr)
-      print('usage: tosdb_test.py [x86|x64]', file=_stderr)
-      return
-
-  bdir = "../bin/Release/" + ("Win32" if args.build == 'x86' else "x64")
+  bdir = "../bin/Release/" + ARCH_RELEASE_TYPE
+  print(bdir)
   if not tosdb.init(root=bdir):
       print("--- INIT FAILED ---", file=_stderr)
       return False
