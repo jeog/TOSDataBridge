@@ -34,6 +34,7 @@ build/
 bin/Debug
 [Oo]bj/
 log/
+symbols/Debug/
 
 # MSTest test Results
 [Tt]est[Rr]esult*/

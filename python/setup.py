@@ -16,7 +16,7 @@ from os.path import join as _path_join, dirname as _dirname, realpath as _realpa
 from os import system as _system, getcwd as _getcwd
 
 NAME = 'tosdb'
-VERSION = '0.4'
+VERSION = '0.5'
 DESCRIPTION = "Python Front-End / Wrapper for TOSDataBridge"
 AUTHOR = "Jonathon Ogden"
 AUTHOR_EMAIL = "jeog.dev@gmail.com"
