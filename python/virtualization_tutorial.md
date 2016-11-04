@@ -11,9 +11,12 @@ For this tutorial we are using TOS in a Windows virtual machine. We've set up a 
 
 ##### Local Interactive Init
 
-From an interactive interpreter we are going to initialize tosdb as normal, followed by a call to enable_virtualization with an address tuple indicating what (local address, port) to bind to. If sucessfull we can, from the remote machine, create a VTOSDB_DataBlock or use admin_init to access the admin calls. When done we delete the block remotely and use admin_close to close the connections. We can use clean_up locally or vclean_up remotely(before admin_close), if necessary. If we want to stop virtuatlization and keep using the local machine we can call disable_virtualization. 
+From an interactive interpreter we are going to initialize tosdb as normal, followed by a call to enable_virtualization with an address tuple indicating what (local address, port) to bind to. 
 
-![](./../res/vtut_loc_1.png)
+![](./../res/tosdb_virtual_tutorial_1a.png)
+
+If sucessfull we can, from the remote machine, create a VTOSDB_DataBlock or use admin_init to access the admin calls. When done we delete the block remotely and use admin_close to close the connections. 
+
 
 ```
 jon@jdeb:~/dev/TOSDataBridge$ python3
@@ -27,11 +30,19 @@ True
 >>> exit()
 ```
 
+We can use clean_up locally or vclean_up remotely(before admin_close), if necessary. If we want to stop virtuatlization and keep using the local machine we can call disable_virtualization. 
+
+![](./../res/tosdb_virtual_tutorial_1b.png)
+
+
 ##### Remote Interactive Init
 
-Similar to the previous approach except we handle all the initialization remotely after we call enable_virtualization locally(as above). To initialize we first call admin_init(from the remote machine) in order to access vinit: the remote version of init that takes the sames arguments. (Remember we are passing the 'local' windows path of the underlying library to vinit.)
+Similar to the previous approach except we handle all the initialization remotely after we call enable_virtualization locally(as above). 
 
-![](./../res/vtut_loc_2.png)
+![](./../res/tosdb_virtual_tutorial_2a.png)
+
+To initialize we first call admin_init(from the remote machine) in order to access vinit: the remote version of init that takes the sames arguments. (Remember we are passing the 'local' windows path of the underlying library to vinit.)
+
 
 ```
 jon@jdeb:~/dev/TOSDataBridge$ python3
@@ -48,13 +59,19 @@ True
 >>> exit()
 ```
 
+![](./../res/tosdb_virtual_tutorial_2b.png)
+
+
 ##### Local Server Init 
 
-This enables virtualization and handles initialization for you, returning an interactive shell that only accepts a quit command to close. From the remote side we can make the necessary calls(as above) or use the --virtual-client switch which will do it for us and drop us into an interactive interpreter.
+This enables virtualization and handles initialization for you, returning an interactive shell that only accepts a quit command to close. 
 
 \**notice the preceding space in the --virtual-server arg tuple " 55555". This indicates an address of 'all available interfaces'*
 
-![](./../res/vtut_loc_3.png)
+![](./../res/tosdb_virtual_tutorial_3.png)
+
+From the remote side we can make the necessary calls(as above). 
+
 
 ```
 jon@jdeb:~/dev/TOSDataBridge$ python3
@@ -68,7 +85,7 @@ True
 >>> exit()
 ``` 
 
-*...or directly from the command line...*
+Or, from the command-line use the --virtual-client switch which will do it for us and drop us into an interactive interpreter.
 
 ```
 jon@jdeb:~/dev/TOSDataBridge$ python3 python/tosdb --virtual-client "192.168.56.101 55555"
