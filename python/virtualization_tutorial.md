@@ -9,7 +9,7 @@ For this tutorial we are using TOS in a Windows virtual machine. We've set up a 
 
 ---
 
-##### Local Interactive Init
+#### Local Interactive Init
 
 From an interactive interpreter we are going to initialize tosdb as normal, followed by a call to enable_virtualization with an address tuple indicating what (local address, port) to bind to. 
 
@@ -35,7 +35,7 @@ We can use clean_up locally or vclean_up remotely(before admin_close), if necess
 ![](./../res/tosdb_virtual_tutorial_1b.png)
 
 
-##### Remote Interactive Init
+#### Remote Interactive Init
 
 Similar to the previous approach except we handle all the initialization remotely after we call enable_virtualization locally(as above). 
 
@@ -50,6 +50,14 @@ jon@jdeb:~/dev/TOSDataBridge$ python3
 >>> tosdb.admin_init(('192.168.56.101',55555))
 >>> tosdb.vinit(root="C:/TOSDataBridge")
 True
+```
+
+![](./../res/tosdb_virtual_tutorial_2b.png)
+
+
+Use an admin call, create a block, delete the block, clean up and close the admin interface - all from the remote machine.
+
+```
 >>> tosdb.vconnected()
 True
 >>> vblock = tosdb.VTOSDB_DataBlock(('192.168.56.101',55555))
@@ -59,10 +67,10 @@ True
 >>> exit()
 ```
 
-![](./../res/tosdb_virtual_tutorial_2b.png)
+![](./../res/tosdb_virtual_tutorial_2c.png)
 
 
-##### Local Server Init 
+#### Local Server Init 
 
 This enables virtualization and handles initialization for you, returning an interactive shell that only accepts a quit command to close. 
 
