@@ -118,8 +118,8 @@ VInit: version of Init for the virtual layer
 from ._common import * 
 from ._common import _DateTimeStamp, _TOSDB_DataBlock, _type_switch, \
                      _recvall_tcp, _recv_tcp, _send_tcp
-from .doxtend import doxtend as _doxtend
 from ._auth import *
+from .doxtend import doxtend as _doxtend
 
 from collections import namedtuple as _namedtuple
 from threading import Thread as _Thread, Lock as _Lock
@@ -256,38 +256,39 @@ def admin_close(): # do we need to signal the server ?
 
 # this throws all kind of ways
 def _handle_req_from_server(sock,password):
-  ret = _recv_tcp(sock)
-  _send_tcp(sock, b'1') # ack
-  if ret.decode() == _vREQUIRE_AUTH:     
-    if password is not None:     
-      good_auth = handle_auth_cli(sock,password)
-      if not good_auth:
-        raise TOSDB_VirtualizationError("authentication failed", "admin_init")
-    else:
-      raise TOSDB_VirtualizationError("server requires authentiaction") 
+    ret = _recv_tcp(sock)
+    _send_tcp(sock, b'1') # ack
+    if ret.decode() == _vREQUIRE_AUTH:     
+        if password is not None:     
+            try_import_pycrypto()
+            good_auth = handle_auth_cli(sock,password)
+            if not good_auth:
+                raise TOSDB_VirtualizationError("authentication failed", "admin_init")
+        else:
+            raise TOSDB_VirtualizationError("server requires authentiaction") 
 
 
 def admin_init(address, password=None, poll_interval=DEF_TIMEOUT):
-  """ Initialize virtual admin calls (e.g vinit(), vconnect()) 
+    """ Initialize virtual admin calls (e.g vinit(), vconnect()) 
 
-  address:: tuple(str,int) :: (host/address of the windows implementation, port)
-  password:: str :: password for authentication(None for no authentication)
-  """  
-  global _virtual_hub_addr, _virtual_admin_sock
-  if _virtual_admin_sock:
-    raise TOSDB_VirtualizationError("virtual admin socket already exists")  
-  if password is not None:
-    check_password(password)
-  _virtual_hub_addr = _check_and_resolve_address(address)
-  _virtual_admin_sock = _socket.socket()
-  _virtual_admin_sock.settimeout(poll_interval / 1000) 
-  try: 
-    _virtual_admin_sock.connect(_virtual_hub_addr) 
-    _handle_req_from_server(_virtual_admin_sock,password)
-    _vcall(_pack_msg(_vCONN_ADMIN), _virtual_admin_sock, _virtual_hub_addr)
-  except:
-    admin_close()
-    raise
+    address:: tuple(str,int) :: (host/address of the windows implementation, port)
+    password:: str :: password for authentication(None for no authentication)
+    """  
+    global _virtual_hub_addr, _virtual_admin_sock
+    if _virtual_admin_sock:
+        raise TOSDB_VirtualizationError("virtual admin socket already exists")  
+    if password is not None:
+        check_password(password)
+    _virtual_hub_addr = _check_and_resolve_address(address)
+    _virtual_admin_sock = _socket.socket()
+    _virtual_admin_sock.settimeout(poll_interval / 1000) 
+    try: 
+        _virtual_admin_sock.connect(_virtual_hub_addr) 
+        _handle_req_from_server(_virtual_admin_sock,password)
+        _vcall(_pack_msg(_vCONN_ADMIN), _virtual_admin_sock, _virtual_hub_addr)
+    except:
+        admin_close()
+        raise
 
 
 def _admin_call(method, *arg_buffer):
@@ -497,7 +498,10 @@ def enable_virtualization(address, password=None, poll_interval=DEF_TIMEOUT):
   address:: tuple(str,int) :: (address of the host system, port)
   password:: str :: password for authentication(None for no authentication)
   """  
-  global _virtual_hub    
+  global _virtual_hub   
+
+  if password is not None:
+    try_import_pycrypto() 
 
   ## --- NESTED CLASS _VTOS_BlockServer --- ##
   class _VTOS_BlockServer(_Thread):    
@@ -639,13 +643,16 @@ def enable_virtualization(address, password=None, poll_interval=DEF_TIMEOUT):
     def stop(self):      
       self._rflag = False       
 
+
     def run(self):      
+
       def _shutdown_servers():
         while self._virtual_block_servers:
           self._virtual_block_servers.pop().stop()
         if self._virtual_admin_server:
           self._virtual_admin_server.stop()
       ### --- _shutdown_servers --- ###
+
       def _handle_msg(dat,conn):
         try:          
           dat = _unpack_msg(dat)[0].decode()          
@@ -669,6 +676,7 @@ def enable_virtualization(address, password=None, poll_interval=DEF_TIMEOUT):
           _send_tcp(conn[0], rmsg)
           raise
       ### --- _handle_msg --- ###     
+
       self._rflag = True      
       while self._rflag:        
         try:          
@@ -683,11 +691,15 @@ def enable_virtualization(address, password=None, poll_interval=DEF_TIMEOUT):
               ### AUTHENTICATE ###
               good_auth = handle_auth_serv(conn,password)                       
               if not good_auth:
-                raise Exception()
+                print('- failure to authenticate:', conn[1])
+                raise Exception('dummy')
               ### AUTHENTICATE ###
+          except TOSDB_VirtualizationError:
+            conn[0].close()
+            raise            
           except:
             conn[0].close()        
-            continue                 
+            continue                
           conn[0].settimeout(None)
           dat = _recv_tcp(conn[0])
           _handle_msg(dat, conn)

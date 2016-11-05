@@ -118,43 +118,50 @@ def _create__tosdb(consts, topics):
      
 
 def _init_build():
-  print("pulling constants from " + _HEADER_PATH)
-  consts = _pull_consts_from_header()
-  print("pulling topic enum from " + _HEADER_PATH) 
-  topics = _pull_topics_from_header()
-  print('auto-generating ' + _OUTPUT_PATH)
-  _create__tosdb(consts, topics)
-  print('  checking ' + _OUTPUT_PATH)
-  try:
-    exec("from " + NAME + " import " + _AUTO_EXT)
-  except ImportError as ie:
-    print('    fatal: auto-generated ' + _OUTPUT_PATH + ' could not be imported !')
-    print('    fatal: ' + ie.args[0])
-    exit(1)
-  print('    success!')
+    print("pulling constants from " + _HEADER_PATH)
+    consts = _pull_consts_from_header()
+    print("pulling topic enum from " + _HEADER_PATH) 
+    topics = _pull_topics_from_header()
+    print('auto-generating ' + _OUTPUT_PATH)
+    _create__tosdb(consts, topics)
+    print('  checking ' + _OUTPUT_PATH)
+    try:
+        exec("from " + NAME + " import " + _AUTO_EXT)
+    except ImportError as ie:
+        print('    fatal: auto-generated ' + _OUTPUT_PATH + ' could not be imported !')
+        print('    fatal: ' + ie.args[0])
+        exit(1)
+    print('    success!')
+
 
 
 def _check_depends(): #TODO
-  pass
+    print("*** NOTE: if you plan on using authenticated virtualization (by passing a " +
+          "password to the appropriate 'virtual' calls) you need to install the pycrypto package ***")
 
 
 class InstallCommand(_Install):
-  description = "install tosdb"
-
+    description = "install tosdb"
+    def run(self):
+        super().run()
+        _check_depends()
+  
 class BuildCommand(_Build):
-  description = "build tosdb"
-  def run(self):
-    _init_build()
-    super().run()
+    description = "build tosdb"
+    def run(self):
+        _init_build()
+        super().run()
+        _check_depends()
 
 class CleanCommand(_Clean):
-  description = "clean tosdb"
-  def run(self):  
-    print("removing tosdb/_tosdb.py ...")
-    _system('rm ' + _OUTPUT_PATH) 
-    print("removing ./build ...") 
-    _system('rm -r ' + _path_join(_OUR_PATH,'build') )
-    super().run()  
+    description = "clean tosdb"
+    def run(self):  
+        # TODO: make portable
+        print("removing tosdb/_tosdb.py ...")
+        _system('rm ' + _OUTPUT_PATH) 
+        print("removing ./build ...") 
+        _system('rm -r ' + _path_join(_OUR_PATH,'build') )
+        super().run()  
 
 
 _setup( name=NAME, version=VERSION, description=DESCRIPTION, 
