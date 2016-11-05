@@ -23,8 +23,7 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 bool 
 SignalManager::wait(std::string unq_id)
 {  
-    std::unique_lock<std::mutex> lck(_mtx);   
-    //std::map<std::string,_flag_pair_ty>::iterator
+    std::unique_lock<std::mutex> lck(_mtx);     
     auto iter = _unq_flags.find(unq_id);
   
     if(iter == _unq_flags.end())
@@ -41,8 +40,7 @@ SignalManager::wait_for(std::string unq_id, size_t timeout)
 {
     bool wait_res;
     {
-        std::unique_lock<std::mutex> lck(_mtx);  
-        //std::map<std::string,_flag_pair_ty>::iterator 
+        std::unique_lock<std::mutex> lck(_mtx);     
         auto iter = _unq_flags.find(unq_id);
 
         if(iter == _unq_flags.end())
@@ -71,8 +69,7 @@ SignalManager::signal(std::string unq_id, bool secondary)
 {
     {      
         std::lock_guard<std::mutex> lck(_mtx); 
-        /* --- CRITICAL SECTION --- */
-        //std::map<std::string, _flag_pair_ty>::iterator 
+        /* --- CRITICAL SECTION --- */      
         auto iter = _unq_flags.find(unq_id);
 
         if(iter == _unq_flags.end()) 

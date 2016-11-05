@@ -15,65 +15,119 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see http://www.gnu.org/licenses.
 */
 
-//#include "tos_databridge.h"
 #include "generic.hpp"
 
+
+/* COPY CONSTRUCT */
+TOSDB_Generic::TOSDB_Generic(const TOSDB_Generic& gen)
+    : 
+        _type_val( gen._type_val )
+    {  
+        if( gen.is_string() )        
+            *(std::string**)this->_sub = 
+                new std::string(**(std::string**)(gen._sub));
+        else            
+            memcpy(this->_sub, gen._sub, SUB_SZ);                      
+    }  
+
+
+/* MOVE CONSTRUCT */
+TOSDB_Generic::TOSDB_Generic(TOSDB_Generic&& gen)
+    :      
+        _type_val( gen._type_val )
+    {                
+      /* we are stealing the scalar value OR the string pointer */           
+        memcpy(this->_sub, gen._sub, SUB_SZ);      
+
+      /* leave the pointer but set _type_val to VOID to avoid bad free; ptr is an 
+         implementation detail of the moved object that we can safely ignore */
+        gen._type_val = TYVAL_VOID;            
+    }
+
+
+/* ASSIGNMENT */
 TOSDB_Generic& 
 TOSDB_Generic::operator=(const TOSDB_Generic& gen)
 {
-    if ((*this) != gen){  
-      this->_type_val = gen._type_val;
-      this->_type_bsz = gen._type_bsz;
-      if(this->_sub) 
-          delete this->_sub;
-      this->_sub_deep_copy(gen);
+    if( *this == gen )
+        return *this;
+
+    if( gen.is_string() )
+    {          
+        if( this->is_string() ) 
+            /* if we're also a string simply assign */
+            **(std::string**)(this->_sub) = **(std::string**)(gen._sub);
+        else
+            /* otherwise allocate new */ 
+            *(std::string**)this->_sub = 
+                new std::string(**(std::string**)(gen._sub));
     }
+    else
+    {
+        if( this->is_string() )
+            delete *(std::string**)this->_sub;  
+           
+        memcpy(this->_sub, gen._sub, SUB_SZ);    
+    }
+
+    this->_type_val = gen._type_val;        
     return *this;    
 }
 
+
+/* MOVE ASSIGNMENT */
 TOSDB_Generic& 
 TOSDB_Generic::operator=(TOSDB_Generic&& gen)
 {
-    delete this->_sub;
+  /* not sure if this is optimal or its better to branch(as above) and move
+     the string object in, allowing gen's destructor to delete 
 
-    this->_sub = gen._sub;
+     although, this way is a lot cleaner than 2 nested conditionals*/
+
+    if(this->_type_val == TYVAL_STRING)
+        delete *(std::string**)this->_sub; 
+     
     this->_type_val = gen._type_val;
-    this->_type_bsz = gen._type_bsz;
 
-    gen._sub = nullptr;
-    gen._type_val = VOID_;
-    gen._type_bsz = 0;
+  /* we are stealing the scalar value OR the string pointer */           
+    memcpy(this->_sub, gen._sub, SUB_SZ);    
+       
+  /* leave the pointer but set _type_val to VOID to avoid bad free; ptr is an 
+     implementation detail of the moved object that we can safely ignore */
+    gen._type_val = TYVAL_VOID;
 
     return *this;
 }
 
-void 
-TOSDB_Generic::_sub_deep_copy(const TOSDB_Generic& src)
-{      
-    if(src._type_val == STRING_){
-        this->_sub = new std::string(*((std::string*)src._sub));
-    }else{
-        this->_sub = malloc(src._type_bsz);        
-        /* NO CHECK: if we can't allocate 4 or 8 bytes 
-                     we'll blow up a million other places */
-        memcpy(this->_sub, src._sub,  src._type_bsz);
-    }
-}
 
 std::string 
 TOSDB_Generic::as_string() const
 {
-    if( this->is_integer() )             
-        return std::to_string(this->as_long_long());
+   switch(this->_type_val){
+   case(TYVAL_LONG):
+   case(TYVAL_LONG_LONG):
+       return std::to_string(*((long long*)this->_sub));
+   case(TYVAL_FLOAT):
+   case(TYVAL_DOUBLE):
+       return std::to_string(*((double*)this->_sub));
+   case(TYVAL_STRING):
+       return **(std::string**)(this->_sub);
+   default:
+       return std::string();
+   };
+}
 
-    else if( this->is_floating_point() ) 
-        return std::to_string(this->as_double());  
-
-    else if( this->is_string() )         
-        return *((std::string*)(this->_sub));
-
-    else                               
-        return std::string();
+size_t 
+TOSDB_Generic::size() const
+{
+   switch(this->_type_val){
+   case(TYVAL_LONG):      return sizeof(long);
+   case(TYVAL_LONG_LONG): return sizeof(long long);
+   case(TYVAL_FLOAT):     return sizeof(float);
+   case(TYVAL_DOUBLE):    return sizeof(double);
+   case(TYVAL_STRING):    return (*(std::string**)(this->_sub))->size();
+   default:               return 0;
+   };
 }
 
 

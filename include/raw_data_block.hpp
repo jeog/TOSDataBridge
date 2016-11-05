@@ -78,7 +78,8 @@ class RawDataBlock {
   RawDataBlock& 
   operator=(RawDataBlock&& block);
 
-  void _init();
+  void 
+  _init();
 
   _my_row_ty*     
   _insert_topic(_my_row_ty*, TOS_Topics::TOPICS topic);
@@ -175,21 +176,21 @@ public:
 
   inline bool 
   has_topic(TOS_Topics::TOPICS topic) const {
-    return (_topic_enums.find(topic) != _topic_enums.cend());
+      return (_topic_enums.find(topic) != _topic_enums.cend());
   }
 
   inline bool 
   has_item(const char* item) const {
-    return (_item_names.find(item) != _item_names.cend());
+      return (_item_names.find(item) != _item_names.cend());
   }
 
   inline bool 
   uses_dtstamp() const { return this->_datetime; }
 
   ~RawDataBlock() 
-  { /* all other deallocs are handled by unique_ptr destructors */  
-    delete _mtx;        
-    --_block_count_;
+  {   /* all other deallocs are handled by unique_ptr destructors */  
+      delete _mtx;        
+      --_block_count_;
   }
 }; 
 

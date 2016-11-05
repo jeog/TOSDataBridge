@@ -1,4 +1,4 @@
-## TOSDataBridge v0.4 
+## TOSDataBridge  
 - - -
 TOSDataBridge (TOSDB) is an open-source collection of resources for 'scraping' real-time streaming data off of TDAmeritrade's ThinkOrSwim(TOS) platform, providing C, C++, and Python interfaces. Users of the TOS platform - with some basic programming/scripting knowledge - can use these tools to populate their own databases with market data; analyze large data-sets in real-time; test and debug other financial apps; or even build extensions on top of it.
 
@@ -17,21 +17,13 @@ Obviously the core implementation is not portable, but the python interface does
 - - -
 Major changes will generally lead to a new version/branch, but not necessarily the label of 'stable'. Minor changes may or may not use a seperate branch that will be merged back into master when deemed 'usable'.  
 
-- v0.3 (branch 'v0.3')
-    - 'stable' version  
-    - use the README from the v0.3 branch (instead of this one)
-    - *** ***contains up-to-date binaries/signatures*** ***
+- **v0.4** (branch 'v0.4') - 'stable' version that guarantees up-to-date binaries/signatures (use the README from branch 'v0.4') 
 
-- v0.4 (branch 'master')
-    - currently undergoing a major refactoring 
-    - interface is subject to slight change 
-    - *** ***may contain some binaries(no signatures)*** ***
-
-If you simply want the core functionality - and/or need the most up-to-date pre-compiled binaries - with the small(est) chance of running into bugs, use v0.3 (branch v0.3). If you want the latest-and-greatest features, improvements etc., don't mind building your own and dealing with more bugs, or may want to contribute, use v0.4 (branch master).     
-
+- **v0.5** (branch 'master') - pre-release development version that may not have up-to-date binaries/signatures
+    
 ### Quick Setup
 - - -
-- tosdb-setup.bat will attempt to install the necessary modules/dependencies for you but you should refer to **Installation Details** below for a more detailed explanation
+- tosdb-setup.bat will attempt to install the necessary modules/dependencies for you but you should refer to **[Installation Details](#installation-details)** below for a more detailed explanation
 - Be sure to know what build you need(x86 vs x64); it should match your system, all the modules you'll need, and your version of Python(if you plan on using the python wrapper)
 
     ##### Core C/C++ Libraries
@@ -41,7 +33,13 @@ If you simply want the core functionality - and/or need the most up-to-date pre-
 
     - [x86|x64] : the version to build (required)
     - [admin] : does your TOS platform require elevation? (optional) 
-    - [session] : override the service's attempt to determine the session id when exiting from session-0 isolation. **MOST USERS SHOULDN'T WORRY ABOUT THIS** unless they plan to run in a non-standard environment (e.g an EC2 instance). The tos-databridge-engine.exe[] binary needs to run in the same session as the ThinkOrSwim platform. (optional)
+    - [session] : override the service's attempt to determine the session id when exiting from session-0 isolation. The tos-databridge-engine.exe[] binary needs to run in the same session as the ThinkOrSwim platform. **Most users shouldn't worry about this** unless they plan to run in a non-standard environment (e.g an EC2 instance).  [An explanation of Sessions, Desktops, and Stations.](https://blogs.technet.microsoft.com/askperf/2007/07/24/sessions-desktops-and-windows-stations/) (optional)
+ 
+    ```
+    Example 1: C:\TOSDataBridge\> tosdb-setup.bat x86
+    Example 2: C:\TOSDataBridge\> tosdb-setup.bat x64 admin
+    Example 3: C:\TOSDataBridge\> tosdb-setup.bat x64 admin 2
+    ```
 
     ##### Python Wrapper (optional)
     ```
@@ -58,13 +56,13 @@ If you simply want the core functionality - and/or need the most up-to-date pre-
     ```
     (Admin) C:\> SC start TOSDataBridge
     ```
-   (see #9 in the 'Installation Details' section for more info on using the service.)
+   (consider having the service begin automatically on startup to avoid this step in the future; see #9 in the [Installation Details](#installation-details) section.)
 3. Log on to your TOS platform
 
 ##### For C/C++:
 - Include tos_databridge.h header in your code 
-- Use the library calls detailed in the **C/C++ Interface...** sections below
-- Link with *tos-databridge-0.4-[x86|x64].dll*
+- Use the library calls detailed in the **[C/C++ Interface...](#cc-interface--administrative-calls)** sections below
+- Link with *tos-databridge-0.5-[x86|x64].dll*
 - Build
 - Run
 
@@ -82,7 +80,6 @@ Even if you are not comfortable contributing code, simply reporting bugs or ques
 - - -
 - simplify the main header: tos_databridge.h
 - simplify the API 
-- remove (or atleast improve) the pre-caching behavior of blocks
 - consider an 'intermediate' API between client lib and engine, allowing users to inject their own callbacks/hooks for handling raw data from the engine
 - add authentication mechanism to virtual-layer connections
 
@@ -94,7 +91,7 @@ Even if you are not comfortable contributing code, simply reporting bugs or ques
 
 - **/src** 
 
-    C/C++ source files; if compiling from source simply open the .sln file inside /VisualStudioBuild, select the configuration/platform, and build.
+    C/C++ source files; if building from source simply open the .sln file inside /VisualStudioBuild, select the configuration/platform, and build.
 
 - **/VisualStudioBuild** 
 
@@ -108,7 +105,7 @@ Even if you are not comfortable contributing code, simply reporting bugs or ques
 
     - ***tos-databridge-engine-[x86|x64].exe*** : The main engine - spawned from tos-databridge-serv.exe - that interacts with the TOS platform and our DLL(below). It runs with a lower(ed) integrity level and reduced privileges. 
 
-    - ***tos-databridge-0.4-[x86|x64].dll*** : The library/interface that client code uses to access TOSDB. Review tos-databridge.h, and the sections below, for all the necessary calls, types, and objects.
+    - ***tos-databridge-0.5-[x86|x64].dll*** : The library/interface that client code uses to access TOSDB. Review tos-databridge.h, and the sections below, for all the necessary calls, types, and objects.
 
     - ***_tos-databridge-[x86|x64].dll*** : A back-end library that provides custom concurrency and IPC objects; logging and utilities; as well as the Topic-String mapping. 
 
@@ -124,7 +121,7 @@ Even if you are not comfortable contributing code, simply reporting bugs or ques
 
     Files relevant to the python wrapper.
 
-    - **tosdb/** : A python package that serves as a wrapper around *tos-databridge-0.4-[x86|x64].dll*. It provides a more object oriented, simplified means of accessing the core functionality.
+    - **tosdb/** : A python package that serves as a wrapper around *tos-databridge-0.5-[x86|x64].dll*. It provides a more object oriented, simplified means of accessing the core functionality.
 
     - **tosdb/cli_scripts/** : Python scripts built on top of the python wrapper.
 
@@ -140,6 +137,10 @@ Even if you are not comfortable contributing code, simply reporting bugs or ques
 
     All log files and dumps
 
+- **/prov** 
+
+    Provisional code that is being worked on outside the main build tree
+
 ### Build Notes
 - - -
 
@@ -151,7 +152,7 @@ Even if you are not comfortable contributing code, simply reporting bugs or ques
 ### Installation Details
 - - -
 
-1. Move the unzipped tos-databridge folder to its permanent location(our's is in C:/ for convenience.) If you change it in the future you'll need to redo some of these steps because the Service module relies on an absolute path.
+1. Move the unzipped tos-databridge folder to its permanent location. If you change it in the future you'll need to redo some of these steps because the Service module relies on an absolute path.
 
 2. Determine the appropriate build you'll need: 32-bit(x86) or 64-bit(x64). ***Make sure you don't mix and match in future steps, python will automatically look for a version that matches its own build.***
  
@@ -180,7 +181,7 @@ Even if you are not comfortable contributing code, simply reporting bugs or ques
   
 9.  After the Windows Service has been successfully created run: 
 
-    ```C:\> 'SC start TOSDataBridge'```  
+    ```C:\> SC start TOSDataBridge```  
 
     Returned text and various system utilities should confirms the service is running, (see screen-shot below).
 
@@ -190,14 +191,17 @@ Even if you are not comfortable contributing code, simply reporting bugs or ques
     - *SC stop TOSDataBridge* - this will stop the service. All the data collected so far will still exist but the engine will sever its connection to TOS and exit.  It should no longer be shown as a running process and its status should be Stopped.
     - *SC pause TOSDataBridge* - this will pause the service. All the data collected so far will still exist but the engine will stop recording new data in the buffers. It should still be shown as a running process but its status should be Paused. ***It's not recommended you pause the service.***
     - *SC continue TOSDataBridge* - this should continue a paused service. All the data collected so far will still exist, the engine will start recording new data into the buffers, but you will have missed any streaming data while paused. The service should return to the Running state.
-    
-10. (***SKIP IF ONLY USING PYTHON***) Include the tos_databridge.h header in your code ( if its C++ make sure the compiler can find containers.hpp, generic.hpp, and exceptions.hpp. ) and adjust the link settings to import the tos-databridge-0.4-[].lib stub. (If you run into trouble review the VisualStudio settings for tos-databridge-shell[].exe as they should resemble what you're trying to do.)
+
+    (note: some of the particulars in these (older) screen-shots may be different for newer versions)    
+    ![](./res/SCss1.png)
+
+10. (***SKIP IF ONLY USING PYTHON***) Include the tos_databridge.h header in your code ( if its C++ make sure the compiler can find containers.hpp, generic.hpp, and exceptions.hpp. ) and adjust the link settings to import the tos-databridge-0.5-[].lib stub. (If you run into trouble review the VisualStudio settings for tos-databridge-shell[].exe as they should resemble what you're trying to do.)
    
 11. (***SKIP IF ONLY USING PYTHON***) Jump down to the next section for some of the basic library calls to add to your program.
    
 12. Make sure the TOS Platform is running, execute your program or start the python wrapper(see below).
 
-![](./res/SCss1.png)
+
 
 ### Python Wrapper
 - - -
@@ -205,15 +209,15 @@ The python wrapper is a simpler, yet still robust, way to get started with the u
 
 > **IMPORTANT:** tosdb was only written to be compatible with python3
 
-Make sure the build of the modules you installed in the 'Installation Details' section matches your python build. Open a python shell and look to see if it says 32 bit or 64 bit on the top. 32 bit needs x86 modules; 64 bit needs x64. If they don't match redo the earlier steps. From a command prompt navigate to the tos-databridge/python directory and enter:
-      
+Make sure the build of the modules you installed in the [Installation Details](#installation-details)  section matches your python build. Open a python shell and look to see if it says 32 bit or 64 bit on the top. 32 bit needs x86 modules; 64 bit needs x64. If they don't match redo the earlier steps. From a command prompt navigate to the tos-databridge/python directory and enter:
+
 `C:\TOSDataBridge\python\> python setup.py install`
 
 Remeber, if installing on a non-windows system to utilize the virtual interface you'll still need to install on a (physically or virtually) networked windows sytem.
 
 > **IMPORTANT:** The virtual layer is **NOT SECURE** and should only be used on internal networks. We haven't implemented any type of connection authentication mechanism and it would be prudent to assume the virtual server could be exploited for remote code execution
 
-tosdb/ is structured as a package with the bulk of its code in \__init__.py and \_win.py , the latter holding the non-portable parts that \__init__.py will import if it determines it's being run on a windows sytem. This structure allows you to simply import the package(*import tosdb*) or, if needed, extensions like intervalize.py(*from tosdb import intervalize*). Once imported you'll have to initialize it, which requires the path of tos-databridge[].dll or the root directory it's going to search in for the latest version. Please see tosdb/tutorial.md for a walk-through with screen-shots.
+tosdb/ is structured as a package with the bulk of its code in \__init__.py and \_win.py , the latter holding the non-portable parts that \__init__.py will import if it determines it's being run on a windows sytem. This structure allows you to simply import the package(*import tosdb*) or, if needed, extensions like intervalize.py(*from tosdb import intervalize*). Once imported you'll have to initialize it, which requires the path of tos-databridge[].dll or the root directory it's going to search in for the latest version. Please see [python/tutorial.md](./python/tutorial.md)  for a walk-through with screen-shots.
 
 > **IMPORTANT:**  There is a minor issue with how python uses the underlying library to deallocate shared resources, mostly because of python's use of refcounts. WE STRONGLY RECOMMEND you call clean_up() before exiting to be sure all shared resources have been properly dealt with. If this is not possible - the program terminates abruptly, for instance - there's a chance you've got dangling/orphaned resources. 
 
@@ -223,6 +227,7 @@ tosdb/ is structured as a package with the bulk of its code in \__init__.py and 
    [--> DumpBufferStatus
 ```
 
+
 ### C/C++ Interface ::: Administrative Calls
 - - -
 Once the Service is running start by calling **`TOSDB_Connect()`** which will return 0 if successful. Call the Library function **`TOSDB_IsConnected()`** which returns 1 if you are 'connected' to the TOSDataBridge service.
@@ -231,6 +236,7 @@ Once the Service is running start by calling **`TOSDB_Connect()`** which will re
 
 > **IMPLEMENTATION NOTE:** Be careful: **`TOSDB_IsConnected()`** returns an unsigned int that represents a boolean value; most of the other C admin calls return a signed int to indicate error(non-0) or success(0). Boolean values will be represented by unsigned int return values for C and bool values for C++. 
 
+
 Generally **`TOSDB_Disconnect()`** is unnecessary as it's called automatically when the library is unloaded.
 
 > **NOTABLE CONVENTIONS:** The C calls, except in a few cases, don't return values but populate variables, arrays/buffers, and arrays of pointers to char buffers. The 'dest' argument is for primary data; its a pointer to a scalar variable, or an array/buffer when followed by argument 'arr_len' for the number of array/buffer elements. 
@@ -238,6 +244,7 @@ Generally **`TOSDB_Disconnect()`** is unnecessary as it's called automatically w
 > The String versions of the calls take a char\*\* argument, followed by arr_len for the number of char\*s, and str_len for the size of the buffer each char\* points to (obviously they should all be >= to this value). 
 
 > If the call requires more than one array/buffer besides 'dest' (the Get...Frame... calls for instance) it assumes an array length equal to that of 'arr_len'. If it is of type char\*\* you need to specify a char buffer length just as you do for the initial char\*\*.
+
 
 TOSDB's main organizational unit is the 'block'(struct TOSDBlock in client.hpp): it's important functionally and conceptually. The first thing client code does is call **`TOSDB_CreateBlock()`** passing it a unique ID(<= TOSDB_BLOCK_ID_SZ) that will be used to access it throughout its lifetime, a size(how much historical data is saved in the block's data-streams), a flag indicating whether it saves DateTime in the stream, and a timeout value in milliseconds used for its internal waiting/synchronization(see TOSDB_DEF_TIMEOUT, TOSDB_MIN_TIMEOUT). 
 
@@ -251,15 +258,15 @@ Once a block is created, items and topics are added. Topics are the TOS fields (
 
 **`TOSDB_Add()`** **`TOSDB_AddTopic()`** **`TOSDB_AddItem()`** **`TOSDB_AddTopics()`** **`TOSDB_AddItems()`** There are a number of different versions for C and C++, taking C-Strings(const char\*), arrays of C-Strings(const char\*\*), string objects(std::string), TOS_Topics::TOPICS enums, and/or specialized sets (str_set_type, topic_set_type) of the latter two. Check the prototypes in tos_databridge.h for all the versions and arguments.
 
-> **IMPORTANT:** Items\[Topics\] added before any topics\[items\] exist in the block will be pre-cached, i.e they will be visible to the back-end but not to the interface until a topic\[item\] is added; likewise if all the items\[topics\] are removed(thereby leaving only topics\[items\]). See **Important Details and Provisos** section below for more details. To view the pre-cache use the C++(only) calls **`TOSDB_GetPreCachedTopicNames()`** **`TOSDB_GetPreCachedItemNames()`** **`TOSDB_GetPreCachedTopicEnums()`**
+To find out the the items / topics currently in the block call the C or C++ versions of **`TOSDB_GetItemNames()`** **`TOSDB_GetTopicNames()`** **`TOSDB_GetTopicEnums()`**; use **`TOSDB_GetItemCount()`** **`TOSDB_GetTopicCount()`** for their respective sizes. (Use these to determine the size of the buffers to pass into the C calls.) 
 
 To remove individual items **`TOSDB_RemoveItem()`**, and topics **`TOSDB_RemoveTopic()`**.
+
+> **IMPORTANT:** Items\[Topics\] added before any topics\[items\] exist in the block will be pre-cached, i.e they will be visible to the back-end but not to the interface until a topic\[item\] is added; likewise if all the items\[topics\] are removed(thereby leaving only topics\[items\]). See [Important Details and Provisos](#important-details--provisos) section below for more details. To view the pre-cache use the C or C++ versions of **`TOSDB_GetPreCachedTopicNames()`** **`TOSDB_GetPreCachedItemNames()`** **`TOSDB_GetPreCachedTopicEnums()`**; use **`TOSDB_GetPreCachedTopicCount()`** **`TOSDB_GetPreCachedItemCount()`** for their respective sizes. (Use these to determine the size of the buffers to pass into the C calls.)
 
 As mentioned, the size of the block represents how large the data-streams are, i.e. how much historical data is saved for each item-topic. Each entry in the block has the same size; if you prefer different sizes create a new block. Call **`TOSDB_GetBlockSize()`** to get the size and **`TOSDB_SetBlockSize()`** to change it.
 
 > **IMPLEMENTATION NOTE:** The use of the term size may be misleading when getting into implementation details. This is the size from the block's perspective and the bound from the data-stream's perspective. For all intents and purposes the client can think of size as the maximum number of elements that can be in the block and the maximum range that can be indexed. To get the occupancy (how much valid data has come into the stream) call **`TOSDB_GetStreamOccupancy()`** .
-
-To find out the the items / topics currently in the block call the C or C++ versions of **`TOSDB_GetItemNames()`** **`TOSDB_GetTopicNames()`** **`TOSDB_GetTopicEnums()`** or if you just need the number **`TOSDB_GetItemCount()`** **`TOSDB_GetTopicCount()`**. 
 
 To find out if the block is saving DateTime call the C or C++ versions of **`TOSDB_IsUsingDateTime()`**.
 
@@ -271,7 +278,6 @@ Because the data-engine behind the blocks handles a number of types it's necessa
        \\ data is a long long (ext_size_type)
     
 Make sure you don't simply check a bit with logical AND when what you really want is to check the entire type_bits_type value. In this example checking for the INTGR_BIT will return true for def_size_type AND ext_size_type. **`TOSDB_GetTypeString()`** provides a string of the type for convenience.
-
 
 > **IMPLEMENTATION NOTE:** The client-side library extracts data from the Service (tos-databridge-engine[].exe) through a series of protected kernel objects in the global namespace, namely a read-only shared memory segment and a mutex. The Service receives data messages from the TOS DDE server and immediately locks the mutex, writes them into the shared memory buffer, and unlocks the mutex. At the same time the library loops through its blocks and item-topic pairs looking to see what buffers have been updated, acquiring the mutex, and reading the buffers, if necessary. 
 
@@ -289,6 +295,7 @@ The two basic techniques are pulling data as:
     > **IMPORTANT:** When indexing a sub-range it is important to keep in mind both values are INCLUSIVE \[ , \]. Therefore a sub-range of a data-stream of size 10 where index begin = 3(or -7) and index end = 5(or -5) will look like: \[0\]\[1\]\[2\]**\[3\]\[4\]\[5\]**\[6\]\[7\]\[8\]\[9\]. Be sure to keep this in mind when passing index values as the C++ versions will throw std::invalid_argument() if you pass an ending index of 100 to a stream of size 100.
 
 2. ***a frame:*** spans ALL the topics, items, or both. Think of all the data-streams as the 3rd dimension of 2-dimensional frames. In theory there can be a frame for each index - a frame of all the most recent values or of all the oldest, for instance - but in practice we've only implemented the retrieval of the most recent frame because of how the data are currently structured.
+
 
 **SEGMENT CALLS**
 
@@ -309,11 +316,12 @@ The two basic techniques are pulling data as:
 
 > **Obviously the generic and string versions come with a cost/overhead. 
 
+
 The C++ version's second template argument is a boolean indicating whether it should return DateTimeStamp values as well(assuming the block is set for that) while the C version accepts a pointer to a DateTimeStamp struct(pDateTimeStamp) that will be populated with the value (pass a NULL value otherwise).
 
 In most cases you'll want more than a single value: use the **`TOSDB_GetStreamSnapshot< , >(...)`** and **`TOSDB_GetStreamSnapshot[Type]s(...)`** calls. The concept is similar to the **`TOSDB_Get...`** calls from above except they return containers(C++) or populate arrays(C) and require a beginning and ending index value. The C calls require you to state the explicit dimensions of the arrays(the string version requires length of the string buffers as well; internally, data moved to string buffers is of maximum size TOSDB_STR_DATA_SZ so no need to allocate larger than that). 
 
-DateTimeStamp is dealt with in the same way as above. If NULL is not passed it's array length is presumed to be the same as the other array so make sure you pay attention to what you allocate and pass. The C++ calls are implemented to return either a vector of different types or a pair of vectors(the second a vector of DateTimeStamp), depending on the boolean template argument. **Please review the function prototypes in tos_databridge.h, and the Glossary section, for a better understanding of the options available.**
+DateTimeStamp is dealt with in the same way as above. If NULL is not passed it's array length is presumed to be the same as the other array so make sure you pay attention to what you allocate and pass. The C++ calls are implemented to return either a vector of different types or a pair of vectors(the second a vector of DateTimeStamp), depending on the boolean template argument. **Please review the function prototypes in tos_databridge.h, and the [Glossary section](#glossary), for a better understanding of the options available.**
 
 > **IMPLEMENTATION NOTE:** Internally the data-stream tries to limit what is copied by keeping track of the streams occupancy and finding the *MIN(occupancy count, difference between the end and begin indexes +1\[since they're inclusive\], size of parameter passed in)*. 
 
@@ -321,16 +329,17 @@ DateTimeStamp is dealt with in the same way as above. If NULL is not passed it's
 
 > NOTE: If you pass an array to one of the C calls the data-stream will NOT copy/initialize the 'tail' elements of the array that do not correspond to valid indexes in the data-stream and the value of those elements should be assumed undefined.
 
+
 It's likely the stream will grow between consecutive calls. The **`TOSDB_GetStreamSnapshot[Type]sFromMarker(...)`** calls (C only) guarantee to pick up where the last **`TOSDB_Get...`**, **`TOSDB_GetStreamSnanpshot...`**, or **`TOSDB_GetStreamSnapshotFromMarker...`** call ended (under a few assumptions).  Internally the stream maintains a 'marker' that tracks the position of the last value pulled; the act of retreiving data and moving the marker can be thought of as a single, 'atomic' operation. The \*get_size arg will return the size of the data copied, it's up to the caller to supply a large enough buffer. A negative value indicates the buffer was to small to fit all the data, or the stream is 'dirty' . 
 
 > **'Dirty Stream':** indicates the marker has hit the back of the stream and data between the beginning of the last call and the end of the next will be dropped. To avoid this be sure you use a big enough stream and/or keep the marker moving foward (by using calls mentioned above). To determine if the stream is 'dirty' use the **`TOSDB_IsMarkerDirty()`** call. There is no guarantee that a 'clean' stream will not become dirty between the call to **`TOSDB_IsMarkerDirty`** and the retrieval of stream data, although you can look for a negative \*get_size value to indicate this rare state has occured.
+
 
 **FRAME CALLS**
 
 The three main 'frame' calls are **`GetItemFrame`**, **`GetTopicFrame`**, **`GetTotalFrame`**( C++ only ).
 
-**`TOSDB_GetItemFrame<>()`** and **`TOSDB_GetItemFrame[Type]s(...)`** are used to retrieve the most recent values for all the items of a particular topic. Think of it as finding the specific topic on its axis, then pulling all the values along that row(for each item). Because the size of n is limited the C++ calls only return a generic type, whereas the C calls necessarily require the explicitly named call to be made(or the (C\-)String version). The C++ calls take one boolean template arg as above.  
-
+**`TOSDB_GetItemFrame<>()`** and **`TOSDB_GetItemFrame[Type]s(...)`** are used to retrieve the most recent values for all the items of a particular topic. Think of it as finding the specific topic on its axis, then pulling all the values along that row(for each item). Because the size of n is limited the C++ calls only return a generic type, whereas the C calls necessarily require the explicitly named call to be made(or the (C\-)String version). The C++ calls take one boolean template arg as above. 
 > **IMPORTANT:** The frames are only dealing with the the 'front' of the block, i.e. index=0 of all the data-streams. 
 
 One major difference between the frame calls and the data-stream calls is the former map their values to strings of relevant topic or item names. For instance, a call of **`GetItemFrame<true>(..., BID)`** for a block with topics: BID, ASK and items: IBM, GE, CAT will return `( "IBM", (val,dts); "GE", (val,dts); "CAT", (val,dts) )`; in this case a mapping of item strings to pairs of generic_types and DateTimeStamps. 
@@ -403,12 +412,12 @@ There are operator\<\< overloads (client_out.cpp) for most of the custom objects
 
 - **Bad Items & Topics:** The implementation can easily handle bad topics passed to a call since it has a large mapping of the allowed topic strings mapped to enum values for TOS_Topics. If a passed string is mapped to a NULL_TOPIC then it can be rejected, or even if it is passed it won't get a positive ACK from the server and should be rejected. Bad item strings on the other hand are a bit of a problem. The DDE server is supposed to respond with a negative ACK if the item is invalid but TOS responds with a positive ACK and a 'N/A' string. If you look in the internally generated engine.log file after passing a bad item you may see entries like "invalid stod argument" which is the engine trying to convert that N/A into the appropriate numerical type. Currently it's up to the user to deal with passing bad Items. Obviously this is not ideal but hey, that's life.
 
-- **Pre-Caching:** As mentioned the block requires at least one valid topic AND item, otherwise it can't hold a data-stream. Because of this if only items(topics) are added, or all topics(items) are removed, any of those, or the remaining, items(topics) are held in a pre-cache which is then emptied when a valid topic(item) is added. This has two important consequences: 1) pre-cached entries are assumed to be valid until they come out and are sent to the engine and 2) when using the set of TOSDB_Get...[Name] C/C++ calls or get_items/topics() python calls you will NOT see pre-cached items. This can be particularly confusing if you remove all the items from a block and then want to check what topics remain, as they have all been removed until an item is re-entered. Currently there are C++ calls to check the pre-cached but not C or python versions.
+- **Pre-Caching:** As mentioned the block requires at least one valid topic AND item, otherwise it can't hold a data-stream. Because of this, if only items(topics) are added they are held in a pre-cache until a valid topic(item) is added. Likewise, if all topics(items) are removed, the remaining items(topics) are moved into the pre-cache. This has two important consequences: 1) pre-cached entries are assumed to be valid until they come out and are sent to the engine and 2) when using the API calls or python methods to see the items/topics currently in the 'block' you WILL NOT see pre-cached items. Use the appropriate API calls or python methods to see what's in the pre-cache.
 
 - **SendMessage vs. SendMessageTimeout:** To initiate a topic with the TOS server we should send out a broadcast message via the SendMessage() system call. This call is built to block to insure the client has had a chance to deal with the ACK message. For some reason, it's deadlocking, so we've been forced to use SendMessageTimeout() with an arbitrary 500 millisecond timeout. Therefore, until this gets fixed adding topics will introduce an amount of latency in milliseconds = 500 x # of topics.
 
 
-### Glossary - Important Interface Objects, Types, and Constants
+### Glossary 
 - - -
 Variable                 | Description
 ------------------------ | -------------

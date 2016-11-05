@@ -181,6 +181,105 @@ TOSDB_GetItemNames(LPCSTR id, LPSTR* dest, size_type array_len, size_type str_le
     /* --- CRITICAL SECTION --- */
 }
 
+
+/*** --- BEGIN --- Oct 30 2016 ***/
+
+int 
+TOSDB_GetPreCachedItemCount(LPCSTR id, size_type* count)
+{
+    try{
+        if(!CheckIDLength(id))
+            return -1;
+
+        GLOBAL_RLOCK_GUARD;
+        /* --- CRITICAL SECTION --- */
+        *count = GetBlockOrThrow(id)->item_precache.size();
+        return 0;
+        /* --- CRITICAL SECTION --- */
+    }
+    catch(...){ 
+        return -2; 
+    }
+}
+
+int 
+TOSDB_GetPreCachedTopicCount(LPCSTR id, size_type* count)
+{
+    try{
+        if(!CheckIDLength(id))
+            return -1;
+
+        GLOBAL_RLOCK_GUARD;
+        /* --- CRITICAL SECTION --- */
+        *count = GetBlockOrThrow(id)->topic_precache.size();
+        return 0;
+        /* --- CRITICAL SECTION --- */
+    }
+    catch(...){ 
+        return -2; 
+    }
+}
+
+
+int 
+TOSDB_GetPreCachedTopicNames(LPCSTR id, LPSTR* dest, size_type array_len, size_type str_len)
+{
+    const TOSDBlock *db;    
+    int i, err;
+
+    if(!CheckIDLength(id))
+        return -1;
+
+    GLOBAL_RLOCK_GUARD;
+    /* --- CRITICAL SECTION --- */
+    db = GetBlockPtr(id);
+    if (!db) 
+        return -2;
+        
+    if (array_len < db->topic_precache.size()) 
+        return -3;  
+
+    i = err = 0;
+    for(auto & t : db->topic_precache){
+        err = strcpy_s(dest[i++], str_len,TOS_Topics::map[t].c_str());
+        if(err)
+            return err;     
+    }
+    return err;
+    /* --- CRITICAL SECTION --- */
+}
+
+int 
+TOSDB_GetPreCachedItemNames(LPCSTR id, LPSTR* dest, size_type array_len, size_type str_len)
+{
+    const TOSDBlock *db;    
+    int i, err;
+
+    if(!CheckIDLength(id))
+        return -1;
+
+    GLOBAL_RLOCK_GUARD;
+    /* --- CRITICAL SECTION --- */
+    db = GetBlockPtr(id);
+    if (!db) 
+        return -2;
+        
+    if (array_len < db->item_precache.size()) 
+        return -3;   
+ 
+    i = err = 0;
+    for(auto & item : db->item_precache){
+        err = strcpy_s(dest[i++], str_len, item.c_str());
+        if(err)
+            return err;
+    }
+    return err;
+    /* --- CRITICAL SECTION --- */
+}
+
+/*** --- END --- Oct 30 2016 ***/
+
+
 int 
 TOSDB_GetTypeBits(LPCSTR sTopic, type_bits_type* type_bits)
 {
@@ -344,6 +443,30 @@ TOSDB_GetTopicCount(std::string id)
     return GetBlockOrThrow(id)->block->topic_count();
     /* --- CRITICAL SECTION --- */
 }
+
+
+/*** --- BEGIN --- Oct 30 2016 ***/
+
+size_type 
+TOSDB_GetPreCachedItemCount(std::string id)
+{
+    GLOBAL_RLOCK_GUARD;
+    /* --- CRITICAL SECTION --- */
+    return  GetBlockOrThrow(id)->item_precache.size();
+    /* --- CRITICAL SECTION --- */
+}
+
+size_type 
+TOSDB_GetPreCachedTopicCount(std::string id)
+{
+    GLOBAL_RLOCK_GUARD;
+    /* --- CRITICAL SECTION --- */
+    return GetBlockOrThrow(id)->topic_precache.size();
+    /* --- CRITICAL SECTION --- */
+}
+
+/*** --- END --- Oct 30 2016 ***/
+
 
 void 
 TOSDB_SetBlockSize(std::string id, size_type sz)

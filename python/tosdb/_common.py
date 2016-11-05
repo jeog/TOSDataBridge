@@ -95,6 +95,30 @@ class _TOSDB_DataBlock(metaclass=_ABCMeta):
     """
     pass
 
+
+### --- BEGIN --- Oct 30 2016
+
+  @_abstractmethod
+  def items_precached(): 
+    """ Returns the items currently in the block's pre-cache.
+    
+    str_max: the maximum length of item strings returned
+    returns -> list of strings 
+    """
+    pass
+
+  @_abstractmethod
+  def topics_precached(): 
+    """ Returns the topics currently in the block's pre-cache.
+    
+    str_max: the maximum length of topic strings returned  
+    returns -> list of strings 
+    """
+    pass
+
+### --- END --- Oct 30 2016
+
+
   @_abstractmethod
   def add_items(): 
     """ Add items (ex. 'IBM', 'SPY') to the block.

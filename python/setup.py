@@ -7,26 +7,38 @@ if _sys.version_info.major < 3:
   exit(1)
 
 from distutils.core import setup as _setup
-from io import StringIO as _StringIO
+from distutils.command.build import build as _Build
+from distutils.command.install import install as _Install
+from distutils.command.clean import clean as _Clean
 from re import match as _match, search as _search
 from time import asctime as _asctime
+from os.path import join as _path_join, dirname as _dirname, realpath as _realpath
+from os import system as _system, getcwd as _getcwd
 
 NAME = 'tosdb'
-VERSION = '0.4'
+VERSION = '0.5'
 DESCRIPTION = "Python Front-End / Wrapper for TOSDataBridge"
 AUTHOR = "Jonathon Ogden"
 AUTHOR_EMAIL = "jeog.dev@gmail.com"
-PACKAGES = ['tosdb', 'tosdb/cli_scripts']  
+PACKAGES = ['tosdb','tosdb/cli_scripts']  
 
 _AUTO_EXT = '_tosdb' 
-_HEADER_PATH = '../include/tos_databridge.h'
-_OUTPUT_PATH = NAME + '/' + _AUTO_EXT + '.py'
+# everything should be relative to the python/setup.py
+_OUR_PATH = _dirname(_realpath(__file__))
+_HEADER_NAME = 'tos_databridge.h'
+_HEADER_PATH = _path_join(_OUR_PATH, '..', 'include', _HEADER_NAME)
+_OUTPUT_PATH = _path_join(_OUR_PATH, NAME, _AUTO_EXT + '.py')
+
+if _OUR_PATH != _getcwd():
+  _sys.stderr.write("fatal: setup.py must be run from its own directory(python/)\n")
+  exit(1)
 
 #string that should bookmark the topics in Topic_Enum_Wrapper::TOPICS<T> 
 _MAGIC_TOPIC_STR = 'ksxaw9834hr84hf;esij?><'
 
 #regex for finding our header #define consts 
-_REGEX_HEADER_CONST = "#define[\s]+([\w]+)[\s]+.*?([\d][\w]*)" 
+#TODO: adjust so we can pull non-ints
+_REGEX_HEADER_CONST = "#define[\s]+([\w]+)[\s]+.*?([\d][\w]*)"
 
 #adjust for topics we had to permute to form valid enum vars
 TOPIC_VAL_REPLACE = {'HIGH52':'52HIGH','LOW52':'52LOW'}
@@ -44,7 +56,7 @@ def _pull_consts_from_header(verbose=True):
     for hline in hfile:
       lineno += 1
       try:
-        groups = _match(_REGEX_HEADER_CONST,hline).groups()  
+        groups = _match(_REGEX_HEADER_CONST,hline).groups()        
       except AttributeError:
         continue    
       try:
@@ -52,12 +64,13 @@ def _pull_consts_from_header(verbose=True):
         val = str(hex(int(g1,16)) if 'x' in g1 else int(g1))
         consts[g0] = val
         if verbose:
-          print('',_HEADER_PATH + ':' + str(lineno)+ ': '+ groups[0], val)
+          print(' ',_HEADER_NAME + ':' + str(lineno)+ ': '+ groups[0], val)
       except ValueError:
         raise TOSDB_SetupError("invalid header const value", str(g0))   
       except Exception as e:
         raise TOSDB_SetupError("couldn't extract const from regex match", e.args)   
   return consts     
+
 
 def _pull_topics_from_header(verbose=True):
   read_flag = False
@@ -70,7 +83,7 @@ def _pull_topics_from_header(verbose=True):
         if _MAGIC_TOPIC_STR in hline:
           read_flag = False
           if verbose:
-            print('',_HEADER_PATH + ":" + str(lineno+1) + ": topic enum END")  
+            print(' ', _HEADER_NAME + ':' + str(lineno+1) + ': topic enum END')  
           break         
         try:
           t = hline.split('=')[0].strip()
@@ -82,8 +95,9 @@ def _pull_topics_from_header(verbose=True):
         if _MAGIC_TOPIC_STR in hline:
           read_flag = True
           if verbose:
-            print('',_HEADER_PATH + ":" + str(lineno-1) + ": topic enum BEGIN") 
+            print(' ', _HEADER_NAME + ':' + str(lineno-1) + ': topic enum BEGIN') 
   return topics
+
 
 # build a tosdb/_tosdb.py file from the header extracted vals
 def _create__tosdb(consts, topics): 
@@ -103,31 +117,48 @@ def _create__tosdb(consts, topics):
     pfile.write('  fields = ' + str(topic_dict) + '\n')
      
 
-if __name__ == '__main__':           
-  sio = _StringIO()
-  serr = _sys.stderr
-  _sys.stderr = sio
-  try:    
-    print("pulling constants from " + _HEADER_PATH)
-    consts = _pull_consts_from_header()
-    print("pulling topic enum from " + _HEADER_PATH) 
-    topics = _pull_topics_from_header()
-    print('auto-generating ' + _OUTPUT_PATH)
-    _create__tosdb(consts, topics)
-    print(' checking ' + _OUTPUT_PATH)
-    try:
-      exec("from " + NAME + " import " + _AUTO_EXT)
-    except ImportError as ie:
-      print('  fatal: auto-generated ' + _OUTPUT_PATH + ' could not be imported !')
-      print('  fatal: ' + ie.args[0])
-      exit(1)
-    print('  success!')
-    _setup(name=NAME, version=VERSION, description=DESCRIPTION, 
-           author=AUTHOR, author_email=AUTHOR_EMAIL, packages=PACKAGES)
-  finally:
-    _sys.stderr = serr    
-  if sio.getvalue(): 
-    print( '\n', "+ Operation 'completed' with errors:\n")
-    print(sio.getvalue())
+def _init_build():
+  print("pulling constants from " + _HEADER_PATH)
+  consts = _pull_consts_from_header()
+  print("pulling topic enum from " + _HEADER_PATH) 
+  topics = _pull_topics_from_header()
+  print('auto-generating ' + _OUTPUT_PATH)
+  _create__tosdb(consts, topics)
+  print('  checking ' + _OUTPUT_PATH)
+  try:
+    exec("from " + NAME + " import " + _AUTO_EXT)
+  except ImportError as ie:
+    print('    fatal: auto-generated ' + _OUTPUT_PATH + ' could not be imported !')
+    print('    fatal: ' + ie.args[0])
+    exit(1)
+  print('    success!')
+
+
+def _check_depends(): #TODO
+  pass
+
+
+class InstallCommand(_Install):
+  description = "install tosdb"
+
+class BuildCommand(_Build):
+  description = "build tosdb"
+  def run(self):
+    _init_build()
+    super().run()
+
+class CleanCommand(_Clean):
+  description = "clean tosdb"
+  def run(self):  
+    print("removing tosdb/_tosdb.py ...")
+    _system('rm ' + _OUTPUT_PATH) 
+    print("removing ./build ...") 
+    _system('rm -r ' + _path_join(_OUR_PATH,'build') )
+    super().run()  
+
+
+_setup( name=NAME, version=VERSION, description=DESCRIPTION, 
+        author=AUTHOR, author_email=AUTHOR_EMAIL, packages=PACKAGES,
+        cmdclass={'install':InstallCommand, 'build':BuildCommand, 'clean':CleanCommand} )
 
 

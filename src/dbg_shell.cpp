@@ -88,8 +88,15 @@ std::string admin_commands[] =
   "Add","AddTopic","AddItem","AddTopics","AddItems","AddCPP","AddTopicCPP","AddTopicsCPP","AddItemsCPP",
   "RemoveTopic","RemoveItem","RemoveTopicCPP",
   "GetItemCount","GetItemCountCPP","GetTopicCount","GetTopicCountCPP",
-  "GetTopicNames","GetItemNames","GetTopicNamesCPP","GetItemNamesCPP","GetTopicEnumsCPP",
+  "GetTopicNames","GetItemNames","GetTopicNamesCPP","GetItemNamesCPP","GetTopicEnumsCPP",  
   "GetPreCachedItemNamesCPP","GetPreCachedTopicNamesCPP","GetPreCachedTopicEnums",
+
+  /*** --- BEGIN --- Oct 30 2016 ***/
+  "GetPreCachedItemCountCPP", "GetPreCachedTopicCountCPP",
+  "GetPreCachedItemCount", "GetPreCachedTopicCount",
+  "GetPreCachedItemNames", "GetPreCachedTopicNames",
+  /*** --- END --- Oct 30 2016 ***/
+    
   "GetTypeBits","GetTypeString","IsUsingDateTime","IsUsingDateTimeCPP",
   "GetStreamOccupancy","GetStreamOccupancyCPP",
   "GetMarkerPosition","GetMarkerPositionCPP",
@@ -152,7 +159,11 @@ int main(int argc, char* argv[])
   std::cout<<"[-- NOTE: Topics/Items are case sensitive; use upper-case   --]" <<std::endl;
   std::cout<<"[--                                                         --]" <<std::endl;
   std::cout<<"[-------------------------------------------------------------]" <<std::endl;
-  std::cout<<std::endl;
+
+  char lpath[MAX_PATH+40+40];
+  TOSDB_GetClientLogPath(lpath,MAX_PATH+40+40);
+  std::cout<<"LOG: " << lpath << std::endl << std::endl;
+
   while(1)
   {    
     try
@@ -591,6 +602,7 @@ int main(int argc, char* argv[])
           std::cout<< (TOS_Topics::enum_value_type)t <<' '<< TOS_Topics::MAP()[t] << std::endl;
         continue;
       }
+      
       if(cmmnd == "GetPreCachedTopicNamesCPP")
       {    
         prompt<<"block id: ";
@@ -615,9 +627,81 @@ int main(int argc, char* argv[])
         prompt>> block;      
         topic_set_type topSet = TOSDB_GetPreCachedTopicEnums(block);
         for(auto & t : topSet)
-          std::cout<< (TOS_Topics::enum_value_type)t << TOS_Topics::MAP()[t] << std::endl;
+          std::cout<< (TOS_Topics::enum_value_type)t << ' ' << TOS_Topics::MAP()[t] << std::endl;
         continue;
       }    
+
+
+      /*** --- BEGIN --- Oct 30 2016 ***/
+
+
+      if(cmmnd == "GetPreCachedItemCount")
+      {
+        prompt<<"block id: ";
+        prompt>> block;
+        size_type itemLen;
+        int ret = TOSDB_GetPreCachedItemCount(block.c_str(), &itemLen);
+        if(ret) std::cout<< "error: "<< ret <<std::endl;
+        else std::cout<< itemLen<<std::endl;
+        continue;
+      }
+      if(cmmnd == "GetPreCachedItemCountCPP")
+      {
+        prompt<<"block id: ";
+        prompt>> block;
+        std::cout<< TOSDB_GetPreCachedItemCount(block) <<std::endl;
+        continue;
+      }
+      if(cmmnd == "GetPreCachedTopicCount")
+      {
+        prompt<<"block id: ";
+        prompt>> block;
+        size_type topicLen;
+        int ret = TOSDB_GetPreCachedTopicCount(block.c_str(), &topicLen);
+        if(ret) std::cout<< "error: "<< ret <<std::endl;
+        else std::cout<< topicLen<<std::endl;
+        continue;
+      }
+      if(cmmnd == "GetPreCachedTopicCountCPP")
+      {
+        prompt<<"block id: ";
+        prompt>> block;
+        std::cout<< TOSDB_GetPreCachedTopicCount(block) <<std::endl;
+        continue;
+      }
+
+      if(cmmnd == "GetPreCachedTopicNames")
+      {    
+        prompt<<"block id: ";
+        prompt>> block;
+        size_type topicLen = TOSDB_GetPreCachedTopicCount(block);
+        char** strArray = NewStrings(topicLen, TOSDB_MAX_STR_SZ);
+        int ret = TOSDB_GetPreCachedTopicNames(block.c_str(),strArray,topicLen,TOSDB_MAX_STR_SZ);
+        if(ret) std::cout<< "error: "<< ret <<std::endl;
+        else 
+          for(size_type i = 0; i < topicLen; ++i)
+            std::cout<< strArray[i] <<std::endl;
+        DeleteStrings(strArray, topicLen);
+        continue;
+      }
+      if(cmmnd == "GetPreCachedItemNames")
+      {
+        prompt<<"block id: ";
+        prompt>> block;
+        size_type itemLen = TOSDB_GetPreCachedItemCount(block);
+        char** strArray = NewStrings(itemLen, TOSDB_MAX_STR_SZ);
+        int ret = TOSDB_GetPreCachedItemNames(block.c_str(),strArray,itemLen,TOSDB_MAX_STR_SZ);
+        if(ret) std::cout<< "error: "<< ret <<std::endl;
+        else 
+          for(size_type i = 0; i < itemLen; ++i)
+            std::cout<< strArray[i] <<std::endl;
+        DeleteStrings(strArray, itemLen);
+        continue;
+      }
+
+      /*** --- END --- Oct 30 2016 ***/
+
+
       if(cmmnd == "GetTypeBits")
       {
         prompt<<"topic: ";

@@ -516,20 +516,6 @@ DATASTREAM_PRIMARY_CLASS::secondary_vector(int end = -1, int beg = 0) const
 }
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 DATASTREAM_SECONDARY_TEMPLATE
 void
 DATASTREAM_SECONDARY_CLASS::_push(const Ty _item, 

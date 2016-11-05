@@ -2,6 +2,8 @@
 ## project specific
 ###################
 *.tosdb
+prov/tmp*
+python/tosdb/_tosdb.py
 
 #################
 ## Eclipse
@@ -32,6 +34,7 @@ build/
 bin/Debug
 [Oo]bj/
 log/
+symbols/Debug/
 
 # MSTest test Results
 [Tt]est[Rr]esult*/

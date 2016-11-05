@@ -11,7 +11,7 @@ IF [%3] == [] (
   echo Usage: "%0  [x86|x64]  [C|CPP]  [VS_TOOLS_NUM]"
   echo        "[x86|x64]      - build" 
   echo        "[C|CPP]        - language"
-  echo        "[VS_TOOLS_NUM] - integer part of VS...COMNTOOLS varialiable (e.g VS110COMNTOOLS -> 110)"
+  echo        "[VS_TOOLS_NUM] - integer part of VS...COMNTOOLS variable (e.g VS110COMNTOOLS -> 110)"
   EXIT /B 1  
 ) else (    
   set "VScpath=!VS%3%COMNTOOLS!..\..\VC" 
@@ -24,8 +24,8 @@ IF [%3] == [] (
 IF "%1"=="x86" (
   set "CMDpath=\bin"
   set "OURlibdir=!RELdir!\Win32"
-  set "OURlibstub=!RELdir!\Win32\tos-databridge-0.4-x86.lib"
-  set "OURdllname=tos-databridge-0.4-x86.dll"
+  set "OURlibstub=!RELdir!\Win32\tos-databridge-0.5-x86.lib"
+  set "OURdllname=tos-databridge-0.5-x86.dll"
   set "OURdll2name=_tos-databridge-x86.dll"
   set "OURdllpath=!RELdir!\Win32\!OURdllname!"
   set "OURdll2path=!RELdir!\Win32\!OURdll2name!"
@@ -37,8 +37,8 @@ IF "%1"=="x86" (
   IF "%1"=="x64" (
     set "CMDpath=\bin\x86_amd64"    
     set "OURlibdir=!RELdir!\x64"
-    set "OURlibstub=!RELdir!\x64\tos-databridge-0.4-x64.lib"
-    set "OURdllname=tos-databridge-0.4-x64.dll"
+    set "OURlibstub=!RELdir!\x64\tos-databridge-0.5-x64.lib"
+    set "OURdllname=tos-databridge-0.5-x64.dll"
     set "OURdll2name=_tos-databridge-x64.dll"
     set "OURdllpath=!RELdir!\x64\!OURdllname!"
     set "OURdll2path=!RELdir!\x64\!OURdll2name!"
