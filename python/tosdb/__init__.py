@@ -265,7 +265,7 @@ def _handle_req_from_server(sock,password):
             if not good_auth:
                 raise TOSDB_VirtualizationError("authentication failed", "admin_init")
         else:
-            raise TOSDB_VirtualizationError("server requires authentiaction") 
+            raise TOSDB_VirtualizationError("server requires authentication") 
 
 
 def admin_init(address, password=None, poll_interval=DEF_TIMEOUT):
@@ -618,6 +618,8 @@ def enable_virtualization(address, password=None, poll_interval=DEF_TIMEOUT):
           _send_tcp(self._my_sock, rmsg)         
         except _socket.timeout:        
           pass
+        except ConnectionResetError:
+          break # Nov 7 2016 ... if client closes socket exit gracefully instead of throw
         except:
           print("fatal: unhandled exception in _VTOS_AdminServer", file=_stderr)
           self._rflag = False
@@ -691,15 +693,18 @@ def enable_virtualization(address, password=None, poll_interval=DEF_TIMEOUT):
               ### AUTHENTICATE ###
               good_auth = handle_auth_serv(conn,password)                       
               if not good_auth:
-                print('- failure to authenticate:', conn[1])
-                raise Exception('dummy')
-              ### AUTHENTICATE ###
-          except TOSDB_VirtualizationError:
-            conn[0].close()
-            raise            
-          except:
+                print('\n- CLIENT FAILED TO AUTHENTICATE -')
+                print('    ',conn[1])
+                conn[0].close()
+                # TODO: add delay/throttle mechanism
+                continue
+              ### AUTHENTICATE ###                
+          except TOSDB_VirtualizationError as e:
+            print('\n- HANDSHAKE FAILED -')
+            print('    ',conn[1])
+            print('    ', str(e))
             conn[0].close()        
-            continue                
+            continue          
           conn[0].settimeout(None)
           dat = _recv_tcp(conn[0])
           _handle_msg(dat, conn)
