@@ -40,7 +40,7 @@ def check_password(p):
 
 def hash_password(p):
     Hasher = _SHA256.new()  
-    Hasher.update(p.encode('ascii'))
+    Hasher.update(p.encode())
     return Hasher.digest()
 
 

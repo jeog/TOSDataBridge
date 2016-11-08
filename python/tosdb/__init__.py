@@ -292,7 +292,7 @@ def _admin_call(method, *arg_buffer):
 
 def _handle_req_from_server(sock,password):
     ret = _recv_tcp(sock)
-    _send_tcp(sock, _vACK) # ack
+    _send_tcp(sock, _vACK.encode()) # ack
     if ret.decode() == _vREQUIRE_AUTH:     
         if password is not None:     
             try_import_pycrypto()
@@ -501,7 +501,7 @@ def enable_virtualization(address, password=None, poll_interval=DEF_TIMEOUT):
         if _virtual_hub is None:
             if password is not None:
                 check_password(password)
-            _virtual_hub = _VTOS_Hub(address, poll_interval)
+            _virtual_hub = _VTOS_Hub(address, password, poll_interval)
             _virtual_hub.start()    
     except Exception as e:
         raise TOSDB_VirtualizationError("enable virtualization error", e)
@@ -644,10 +644,11 @@ class _VTOS_AdminServer(_Thread):
   
   
 class _VTOS_Hub(_Thread):
-    def __init__(self, address, poll_interval):
+    def __init__(self, address, password, poll_interval):
         super().__init__(daemon=True)  
         self._my_addr = _check_and_resolve_address(address)   
         self._rflag = False
+        self._password = password
         self._poll_interval = poll_interval
         self._my_sock = _socket.socket()
         self._my_sock.settimeout(poll_interval / 1000)
@@ -695,12 +696,12 @@ class _VTOS_Hub(_Thread):
         while self._rflag:        
             try:          
                 conn = self._my_sock.accept()                   
-                # indicate whether client needs to authenticate         
-                amsg = _vREQUIRE_AUTH if password is not None else _vREQUIRE_AUTH_NO        
+                # indicate whether client needs to authenticate              
+                amsg = _vREQUIRE_AUTH_NO if self._password is None else _vREQUIRE_AUTH
                 _send_tcp(conn[0], amsg.encode())
                 conn[0].settimeout(poll_interval / 1000)         
                 try:                    
-                    if _recv_tcp(conn[0]) != _vACK: # get an ack or timeout
+                    if _recv_tcp(conn[0]) != _vACK.encode(): # get an ack or timeout
                         raise TOSDB_VirtualizationError('bad ack token received')
                     if password is not None:
                         ### AUTHENTICATE ###
