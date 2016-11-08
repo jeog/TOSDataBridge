@@ -292,13 +292,15 @@ def _admin_call(method, *arg_buffer):
 
 def _handle_req_from_server(sock,password):
     ret = _recv_tcp(sock)
+    if ret is None:
+        raise TOSDB_VirtualizationError("no response from server")
     _send_tcp(sock, _vACK.encode()) # ack
     if ret.decode() == _vREQUIRE_AUTH:     
         if password is not None:     
             try_import_pycrypto()
             good_auth = handle_auth_cli(sock,password)
             if not good_auth:
-                raise TOSDB_VirtualizationError("authentication failed", "admin_init")
+                raise TOSDB_VirtualizationError("authentication failed")
         else:
             raise TOSDB_VirtualizationError("server requires authentication")
           
@@ -699,19 +701,22 @@ class _VTOS_Hub(_Thread):
                 # indicate whether client needs to authenticate              
                 amsg = _vREQUIRE_AUTH_NO if self._password is None else _vREQUIRE_AUTH
                 _send_tcp(conn[0], amsg.encode())
-                conn[0].settimeout(poll_interval / 1000)         
+                conn[0].settimeout(self._poll_interval / 1000)         
                 try:                    
                     if _recv_tcp(conn[0]) != _vACK.encode(): # get an ack or timeout
                         raise TOSDB_VirtualizationError('bad ack token received')
-                    if password is not None:
+                    if self._password is not None:
                         ### AUTHENTICATE ###
-                        good_auth = handle_auth_serv(conn,password)                       
+                        good_auth = handle_auth_serv(conn,self._password)                       
                         if not good_auth:
-                            print('\n- CLIENT FAILED TO AUTHENTICATE -')
+                            print('\n- CLIENT AUTHENTICATION FAILED -')
                             print('    ',conn[1])
                             conn[0].close()
                             # TODO: add delay/throttle mechanism
                             continue
+                        else:
+                            print('\n+ CLIENT AUTHENTICATION SUCCEEDED +')
+                            print('    ',conn[1])
                         ### AUTHENTICATE ###                
                 except TOSDB_VirtualizationError as e:
                     print('\n- HANDSHAKE FAILED -')
