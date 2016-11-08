@@ -45,7 +45,8 @@ def _main_init():
         vs_args += (int(raw_args[2]),) if len(raw_args) > 2 else ()
         if args.auth:
             vs_args = vs_args[:2] + (args.auth,) + vs_args[2:]
-        enable_virtualization(*vs_args)
+        #spin off so we don't block on exit
+        _Thread(target=enable_virtualization,args=vs_args).start()
       
     if args.virtual_client:
         raw_args = args.virtual_client.split(' ')

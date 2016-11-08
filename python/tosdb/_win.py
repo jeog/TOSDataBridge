@@ -165,7 +165,7 @@ def clean_up():
     """ Clean up shared resources. ! CALL BEFORE EXITING INTERPRETER ! """
     global _dll, _dll_depend1
     if _dll is not None:       
-        err = _lib_call("TOSDB_CloseBlocks", error_check=False):
+        err = _lib_call("TOSDB_CloseBlocks", error_check=False)
         print("+ Closing Blocks" if not err else "- Error Closing Blocks")        
         _lib_call("TOSDB_Disconnect", error_check=False)
         print("+ Disconnecting From Service \ Engine")
@@ -451,73 +451,54 @@ class TOSDB_DataBlock(_TOSDB_DataBlock):
 
     @_doxtend(_TOSDB_DataBlock) # __doc__ from ABC _TOSDB_DataBlock   
     def add_items(self, *items):              
-        mtup = tuple(s.encode("ascii").upper() for s in items)
-        items_type = _str_ * len(mtup)
-        citems = items_type(*mtup)
-        
-        err = None
-        try:
-            _lib_call("TOSDB_AddItems", self._name, citems, len(mtup), 
-                      arg_types=(_str_,  items_type, _uint32_))
-        except TOSDB_CLibError as e:
-            err = e            
+        fails = {}
+        for item in items:
+            err = _lib_call("TOSDB_AddItem", self._name,
+                            item.encode("ascii").upper(),
+                            arg_types=(_str_,_str_), error_check=False)
+            if err:
+                fails[item] = err
+       
+        if not self._items and not self._topics:
+            self._topics = self.topics() # in case topics came out of pre-cache            
+        self._items = self.items()          
 
-        try:
-            if not self._items and not self._topics:
-                self._topics = self.topics() # in case topics came out of pre-cache            
-            self._items = self.items()
-        except TOSDB_CLibError as e:
-            if not err:
-                raise e
-
-        if err:
-            TOSDB_CLibError("Error(s) adding items", str(err))
+        if fails:
+            TOSDB_CLibError("error(s) adding items", str(fails))
          
 
     @_doxtend(_TOSDB_DataBlock) # __doc__ from ABC _TOSDB_DataBlock
     def add_topics(self, *topics):        
-        mtup = tuple(s.encode("ascii").upper() for s in topics)
-        topics_type = _str_ * len(mtup)
-        ctopics = topics_type(*mtup)
+        fails = {}
+        for topic in topics:
+            err = _lib_call("TOSDB_AddTopic", self._name,
+                            topic.encode("ascii").upper(),
+                            arg_types=(_str_,_str_), error_check=False)
+            if err:
+                fails[topic] = err
 
-        err = None
-        try:
-            _lib_call("TOSDB_AddTopics", self._name, ctopics, len(mtup), 
-                      arg_types=(_str_,  topics_type, _uint32_))  
-        except TOSDB_CLibError as e:
-            err = e
-
-        try:
-            if not self._items and not self._topics:
-                self._items = self.items() # in case items came out of pre-cache            
-            self._topics = self.topics()
-        except TOSDB_CLibError as e:
-            if not err:
-                raise e
-
-        if err:
-            TOSDB_CLibError("Error(s) adding topics", str(err))
+        if not self._items and not self._topics:
+            self._items = self.items() # in case items came out of pre-cache            
+        self._topics = self.topics()    
+        
+        if fails:
+            TOSDB_CLibError("error(s) adding topics", str(fails))
 
        
     @_doxtend(_TOSDB_DataBlock) # __doc__ from ABC _TOSDB_DataBlock
     def remove_items(self, *items):
         fails = {}
         for item in items:
-            try:
-                _lib_call("TOSDB_RemoveItem", self._name,
-                          item.encode("ascii").upper(),
-                          arg_types=(_str_,_str_))
-            except TOSDB_CLibError as e:
-                fails[item] = e
+            err = _lib_call("TOSDB_RemoveItem", self._name,
+                            item.encode("ascii").upper(),
+                            arg_types=(_str_,_str_), error_check=False)
+            if err:
+                fails[item] = err
 
-        try:
-            self._items = self.items()
-        except TOSDB_CLibError as e:
-            if not err:
-                raise e
-        
+        self._items = self.items()
+                
         if fails:
-            raise TOSDB_CLibError("Error(s) removing items", str(fails))
+            raise TOSDB_CLibError("error(s) removing items", str(fails))
             
 
 
@@ -525,21 +506,16 @@ class TOSDB_DataBlock(_TOSDB_DataBlock):
     def remove_topics(self, *topics):
         fails = {}
         for topic in topics:
-            try:
-                _lib_call("TOSDB_RemoveTopic", self._name,
-                          topic.encode("ascii").upper(),
-                          arg_types=(_str_,_str_))
-            except TOSDB_CLibError as e:
-                fails[topic] = e
+            err = _lib_call("TOSDB_RemoveTopic", self._name,
+                            topic.encode("ascii").upper(),
+                            arg_types=(_str_,_str_), error_check=False)
+            if err:
+                fails[topic] = err
 
-        try:
-            self._topics = self.topics()
-        except TOSDB_CLibError as e:
-            if not err:
-                raise e
-        
+        self._topics = self.topics()
+                
         if fails:
-            raise TOSDB_CLibError("Error(s) removing topics", str(fails))
+            raise TOSDB_CLibError("error(s) removing topics", str(fails))
           
 
     @_doxtend(_TOSDB_DataBlock) # __doc__ from ABC _TOSDB_DataBlock
@@ -948,6 +924,7 @@ def _lib_call(f, *fargs, ret_type=_int_, arg_types=None, error_check=True):
         raise TOSDB_CLibError("tos-databridge DLL is currently not loaded")
         return # in case exc gets ignored on clean_up
     ret = None
+    err = None
     try:        
         attr = getattr(_dll, str(f))
         if ret_type:
@@ -957,15 +934,13 @@ def _lib_call(f, *fargs, ret_type=_int_, arg_types=None, error_check=True):
         elif arg_types is not None:
             raise ValueError('arg_types should be tuple or None')
         ret = attr(*fargs) # <- THE ACTUAL LIBRRY CALL      
-    except Exception as e:
-        status = " Not Connected"
-        if f != "TOSDB_IsConnected": # avoid infinite recursion
-           if connected():
-               status = " Connected"               
-        raise TOSDB_CLibError("Unable to execute library function", f, status, e)
-    
-    if error_check and ret:
-        raise TOSDB_CLibError("error [%i] returned from library call" % ret, str(f))
+    except BaseException as e:
+        err = e
+
+    if err:
+        raise TOSDB_CLibError("unable to execute library function [%s]" % f, err)
+    elif error_check and ret:
+        raise TOSDB_CLibError("library function [%s] returned error code [%i]" % (f, ret))
     
     return ret  
 
