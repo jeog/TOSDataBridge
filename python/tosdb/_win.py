@@ -455,13 +455,23 @@ class TOSDB_DataBlock(_TOSDB_DataBlock):
         items_type = _str_ * len(mtup)
         citems = items_type(*mtup)
         
-        _lib_call("TOSDB_AddItems", self._name, citems, len(mtup), 
-                  arg_types=(_str_,  items_type, _uint32_))    
-                
-        if not self._items and not self._topics:
-            self._topics = self.topics() # in case topics came out of pre-cache
-            
-        self._items = self.items()
+        err = None
+        try:
+            _lib_call("TOSDB_AddItems", self._name, citems, len(mtup), 
+                      arg_types=(_str_,  items_type, _uint32_))
+        except TOSDB_CLibError as e:
+            err = e            
+
+        try:
+            if not self._items and not self._topics:
+                self._topics = self.topics() # in case topics came out of pre-cache            
+            self._items = self.items()
+        except TOSDB_CLibError as e:
+            if not err:
+                raise e
+
+        if err:
+            TOSDB_CLibError("Error(s) adding items", str(err))
          
 
     @_doxtend(_TOSDB_DataBlock) # __doc__ from ABC _TOSDB_DataBlock
@@ -469,18 +479,26 @@ class TOSDB_DataBlock(_TOSDB_DataBlock):
         mtup = tuple(s.encode("ascii").upper() for s in topics)
         topics_type = _str_ * len(mtup)
         ctopics = topics_type(*mtup)
-        
-        _lib_call("TOSDB_AddTopics", self._name, ctopics, len(mtup), 
-                  arg_types=(_str_,  topics_type, _uint32_))  
 
-        if not self._items and not self._topics:
-            self._items = self.items() # in case items came out of pre-cache
-            
-        self._topics = self.topics()
+        err = None
+        try:
+            _lib_call("TOSDB_AddTopics", self._name, ctopics, len(mtup), 
+                      arg_types=(_str_,  topics_type, _uint32_))  
+        except TOSDB_CLibError as e:
+            err = e
 
+        try:
+            if not self._items and not self._topics:
+                self._items = self.items() # in case items came out of pre-cache            
+            self._topics = self.topics()
+        except TOSDB_CLibError as e:
+            if not err:
+                raise e
 
-    # HOW SHOULD WE HANDLE ERRORS IN REMOVE CALLS ?
-    
+        if err:
+            TOSDB_CLibError("Error(s) adding topics", str(err))
+
+       
     @_doxtend(_TOSDB_DataBlock) # __doc__ from ABC _TOSDB_DataBlock
     def remove_items(self, *items):
         fails = {}
@@ -491,8 +509,12 @@ class TOSDB_DataBlock(_TOSDB_DataBlock):
                           arg_types=(_str_,_str_))
             except TOSDB_CLibError as e:
                 fails[item] = e
-                    
-        self._items = self.items()
+
+        try:
+            self._items = self.items()
+        except TOSDB_CLibError as e:
+            if not err:
+                raise e
         
         if fails:
             raise TOSDB_CLibError("Error(s) removing items", str(fails))
@@ -509,8 +531,12 @@ class TOSDB_DataBlock(_TOSDB_DataBlock):
                           arg_types=(_str_,_str_))
             except TOSDB_CLibError as e:
                 fails[topic] = e
-                
-        self._topics = self.topics()
+
+        try:
+            self._topics = self.topics()
+        except TOSDB_CLibError as e:
+            if not err:
+                raise e
         
         if fails:
             raise TOSDB_CLibError("Error(s) removing topics", str(fails))
@@ -921,6 +947,7 @@ def _lib_call(f, *fargs, ret_type=_int_, arg_types=None, error_check=True):
     if not _dll:
         raise TOSDB_CLibError("tos-databridge DLL is currently not loaded")
         return # in case exc gets ignored on clean_up
+    ret = None
     try:        
         attr = getattr(_dll, str(f))
         if ret_type:
@@ -929,16 +956,18 @@ def _lib_call(f, *fargs, ret_type=_int_, arg_types=None, error_check=True):
             attr.argtypes = arg_types
         elif arg_types is not None:
             raise ValueError('arg_types should be tuple or None')
-        ret = attr(*fargs) # <- THE ACTUAL LIBRRY CALL
-        if error_check and ret:
-            raise TOSDB_CLibError("error [%i] returned from library call" % ret, str(f))        
-        return ret        
+        ret = attr(*fargs) # <- THE ACTUAL LIBRRY CALL      
     except Exception as e:
         status = " Not Connected"
         if f != "TOSDB_IsConnected": # avoid infinite recursion
            if connected():
                status = " Connected"               
         raise TOSDB_CLibError("Unable to execute library function", f, status, e)
+    
+    if error_check and ret:
+        raise TOSDB_CLibError("error [%i] returned from library call" % ret, str(f))
+    
+    return ret  
 
 
 # create a custom namedtuple with an i.d tag for special pickling
