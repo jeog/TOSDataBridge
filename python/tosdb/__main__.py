@@ -22,16 +22,6 @@ from sys import stderr as _stderr
 from time import sleep as _sleep
 
 args=None
-
-def _server_thread_wrap(*args):
-    try:
-        enable_virtualization(*args)
-        p = '+'
-    except BaseException as e:
-        print("- Exception in server thread: ", str(e))
-        p = '-'
-    finally:
-        print(p,"server thread is exiting")
             
 def _main_init():
     global args
@@ -55,13 +45,6 @@ def _main_init():
         vs_args += (int(raw_args[2]),) if len(raw_args) > 2 else ()
         if args.auth:
             vs_args = vs_args[:2] + (args.auth,) + vs_args[2:]
-        #server_thread = _Thread(target=_server_thread_wrap, args=vs_args)
-        #server_thread.start()
-        #print('\n...wait...\n')
-        #_sleep(3)
-        #TODO: actually check the thread is OK rather than arbitrary wait
-        #if not server_thread.is_alive():
-        #    raise TOSDB_Error('server thread is not alive')
         enable_virtualization(*vs_args)
       
     if args.virtual_client:

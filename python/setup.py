@@ -1,10 +1,24 @@
-# Copyright (C) 2014 Jonathon Ogden < jeog.dev@gmail.com > 
+# Copyright (C) 2014 Jonathon Ogden     < jeog.dev@gmail.com >
+#
+#   This program is free software: you can redistribute it and/or modify
+#   it under the terms of the GNU General Public License as published by
+#   the Free Software Foundation, either version 3 of the License, or
+#   (at your option) any later version.
+#
+#   This program is distributed in the hope that it will be useful,
+#   but WITHOUT ANY WARRANTY; without even the implied warranty of
+#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+#   See the GNU General Public License for more details.
+#
+#   You should have received a copy of the GNU General Public License,
+#   'LICENSE.txt', along with this program.  If not, see 
+#   <http://www.gnu.org/licenses/>.
 
 import sys as _sys
 
 if _sys.version_info.major < 3:
-  _sys.stderr.write("fatal: tosdb is built for python3!\n")
-  exit(1)
+    _sys.stderr.write("fatal: tosdb is built for python3!\n")
+    exit(1)
 
 from distutils.core import setup as _setup
 from distutils.command.build import build as _Build
@@ -16,12 +30,14 @@ from os.path import join as _path_join, dirname as _dirname, realpath as _realpa
 from os import system as _system, getcwd as _getcwd, remove as _remove
 from shutil import rmtree as _rmtree
 
+
 NAME = 'tosdb'
 VERSION = '0.5'
 DESCRIPTION = "Python Front-End / Wrapper for TOSDataBridge"
 AUTHOR = "Jonathon Ogden"
 AUTHOR_EMAIL = "jeog.dev@gmail.com"
 PACKAGES = ['tosdb','tosdb/cli_scripts']  
+
 
 _AUTO_EXT = '_tosdb' 
 # everything should be relative to the python/setup.py
@@ -31,8 +47,9 @@ _HEADER_PATH = _path_join(_OUR_PATH, '..', 'include', _HEADER_NAME)
 _OUTPUT_PATH = _path_join(_OUR_PATH, NAME, _AUTO_EXT + '.py')
 
 if _OUR_PATH != _getcwd():
-  _sys.stderr.write("fatal: setup.py must be run from its own directory(python/)\n")
-  exit(1)
+    _sys.stderr.write("fatal: setup.py must be run from its own directory(python/)\n")
+    exit(1)
+
 
 #string that should bookmark the topics in Topic_Enum_Wrapper::TOPICS<T> 
 _MAGIC_TOPIC_STR = 'ksxaw9834hr84hf;esij?><'
@@ -44,79 +61,80 @@ _REGEX_HEADER_CONST = "#define[\s]+([\w]+)[\s]+.*?([\d][\w]*)"
 #adjust for topics we had to permute to form valid enum vars
 TOPIC_VAL_REPLACE = {'HIGH52':'52HIGH','LOW52':'52LOW'}
 
+
 class TOSDB_SetupError(Exception):
-  def __init__(self,*msgs):
-    super().__init__(*msgs)  
+    def __init__(self,*msgs):
+        super().__init__(*msgs)  
 
  
 def _pull_consts_from_header(verbose=True):
-  consts = {}
-  lineno = 0
-  with open(_HEADER_PATH,'r') as hfile:    
-    hfile.seek(0)    
-    for hline in hfile:
-      lineno += 1
-      try:
-        groups = _match(_REGEX_HEADER_CONST,hline).groups()        
-      except AttributeError:
-        continue    
-      try:
-        g0, g1 = groups
-        val = str(hex(int(g1,16)) if 'x' in g1 else int(g1))
-        consts[g0] = val
-        if verbose:
-          print(' ',_HEADER_NAME + ':' + str(lineno)+ ': '+ groups[0], val)
-      except ValueError:
-        raise TOSDB_SetupError("invalid header const value", str(g0))   
-      except Exception as e:
-        raise TOSDB_SetupError("couldn't extract const from regex match", e.args)   
-  return consts     
+    consts = {}
+    lineno = 0
+    with open(_HEADER_PATH,'r') as hfile:    
+        hfile.seek(0)    
+        for hline in hfile:
+            lineno += 1
+            try:
+                groups = _match(_REGEX_HEADER_CONST,hline).groups()        
+            except AttributeError:
+                continue    
+            try:
+                g0, g1 = groups
+                val = str(hex(int(g1,16)) if 'x' in g1 else int(g1))
+                consts[g0] = val
+                if verbose:
+                    print(' ',_HEADER_NAME + ':' + str(lineno)+ ': '+ groups[0], val)
+            except ValueError:
+                raise TOSDB_SetupError("invalid header const value", str(g0))   
+            except Exception as e:
+                raise TOSDB_SetupError("couldn't extract const from regex match", e.args)   
+    return consts     
 
 
 def _pull_topics_from_header(verbose=True):
-  read_flag = False
-  topics = []
-  lineno = 0
-  with open(_HEADER_PATH,'r') as hfile:
-    for hline in hfile:
-      lineno += 1
-      if read_flag:      
-        if _MAGIC_TOPIC_STR in hline:
-          read_flag = False
-          if verbose:
-            print(' ', _HEADER_NAME + ':' + str(lineno+1) + ': topic enum END')  
-          break         
-        try:
-          t = hline.split('=')[0].strip()
-        except Exception as e:
-          raise TOSDB_SetupError("failed to parse topic enum line", e.args)
-        if(not _search('[\W]',t)):
-          topics.append(t)         
-      else:
-        if _MAGIC_TOPIC_STR in hline:
-          read_flag = True
-          if verbose:
-            print(' ', _HEADER_NAME + ':' + str(lineno-1) + ': topic enum BEGIN') 
-  return topics
+    read_flag = False
+    topics = []
+    lineno = 0
+    with open(_HEADER_PATH,'r') as hfile:
+        for hline in hfile:
+            lineno += 1
+            if read_flag:      
+                if _MAGIC_TOPIC_STR in hline:
+                    read_flag = False
+                    if verbose:
+                        print(' ', _HEADER_NAME + ':' + str(lineno+1) + ': topic enum END')  
+                    break         
+                try:
+                    t = hline.split('=')[0].strip()
+                except Exception as e:
+                    raise TOSDB_SetupError("failed to parse topic enum line", e.args)
+                if not _search('[\W]',t):
+                    topics.append(t)         
+            else:
+                if _MAGIC_TOPIC_STR in hline:
+                    read_flag = True
+                    if verbose:
+                        print(' ', _HEADER_NAME + ':' + str(lineno-1) + ': topic enum BEGIN') 
+    return topics
 
 
 # build a tosdb/_tosdb.py file from the header extracted vals
 def _create__tosdb(consts, topics): 
-  topic_dict = dict(zip(topics,topics))
-  for key in topic_dict:
-    if key in TOPIC_VAL_REPLACE: # don't just .update, check all are valid
-      topic_dict[key] = TOPIC_VAL_REPLACE[key]
-  with open(_OUTPUT_PATH,'w') as pfile:
-    pfile.write('# AUTO-GENERATED BY tosdb/setup.py\n')
-    pfile.write('# DO NOT EDIT!\n\n')
-    pfile.write('_BUILD_DATETIME = "' + _asctime() + '"\n')
-    for c in consts:
-      pfile.write(c.replace('TOSDB_','',1) + ' = ' + consts[c] + '\n')      
-    pfile.write('\n\n')
-    pfile.write('from tosdb.meta_enum import MetaEnum\n')
-    pfile.write('class TOPICS(metaclass=MetaEnum):\n')
-    pfile.write('  fields = ' + str(topic_dict) + '\n')
-     
+    topic_dict = dict(zip(topics,topics))
+    for key in topic_dict:
+        if key in TOPIC_VAL_REPLACE: # don't just .update, check all are valid
+            topic_dict[key] = TOPIC_VAL_REPLACE[key]
+    with open(_OUTPUT_PATH,'w') as pfile:
+        pfile.write('# AUTO-GENERATED BY tosdb/setup.py\n')
+        pfile.write('# DO NOT EDIT!\n\n')
+        pfile.write('_BUILD_DATETIME = "' + _asctime() + '"\n')
+        for c in consts:
+            pfile.write(c.replace('TOSDB_','',1) + ' = ' + consts[c] + '\n')      
+        pfile.write('\n\n')
+        pfile.write('from tosdb.meta_enum import MetaEnum\n')
+        pfile.write('class TOPICS(metaclass=MetaEnum):\n')
+        pfile.write('  fields = ' + str(topic_dict) + '\n')
+       
 
 def _init_build():
     print("pulling constants from " + _HEADER_PATH)
@@ -147,12 +165,14 @@ class InstallCommand(_Install):
     def run(self):
         super().run()
         _check_depends()
+
   
 class BuildCommand(_Build):
     description = "build tosdb"
     def run(self):
         _init_build()
         super().run()        
+
 
 class CleanCommand(_Clean):
     description = "clean tosdb"

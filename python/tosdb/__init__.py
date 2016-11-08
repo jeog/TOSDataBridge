@@ -137,7 +137,7 @@ import pickle as _pickle
 _SYS_IS_WIN = _system() in ["Windows","windows","WINDOWS"]
 
 if _SYS_IS_WIN: 
-  from ._win import * # import the core implementation
+    from ._win import * # import the core implementation
   
 _virtual_hub = None
 _virtual_hub_addr = None
