@@ -3,14 +3,12 @@ import socket as _socket
 from os import urandom as _urandom
 from importlib import find_loader as _find_loader
       
-DEFAULT_PASSWORD = "default_pass"
-MAX_PASSWORD = 30
-MIN_PASSWORD = 10
+MAX_PASSWORD = 128
+MIN_PASSWORD = 12
 RAND_SEQ_SZ = 512
 
-_AUTH_SUCCESS = 'SUCCESS'
-_AUTH_FAILURE = 'FAILURE'
-
+_vAUTH_SUCCESS = 'AUTH_SUCCESS'
+_vAUTH_FAILURE = 'AUTH_FAILURE'
 
 # hold of on importing pycrypto as late as possible
 # don't force dependency outside the std lib unless it's needed
@@ -46,12 +44,6 @@ def hash_password(p):
     return Hasher.digest()
 
 
-def encrypt_randseq(hp, rseq, iv):    
-    _Cipher = _AES.new(hp, _AES.MODE_CFB, iv)
-    ct = _Cipher.encrypt(rseq)
-    return ct
-
-
 def handle_auth_cli(my_sock,password):
     #hash/overwite password
     password = hash_password(password)
@@ -62,20 +54,21 @@ def handle_auth_cli(my_sock,password):
         rand_seq = rand_seq_iv[_AES.block_size:]        
     except _socket.timeout as e:
         raise TOSDB_VirtualizationError("socket timed out receiving random sequence")         
-    # check size of rand_seq
+
     if len(rand_seq) != RAND_SEQ_SZ:
-      raise TOSDB_VirtualizationError("rand_seq != RAND_SEQ_SZ")
-    # encrypt random sequence using hashed password 
-    crypt_rand_seq = encrypt_randseq(password, rand_seq, iv)   
+        raise TOSDB_VirtualizationError("invalid size of random sequence")
+    
+    # encrypt random sequence using hashed password, attached iv    
+    crypt_rand_seq = _AES.new(password, _AES.MODE_CFB, iv).encrypt(rand_seq)
     # send that back to server
     _send_tcp(my_sock, crypt_rand_seq) #raw (no need to pack) 
     # see if it worked
     try:
-      ret = _recv_tcp(my_sock)
-      ret = ret.decode()   
+        ret = _recv_tcp(my_sock)
+        ret = ret.decode()   
     except _socket.timeout as e:
-      raise TOSDB_VirtualizationError("socket timed out receiving status")        
-    return (ret == _AUTH_SUCCESS)
+        raise TOSDB_VirtualizationError("socket timed out receiving status")        
+    return (ret == _vAUTH_SUCCESS)
 
 
 def handle_auth_serv(my_conn,password):
@@ -99,14 +92,12 @@ def handle_auth_serv(my_conn,password):
     
     if crypt_seq_cli is None:
         raise TOSDB_VirtualizationError("client failed to return encrypted sequence")
-    # compare ours w/ the clients
-    our_crypt_seq = encrypt_randseq(password, rseq, iv)    
-    seq_match = (our_crypt_seq == crypt_seq_cli)
+
+    seq_cli = _AES.new(password, _AES.MODE_CFB, iv).decrypt(crypt_seq_cli)      
+    seq_match = (rseq == seq_cli)
     try:
-        if seq_match:            
-            _send_tcp(my_sock, _AUTH_SUCCESS.encode())
-        else:
-            _send_tcp(my_sock, _AUTH_FAILURE.encode())
+        rmsg = _vAUTH_SUCCESS if seq_match else _vAUTH_FAILURE
+        _send_tcp(my_sock, rmsg.encode())       
     except BaseException as e:
         raise TOSDB_VirtualizationError("failed to send success/failure to client", e)
 

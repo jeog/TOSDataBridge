@@ -12,8 +12,9 @@ from distutils.command.install import install as _Install
 from distutils.command.clean import clean as _Clean
 from re import match as _match, search as _search
 from time import asctime as _asctime
-from os.path import join as _path_join, dirname as _dirname, realpath as _realpath
-from os import system as _system, getcwd as _getcwd
+from os.path import join as _path_join, dirname as _dirname, realpath as _realpath                    
+from os import system as _system, getcwd as _getcwd, remove as _remove
+from shutil import rmtree as _rmtree
 
 NAME = 'tosdb'
 VERSION = '0.5'
@@ -136,8 +137,9 @@ def _init_build():
 
 
 def _check_depends(): #TODO
-    print("*** NOTE: if you plan on using authenticated virtualization (by passing a " +
-          "password to the appropriate 'virtual' calls) you need to install the pycrypto package ***")
+    print("\n*** NOTE: if you plan on using authenticated virtualization " +
+          "(by passing a password to the appropriate 'virtual' calls) " +
+          "you need to install the pycrypto package ***")
 
 
 class InstallCommand(_Install):
@@ -150,17 +152,21 @@ class BuildCommand(_Build):
     description = "build tosdb"
     def run(self):
         _init_build()
-        super().run()
-        _check_depends()
+        super().run()        
 
 class CleanCommand(_Clean):
     description = "clean tosdb"
-    def run(self):  
-        # TODO: make portable
-        print("removing tosdb/_tosdb.py ...")
-        _system('rm ' + _OUTPUT_PATH) 
-        print("removing ./build ...") 
-        _system('rm -r ' + _path_join(_OUR_PATH,'build') )
+    def run(self):                  
+        try:
+            print("removing tosdb/_tosdb.py ...")
+            _remove(_OUTPUT_PATH)
+        except:
+            pass        
+        try:
+            print("removing ./build ...")
+            _rmtree( _path_join(_OUR_PATH,'build') )
+        except:
+            pass              
         super().run()  
 
 
