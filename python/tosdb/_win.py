@@ -464,7 +464,7 @@ class TOSDB_DataBlock(_TOSDB_DataBlock):
         self._items = self.items()          
 
         if fails:
-            TOSDB_CLibError("error(s) adding items", str(fails))
+            raise TOSDB_CLibError("error(s) adding items", str(fails))
          
 
     @_doxtend(_TOSDB_DataBlock) # __doc__ from ABC _TOSDB_DataBlock
@@ -482,7 +482,7 @@ class TOSDB_DataBlock(_TOSDB_DataBlock):
         self._topics = self.topics()    
         
         if fails:
-            TOSDB_CLibError("error(s) adding topics", str(fails))
+            raise TOSDB_CLibError("error(s) adding topics", str(fails))
 
        
     @_doxtend(_TOSDB_DataBlock) # __doc__ from ABC _TOSDB_DataBlock

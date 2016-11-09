@@ -737,10 +737,20 @@ class _VTOS_Hub(_Thread):
 
         
 def _vcall(msg, my_sock, hub_addr, rcnt=3):
-    try:     
-        _send_tcp(my_sock, msg)     
+    try:
+        #clear any stale data in the stream(e.g our last call timedout midway)
+        old_timeout = my_sock.gettimeout()
+        my_sock.settimeout(0) #set to non-blocking
         try:
-            ret_b = _recv_tcp(my_sock)
+            while True: #could we get stuck in this loop ?
+                my_sock.recv(4096)            
+        except BlockingIOError:
+            pass
+        my_sock.settimeout(old_timeout)
+        #initiate new call
+        _send_tcp(my_sock, msg)        
+        try:
+            ret_b = _recv_tcp(my_sock)            
         except _socket.timeout as e:
             raise TOSDB_VirtualizationError("socket timed out", "_vcall")        
         args = _unpack_msg(ret_b)   
@@ -753,10 +763,10 @@ def _vcall(msg, my_sock, hub_addr, rcnt=3):
                 raise TOSDB_VirtualizationError("failure status returned", desc)
         else:
             return (args[0],args[1]) if len(args) > 1 else (args[0],None)
-    except ConnectionResetError:     
-        try:
-            my_sock.connect(hub_addr)                  
-            if rcnt > 0: # attemp rcnt retries via recursion                
+    except ConnectionResetError:        
+        try:                             
+            if rcnt > 0: # attemp rcnt retries via recursion
+                my_sock.connect(hub_addr) 
                 return _vcall(msg, my_sock, hub_addr, rcnt-1)
             else:
                 raise TOSDB_VirtualizationError("_vcall recursion limit hit")
