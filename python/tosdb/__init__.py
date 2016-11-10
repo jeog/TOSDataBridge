@@ -275,6 +275,7 @@ def admin_init(address, password=None, poll_interval=DEF_TIMEOUT):
     except:
         admin_close()
         raise
+    return True
 
 
 def _admin_call(method, *arg_buffer):
