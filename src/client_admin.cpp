@@ -336,9 +336,13 @@ Threaded_Init(LPVOID lParam)
 }; /* namespace */
 
 
-BOOL WINAPI 
+BOOL WINAPI  
 DllMain(HANDLE mod, DWORD why, LPVOID res) /* ENTRY POINT */
 {    
+    /* NOTE: using HANDLE vs HINSTANCE for some reason;
+             no current need for mod so just leave for now to avoid
+             breaking something (Nov 10 2016)
+    */
     switch(why){
     case DLL_PROCESS_ATTACH:
         /* ! NO AUTO-CONNECT ! need blocking ops deep into ->try_for_slave()   */
