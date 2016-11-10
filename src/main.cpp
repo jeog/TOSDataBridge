@@ -25,8 +25,14 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 /* extern */ char TOSDB_LOG_PATH[MAX_PATH+40];
 
 BOOL WINAPI 
-DllMain(HANDLE mod, DWORD why, LPVOID res)
+DllMain(HINSTANCE mod, DWORD why, LPVOID res)
 {    
+    /* NOTE: change HANDLE to HINSTANCE to avoid passing NULL to 
+             GetModuleFileName which returns path of calling module
+             instead of *this* module, screwing up the relative log path.
+             
+             ***IF SOMETHING FUNDAMENTAL BREAKS LOOK HERE*** (Nov 10 2016)
+    */
     switch(why){
     case DLL_PROCESS_ATTACH:
     {  
@@ -35,7 +41,7 @@ DllMain(HANDLE mod, DWORD why, LPVOID res)
         appdata; define TOSDB_LOG_PATH for all other implemenation modules 
       */
 #ifdef LOCAL_LOG_PATH	/* add error checks */
-        GetModuleFileName(NULL, TOSDB_LOG_PATH, MAX_PATH);
+        GetModuleFileName(mod, TOSDB_LOG_PATH, MAX_PATH);
         std::string lp(TOSDB_LOG_PATH);
         std::string nlp(lp.begin(),lp.begin() + lp.find_last_of('\\'));
         nlp.append(LOCAL_LOG_PATH);
