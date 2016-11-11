@@ -20,7 +20,8 @@ Please refer to README.md for an explanation of the underlying C library,
 python/tutorial.md for a walk-through of tosdb basics, and 
 python/virtualization_tutorial.md for example usage on non-Windows systems.
 
-                              * * * OBJECTS * * *
+
+*** OBJECTS ***
 
 class TOSDB_DataBlock(windows only): very similar to the 'block' approach of the
 underlying C library except the interface is explicitly object-oriented. It 
@@ -33,7 +34,12 @@ machine running the core implemenataion.
 
 ABC _TOSDB_DataBlock: abstract base class of TOSDB_DataBlock and VTOSDB_DataBlock
 
-                             * * * ADMIN CALLS * * *
+Init: context manager that handles initialization and clean-up
+
+VInit: version of Init for the virtual layer
+
+
+*** ADMIN CALLS ***
 
 admin_init() : initializes the vitual library calls (e.g vinit(), vconnect())
 
@@ -54,30 +60,23 @@ clean_up() / vclean_up() : *** IMPORTANT *** de-allocates shared resources of th
 getblockcount() / vgetblockcount() : number of (created) blocks in the C lib
 getblocklimit() / vgetblocklimit() : get max number of blocks you can create 
 setblocklimit() / vsetblocklimit() : set max number of blocks you can create 
-                         
-                             * * * OTHER OBJECTS * * *     
+                     
 
-Init: context manager that handles initialization and clean-up
-
-VInit: version of Init for the virtual layer
-
-** both throw TOSDB_InitError 
-
-                             * * * INITIALIZATION * * *
+*** INITIALIZATION ***
 
 * Please refer to python/virtualization_tutorial.md for example usage
 
 --------------------------------------------------------------------------------
           [ local(windows) side ]        |         [ remote side ]
 --------------------------------------------------------------------------------
-                       Local with no virtualization support: 
+                      Local with no virtualization support: 
                                          |   
  1) init()                               |
  2) connect()**                          |
  3) use standard calls/objects           |
                                          |
 --------------------------------------------------------------------------------
-                     Local (interactive) init with virtualization support:
+               Local (interactive) init with virtualization support:
                                          |    
  1) init()                               |
  2) connect()**                          |
@@ -88,7 +87,7 @@ VInit: version of Init for the virtual layer
                                          | 6) admin_init()
                                          | 7) use virtual admin calls
 --------------------------------------------------------------------------------
-                    Remote (interactive) init with virtualization support:
+               Remote (interactive) init with virtualization support:
                                          |
  1) enable_virtualization((addr,port))   |
                                          |   2) admin_init()
@@ -97,7 +96,7 @@ VInit: version of Init for the virtual layer
                                          |   5a) use virtual calls/objs
  5b) use standard calls/objects...       |                                         
 --------------------------------------------------------------------------------
-    Local (daemon/server) Remote (interactive) init with virtualization support:
+   Local (daemon/server) Remote (interactive) init with virtualization support:
                                                    |
  1) C:\...\python> python tosdb --virtual-server \ |
                    "ADDR PORT" --root PATH-TO-DLL  |
@@ -154,7 +153,6 @@ _vCONN_BLOCK = 'CONN_BLOCK'
 _vCONN_ADMIN = 'CONN_ADMIN' 
 _vREQUIRE_AUTH = 'REQUIRE_AUTH'
 _vREQUIRE_AUTH_NO = 'REQUIRE_AUTH_NO'
-
 
 _vALLOWED_ADMIN = ('init','connect','connected','clean_up','get_block_limit', 
                    'set_block_limit','get_block_count','type_bits','type_string')
@@ -488,6 +486,7 @@ class VTOSDB_DataBlock(_TOSDB_DataBlock):
                 else:
                     return _pickle.loads(ret_b[1])
                      
+
             
 def enable_virtualization(address, password=None, poll_interval=DEF_TIMEOUT):
     """ enable virtualization on host system

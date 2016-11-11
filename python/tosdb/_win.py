@@ -14,7 +14,7 @@
 #   'LICENSE.txt', along with this program.  If not, see 
 #   <http://www.gnu.org/licenses/>.
 
-"""_tosdb_win.py:  The non-portable bits of the window's tosdb implementation
+"""_win.py:  The non-portable bits of the window's tosdb implementation
 
 Please refer to the tosdb (tosdb/__init__.py) docstring for detailed information.
 """
@@ -152,13 +152,14 @@ def init(dllpath=None, root="C:\\", bypass_check=False):
 
 def connect():
     """ Attempts to connect to the library """            
-    return _lib_call("TOSDB_Connect", error_check=False) == 0 # 0 on success
+    ret = _lib_call("TOSDB_Connect", error_check=False) 
+    return (ret == 0) # 0 on success (error code)
 
 
 def connected():
     """ Returns true if there is an active connection to the library """
-    i = _lib_call("TOSDB_IsConnected", ret_type=_uint_, error_check=False)
-    return bool(i)
+    ret = _lib_call("TOSDB_IsConnected", ret_type=_uint_, error_check=False)
+    return bool(ret) # 1 on success (bool value)
          
        
 def clean_up():
@@ -193,18 +194,18 @@ def Init(dllpath=None, root="C:\\", bypass_check=False):
 
 def get_block_limit():
     """ Returns the block limit of C/C++ RawDataBlock factory """
-    return _lib_call("TOSDB_GetBlockLimit", ret_type=_uint32_, error_check=False)
+    return _lib_call("TOSDB_GetBlockLimit", ret_type=_uint32_)
 
 
 def set_block_limit(new_limit):
     """ Changes the block limit of C/C++ RawDataBlock factory """
-    _lib_call("TOSDB_SetBlockLimit", new_limit, ret_type=_uint32_,
-              arg_types=(_uint32_,), error_check=False)
+    _lib_call("TOSDB_SetBlockLimit", new_limit, ret_type=_uint32_, 
+              arg_types=(_uint32_,))
 
 
 def get_block_count():
     """ Returns the count of current instantiated blocks """
-    return _lib_call("TOSDB_GetBlockCount", ret_type=_uint32_, error_check=False)
+    return _lib_call("TOSDB_GetBlockCount", ret_type=_uint32_)
 
 
 def type_bits(topic):
@@ -214,11 +215,11 @@ def type_bits(topic):
     returns -> value that can be logical &'d with type bit contstants 
     (ex. QUAD_BIT)
     """
-    tybits = _uint8_()
-    _lib_call("TOSDB_GetTypeBits", topic.upper().encode("ascii"),
-              _pointer(tybits), arg_types=(_str_,_PTR_(_uint8_)) )
+    b = _uint8_()
+    _lib_call("TOSDB_GetTypeBits", topic.upper().encode("ascii"), _pointer(b), 
+              arg_types=(_str_,_PTR_(_uint8_)) )
 
-    return tybits.value
+    return b.value
 
 
 def type_string(topic):
@@ -226,11 +227,10 @@ def type_string(topic):
 
     topic: string representing a TOS data field('LAST','ASK', etc)
     """
-    tystr = _BUF_(MAX_STR_SZ + 1)
-    _lib_call("TOSDB_GetTypeString", topic.upper().encode("ascii"), tystr, 
-              (MAX_STR_SZ + 1))
+    s = _BUF_(MAX_STR_SZ + 1)
+    _lib_call("TOSDB_GetTypeString", topic.upper().encode("ascii"), s, (MAX_STR_SZ + 1))
 
-    return tystr.value.decode()
+    return s.value.decode()
 
 
 
@@ -315,31 +315,31 @@ class TOSDB_DataBlock(_TOSDB_DataBlock):
 
 
     def _item_count(self):       
-        i_count = _uint32_()
-        _lib_call("TOSDB_GetItemCount", self._name, _pointer(i_count),
+        i = _uint32_()
+        _lib_call("TOSDB_GetItemCount", self._name, _pointer(i),
                   arg_types=(_str_,_PTR_(_uint32_)))
-        return i_count.value
+        return i.value
 
 
     def _topic_count(self):        
-        t_count = _uint32_()
-        _lib_call("TOSDB_GetTopicCount", self._name, _pointer(t_count),
+        t = _uint32_()
+        _lib_call("TOSDB_GetTopicCount", self._name, _pointer(t),
                   arg_types=(_str_,_PTR_(_uint32_)))
-        return t_count.value
+        return t.value
 
 
     def _item_precached_count(self):       
-        i_count = _uint32_()
-        _lib_call("TOSDB_GetPreCachedItemCount", self._name, _pointer(i_count),
+        i = _uint32_()
+        _lib_call("TOSDB_GetPreCachedItemCount", self._name, _pointer(i),
                   arg_types=(_str_,_PTR_(_uint32_)))
-        return i_count.value
+        return i.value
 
 
     def _topic_precached_count(self):        
-        t_count = _uint32_()
-        _lib_call("TOSDB_GetPreCachedTopicCount", self._name, _pointer(t_count),
+        t = _uint32_()
+        _lib_call("TOSDB_GetPreCachedTopicCount", self._name, _pointer(t),
                   arg_types=(_str_,_PTR_(_uint32_)))
-        return t_count.value
+        return t.value
 
 
     @_doxtend(_TOSDB_DataBlock) # __doc__ from ABC _TOSDB_DataBlock
@@ -354,16 +354,15 @@ class TOSDB_DataBlock(_TOSDB_DataBlock):
 
     @_doxtend(_TOSDB_DataBlock) # __doc__ from ABC _TOSDB_DataBlock
     def get_block_size(self):          
-        b_size = _uint32_()
-        _lib_call("TOSDB_GetBlockSize", self._name, _pointer(b_size),
+        b = _uint32_()
+        _lib_call("TOSDB_GetBlockSize", self._name, _pointer(b),
                   arg_types=(_str_,_PTR_(_uint32_)))
-        return b_size.value
+        return b.value
       
 
     @_doxtend(_TOSDB_DataBlock) # __doc__ from ABC _TOSDB_DataBlock
     def set_block_size(self, sz):  
-        _lib_call("TOSDB_SetBlockSize", self._name, sz,
-                  arg_types=(_str_,_uint32_))
+        _lib_call("TOSDB_SetBlockSize", self._name, sz, arg_types=(_str_,_uint32_))
         self._block_size = sz
          
 

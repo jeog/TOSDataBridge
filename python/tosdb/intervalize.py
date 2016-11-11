@@ -14,6 +14,21 @@
 #   'LICENSE.txt', along with this program.  If not, see 
 #   <http://www.gnu.org/licenses/>.
 
+"""intervalize.py:  structure tosdb data in standard bar/candle format by time interval.
+
+GetOnTimeInterval:       base class that constructs intervals for any item and topic 
+
+GetOnTimeInterval_C:     'closing' price of each interval
+GetOnTimeInterval_CV:      (includes a 'volume' value for each interval)
+
+GetOnTimeInterval_OHLC:  'open', 'high', 'low', and 'closing' prices of each interval
+GetOnTimeInterval_OHLCV:   (includes a 'volume' value for each interval)
+
+TimeInterval enum value of the desired interval should be passed to constructor.
+
+Currently the send_to_file class method is the primary way of dealing with the data.
+"""
+
 import tosdb
 
 from threading import Thread as _Thread
@@ -49,7 +64,7 @@ class _GetOnInterval:
 
   
 
-class GetOnTimeInterval( _GetOnInterval ):
+class GetOnTimeInterval(_GetOnInterval):
     def __init__(self,block,item,topic):
         _GetOnInterval.__init__(self,block,item,topic)
         if block.info()['DateTime'] == 'Disabled':
@@ -78,12 +93,12 @@ class GetOnTimeInterval( _GetOnInterval ):
                 i.start( run_cb, stop_cb, time_interval, update_seconds)                
             return i
         except Exception as e:
-            print( "ohlc_daemon.py", repr(e), file=_stderr )
+            print("- tosdb.intervalize.GetOnTimeInterval.send_to_file ::", str(e), file=_stderr)
             i._file.close()     
             
 
     def start(self, run_callback, stop_callback,
-              time_interval=TimeInterval.five_min, update_seconds=15 ):        
+              time_interval=TimeInterval.five_min, update_seconds=15):        
         self._check_start_args(run_callback, stop_callback,
                                time_interval, update_seconds)
         self._run_callback = run_callback
@@ -135,8 +150,7 @@ class GetOnTimeInterval( _GetOnInterval ):
                     if not self._rflag:
                         break
             except Exception as e:          
-                print("error in GetOnTimeInterval._update loop, stopping", file=_stderr)
-                print("ohlc_daemon.py", repr(e), file=_stderr)              
+                print("- tosdb.intervalize.GetOnTimeInterval._update ::", str(e), file=_stderr)
                 self.stop()
                 raise 
             
@@ -235,7 +249,8 @@ class GetOnTimeInterval_OHLC(GetOnTimeInterval):
                 i.start(run_cb, stop_cb, time_interval, update_seconds)
             return i
         except Exception  as e:
-            print("ohlc_daemon.py", repr(e), file=_stderr)
+            print("- tosdb.intervalize.GetOnTimeInterval_OHLC.send_to_file ::", 
+                  str(e), file=_stderr)
             i._file.close()    
 
 
@@ -301,7 +316,8 @@ class GetOnTimeInterval_OHLCV(GetOnTimeInterval_OHLC):
                 i.start( run_cb, stop_cb, time_interval, update_seconds)
             return i
         except Exception  as e:
-            print("ohlc_daemon.py", repr(e), file=_stderr)
+            print("- tosdb.intervalize.GetOnTimeInterval_OHLCV.send_to_file ::", 
+                  str(e), file=_stderr)
             i._file.close()    
 
 
@@ -336,8 +352,9 @@ class GetOnTimeInterval_CV(GetOnTimeInterval_C):
             if cls._check_start_args(run_cb, stop_cb, time_interval, update_seconds):                
                 i.start( run_cb, stop_cb, time_interval, update_seconds)
             return i
-        except Exception  as e:
-            print("ohlc_daemon.py", repr(e), file=_stderr)
+        except Exception as e:
+            print("- tosdb.intervalize.GetOnTimeInterval_CV.send_to_file ::", 
+                  str(e), file=_stderr)
             i._file.close()    
 
 
