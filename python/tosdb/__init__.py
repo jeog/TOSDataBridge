@@ -14,17 +14,17 @@
 #   'LICENSE.txt', along with this program.  If not, see 
 #   <http://www.gnu.org/licenses/>.
 
-"""tosdb.py :  A Front-End / Wrapper for the TOS-DataBridge Library
+"""tosdb/  :  A front-end / wrapper for the TOSDataBridge C/C++ library
 
-Please refer to README.md for an explanation of the underlying C library,
-python/tutorial.md for a walk-through of tosdb basics, and 
-python/virtualization_tutorial.md for example usage on non-Windows systems.
+Please refer to README.md for an explanation of the C/C++ library, tutorial.md 
+for a walk-through of the basics, and virtualization_tutorial.md for example 
+usage on non-Windows systems.
 
 
 *** OBJECTS ***
 
 class TOSDB_DataBlock(windows only): very similar to the 'block' approach of the
-underlying C library except the interface is explicitly object-oriented. It 
+underlying C/C++ library except the interface is explicitly object-oriented. It 
 abstracts away the underlying type complexity, raising TOSDB_CLibError on 
 internal library errors.
 
@@ -44,20 +44,20 @@ VInit: version of Init for the virtual layer
 admin_init() : initializes the vitual library calls (e.g vinit(), vconnect())
 
 init() / vinit() : tell the windows implementation to initialize the 
-                   underlying library (attempt to connect)
+                   underlying C/C++ library (attempt to connect)
 
 connect() / vconnect() : tell the windows implementation to connect to the 
-                         underlying C library (init attemps this for you)
+                         underlying C/C++ library (init attemps this for you)
 
 connected() /vconnected() : is the windows implementation connected
 
 clean_up() / vclean_up() : *** IMPORTANT *** de-allocates shared resources of the 
-                           underlying library and Service. We attempt to clean up 
-                           resources automatically on exit but in certain cases 
+                           underlying C/C++ library and Service. We attempt to clean 
+                           up resources automatically on exit but in certain cases 
                            it's not guaranteed to happen. HIGHLY RECOMMENDED YOU 
                            CALL THIS BEFORE EXITING.
 
-getblockcount() / vgetblockcount() : number of (created) blocks in the C lib
+getblockcount() / vgetblockcount() : number of (created) blocks in the C/C++ lib
 getblocklimit() / vgetblocklimit() : get max number of blocks you can create 
 setblocklimit() / vsetblocklimit() : set max number of blocks you can create 
                      

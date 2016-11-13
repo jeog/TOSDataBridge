@@ -81,7 +81,6 @@ Even if you are not comfortable contributing code, simply reporting bugs or ques
 - simplify the main header: tos_databridge.h
 - simplify the API 
 - consider an 'intermediate' API between client lib and engine, allowing users to inject their own callbacks/hooks for handling raw data from the engine
-- add authentication mechanism to virtual-layer connections
 
 ### Contents
 - - -
