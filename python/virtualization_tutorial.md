@@ -76,7 +76,7 @@ This enables virtualization and handles initialization for you, returning an int
 
 \**notice the preceding space in the --virtual-server arg tuple " 55555". This indicates an address of 'all available interfaces'*
 
-![](./../res/tosdb_virtual_tutorial_3.png)
+![](./../res/tosdb_virtual_tutorial_3a.png)
 
 From the remote side we can make the necessary calls(as above). 
 
@@ -103,3 +103,6 @@ True
 >>> exit()
 ```
 
+Close the server when done.
+
+![](./../res/tosdb_virtual_tutorial_3b.png)
