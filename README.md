@@ -67,7 +67,7 @@ Obviously the core implementation is not portable, but the python interface does
 - - -
 - **/include** 
 
-    C/C++ header files; your C/C++ code must include the tos-databridge.h header; C++ code needs to make sure that containers.hpp and generic.hpp are in the include path.
+    C/C++ header files; your C/C++ code must include the tos-databridge.h header; C++ code needs to be sure the compiler can find containers.hpp, generic.hpp, exceptions.hpp.
 
 - **/src** 
 
