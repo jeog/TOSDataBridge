@@ -368,14 +368,20 @@ There are operator\<\< overloads (client_out.cpp) for most of the custom objects
 
 - **DDE Data:** It's important to realize that we (us, you, this code, and yours) are at the mercy of the TOS platform, the DDE technology, and TOS's implementation of it. DDE has been replaced by a number of better Windows technologies but it's the public interface that TOS exposes so it's what we're using. You may notice the streams of data - particularly on symbols with very high trading volume - will not match the Time & Sales perfectly.  If you take a step back and aggregate the data in more usable forms this really shouldn't be an issue.  Another way we are at the mercy of the DDE server is that fields like last price and last size are two different topics. That means they are changing at slightly different times with slightly different time-stamps even if they are the correct pairing. To get around this we can write (python) code like this to simulate a live-stream :
     ```
+    >>> block = tosdb.TOSDB_DataBlock()
+    >>> block.add_items('GOOG')
+    >>> block.add_topics('LAST','VOLUME')
     >>> vol = 0
-    >>> print("price"," : ","size") 
-    >>> while(not closeTS):
-    ...     v = db.get("GOOG","VOLUME")
-    ...     p = db.get("GOOG","LAST")
-    ...     if(v != vol):
-    ...         print(p," : ",v - vol)
+    >>>
+    >>> print("price".ljust(10), "size") 
+    >>> while(run_flag):
+    ...     v = block.get('GOOG','VOLUME')
+    ...     p = block.get('GOOG','LAST')
+    ...     # if total volume has changed, output the difference
+    ...     if(v != vol): 
+    ...         print(str(p).ljust(10), str(v - vol))
     ...     vol = v
+    ...     # the less we sleep the more accurate the stream
     ...     time.sleep(.1)
     ```
 
