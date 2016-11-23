@@ -1,21 +1,20 @@
 ## TOSDataBridge  
 - - -
-TOSDataBridge (TOSDB) is an open-source collection of resources for 'scraping' real-time streaming data off of TDAmeritrade's ThinkOrSwim(TOS) platform, providing C, C++, and Python interfaces. Users of the TOS platform - with some basic programming/scripting knowledge - can use these tools to populate their own databases with market data; analyze large data-sets in real-time; test and debug other financial apps; or even build extensions on top of it.
+TOSDataBridge (TOSDB) is an open-source collection of resources for 'scraping' real-time streaming data off of TDAmeritrade's ThinkOrSwim(TOS) platform, providing C, C++, and Python interfaces. 
 
-TOSDB uses TOS's antiquated, yet still useful, DDE feature, directly through the Windows API. The C / C++ interfaces are implemented as a shared library(DLL) that communicates with a back-end Windows Service. The Python interface wraps this library in a more object-oriented, user-friendly format, providing an interactive environment for easy access to the low(er)-level calls.
+TOSDB uses TOS's antiquated, yet still useful, DDE feature, directly through the Windows API. The C / C++ interfaces are implemented as a shared library(DLL) that communicates with a back-end Windows Service. The Python interface wraps this library in a more object-oriented, user-friendly format.
 
-Obviously the core implementation is not portable, but the python interface does provides a thin virtualization layer over TCP. A user running Windows in a Virtual Machine, for instance, can expose the exact same python interface to a different host system running python3. 
+The core implementation is not portable, but the python interface does provides a thin virtualization layer over TCP. A user running Windows in a Virtual Machine, for instance, can expose the exact same python interface to a different host system running python3. 
 
 ### Requirements
 - - -
-- Windows for the core implementation(tested on Windows 7 SP1, Vista SP2,and Server 2008 R2.) The python interface is available to any system running python3(also tested on Debian/Linux-3.2.)
+- Windows for the core implementation. (The python interface is available to any system running python3.)
 - TDAmeritrade's ThinkOrSwim(TOS) platform that exposes DDE functionality (the Window's verion)
 - VC++ 2012 Redistributable (included)
-- Some basic Windows knowledge; some basic C, C++, or Python(3) programming knowledge
 
 ### Versions
 - - -
-Major changes will generally lead to a new version/branch, but not necessarily the label of 'stable'. Minor changes may or may not use a seperate branch that will be merged back into master when deemed 'usable'.  
+Major changes will generally lead to a new version/branch, but not necessarily the label of 'stable'.  
 
 - **v0.4** (branch 'v0.4') - 'stable' version that guarantees up-to-date binaries/signatures (use the README from branch 'v0.4') 
 
@@ -67,19 +66,17 @@ Major changes will generally lead to a new version/branch, but not necessarily t
 - Run
 
 ##### For Python:
-- Open a python shell/interpreter or create a script
 - import tosdb
 
 ### Contributions
 ---
-This project grew out of personal need and is maintained by a single developer. Contributions - testing, bug fixes, suggestions, extensions, whatever - are always welcome. If you want to contribute a non-trivial fix, module, extension etc. it's recommended you communicate the intention first to avoid unnecessary and/or conflicting work.
+This project grew out of personal need and is maintained by a single developer. Contributions - testing, bug fixes, suggestions, extensions, whatever - are always welcome. If you want to contribute something non-trivial it's recommended you communicate the intention first to avoid unnecessary and/or conflicting work.
 
-Even if you are not comfortable contributing code, simply reporting bugs or questioning (seemingly) idiotic or unintuitive interface design can be very helpful. Chances are, if you think something is an issue, others will too.
+Simply reporting bugs or questioning seemingly idiotic or unintuitive interface design can be very helpful.
 
 ### Upcoming Changes
 - - -
-- simplify the main header: tos_databridge.h
-- simplify the API 
+- simplify the C/C++ API 
 - consider an 'intermediate' API between client lib and engine, allowing users to inject their own callbacks/hooks for handling raw data from the engine
 
 ### Contents
@@ -180,26 +177,22 @@ Even if you are not comfortable contributing code, simply reporting bugs or ques
   
 9.  After the Windows Service has been successfully created run: 
 
-    ```C:\> SC start TOSDataBridge```  
+    ```(Admin) C:\> SC start TOSDataBridge```  
 
-    Returned text and various system utilities should confirms the service is running, (see screen-shot below).
-
-    ***To avoid this step in the future simply leave the service running and/or set it to start automatically on system startup.*** (Go to the services tool, with Admin priveleges, right-click the TOSDataBridge entry, go to properties and change the startup method.)
-
-    Some other commands you may need:
-    - *SC stop TOSDataBridge* - this will stop the service. All the data collected so far will still exist but the engine will sever its connection to TOS and exit.  It should no longer be shown as a running process and its status should be Stopped.
-    - *SC pause TOSDataBridge* - this will pause the service. All the data collected so far will still exist but the engine will stop recording new data in the buffers. It should still be shown as a running process but its status should be Paused. ***It's not recommended you pause the service.***
-    - *SC continue TOSDataBridge* - this should continue a paused service. All the data collected so far will still exist, the engine will start recording new data into the buffers, but you will have missed any streaming data while paused. The service should return to the Running state.
+    Returned text and various system utilities should confirms the service is running, (see screen-shot below). Let's also configure the service to begin automatically on system start-up:
+    
+    ```(Admin) C:\> SC config TOSDataBridge start= auto``` (notice the space between '=' and 'auto')
+    
+    [More information about the service.](#tosdatabridge-service)
 
     (note: some of the particulars in these (older) screen-shots may be different for newer versions)    
     ![](./res/SCss1.png)
 
-10. (***SKIP IF ONLY USING PYTHON***) Include the tos_databridge.h header in your code ( if its C++ make sure the compiler can find containers.hpp, generic.hpp, and exceptions.hpp. ) and adjust the link settings to import the tos-databridge-0.5-[].lib stub. (If you run into trouble review the VisualStudio settings for tos-databridge-shell[].exe as they should resemble what you're trying to do.)
+10. (***SKIP IF ONLY USING PYTHON***) Include the tos_databridge.h header in your code ( if its C++ make sure the compiler can find containers.hpp, generic.hpp, and exceptions.hpp.) and adjust the link settings to import the tos-databridge-0.5-[].lib stub. (If you run into trouble review the VisualStudio settings for tos-databridge-shell[].exe as they should resemble what you're trying to do.)
    
 11. (***SKIP IF ONLY USING PYTHON***) Jump down to the next section for some of the basic library calls to add to your program.
    
 12. Make sure the TOS Platform is running, execute your program or start the python wrapper(see below).
-
 
 
 ### Python Wrapper
@@ -225,6 +218,27 @@ tosdb/ is structured as a package with the bulk of its code in \__init__.py and 
    [--> Connect
    [--> DumpBufferStatus
 ```
+
+
+### TOSDataBridge Service
+- - -
+Step #9 in [Installation Details](#installation-details) explains how to create and start the Service. We use the service to provide a single 'engine' for pulling data from TOS and putting it into buffers that any number of shared library instances can access. This allows: 1) different user-space programs to share raw data, 2) most of the code to run with lower privileges, 3) those interested the ability to write their own interfaces/bindings, 4) easier debugging, and 5) the service to stay running and/or start automatically on system start-up.
+
+A windows service works differently than a typical program but there a few useful commands to know:
+
+- *SC start TOSDataBridge* - this will (try) to start the service.  
+
+- *SC query TOSDataBridge* - this wll return the current status of the service.  
+
+- *SC stop TOSDataBridge* - this will stop the service. All the data collected so far will still exist but the engine will sever its connection to TOS and exit.  It should no longer be shown as a running process and its status should be Stopped.  
+
+- *SC pause TOSDataBridge* - this will pause the service. All the data collected so far will still exist but the engine will stop recording new data in the buffers. It should still be shown as a running process but its status should be Paused. ***It's not recommended you pause the service.***  
+
+- *SC continue TOSDataBridge* - this should continue a paused service. All the data collected so far will still exist, the engine will start recording new data into the buffers, but you will have missed any streaming data while paused. The service should return to the Running state.  
+
+- *SC config TOSDataBridge [...]* - adjust the service's configuration/properties
+
+- *SC /?* - get help for the SC command
 
 
 ### C/C++ Interface ::: Administrative Calls
