@@ -98,9 +98,13 @@ Simply reporting bugs or questioning seemingly idiotic or unintuitive interface 
      Compiled (release only) binaries by build type. **(master branch may, or may not, contain all, or any)**
 
     - *tos-databridge-serv-[x86|x64].exe* : The service process that spawns and controls the main engine described below. This program is run as a typical windows service with SYSTEM privileges; as such its intended role is very limited. 
+    
     - *tos-databridge-engine-[x86|x64].exe* : The main engine - spawned from tos-databridge-serv.exe - that interacts with the TOS platform and our DLL(below). It runs with a lower(ed) integrity level and reduced privileges. 
+    
     - *tos-databridge-0.5-[x86|x64].dll* : The library/interface that client code uses to access TOSDB. Review tos-databridge.h, and the sections below, for all the necessary calls, types, and objects.
+    
     - *_tos-databridge-[x86|x64].dll* : A back-end library that provides custom concurrency and IPC objects; logging and utilities; as well as the Topic-String mapping. 
+    
     - *tos-databridge-shell-[x86|x64]* : A crude 'shell' used to interact directly with the library calls; for testing and debugging.
 
     *(Going forward we'll exclude the build suffix (i.e. -x64 ) for syntactic convenience. We'll replace it with [] in an attempt to avoid confusion. Unless stated explicitly, if sensible, assume that both builds apply.)*
@@ -222,13 +226,13 @@ Step #9 in [Installation Details](#installation-details) explains how to create 
 
 A windows service works differently than a typical program but there a few useful commands to know:
 
-- *SC start TOSDataBridge* - this will (try) to start the service.  
-- *SC query TOSDataBridge* - this wll return the current status of the service.  
-- *SC stop TOSDataBridge* - this will stop the service. All the data collected so far will still exist but the engine will sever its connection to TOS and exit.  It should no longer be shown as a running process and its status should be Stopped.  
-- *SC pause TOSDataBridge* - this will pause the service. All the data collected so far will still exist but the engine will stop recording new data in the buffers. It should still be shown as a running process but its status should be Paused. ***It's not recommended you pause the service.***  
-- *SC continue TOSDataBridge* - this should continue a paused service. All the data collected so far will still exist, the engine will start recording new data into the buffers, but you will have missed any streaming data while paused. The service should return to the Running state.  
-- *SC config TOSDataBridge [...]* - adjust the service's configuration/properties
-- *SC /?* - get help for the SC command
+- ```(Admin) C:\> SC start TOSDataBridge``` - (Try) to start the service.  
+- ```(Admin) C:\> SC query TOSDataBridge``` - Display current status of the service.  
+- ```(Admin) C:\> SC stop TOSDataBridge``` - Stop the service. All the data collected so far will still exist but the engine will sever its connection to TOS and exit.  It should no longer be shown as a running process and its status should be Stopped.  
+- ```(Admin) C:\> SC pause TOSDataBridge``` - Pause the service. All the data collected so far will still exist but the engine will stop recording new data in the buffers. It should still be shown as a running process but its status should be Paused. ***It's not recommended you pause the service.***  
+- ```(Admin) C:\> SC continue TOSDataBridge``` - Continue a paused service. All the data collected so far will still exist, the engine will start recording new data into the buffers, but you will have missed any streaming data while paused. The service should return to the Running state.  
+- ```(Admin) C:\> SC config TOSDataBridge ...``` - Adjust the service's configuration/properties.
+- ```(Admin) C:\> SC /?``` - Display help for the SC command.
 
 
 ### C/C++ Interface ::: Administrative Calls
