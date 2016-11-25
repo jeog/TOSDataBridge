@@ -35,18 +35,17 @@ namespace {
 /* !!! 'buffers_lock_guard_' is reserved inside this namespace !!! */
 
 typedef std::tuple<unsigned int, unsigned int,  
-                   std::set<const TOSDBlock*>, 
-                   HANDLE, HANDLE>                  buf_info_ty;
+                   std::set<const TOSDBlock*>, HANDLE, HANDLE>  buf_info_ty;
 
 typedef std::pair<TOS_Topics::TOPICS, std::string>  buf_id_ty;
-typedef std::map<buf_id_ty, buf_info_ty>            buffers_ty;
+typedef std::map<buf_id_ty, buf_info_ty>  buffers_ty;
 
-typedef std::insert_iterator<str_set_type>          str_set_insert_iter_ty;
-typedef std::insert_iterator<topic_set_type>        topic_set_insert_iter_ty;
+typedef std::insert_iterator<str_set_type>  str_set_insert_iter_ty;
+typedef std::insert_iterator<topic_set_type>  topic_set_insert_iter_ty;
 
-typedef std::chrono::duration<long, std::milli>     milli_sec_ty;
+typedef std::chrono::duration<long, std::milli>  milli_sec_ty;
 
-typedef DynamicIPCMaster::shem_chunk                shem_chunk_ty;
+typedef DynamicIPCMaster::shem_chunk  shem_chunk_ty;
 
 LPCSTR LOG_NAME   = "client-log.log";
 
@@ -62,9 +61,9 @@ std::mutex buffers_mtx;
 /* for 'scheduling' buffer reads */
 steady_clock_type steady_clock;
 
-unsigned long  buffer_latency    =  TOSDB_DEF_LATENCY;
-HANDLE         buffer_thread     =  NULL;
-DWORD          buffer_thread_id  =  0;   
+unsigned long  buffer_latency = TOSDB_DEF_LATENCY;
+HANDLE buffer_thread = NULL;
+DWORD buffer_thread_id = 0;   
 
 /* our IPC mechanism */
 DynamicIPCMaster master(TOSDB_COMM_CHANNEL);
@@ -109,7 +108,8 @@ RequestStreamOP(TOS_Topics::TOPICS tTopic,
     arg2 = master.insert(sItem.c_str(), sItem.size() + 1); 
     arg3 = master.insert(&timeout);
 
-    master << shem_chunk_ty(opcode, 0) << arg1 << arg2 << arg3 
+    master << shem_chunk_ty(opcode, 0) 
+           << arg1 << arg2 << arg3 
            << shem_chunk_ty(0,0);    
 
     ret_stat = master.recv(ret); 
@@ -133,7 +133,9 @@ CaptureBuffer(TOS_Topics::TOPICS tTopic,
               const TOSDBlock* db)
 {
     std::string buf_name;
-    void *fm_hndl, *mem_addr, *mtx_hndl;
+    void *fm_hndl;
+    void *mem_addr;
+    void *mtx_hndl;
     buffers_ty::key_type buf_key(tTopic, sItem); 
 
     LOCAL_BUFFERS_LOCK_GUARD;
@@ -196,11 +198,17 @@ ReleaseBuffer(TOS_Topics::TOPICS tTopic,
 
 template<typename T> 
 inline T 
-CastToVal(char* val) { return *(T*)val; }
+CastToVal(char* val) 
+{ 
+    return *(T*)val; 
+}
   
 template<> 
 inline std::string 
-CastToVal<std::string>(char* val){ return std::string(val); }
+CastToVal<std::string>(char* val)
+{ 
+    return std::string(val); 
+}
   
 
 template<typename T> 
@@ -208,8 +216,9 @@ void
 ExtractFromBuffer(TOS_Topics::TOPICS topic, 
                   std::string item, 
                   buf_info_ty& buf_info)
-/* some unecessary comp in here; cache some of the buffer params */
-{ 
+{
+    /* some unecessary comp in here; cache some of the buffer params */ 
+
     long npos;
     long long loop_diff, nelems;
     unsigned int dlen;
@@ -219,9 +228,10 @@ ExtractFromBuffer(TOS_Topics::TOPICS topic,
         
     if( head->next_offset - head->beg_offset == std::get<0>(buf_info) 
         && head->loop_seq == std::get<1>(buf_info) 
-        || WaitForSingleObject(std::get<4>(buf_info), 0) ){
+        || WaitForSingleObject(std::get<4>(buf_info), 0) )
+    {
         /* attempt to bail early if chance buffer hasn't changed;
-           dont wait for the mutex, move on to the next          */
+           dont wait for the mutex, move on to the next */
         return;   
     }
 
@@ -259,9 +269,12 @@ ExtractFromBuffer(TOS_Topics::TOPICS topic,
                 /* insert those elements into each block's raw data block */          
                 block->   
                 block->
-                insert_data(topic, item, CastToVal<T>(spot), 
-                            *(pDateTimeStamp)
-                            (spot + ((head->elem_size) - sizeof(DateTimeStamp)))); 
+                    insert_data(
+                        topic, 
+                        item, 
+                        CastToVal<T>(spot), 
+                        *(pDateTimeStamp)(spot + ((head->elem_size) - sizeof(DateTimeStamp)))
+                    ); 
             }
         }while(--nelems);
     } 
@@ -276,9 +289,7 @@ ExtractFromBuffer(TOS_Topics::TOPICS topic,
 DWORD WINAPI 
 BlockCleanup(LPVOID lParam)
 {
-    TOSDB_RawDataBlock* cln;
-
-    cln = (TOSDB_RawDataBlock*)lParam;
+    TOSDB_RawDataBlock* cln = (TOSDB_RawDataBlock*)lParam;
     if(cln)
         delete cln;
 
@@ -330,6 +341,7 @@ Threaded_Init(LPVOID lParam)
     master.disconnect();  
     buffer_thread = NULL;
     buffer_thread_id = 0;
+
     return 0;
 }
 
@@ -446,7 +458,7 @@ TOSDB_CreateBlock(LPCSTR id,
         return -1;
     }
 
-    if(!CheckIDLength(id))    
+    if( !CheckIDLength(id) )    
         return -2;
 
     GLOBAL_RLOCK_GUARD;
@@ -486,8 +498,13 @@ TOSDB_Add(std::string id, str_set_type sItems, topic_set_type tTopics)
 /* adding sets of topics and strings, dealing with pre-cache; 
    all Add_ methods end up in here  */
 {
-    topic_set_type tdiff, old_topics, tot_topics;
-    str_set_type   idiff, old_items,  tot_items, iunion;
+    topic_set_type tdiff;
+    topic_set_type old_topics;
+    topic_set_type tot_topics;
+    str_set_type idiff;
+    str_set_type old_items;
+    str_set_type tot_items;
+    str_set_type iunion;
     bool is_empty;
     TOSDBlock *db;
 
@@ -499,12 +516,13 @@ TOSDB_Add(std::string id, str_set_type sItems, topic_set_type tTopics)
         return -2;
     }    
 	
-	  /* remove NULL topics */
-    auto is_null = [&](TOS_Topics::TOPICS t){ 
+ /* remove NULL topics */
+    auto is_null = [&](TOS_Topics::TOPICS t)
+                   { 
                        return t == TOS_Topics::TOPICS::NULL_TOPIC; 
-	                 };    
-    tTopics.erase( std::remove_if(tTopics.begin(), tTopics.end(), is_null), 
-                   tTopics.end() );	
+	               };    
+
+    tTopics.erase(std::remove_if(tTopics.begin(), tTopics.end(), is_null), tTopics.end());	
 
     /* fail if both are empty - note: this could result from NULL topics */
     if( sItems.empty() && tTopics.empty() )
@@ -522,24 +540,24 @@ TOSDB_Add(std::string id, str_set_type sItems, topic_set_type tTopics)
     old_topics = db->block->topics();
     old_items = db->block->items(); 
   
-    if( !db->item_precache.empty() ){ 
+    if( !db->item_precache.empty() ) 
        /* if we have pre-cached items, include them */
        std::set_union(sItems.cbegin(), sItems.cend(),
                       db->item_precache.cbegin(), db->item_precache.cend(),
                       str_set_insert_iter_ty(tot_items,tot_items.begin())); 
-    }else{ 
+    else 
         tot_items = sItems; /* 'copy', keep sItems available for pre-caching */ 
-    }
+   
   
-    if( !db->topic_precache.empty() ){ 
+    if( !db->topic_precache.empty() ) 
         /* if we have pre-cached topics, include them */
         std::set_union(tTopics.cbegin(), tTopics.cend(),
                        db->topic_precache.cbegin(), db->topic_precache.cend(),
                        topic_set_insert_iter_ty(tot_topics,tot_topics.begin()),
                        TOS_Topics::top_less()); 
-    }else{ 
+    else 
         tot_topics = std::move(tTopics); /* move, don't need tTopics anymore */  
-    }
+    
 
     /* find new items and topics to add */
     std::set_difference(tot_topics.cbegin(), tot_topics.cend(),
@@ -551,6 +569,7 @@ TOSDB_Add(std::string id, str_set_type sItems, topic_set_type tTopics)
                         old_items.cbegin(), old_items.cend(),
                         str_set_insert_iter_ty(idiff, idiff.begin()));
 
+
     if( !tdiff.empty() ){
         /* if new topics, atleast one item, add them to the block
            add ALL the items (new and old) for each */
@@ -559,12 +578,13 @@ TOSDB_Add(std::string id, str_set_type sItems, topic_set_type tTopics)
                        str_set_insert_iter_ty(iunion, iunion.begin()));
         
         is_empty = iunion.empty();
-        for(auto & topic : tdiff)
-        {    
+
+        for(auto & topic : tdiff){  
             if(is_empty)
                 db->topic_precache.insert(topic);
-            for(auto & item : iunion)
-            {                              /* TRY TO ADD TO BLOCK */
+
+            for(auto & item : iunion){
+                /* TRY TO ADD TO BLOCK */
                 if( !RequestStreamOP(topic, item, db->timeout, TOSDB_SIG_ADD) ){
                     db->block->add_topic(topic);
                     db->block->add_item(item);
@@ -581,9 +601,11 @@ TOSDB_Add(std::string id, str_set_type sItems, topic_set_type tTopics)
             db->item_precache.insert(i); /* ...pre-cache them */     
     }
     
-    for(auto & topic : old_topics) /* add new items to the old topics */
-    {
-        for(auto & item : idiff){       /* TRY TO ADD TO BLOCK */
+
+    /* add new items to the old topics */
+    for(auto & topic : old_topics){     
+        for(auto & item : idiff){       
+            /* TRY TO ADD TO BLOCK */
             if( !RequestStreamOP(topic, item, db->timeout, TOSDB_SIG_ADD) ){
                 db->block->add_item(item);          
                 CaptureBuffer(topic, item, db);   
@@ -717,8 +739,9 @@ TOSDB_RemoveTopic(std::string id, TOS_Topics::TOPICS tTopic)
         return -3;
     }   
 
-	  /* OCT 30 2016 --- if not in block, check if in pre-cache, before returning error */
+	/* OCT 30 2016 --- if not in block, check if in pre-cache, before returning error */
     if( db->block->has_topic(tTopic) ){
+
         for(const std::string & item : db->block->items())
         {
             ReleaseBuffer(tTopic, item, db); 
@@ -727,14 +750,17 @@ TOSDB_RemoveTopic(std::string id, TOS_Topics::TOPICS tTopic)
                 TOSDB_LogH("IPC","RequestStreamOP(REMOVE) failed, stream leaked");
             }
         }
+
         db->block->remove_topic(tTopic);
+
         if( db->block->topics().empty() ){
             for(const std::string & item : db->block->items()){
                 db->item_precache.insert(item);
                 db->block->remove_item(item); 
             }  
         }
-    }else if(db->topic_precache.find(tTopic) == db->topic_precache.end() ){
+
+    }else if(db->topic_precache.find(tTopic) == db->topic_precache.end()){
         err = -4;  
     }
 
@@ -773,6 +799,7 @@ TOSDB_RemoveItem(LPCSTR id, LPCSTR sItem)
 
     /* OCT 30 2016 --- if not in block, check if in pre-cache, before returning error */
     if( db->block->has_item(sItem) ){
+
         for(const TOS_Topics::TOPICS topic : db->block->topics())
         {
             ReleaseBuffer(topic, sItem, db); 
@@ -781,14 +808,17 @@ TOSDB_RemoveItem(LPCSTR id, LPCSTR sItem)
                 TOSDB_LogH("IPC","RequestStreamOP(REMOVE) failed, stream leaked");
             }
         }
+
         db->block->remove_item(sItem);
+
         if( db->block->items().empty() ){
             for(const TOS_Topics::TOPICS topic : db->block->topics()){
                 db->topic_precache.insert (topic);
                 db->block->remove_topic(topic);
             }
         }
-    }else if(db->item_precache.find(sItem) == db->item_precache.end() ){
+
+    }else if(db->item_precache.find(sItem) == db->item_precache.end()){
         err = -4;  
     }
 

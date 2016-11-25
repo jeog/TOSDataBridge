@@ -34,9 +34,8 @@ SlowHeapManager::allocate(size_t size)
 
     auto free_heap_end = _free_heap.cend();
 
-    auto ffind = [&](_heap_pair_ty elem, size_t val){ 
-                     return (elem.first >= val); 
-                 };
+    auto ffind = [&](_heap_pair_ty elem, size_t val){ return (elem.first >= val); };
+
     /* check for space on free heap */
     auto found = std::find_first_of(_free_heap.cbegin(), free_heap_end,
                                     snglton, snglton + 1, ffind);  
@@ -51,13 +50,18 @@ SlowHeapManager::allocate(size_t size)
     else if(rmndr > 0){ /* if we are not taking the whole block */
         _free_heap.insert(_heap_pair_ty((size_t)rmndr, found->second + width));  
     }
-    _free_heap.erase(found); /* remove old block */
-    *(_head_ty*)blck = (unsigned long)size;   /* add header; 
-    OK for size_t -> unsigned int head because we check for MAX_SZ */
 
-    _allocated_set.insert(blck + HEAD_SZ); /* add to allocated set */
+    /* remove old block */
+    _free_heap.erase(found); 
 
-    return (void*)(blck + HEAD_SZ); /* return header-adjusted block addr */   
+    /* add header; OK for size_t -> unsigned int head because we check for MAX_SZ */
+    *(_head_ty*)blck = (unsigned long)size;   
+
+    /* add to allocated set */
+    _allocated_set.insert(blck + HEAD_SZ); 
+
+    /* return header-adjusted block addr */
+    return (void*)(blck + HEAD_SZ);    
 }  
 
 bool 
@@ -73,16 +77,12 @@ SlowHeapManager::deallocate(void* start)
 
     auto free_heap_end = _free_heap.cend();  
 
-    auto rfind = [&](_heap_pair_ty elem){
-                    return (elem.second == ((_ptr_ty)start + head));
-                 };
     /* look for contiguous free blocks to right */
+    auto rfind = [&](_heap_pair_ty elem){ return (elem.second == ((_ptr_ty)start + head)); };
     auto rght = std::find_if(_free_heap.cbegin(), free_heap_end, rfind);  
 
-    auto lfind = [&](_heap_pair_ty elem){
-                     return (((_ptr_ty)elem.second + elem.first) == phead);
-                 };
     /* look for contiguous free blocks to left */
+    auto lfind = [&](_heap_pair_ty elem){ return (((_ptr_ty)elem.second + elem.first) == phead); };
     auto left = std::find_if(_free_heap.cbegin(), free_heap_end, lfind);
 
     if( (rght != free_heap_end) && (left != free_heap_end) ){
@@ -402,8 +402,8 @@ DynamicIPCSlave::DynamicIPCSlave(std::string name, size_t sz)
         for(int i = 0; i < NSECURABLE; ++i){ 
             this->_sec_attr[(Securable)i] = SECURITY_ATTRIBUTES();
             this->_sec_desc[(Securable)i] = SECURITY_DESCRIPTOR();    
-            this->_sids[(Securable)i]     = SmartBuffer<void>(SECURITY_MAX_SID_SIZE);
-            this->_acls[(Securable)i]     = SmartBuffer<ACL>(ACL_SIZE);        
+            this->_sids[(Securable)i] = SmartBuffer<void>(SECURITY_MAX_SID_SIZE);
+            this->_acls[(Securable)i] = SmartBuffer<ACL>(ACL_SIZE);        
         }         
 
         /* initialize object security */
@@ -504,29 +504,32 @@ DynamicIPCSlave::_listen_for_alloc()
         {                
             start = this->_uptr_heap->allocate(args[1]);
             args[1] = this->offset(start);
-            WriteFile(this->_intrnl_pipe_hndl, (void*)&args[1], sizeof(args[1]), 
-                      &done, NULL);   
+            WriteFile(this->_intrnl_pipe_hndl, (void*)&args[1], sizeof(args[1]), &done, NULL);   
             break;
         } 
+
         case DEALLOC: /* DEALLOCATE */
         {                
             args[1] = (size_t)(_uptr_heap->deallocate(this->ptr(args[1])));
-            WriteFile(this->_intrnl_pipe_hndl, (void*)&args[1], sizeof(args[1]), 
-                      &done, NULL);
-        } break;
+            WriteFile(this->_intrnl_pipe_hndl, (void*)&args[1], sizeof(args[1]), &done, NULL);
+            break;
+        } 
+
         case PING:
         {                
             if( !(this->_mmap_addr) || !(this->_fmap_hndl) ){
                 /* no mem map, send back (any) different val */
                 --(args[1]); 
             }
-            WriteFile(this->_intrnl_pipe_hndl, (void*)&args[1], sizeof(args[1]), 
-                      &done, NULL);
-        } break;            
+            WriteFile(this->_intrnl_pipe_hndl, (void*)&args[1], sizeof(args[1]), &done, NULL);
+            break;
+        }   
+          
         default:
             TOSDB_LogH("IPC-Slave", "invalid opcode passed to _listen_for_alloc()");            
             break;
         } 
+
         DisconnectNamedPipe(this->_intrnl_pipe_hndl);
     }    
 
@@ -537,9 +540,13 @@ DynamicIPCSlave::_listen_for_alloc()
 bool 
 DynamicIPCSlave::wait_for_master()
 {    
-    if( this->_xtrnl_pipe_hndl && this->_xtrnl_pipe_hndl != INVALID_HANDLE_VALUE )
+    if( this->_xtrnl_pipe_hndl 
+        && this->_xtrnl_pipe_hndl != INVALID_HANDLE_VALUE )
+    {
         DisconnectNamedPipe(this->_xtrnl_pipe_hndl);
-    else{
+    }
+    else
+    {
         this->_xtrnl_pipe_hndl = CreateNamedPipe( this->_xtrnl_pipe_str.c_str(), 
                                                   PIPE_ACCESS_DUPLEX,
                                                   PIPE_TYPE_MESSAGE 
@@ -549,7 +556,8 @@ DynamicIPCSlave::wait_for_master()
                                                   &(this->_sec_attr[PIPE1]) );      
     }    
 
-    if( !this->_xtrnl_pipe_hndl || this->_xtrnl_pipe_hndl == INVALID_HANDLE_VALUE )
+    if( !this->_xtrnl_pipe_hndl 
+        || this->_xtrnl_pipe_hndl == INVALID_HANDLE_VALUE )
     {
         IPC_SLAVE_ERROR("CreateNamedPipe failed in wait_for_master");            
         return false;
@@ -557,7 +565,7 @@ DynamicIPCSlave::wait_for_master()
 
     ConnectNamedPipe(this->_xtrnl_pipe_hndl, NULL);    
 
-    if( ! this->send((long)(this->_mmap_sz)) ) /* OK: _mmap_sz < LONG_MAX) */
+    if( !this->send((long)(this->_mmap_sz)) ) /* OK: _mmap_sz < LONG_MAX) */
         IPC_SLAVE_ERROR("send failed in wait_for_master");
 
     return true;
@@ -571,19 +579,17 @@ _set_security()
     DWORD dom_sz = 128;
     DWORD sid_sz = SECURITY_MAX_SID_SIZE;
 
-    SmartBuffer<char>    dom_buf(dom_sz);
-    SmartBuffer<void>    sid(sid_sz);
+    SmartBuffer<char> dom_buf(dom_sz);
+    SmartBuffer<void> sid(sid_sz);
   
-    ret = LookupAccountName(NULL, "Everyone", sid.get(), &sid_sz, dom_buf.get(), 
-                            &dom_sz, &dummy);
+    ret = LookupAccountName(NULL, "Everyone", sid.get(), &sid_sz, dom_buf.get(), &dom_sz, &dummy);
     if(!ret)
         return -1;
 
     for(int i = 0; i < NSECURABLE; ++i){ 
         this->_sec_attr[(Securable)i].nLength = sizeof(SECURITY_ATTRIBUTES);
         this->_sec_attr[(Securable)i].bInheritHandle = FALSE;
-        this->_sec_attr[(Securable)i].lpSecurityDescriptor = 
-            &(this->_sec_desc[(Securable)i]);
+        this->_sec_attr[(Securable)i].lpSecurityDescriptor = &(this->_sec_desc[(Securable)i]);
 
         /* memcpy 'TRUE' is error */
         ret = memcpy_s( this->_sids[(Securable)i].get(), SECURITY_MAX_SID_SIZE, 
@@ -601,8 +607,7 @@ _set_security()
         if(!ret)
             return -4;
 
-        ret = InitializeAcl( (this->_acls[(Securable)i]).get(), 
-                             ACL_SIZE, ACL_REVISION );
+        ret = InitializeAcl((this->_acls[(Securable)i]).get(), ACL_SIZE, ACL_REVISION);
         if(!ret)
             return -5;
     }

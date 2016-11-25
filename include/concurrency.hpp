@@ -32,13 +32,13 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 #include <thread>
 
 class SignalManager {      
-    typedef std::pair< volatile bool, volatile bool >  _flag_pair_ty;
+    typedef std::pair<volatile bool, volatile bool> _flag_pair_ty;
     typedef std::pair<std::string,_flag_pair_ty> _sig_pair_ty;
 
-    std::mutex              _mtx;
+    std::mutex _mtx;
     std::condition_variable _cnd; 
 
-    std::multimap< std::string, _flag_pair_ty >  _unq_flags; 
+    std::multimap<std::string, _flag_pair_ty> _unq_flags; 
 
     SignalManager(const SignalManager&);
     SignalManager(SignalManager&&);
@@ -85,13 +85,22 @@ public:
         }
 
     inline void 
-    lock() { EnterCriticalSection(&_cs); }
+    lock() 
+    { 
+        EnterCriticalSection(&_cs); 
+    }
 
     inline bool 
-    try_lock() { return TryEnterCriticalSection(&_cs); }
+    try_lock() 
+    { 
+        return TryEnterCriticalSection(&_cs); 
+    }
 
     inline void 
-    unlock() { LeaveCriticalSection(&_cs); }  
+    unlock() 
+    { 
+        LeaveCriticalSection(&_cs); 
+    }  
 };
 
 
@@ -108,6 +117,7 @@ public:
         { 
             _mtx.lock(); 
         }
+
     ~WinLockGuard() 
         { 
             _mtx.unlock(); 
@@ -115,10 +125,10 @@ public:
 };
 
 class SignalManager {    
-    std::multimap< std::string, volatile bool > _unq_flags; 
+    std::multimap<std::string, volatile bool> _unq_flags; 
 
     LightWeightMutex _mtx;
-    HANDLE           _event;    
+    HANDLE _event;    
 
     SignalManager(const SignalManager&);
     SignalManager& operator=(const SignalManager&);  
@@ -129,10 +139,12 @@ public:
             _event(CreateEvent(NULL, FALSE, FALSE, NULL)) 
         {
         }
+
     ~SignalManager() 
         { 
             CloseHandle(_event); 
         }
+
     void 
     set_signal_ID(std::string unq_id);
 

@@ -31,14 +31,17 @@ extern std::recursive_mutex global_rmutex;
 
 /* forward decl - raw_data_block.hpp / raw_data_block.tpp */
 template<typename T,typename T2> class RawDataBlock; 
+
 typedef RawDataBlock<generic_type, DateTimeStamp> TOSDB_RawDataBlock;
 
 
-/*TOSDB's main organizational unit - functionally and conceptually. It's how
-  client_admin and client_get handle 'blocks' that client code creates.
-  
-  TOSDB_RawDataBlock manages all the active items/topics/data */
 typedef struct {
+   /* 
+       TOSDB's main organizational unit - functionally and conceptually. It's 
+       how client_admin and client_get handle 'blocks' that client code creates.
+  
+       TOSDB_RawDataBlock manages all the active items/topics/data 
+    */
     TOSDB_RawDataBlock* block;
     str_set_type        item_precache;
     topic_set_type      topic_precache;  
@@ -47,7 +50,10 @@ typedef struct {
 
 
 inline TOS_Topics::TOPICS 
-GetTopicEnum(std::string sTopic){ return TOS_Topics::map[sTopic]; }
+GetTopicEnum(std::string sTopic)
+{ 
+    return TOS_Topics::map[sTopic]; 
+}
 
 const TOSDBlock*   
 GetBlockPtr(std::string id, bool log=true);

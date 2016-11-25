@@ -27,7 +27,7 @@ SignalManager::wait(std::string unq_id)
     auto iter = _unq_flags.find(unq_id);
   
     if(iter == _unq_flags.end())
-      return false;
+        return false;
 
     _cnd.wait(lck, [=]{ return iter->second.first; });
     _unq_flags.erase(iter);  
@@ -126,7 +126,7 @@ SignalManager::wait_for(std::string unq_id, size_type timeout)
        /* --- CRITICAL SECTION --- */
        iter = _unq_flags.find(unq_id);
        if(iter == _unq_flags.end())
-          return false;     
+           return false;     
        /* --- CRITICAL SECTION --- */
     }
     wait_res = WaitForSingleObject(_event, timeout);  

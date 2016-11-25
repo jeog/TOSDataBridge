@@ -28,28 +28,29 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 namespace {
 
 const unsigned int COMM_BUFFER_SIZE = 4;
-const unsigned int ACL_SIZE         = 96;
-const unsigned int UPDATE_PERIOD    = 2000;  
-const unsigned int MAX_ARG_SIZE     = 20;
+const unsigned int ACL_SIZE = 96;
+const unsigned int UPDATE_PERIOD = 2000;  
+const unsigned int MAX_ARG_SIZE = 20;
     
-LPSTR   SERVICE_NAME      = "TOSDataBridge"; 
-LPCSTR  LOG_NAME          = "service-log.log";
-LPCSTR  ENGINE_BASE_NAME  = "tos-databridge-engine";
+LPSTR SERVICE_NAME = "TOSDataBridge"; 
+LPCSTR LOG_NAME = "service-log.log";
+LPCSTR ENGINE_BASE_NAME = "tos-databridge-engine";
 
 std::string engine_path;
 std::string integrity_level; 
 
 char engine_cmd[12];
 
-PROCESS_INFORMATION   engine_pinfo;      
-SYSTEM_INFO           sys_info;
-SERVICE_STATUS        service_status;
-SERVICE_STATUS_HANDLE service_status_hndl;
-HINSTANCE             hinstance = NULL;
+PROCESS_INFORMATION  engine_pinfo;      
+SYSTEM_INFO  sys_info;
+SERVICE_STATUS  service_status;
+SERVICE_STATUS_HANDLE  service_status_hndl;
+
+HINSTANCE  hinstance = NULL;
     
-volatile bool shutdown_flag =  false;  
-volatile bool pause_flag    =  false;
-volatile bool is_service    =  true;
+volatile bool shutdown_flag = false;  
+volatile bool pause_flag = false;
+volatile bool is_service = true;
 
 int custom_session = -1; 
 
@@ -183,15 +184,15 @@ SpawnRestrictedProcess(int session = -1)
     STARTUPINFO  startup_info;            
     SID_NAME_USE dummy;
 
-    HANDLE tkn_hndl  = NULL; 
+    HANDLE tkn_hndl = NULL; 
     HANDLE ctkn_hndl = NULL;
     DWORD session_id = 0;    
-    DWORD sid_sz     = SECURITY_MAX_SID_SIZE;
-    DWORD dom_sz     = 256;
-    bool  ret        = false;
+    DWORD sid_sz = SECURITY_MAX_SID_SIZE;
+    DWORD dom_sz = 256;
+    bool ret = false;
 
-    SmartBuffer<VOID>    sid_buf(sid_sz);
-    SmartBuffer<CHAR>    dom_buf(dom_sz);            
+    SmartBuffer<VOID>  sid_buf(sid_sz);
+    SmartBuffer<CHAR>  dom_buf(dom_sz);            
 
     if( !OpenProcessToken(GetCurrentProcess(), TOKEN_ALL_ACCESS, &tkn_hndl) ){
         SPAWN_LOG_EX("(1) failed to open token handle");                    
@@ -224,8 +225,7 @@ SpawnRestrictedProcess(int session = -1)
     session_id = (session < 0) ? WTSGetActiveConsoleSessionId() : session;         
     
      /* try to get out of Session 0 isolation if we need to */
-    if( is_service    
-        && !SetTokenInformation(ctkn_hndl,TokenSessionId,&session_id,sizeof(DWORD)) )
+    if(is_service && !SetTokenInformation(ctkn_hndl,TokenSessionId,&session_id,sizeof(DWORD)))
     { 
         SPAWN_LOG_EX("(4) failed to set session ID");    
     }
@@ -238,8 +238,7 @@ SpawnRestrictedProcess(int session = -1)
         GetTokenInformation(ctkn_hndl, TokenPrivileges, NULL, 0, &ret_len);
 
         SmartBuffer<TOKEN_PRIVILEGES> priv_buf(ret_len);    
-        GetTokenInformation(ctkn_hndl, TokenPrivileges, priv_buf.get(), 
-                            ret_len, &ret_len);        
+        GetTokenInformation(ctkn_hndl, TokenPrivileges, priv_buf.get(), ret_len, &ret_len);        
 
         tpriv = priv_buf.get();        
         for(DWORD i = 0; i < tpriv->PrivilegeCount; ++i){ 
@@ -258,9 +257,11 @@ SpawnRestrictedProcess(int session = -1)
         GetStartupInfo(&startup_info);       
         /* try to create the process with the new token */
         if( !CreateProcessAsUser(ctkn_hndl, engine_path.c_str(), engine_cmd, NULL, NULL, 
-                                 FALSE, 0, NULL, NULL, &startup_info, &engine_pinfo) ){  
+                                 FALSE, 0, NULL, NULL, &startup_info, &engine_pinfo) )
+        {  
             SPAWN_LOG_EX("(6) failed to create core process");
-        }else{ 
+        }
+        else{ 
             ret = true; 
         }
     }   
@@ -303,13 +304,16 @@ ServiceMain(DWORD argc, LPSTR argv[])
     TOSDB_Log("STATE","SERVICE_START_PENDING");
     TOSDB_Log("ADMIN","starting service update loop on its own thread");
         
-    std::async( std::launch::async, /* spin off the basic service update loop */
-                [&]{
+    /* spin off the basic service update loop */
+    std::async( std::launch::async, 
+                [&]
+                {
                     while(!shutdown_flag){
                         Sleep(UPDATE_PERIOD);
                         UpdateStatus(-1, -1); 
                     } 
-                } );
+                } 
+              );
 
     /* create new process that can communicate with our interface */
     if(!SpawnRestrictedProcess(custom_session)){      
@@ -434,9 +438,7 @@ WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLn, int nShowCmd)
 		    
     TOSDB_Log("ARGS", ss_args.str().c_str() );
 
-    integrity_level = admin_pos > 0 
-                    ? "High Mandatory Level" 
-                    : "Medium Mandatory Level"; 
+    integrity_level = admin_pos > 0 ? "High Mandatory Level" : "Medium Mandatory Level"; 
     
     /* populate the engine command and if --noservice is passed jump right into
        the engine via SpawnRestrictedProcess; otherwise Start the service which
@@ -454,6 +456,7 @@ WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLn, int nShowCmd)
             {NULL,NULL}
         };
         TOSDB_Log("STARTUP", "tos-databridge-engine.exe starting(AS A SERVICE)");
+
         /* START SERVICE */	
         if( !StartServiceCtrlDispatcher(dTable) )
             TOSDB_LogH("STARTUP", "StartServiceCtrlDispatcher() failed");

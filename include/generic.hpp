@@ -152,9 +152,9 @@ public:
         }
 
     explicit TOSDB_Generic(std::string str)
-        : /* ! must be able to delete (std::string*)_sub at ANY TIME !*/                         
+        :   /* ! must be able to delete (std::string*)_sub at ANY TIME !*/                         
             _type_val( TYVAL_STRING )  
-        { /* let string do all the heavy lifting */            
+        {   /* let string do all the heavy lifting */            
             *((std::string**)(this->_sub)) = new std::string(str.substr(0,STR_MAX)); 
         } 
 
@@ -191,63 +191,103 @@ public:
     size() const;
 
     inline bool 
-    is_float() const { return (this->_type_val == TYVAL_FLOAT); }  
+    is_float() const 
+    { 
+        return (this->_type_val == TYVAL_FLOAT); 
+    }  
 
     inline bool 
-    is_double() const { return (this->_type_val == TYVAL_DOUBLE); }  
+    is_double() const 
+    { 
+        return (this->_type_val == TYVAL_DOUBLE); 
+    }  
 
     inline bool 
-    is_long() const { return (this->_type_val == TYVAL_LONG); }
+    is_long() const 
+    { 
+        return (this->_type_val == TYVAL_LONG); 
+    }
 
     inline bool 
-    is_long_long() const { return (this->_type_val == TYVAL_LONG_LONG); }  
+    is_long_long() const 
+    { 
+        return (this->_type_val == TYVAL_LONG_LONG); 
+    }  
 
     inline bool 
-    is_string() const { return (this->_type_val == TYVAL_STRING); }
+    is_string() const 
+    { 
+        return (this->_type_val == TYVAL_STRING); 
+    }
 
     inline bool 
     is_floating_point() const 
     { 
-        return this->_type_val == TYVAL_FLOAT 
-               || this->_type_val == TYVAL_DOUBLE; 
+        return (this->_type_val == TYVAL_FLOAT || this->_type_val == TYVAL_DOUBLE); 
     }
 
     inline bool 
     is_integer() const 
     { 
-        return this->_type_val == TYVAL_LONG 
-               || this->_type_val == TYVAL_LONG_LONG; 
+        return (this->_type_val == TYVAL_LONG || this->_type_val == TYVAL_LONG_LONG); 
     }
 
     inline long      
-    as_long() const { return this->_val_switch<long>(); }
+    as_long() const 
+    { 
+        return this->_val_switch<long>(); 
+    }
 
     inline long long 
-    as_long_long() const { return this->_val_switch<long long>(); }
+    as_long_long() const 
+    { 
+        return this->_val_switch<long long>(); 
+    }
 
     inline float     
-    as_float() const { return this->_val_switch<float>(); }
+    as_float() const 
+    { 
+        return this->_val_switch<float>(); 
+    }
 
     inline double    
-    as_double() const { return this->_val_switch<double>(); }
+    as_double() const 
+    { 
+        return this->_val_switch<double>(); 
+    }
 
     std::string      
     as_string() const; 
 
     inline operator  
-    long() const { return this->_val_switch<long>(); }
+    long() const 
+    { 
+        return this->_val_switch<long>(); 
+    }
 
     inline operator  
-    long long() const { return this->_val_switch<long long>(); }
+    long long() const 
+    { 
+        return this->_val_switch<long long>(); 
+    }
 
     inline operator  
-    float() const { return this->_val_switch<float>(); }
+    float() const 
+    { 
+        return this->_val_switch<float>(); 
+    }
 
     inline operator  
-    double() const { return this->_val_switch<double>(); }      
+    double() const 
+    { 
+        return this->_val_switch<double>(); 
+    }      
 
     inline operator  
-    std::string() const { return this->as_string(); }
+    std::string() const 
+    { 
+        return this->as_string(); 
+    }
 };  
 
 
@@ -261,22 +301,37 @@ CastGenericFromString(std::string& str)
 
 template<>
 inline long long
-CastGenericFromString<long long>(std::string& str) { return std::stoll(str); }
+CastGenericFromString<long long>(std::string& str) 
+{ 
+    return std::stoll(str); 
+}
 
 template<>
 inline long
-CastGenericFromString<long>(std::string& str) { return std::stol(str); }
+CastGenericFromString<long>(std::string& str) 
+{ 
+    return std::stol(str); 
+}
 
 template<>
 inline double
-CastGenericFromString<double>(std::string& str) { return std::stod(str); }
+CastGenericFromString<double>(std::string& str) 
+{ 
+    return std::stod(str); 
+}
 
 template<>
 inline float
-CastGenericFromString<float>(std::string& str) { return std::stof(str); }
+CastGenericFromString<float>(std::string& str) 
+{ 
+    return std::stof(str); 
+}
 
 template<>
 inline std::string
-CastGenericFromString<std::string>(std::string& str) { return std::string(str); }
+CastGenericFromString<std::string>(std::string& str) 
+{ 
+    return std::string(str); 
+}
 
 #endif

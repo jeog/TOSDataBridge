@@ -24,8 +24,7 @@ TOSDB_Generic::TOSDB_Generic(const TOSDB_Generic& gen)
         _type_val( gen._type_val )
     {  
         if( gen.is_string() )        
-            *(std::string**)this->_sub = 
-                new std::string(**(std::string**)(gen._sub));
+            *(std::string**)this->_sub = new std::string(**(std::string**)(gen._sub));
         else            
             memcpy(this->_sub, gen._sub, SUB_SZ);                      
     }  
@@ -59,8 +58,7 @@ TOSDB_Generic::operator=(const TOSDB_Generic& gen)
             **(std::string**)(this->_sub) = **(std::string**)(gen._sub);
         else
             /* otherwise allocate new */ 
-            *(std::string**)this->_sub = 
-                new std::string(**(std::string**)(gen._sub));
+            *(std::string**)this->_sub = new std::string(**(std::string**)(gen._sub));
     }
     else
     {
@@ -103,31 +101,37 @@ TOSDB_Generic::operator=(TOSDB_Generic&& gen)
 std::string 
 TOSDB_Generic::as_string() const
 {
-   switch(this->_type_val){
-   case(TYVAL_LONG):
-   case(TYVAL_LONG_LONG):
-       return std::to_string(*((long long*)this->_sub));
-   case(TYVAL_FLOAT):
-   case(TYVAL_DOUBLE):
-       return std::to_string(*((double*)this->_sub));
-   case(TYVAL_STRING):
-       return **(std::string**)(this->_sub);
-   default:
-       return std::string();
-   };
+    switch(this->_type_val){
+    case(TYVAL_LONG):
+    case(TYVAL_LONG_LONG):
+        return std::to_string(*((long long*)this->_sub));
+    case(TYVAL_FLOAT):
+    case(TYVAL_DOUBLE):
+        return std::to_string(*((double*)this->_sub));
+    case(TYVAL_STRING):
+        return **(std::string**)(this->_sub);
+    default:
+        return std::string();
+    };
 }
 
 size_t 
 TOSDB_Generic::size() const
 {
-   switch(this->_type_val){
-   case(TYVAL_LONG):      return sizeof(long);
-   case(TYVAL_LONG_LONG): return sizeof(long long);
-   case(TYVAL_FLOAT):     return sizeof(float);
-   case(TYVAL_DOUBLE):    return sizeof(double);
-   case(TYVAL_STRING):    return (*(std::string**)(this->_sub))->size();
-   default:               return 0;
-   };
+    switch(this->_type_val){
+    case(TYVAL_LONG):      
+        return sizeof(long);
+    case(TYVAL_LONG_LONG): 
+        return sizeof(long long);
+    case(TYVAL_FLOAT):     
+        return sizeof(float);
+    case(TYVAL_DOUBLE):    
+        return sizeof(double);
+    case(TYVAL_STRING):    
+        return (*(std::string**)(this->_sub))->size();
+    default:               
+        return 0;
+    };
 }
 
 

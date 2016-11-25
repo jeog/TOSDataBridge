@@ -14,8 +14,7 @@ DATASTREAM_INTERFACE_CLASS::_copy(OutTy* dest,
     if(!dest)
         throw DataStreamInvalidArgument("NULL dest argument");   
 
-    std::unique_ptr<InTy,void(*)(InTy*)> 
-        tmp( new InTy[sz], [](InTy* p){ delete[] p; } );
+    std::unique_ptr<InTy,void(*)(InTy*)>  tmp(new InTy[sz], [](InTy* p){ delete[] p; });
 
     ret = this->copy(tmp.get(), sz, end, beg, sec);
     for(size_t i = 0; i < sz; ++i)      
@@ -37,8 +36,7 @@ DATASTREAM_INTERFACE_CLASS::_copy_using_atomic_marker(OutTy* dest,
     if(!dest)
         throw DataStreamInvalidArgument("NULL dest argument");   
   
-    std::unique_ptr<InTy,void(*)(InTy*)> 
-        tmp( new InTy[sz], [](InTy* p){ delete[] p; } );
+    std::unique_ptr<InTy,void(*)(InTy*)>  tmp(new InTy[sz], [](InTy* p){ delete[] p; });
 
     ret = this->copy_from_marker(tmp.get(), sz, beg, sec);
     for(size_t i = 0; i < sz; ++i)      
@@ -107,8 +105,7 @@ DATASTREAM_INTERFACE_CLASS::copy_from_marker(std::string* dest,
         throw DataStreamInvalidArgument("NULL dest argument");
 
     auto dstr = [sz](char** pptr){ DeleteStrings(pptr, sz); };
-    std::unique_ptr<char*,decltype(dstr)> 
-        sptr( NewStrings(sz,STR_DATA_SZ), dstr );
+    std::unique_ptr<char*,decltype(dstr)>  sptr(NewStrings(sz,STR_DATA_SZ), dstr);
 
     ret = this->copy_from_marker(sptr.get(), sz, STR_DATA_SZ, beg, sec);        
     std::copy_n(sptr.get(), sz, dest);   
@@ -124,7 +121,7 @@ DATASTREAM_PRIMARY_CLASS::_push(const Ty _item)
     * if can't obtain lock indicate other threads should yield to us 
     */     
     this->_push_has_priority = this->_mtx->try_lock(); /*O.K. push/pop doesn't throw*/
-    if( !(this->_push_has_priority) )
+    if(!this->_push_has_priority) 
         this->_mtx->lock(); /* block regardless */  
     /* --- CRITICAL SECTION --- */
     this->_my_impl_obj.push_front(_item); 
@@ -142,18 +139,18 @@ DATASTREAM_PRIMARY_CLASS::_check_adj(int& end,
                                      const std::deque<T,Allocator>& impl) const
 { 
     int sz = (int)impl.size(); /* O.K. sz can't be > INT_MAX  */
-    if (this->_q_bound != sz)
+    if(this->_q_bound != sz)
         throw DataStreamSizeViolation("internal size/bounds violation", this->_q_bound, sz);      
     
-    if (end < 0) 
+    if(end < 0) 
         end += sz; 
 
-    if (beg < 0) 
+    if(beg < 0) 
         beg += sz;
 
-    if (beg >= sz || end >= sz || beg < 0 || end < 0)  
+    if(beg >= sz || end >= sz || beg < 0 || end < 0)  
         throw DataStreamOutOfRange("adj index value out of range", sz, beg, end);    
-    else if (beg > end)   
+    else if(beg > end)   
         throw DataStreamInvalidArgument("adjusted beging index > end index");
 
     return true;
@@ -190,10 +187,8 @@ DATASTREAM_PRIMARY_CLASS::_copy_to_ptr(ImplTy& impl,
                                        unsigned int end, 
                                        unsigned int beg) const
 {  
-    ImplTy::const_iterator b_iter = impl.cbegin() + beg;
-    ImplTy::const_iterator e_iter = 
-        impl.cbegin() + 
-        std::min<size_t>(sz+beg, std::min<size_t>(++end, this->_q_count));
+    auto b_iter = impl.cbegin() + beg;
+    auto e_iter = impl.cbegin() + std::min<size_t>(sz+beg, std::min<size_t>(++end, this->_q_count));
     
     return (b_iter < e_iter) ? (std::copy(b_iter, e_iter, dest) - dest) : 0;     
 }
@@ -263,18 +258,21 @@ DATASTREAM_PRIMARY_CLASS::bound_size(size_t sz)
     _my_lock_guard_type lock(*(this->_mtx));
     /* --- CRITICAL SECTION --- */
     this->_my_impl_obj.resize(sz);
+
     if(sz < this->_q_bound){
         /* IF bound is 'clipped' from the left(end) */
         this->_my_impl_obj.shrink_to_fit();  
+
         if( (long long)sz <= *(this->_mark_count) ){
             /* IF marker is 'clipped' from the left(end) */
             *(this->_mark_count) = (long long)sz -1;
             *(this->_mark_is_dirty) = true;
         }
     }    
+
     this->_q_bound = sz;
     if(sz < this->_q_count) /* IF count is 'clipped' from the left(end) */
-      this->_q_count = sz;
+        this->_q_count = sz;
 
     return this->_q_bound;
     /* --- CRITICAL SECTION --- */
@@ -287,11 +285,11 @@ DATASTREAM_PRIMARY_CLASS::copy_from_marker(Ty* dest,
                                            size_t sz,              
                                            int beg = 0, 
                                            typename DATASTREAM_PRIMARY_CLASS::secondary_ty* sec = nullptr) const 
-{  /*       
-    * 1) we need to cache mark vals before copy changes state
-    * 2) adjust beg here; _check_adj requires a ref that we can't pass
-    * 3) casts to long long O.K as long as MAX_BOUND_SIZE == INT_MAX
-    */   
+{         
+    /* 1) we need to cache mark vals before copy changes state
+       2) adjust beg here; _check_adj requires a ref that we can't pass
+       3) casts to long long O.K as long as MAX_BOUND_SIZE == INT_MAX */   
+
     long long copy_sz, req_sz;    
 
     this->_yld_to_push();
@@ -304,21 +302,17 @@ DATASTREAM_PRIMARY_CLASS::copy_from_marker(Ty* dest,
 
     req_sz = *(this->_mark_count) - (long long)beg + 1;     
     if(beg < 0 || req_sz < 1) 
-        /*
-         * if beg is still invalid or > marker ... CALLER'S PROBLEM
-         * req_sz needs to account for inclusive range by adding 1
-         */
+        /* if beg is still invalid or > marker ... CALLER'S PROBLEM
+           req_sz needs to account for inclusive range by adding 1 */
         return 0;
 
     /* CAREFUL: we cant have a negative *_mark_count past this point */
     copy_sz = (long long)(this->copy(dest, sz, (int)(*(this->_mark_count)), beg, sec));          
 
     if(was_dirty || copy_sz < req_sz)
-        /* 
-         * IF mark is dirty (i.e hits back of stream) or we
-         * don't copy enough(sz is too small) return negative size
-         */            
-         copy_sz *= -1;      
+        /* IF mark is dirty (i.e hits back of stream) or we
+           don't copy enough(sz is too small) return negative size */            
+        copy_sz *= -1;      
 
     return copy_sz;
     /* --- CRITICAL SECTION --- */
@@ -331,11 +325,11 @@ DATASTREAM_PRIMARY_CLASS::copy_from_marker(char** dest,
                                            size_t str_sz,                
                                            int beg = 0, 
                                            typename DATASTREAM_PRIMARY_CLASS::secondary_ty* sec = nullptr) const 
-{  /*       
-    * 1) we need to cache mark vals before copy changes state
-    * 2) adjust beg here; _check_adj requires a ref that we can't pass
-    * 3) casts to long long O.K as long as MAX_BOUND_SIZE == INT_MAX
-    */   
+{  
+   /* 1) we need to cache mark vals before copy changes state
+      2) adjust beg here; _check_adj requires a ref that we can't pass
+      3) casts to long long O.K as long as MAX_BOUND_SIZE == INT_MAX */   
+
     long long copy_sz, req_sz;    
 
     this->_yld_to_push();
@@ -348,21 +342,17 @@ DATASTREAM_PRIMARY_CLASS::copy_from_marker(char** dest,
 
     req_sz = *(this->_mark_count) - (long long)beg + 1;     
     if(beg < 0 || req_sz < 1) 
-        /*
-         * if beg is still invalid or > marker ... CALLER'S PROBLEM
-         * req_sz needs to account for inclusive range by adding 1
-         */
+        /* if beg is still invalid or > marker ... CALLER'S PROBLEM
+           req_sz needs to account for inclusive range by adding 1 */
         return 0;
 
     /* CAREFUL: we cant have a negative *_mark_count past this point */
     copy_sz = (long long)(this->copy(dest, dest_sz, str_sz, (int)(*(this->_mark_count)), beg, sec));          
 
     if(was_dirty || copy_sz < req_sz)
-       /*
-        * IF mark is dirty (i.e hits back of stream) or we
-        * don't copy enough(sz is too small) return negative size
-        */            
-         copy_sz *= -1;      
+        /* IF mark is dirty (i.e hits back of stream) or we
+           don't copy enough(sz is too small) return negative size */            
+        copy_sz *= -1;      
 
     return copy_sz;
     /* --- CRITICAL SECTION --- */
@@ -413,7 +403,8 @@ DATASTREAM_PRIMARY_CLASS::copy(char** dest,
     * slow(er), has to go thru generic_ty to get strings 
     * note: if sz <= genS.length() the string is truncated 
     */
-    _my_impl_ty::const_iterator b_iter, e_iter;
+    _my_impl_ty::const_iterator b_iter;
+    _my_impl_ty::const_iterator e_iter;
     size_t i;
  
     if(!dest)
@@ -425,14 +416,14 @@ DATASTREAM_PRIMARY_CLASS::copy(char** dest,
     this->_check_adj(end, beg, this->_my_impl_obj);            
 
     b_iter = this->_my_impl_obj.cbegin() + beg; 
-    e_iter = this->_my_impl_obj.cbegin() 
-             + std::min< size_t >(++end, this->_q_count);
+    e_iter = this->_my_impl_obj.cbegin() + std::min< size_t >(++end, this->_q_count);
 
-    for(i = 0; (i < dest_sz) && (b_iter < e_iter); ++b_iter, ++i)
+    for( i = 0; 
+         (i < dest_sz) && (b_iter < e_iter); 
+         ++b_iter, ++i )
     {       
         std::string genS = generic_ty(*b_iter).as_string();        
-        strncpy_s(dest[i], str_sz, genS.c_str(), 
-                  std::min<size_t>(str_sz-1, genS.length()));                  
+        strncpy_s(dest[i], str_sz, genS.c_str(), std::min<size_t>(str_sz-1, genS.length()));                  
     }  
 
     *(this->_mark_count) = beg - 1; 
@@ -450,7 +441,7 @@ DATASTREAM_PRIMARY_CLASS::operator[](int indx) const
 
     _my_lock_guard_type lock(*(this->_mtx));
     /* --- CRITICAL SECTION --- */
-    if (!indx){ 
+    if(!indx){ 
         /* optimize for indx == 0 */
         *(this->_mark_count) = -1;
         *(this->_mark_is_dirty) = false;
@@ -480,7 +471,8 @@ DATASTREAM_PRIMARY_TEMPLATE
 typename DATASTREAM_PRIMARY_CLASS::generic_vector_ty
 DATASTREAM_PRIMARY_CLASS::vector(int end = -1, int beg = 0) const 
 {
-    _my_impl_ty::const_iterator b_iter, e_iter;    
+    _my_impl_ty::const_iterator b_iter;
+    _my_impl_ty::const_iterator e_iter;    
     generic_vector_ty tmp;  
     
     this->_yld_to_push();    
@@ -489,15 +481,17 @@ DATASTREAM_PRIMARY_CLASS::vector(int end = -1, int beg = 0) const
     this->_check_adj(end, beg, this->_my_impl_obj);
         
     b_iter = this->_my_impl_obj.cbegin() + beg;
-    e_iter = this->_my_impl_obj.cbegin() 
-             + std::min< size_t >(++end, this->_q_count);  
+    e_iter = this->_my_impl_obj.cbegin() + std::min< size_t >(++end, this->_q_count);  
     
     if(b_iter < e_iter){          
-        std::transform(b_iter, e_iter, 
-          /* have to use slower insert_iterator approach, 
-             generic_ty doesn't allow default construction */
-          std::insert_iterator< generic_vector_ty >(tmp, tmp.begin()), 
-          [](Ty x){ return generic_ty(x); });   
+        std::transform(
+            b_iter, 
+            e_iter, 
+            /* have to use slower insert_iterator approach, 
+               generic_ty doesn't allow default construction */
+            std::insert_iterator< generic_vector_ty >(tmp, tmp.begin()), 
+            [](Ty x){ return generic_ty(x); }
+        );   
     }
 
     *(this->_mark_count) = beg - 1; 
@@ -522,7 +516,7 @@ DATASTREAM_SECONDARY_CLASS::_push(const Ty _item,
                                   const typename DATASTREAM_SECONDARY_CLASS::secondary_ty sec) 
 {  
     this->_push_has_priority = this->_mtx->try_lock();
-    if( !(this->_push_has_priority) )
+    if(!this->_push_has_priority) 
         this->_mtx->lock();
     /* --- CRITICAL SECTION --- */
     _my_base_ty::_my_impl_obj.push_front(_item); 
@@ -598,8 +592,7 @@ DATASTREAM_SECONDARY_CLASS::copy(Ty* dest,
     this->_check_adj(end, beg, this->_my_sec_impl_obj); /*repeat to update index vals */ 
  
     if(end == beg){  
-        *sec = beg ? this->_my_sec_impl_obj.at(beg) 
-                   : this->_my_sec_impl_obj.front();
+        *sec = beg ? this->_my_sec_impl_obj.at(beg) : this->_my_sec_impl_obj.front();
         ret = 1;
     }else  
         ret = this->_copy_to_ptr(this->_my_sec_impl_obj, sec, sz, end, beg);  
@@ -633,8 +626,7 @@ DATASTREAM_SECONDARY_CLASS::copy(char** dest,
     this->_check_adj(end, beg, this->_my_sec_impl_obj); /*repeat to update index vals*/ 
 
     if(end == beg){
-        *sec = beg ? this->_my_sec_impl_obj.at(beg) 
-                   : this->_my_sec_impl_obj.front();
+        *sec = beg ? this->_my_sec_impl_obj.at(beg) : this->_my_sec_impl_obj.front();
         ret = 1;
     }else
         ret = this->_copy_to_ptr(this->_my_sec_impl_obj, sec, dest_sz, end, beg);    
@@ -656,7 +648,8 @@ DATASTREAM_SECONDARY_CLASS::both(int indx) const
     if(!indx)
         return both_ty(gen, this->_my_sec_impl_obj.front());
 
-    this->_check_adj(indx, dummy, this->_my_sec_impl_obj);      
+    this->_check_adj(indx, dummy, this->_my_sec_impl_obj); 
+     
     return both_ty(gen, this->_my_sec_impl_obj.at(indx));
     /* --- CRITICAL SECTION --- */
 }
@@ -686,7 +679,8 @@ DATASTREAM_SECONDARY_TEMPLATE
 typename DATASTREAM_SECONDARY_CLASS::secondary_vector_ty
 DATASTREAM_SECONDARY_CLASS::secondary_vector(int end = -1, int beg = 0) const
 {
-    _my_sec_impl_ty::const_iterator b_iter, e_iter;
+    _my_sec_impl_ty::const_iterator b_iter;
+    _my_sec_impl_ty::const_iterator e_iter;
     _my_sec_impl_ty::const_iterator::difference_type ndiff;
     secondary_vector_ty tmp; 
      
@@ -696,8 +690,7 @@ DATASTREAM_SECONDARY_CLASS::secondary_vector(int end = -1, int beg = 0) const
     this->_check_adj(end, beg, this->_my_sec_impl_obj);  
         
     b_iter = this->_my_sec_impl_obj.cbegin() + beg;
-    e_iter = this->_my_sec_impl_obj.cbegin() 
-             + std::min< size_t >(++end, this->_q_count);  
+    e_iter = this->_my_sec_impl_obj.cbegin() + std::min< size_t >(++end, this->_q_count);  
     ndiff = e_iter - b_iter;
 
     if(ndiff > 0){ 

@@ -25,9 +25,9 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 
 template<typename T, typename Eq = std::less<T>>
 class ILSet 
-  : public std::set<T, Eq> {  
+        : public std::set<T, Eq> {  
 public: 
-    typedef ILSet<T,Eq>    _my_ty;
+    typedef ILSet<T,Eq> _my_ty;
     typedef std::set<T,Eq> _my_base_ty;  
   
     ILSet() 
@@ -197,30 +197,35 @@ public:
 
 struct str_eq {
     inline bool 
-    operator()(const char * left, const char * right) const {
+    operator()(const char * left, const char * right) const 
+    {
         return (strcmp(left, right) == 0);    
     }
 };
+
 struct str_less {
     inline bool 
-    operator()(const char *left, const char *right) const {
+    operator()(const char *left, const char *right) const 
+    {
         return (strcmp(left, right) == -1);    
     }
 };
+
 struct str_hash {
     inline size_t 
-    operator()(const char * str) const {
+    operator()(const char * str) const 
+    {
         return std::hash<std::string>()(str);
     }
 };
 
 template<typename T>
 class SmartBuffer 
-  : private std::unique_ptr<T, void(*)(T*)> {
-
-    typedef SmartBuffer<T>                  _my_ty;
+        : private std::unique_ptr<T, void(*)(T*)> {
+    typedef SmartBuffer<T> _my_ty;
     typedef std::unique_ptr<T, void(*)(T*)> _my_base_ty;        
     size_t _bytes;
+
 public:
     SmartBuffer()
         : 
@@ -243,7 +248,10 @@ public:
     using _my_base_ty::get;
 
     inline size_t 
-    bytes(){ return _bytes; }
+    bytes()
+    { 
+        return _bytes; 
+    }
 
     _my_ty& 
     operator=(const SmartBuffer& right)
@@ -392,28 +400,52 @@ public:
     }
 
     inline const_iterator1_type 
-    find(const T1& key) const { return this->_map1.find(key); }
+    find(const T1& key) const 
+    { 
+        return this->_map1.find(key); 
+    }
 
     inline const_iterator2_type 
-    find(const T2& key) const { return this->_map2.find(key); }
+    find(const T2& key) const 
+    { 
+        return this->_map2.find(key); 
+    }
 
     inline iterator1_type             
-    find(const T1& key) { return this->_map1.find(key); }
+    find(const T1& key) 
+    { 
+        return this->_map1.find(key); 
+    }
 
     inline iterator2_type             
-    find(const T2& key) { return this->_map2.find(key); }
+    find(const T2& key) 
+    { 
+        return this->_map2.find(key); 
+    }
 
     inline iterator1_type             
-    begin() { return this->_map1.begin(); }
+    begin() 
+    { 
+        return this->_map1.begin(); 
+    }
 
     inline iterator1_type             
-    end() { return this->_map1.end(); }
+    end() 
+    { 
+        return this->_map1.end(); 
+    }
 
     inline const_iterator1_type 
-    cbegin() const { return this->_map1.cbegin(); }
+    cbegin() const 
+    { 
+        return this->_map1.cbegin(); 
+    }
 
     inline const_iterator1_type 
-    cend() const { return this->_map1.cend(); }
+    cend() const 
+    { 
+        return this->_map1.cend(); 
+    }
 
     size_t 
     size() const
@@ -425,10 +457,16 @@ public:
     }
 
     inline bool 
-    empty() const { return (this->_map1.empty() && this->_map2.empty()); }
+    empty() const 
+    { 
+        return (this->_map1.empty() && this->_map2.empty()); 
+    }
 
     inline bool 
-    thread_safe() const { return IsThreadSafe; }
+    thread_safe() const 
+    { 
+        return IsThreadSafe; 
+    }
 
 private:
      map1_type _map1;
@@ -458,6 +496,7 @@ class TwoWayHashMap<T1, T2, true, Hash1, Hash2, Key1Eq, Key2Eq>
     typedef std::lock_guard<std::recursive_mutex>  _my_lock_guard_type;
 
     std::recursive_mutex _mtx;
+
 public:
     TwoWayHashMap()
         : 

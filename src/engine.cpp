@@ -40,33 +40,33 @@ typedef struct{
     void*        hmtx;  
 } StreamBuffer, *pStreamBuffer;
 
-typedef std::map<std::string, size_t>                refcount_ty;
-typedef std::pair<std::string , TOS_Topics::TOPICS>  id_ty;
-typedef std::map<TOS_Topics::TOPICS, refcount_ty>    topics_ref_ty;
-typedef std::map<id_ty, StreamBuffer>                buffers_ty;
+typedef std::map<std::string, size_t>  refcount_ty;
+typedef std::pair<std::string, TOS_Topics::TOPICS>  id_ty;
+typedef std::map<TOS_Topics::TOPICS, refcount_ty>  topics_ref_ty;
+typedef std::map<id_ty, StreamBuffer>  buffers_ty;
 
 typedef TwoWayHashMap<TOS_Topics::TOPICS, HWND, true,
                       std::hash<TOS_Topics::TOPICS>,
                       std::hash<HWND>,
                       std::equal_to<TOS_Topics::TOPICS>,
-                      std::equal_to<HWND> >               convos_ty;
+                      std::equal_to<HWND>>  convos_ty;
 
 
 LPCSTR  CLASS_NAME = "DDE_CLIENT_WINDOW";
-LPCSTR  LOG_NAME   = "engine-log.log";  
-LPCSTR  APP_NAME   = "TOS";
+LPCSTR  LOG_NAME = "engine-log.log";  
+LPCSTR  APP_NAME = "TOS";
   
 const system_clock_type  system_clock;
 
 const unsigned int COMM_BUFFER_SIZE = 5; /* opcode + 3 args + {0,0} */
-const unsigned int ACL_SIZE         = 96;
-const unsigned int UPDATE_PERIOD    = 2000;
+const unsigned int ACL_SIZE = 96;
+const unsigned int UPDATE_PERIOD = 2000;
 const int NSECURABLE = 2;
 
 /* our 'private' messages; OK between 0x0400 and 0x7fff */
-const unsigned int LINK_DDE_ITEM      = 0x0500;
-const unsigned int REQUEST_DDE_ITEM   = 0x0501;
-const unsigned int DELINK_DDE_ITEM    = 0x0502;
+const unsigned int LINK_DDE_ITEM = 0x0500;
+const unsigned int REQUEST_DDE_ITEM = 0x0501;
+const unsigned int DELINK_DDE_ITEM = 0x0502;
 const unsigned int CLOSE_CONVERSATION = 0x0503;  
     
 HINSTANCE hinstance = NULL;
@@ -95,15 +95,15 @@ SignalManager    ack_signals;
 #define BUFFER_LOCK_GUARD WinLockGuard buffer_lock_guard_(buffer_mtx)
 #define TOPIC_LOCK_GUARD WinLockGuard topic_lock_guard_(topic_mtx)
 
-HANDLE init_event      =  NULL;
-HANDLE msg_thrd        =  NULL;
-HWND   msg_window      =  NULL;
-DWORD  msg_thrd_id     =  0;
-LPCSTR msg_window_name =  "TOSDB_ENGINE_MSG_WNDW";
+HANDLE init_event = NULL;
+HANDLE msg_thrd = NULL;
+HWND   msg_window = NULL;
+DWORD  msg_thrd_id = 0;
+LPCSTR msg_window_name = "TOSDB_ENGINE_MSG_WNDW";
 
-volatile bool shutdown_flag =  false;  
-volatile bool pause_flag    =  false;
-volatile bool is_service    =  true;
+volatile bool shutdown_flag = false;  
+volatile bool pause_flag = false;
+volatile bool is_service = true;
 
 /* forward decl (see end of source) */
 template<typename T>
@@ -166,11 +166,13 @@ WndProc(HWND, UINT, WPARAM, LPARAM);
 int WINAPI 
 WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLn, int nShowCmd)
 {    
-    void *parg1, *parg2, *parg3;
+    void *parg1;
+    void *parg2;
+    void *parg3;
     int err;
     size_t indx;    
 
-	/* start logging */
+    /* start logging */
     std::string logpath(TOSDB_LOG_PATH);    
     logpath.append(std::string(LOG_NAME));
     StartLogging( logpath.c_str() ); 
@@ -425,7 +427,7 @@ AddStream(TOS_Topics::TOPICS tTopic,
     }else{ /* if topic IS already in our global mapping */   
 
         auto item_iter = topic_iter->second.find(sItem); 
-        if( item_iter == topic_iter->second.end() ) /* and it doesn't have that item yet */
+        if(item_iter == topic_iter->second.end()) /* and it doesn't have that item yet */
         { 
             if( PostItem(sItem, tTopic, timeout) ){
                 topic_iter->second[sItem] = 1;
@@ -463,15 +465,15 @@ RemoveStream(TOS_Topics::TOPICS tTopic,
         return false;
 
     auto topic_iter = topic_refs.find(tTopic);  
-    if( topic_iter == topic_refs.end() ) /* if topic is in our global mapping */    
+    if(topic_iter == topic_refs.end()) /* if topic is in our global mapping */    
         return false;    
 
     auto item_iter = topic_iter->second.find(sItem);
-    if( item_iter != topic_iter->second.end() ) /* if it has that item */   
+    if(item_iter != topic_iter->second.end()) /* if it has that item */   
     {
         if( !(--(item_iter->second)) ) /* if ref-count hits zero */
         {
-            if(!PostCloseItem(sItem, tTopic, timeout))
+            if( !PostCloseItem(sItem, tTopic, timeout) )
                 return false; 
             DestroyBuffer(tTopic, sItem);
             topic_iter->second.erase(item_iter);       
@@ -517,8 +519,7 @@ SetSecurityPolicy()
     SmartBuffer<char>  dom_buf(dom_sz);
     SmartBuffer<void>  sid(sid_sz);  
 
-    ret = LookupAccountName(NULL, "Everyone", sid.get(), &sid_sz, 
-                            dom_buf.get(), &dom_sz, &dummy);
+    ret = LookupAccountName(NULL, "Everyone", sid.get(), &sid_sz, dom_buf.get(), &dom_sz, &dummy);
     if(!ret)    
         return -1;
    
@@ -533,13 +534,11 @@ SetSecurityPolicy()
         if(ret)
             return -2;
 
-        ret = InitializeSecurityDescriptor( &sec_desc[(Securable)i], 
-                                            SECURITY_DESCRIPTOR_REVISION );
+        ret = InitializeSecurityDescriptor(&sec_desc[(Securable)i], SECURITY_DESCRIPTOR_REVISION);
         if(!ret)
             return -3;
 
-        ret = SetSecurityDescriptorGroup( &sec_desc[(Securable)i], 
-                                          sids[(Securable)i].get(), FALSE );
+        ret = SetSecurityDescriptorGroup(&sec_desc[(Securable)i], sids[(Securable)i].get(), FALSE);
         if(!ret)
             return -4;     
 
@@ -550,18 +549,15 @@ SetSecurityPolicy()
  
     /* add ACEs individually */
 
-    ret = AddAccessDeniedAce( acls[SHEM1].get(), ACL_REVISION, 
-                              FILE_MAP_WRITE, sids[SHEM1].get() );
+    ret = AddAccessDeniedAce(acls[SHEM1].get(), ACL_REVISION, FILE_MAP_WRITE, sids[SHEM1].get());
     if(!ret)
         return -6;
 
-    ret = AddAccessAllowedAce( acls[SHEM1].get(), ACL_REVISION, 
-                               FILE_MAP_READ, sids[SHEM1].get() );
+    ret = AddAccessAllowedAce(acls[SHEM1].get(), ACL_REVISION, FILE_MAP_READ, sids[SHEM1].get());
     if(!ret)
         return -6;
 
-    ret = AddAccessAllowedAce( acls[MUTEX1].get(), ACL_REVISION, 
-                               SYNCHRONIZE, sids[MUTEX1].get() );
+    ret = AddAccessAllowedAce(acls[MUTEX1].get(), ACL_REVISION, SYNCHRONIZE, sids[MUTEX1].get());
     if(!ret)
         return -6;
 
@@ -585,15 +581,13 @@ PostItem(std::string sItem,
     std::string sid_id = std::to_string((size_t)convo) + sItem;
 
     ack_signals.set_signal_ID(sid_id);
-    PostMessage(msg_window, REQUEST_DDE_ITEM, 
-                (WPARAM)convo, (LPARAM)(sItem.c_str())); 
+    PostMessage(msg_window, REQUEST_DDE_ITEM, (WPARAM)convo, (LPARAM)(sItem.c_str())); 
     /* 
       for whatever reason a bad item gets a posive ack from an attempt 
       to link it, so that message must post second to give the request 
       a chance to preempt it 
      */    
-    PostMessage(msg_window, LINK_DDE_ITEM, 
-                (WPARAM)convo, (LPARAM)(sItem.c_str()));    
+    PostMessage(msg_window, LINK_DDE_ITEM, (WPARAM)convo, (LPARAM)(sItem.c_str()));    
 
     return ack_signals.wait_for(sid_id , timeout);
 }
@@ -608,8 +602,7 @@ PostCloseItem(std::string sItem,
     std::string sid_id = std::to_string((size_t)convo) + sItem;
 
     ack_signals.set_signal_ID(sid_id);
-    PostMessage(msg_window, DELINK_DDE_ITEM,
-                (WPARAM)convo, (LPARAM)(sItem.c_str()));  
+    PostMessage(msg_window, DELINK_DDE_ITEM, (WPARAM)convo, (LPARAM)(sItem.c_str()));  
 
     return ack_signals.wait_for(sid_id, timeout);
 }
@@ -639,9 +632,7 @@ CreateBuffer(TOS_Topics::TOPICS tTopic,
 
     name = CreateBufferName(TOS_Topics::map[tTopic], sItem);
 
-    buf.raw_sz = (buffer_sz < sys_info.dwPageSize) 
-                  ? sys_info.dwPageSize 
-                  : buffer_sz;
+    buf.raw_sz = (buffer_sz < sys_info.dwPageSize) ? sys_info.dwPageSize : buffer_sz;
 
     buf.hfile = CreateFileMapping(INVALID_HANDLE_VALUE, &sec_attr[SHEM1],
                                   PAGE_READWRITE, 0, buf.raw_sz, name.c_str()); 
@@ -684,8 +675,7 @@ DestroyBuffer(TOS_Topics::TOPICS tTopic, std::string sItem)
     /* ---CRITICAL SECTION --- */
     /* don't allow buffer to be destroyed while we're writing to it */
     auto buf_iter = buffers.find(id_ty(sItem,tTopic));
-    if( buf_iter != buffers.end() )
-    { 
+    if(buf_iter != buffers.end()){ 
         UnmapViewOfFile(buf_iter->second.raw_addr);
         CloseHandle(buf_iter->second.hfile);
         CloseHandle(buf_iter->second.hmtx);
@@ -699,7 +689,10 @@ DestroyBuffer(TOS_Topics::TOPICS tTopic, std::string sItem)
 
 template<typename T> 
 inline void 
-ValToBuf(void* pos, T val) { *(T*)pos = val; }
+ValToBuf(void* pos, T val) 
+{ 
+    *(T*)pos = val; 
+}
 
 template<> 
 inline void 
@@ -880,6 +873,7 @@ WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             */
             UnpackDDElParam(message,lParam, (PUINT_PTR)&plo, (PUINT_PTR)&pho); 
             GlobalGetAtomName((ATOM)(pho), item_atom, (TOSDB_MAX_STR_SZ + 1)); 
+
             if(plo == 0x0000){
                 std::string sarg(std::to_string((size_t)(HWND)wParam)); 
                 ack_signals.signal(sarg + std::string(item_atom), false);
@@ -1041,6 +1035,7 @@ HandleData(UINT msg, WPARAM wparam, LPARAM lparam)
     FreeDDElParam(WM_DDE_DATA, lparam);
 
     TOS_Topics::TOPICS tTopic = convos[(HWND)(wparam)];
+
     try{
         std::string str(cp_data); 
         switch(TOS_Topics::TypeBits(tTopic)){
@@ -1059,14 +1054,12 @@ HandleData(UINT msg, WPARAM wparam, LPARAM lparam)
             auto f = [](char c){ return std::isdigit(c) == 0; };
             auto r = std::remove_if(str.begin(), str.end(), f);
             str.erase(r,str.end());
-            RouteToBuffer( DDE_Data<def_size_type>(tTopic, item_atom, 
-                                                   std::stol(str), true) );  
+            RouteToBuffer( DDE_Data<def_size_type>(tTopic, item_atom, std::stol(str), true) );  
             break;
         }               
         case TOSDB_QUAD_BIT : /* DOUBLE */
         {
-            RouteToBuffer( DDE_Data<ext_price_type>(tTopic, item_atom, 
-                                                    std::stod(str), true) ); 
+            RouteToBuffer( DDE_Data<ext_price_type>(tTopic, item_atom, std::stod(str), true) ); 
             break;
         }     
         case TOSDB_INTGR_BIT | TOSDB_QUAD_BIT :/* LONG LONG */
@@ -1075,14 +1068,12 @@ HandleData(UINT msg, WPARAM wparam, LPARAM lparam)
             auto f = [](char c){ return std::isdigit(c) == 0; };
             auto r = std::remove_if(str.begin(), str.end(), f);
             str.erase(r,str.end());
-            RouteToBuffer( DDE_Data<ext_size_type>(tTopic, item_atom, 
-                                                   std::stoll(str), true) );  
+            RouteToBuffer( DDE_Data<ext_size_type>(tTopic, item_atom, std::stoll(str), true) );  
             break;
         }     
         case 0 : /* FLOAT */
         {
-            RouteToBuffer( DDE_Data<def_price_type>(tTopic, item_atom, 
-                                                    std::stof(str), true) ); 
+            RouteToBuffer( DDE_Data<def_price_type>(tTopic, item_atom, std::stof(str), true) ); 
             break;
         }     
         };
@@ -1102,9 +1093,9 @@ void DumpBufferStatus()
 {  
     const size_t log_col_width[5] = { 30, 30, 10, 60, 16};  
    
-    std::string   time_now(SysTimeString());  
-    std::string   lpath(TOSDB_LOG_PATH);
-    std::string   name("buffer-status-");
+    std::string time_now(SysTimeString());  
+    std::string lpath(TOSDB_LOG_PATH);
+    std::string name("buffer-status-");
     std::ofstream lout;
     
     auto f = [](char x){ return std::isalnum(x) == 0; };
@@ -1122,8 +1113,7 @@ void DumpBufferStatus()
     {
         TOPIC_LOCK_GUARD;
         /* --- CRITICAL SECTION --- */
-        for(const auto & t : topic_refs)
-        {
+        for(const auto & t : topic_refs){
             for(const auto & i : t.second){
                 lout << std::setw(log_col_width[0]) << std::left 
                      << TOS_Topics::map[t.first]

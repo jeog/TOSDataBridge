@@ -23,10 +23,12 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 #include <Windows.h>
 
 class TOSDB_Error 
-  : public std::exception{
+        : public std::exception{
+    unsigned long _threadID;
+    unsigned long _processID;
+    std::string _tag;
+    std::string _info;
 
-    unsigned long _threadID, _processID;
-    std::string _tag, _info;
 public:
     TOSDB_Error(const char* info, const char* tag)
         : 
@@ -62,21 +64,33 @@ public:
         }
 
     inline unsigned long 
-    threadID() const { return _threadID; }
+    threadID() const 
+    { 
+        return _threadID; 
+    }
 
     inline unsigned long 
-    processID() const { return _processID; }
+    processID() const 
+    { 
+        return _processID; 
+    }
 
     inline std::string 
-    tag() const { return _tag; }
+    tag() const 
+    { 
+        return _tag; 
+    }
 
     inline std::string 
-    info() const { return _info; }
+    info() const 
+    { 
+        return _info; 
+    }
 };
   
 
 class TOSDB_IPC_Error 
-  : public TOSDB_Error{
+        : public TOSDB_Error{
 public:
     TOSDB_IPC_Error(const char* info, const char* tag = "IPC")
         : 
@@ -87,7 +101,7 @@ public:
 
 
 class TOSDB_BufferError 
-  : public TOSDB_IPC_Error{
+        : public TOSDB_IPC_Error{
 public:
     TOSDB_BufferError(const char* info, const char* tag = "DataBuffer")
         : 
@@ -98,7 +112,7 @@ public:
 
 
 class TOSDB_DDE_Error 
-    : public TOSDB_Error{
+        : public TOSDB_Error{
 public:
     TOSDB_DDE_Error(const char* info, const char* tag = "DDE")
         : 
@@ -106,8 +120,7 @@ public:
         {
         }
 
-    TOSDB_DDE_Error(const std::exception& e, const char* info, 
-                    const char* tag = "DDE")
+    TOSDB_DDE_Error(const std::exception& e, const char* info, const char* tag = "DDE")
         : 
             TOSDB_Error(e, info, tag) 
         {
@@ -116,7 +129,7 @@ public:
 
 
 class TOSDB_DataBlockError 
-  : public TOSDB_Error{
+        : public TOSDB_Error{
 public:
     TOSDB_DataBlockError(const char* info, const char* tag = "DataBlock")
         : 
@@ -124,8 +137,7 @@ public:
         {
         }
 
-    TOSDB_DataBlockError(const std::exception& e, const char* info, 
-                         const char* tag = "DataBlock") 
+    TOSDB_DataBlockError(const std::exception& e, const char* info, const char* tag = "DataBlock") 
         :  
             TOSDB_Error(e, info, tag) 
         {
@@ -134,7 +146,7 @@ public:
 
 
 class TOSDB_DataBlockLimitError 
-  : public TOSDB_DataBlockError{
+        : public TOSDB_DataBlockError{
 public:
     const size_t limit;  
 
@@ -148,7 +160,7 @@ public:
 
 
 class TOSDB_DataStreamError 
-  : public TOSDB_DataBlockError{
+        : public TOSDB_DataBlockError{
 
 public:
     TOSDB_DataStreamError(const char* info, const char* tag = "DataStream")
@@ -157,8 +169,7 @@ public:
         {
         }
 
-    TOSDB_DataStreamError(const std::exception& e, const char* info, 
-                          const char* tag = "DataStream")
+    TOSDB_DataStreamError(const std::exception& e, const char* info, const char* tag = "DataStream")
         : 
             TOSDB_DataBlockError(e, info, tag) 
         {

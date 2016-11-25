@@ -30,168 +30,204 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 
 template<typename GenericTy, typename DateTimeTy>
 class RawDataBlock {        
-  static size_type _block_count_;
-  static size_type _max_block_count_;
+    static size_type _block_count_;
+    static size_type _max_block_count_;
 
-  typedef DataStreamInterface<DateTimeTy, GenericTy>           _my_stream_ty;  
-  typedef std::unique_ptr<_my_stream_ty>                       _my_stream_uptr_ty; 
-  typedef std::map<const TOS_Topics::TOPICS, 
-                   _my_stream_uptr_ty, TOS_Topics::top_less>   _my_row_ty;
-  typedef std::pair<const TOS_Topics::TOPICS, 
-                    _my_stream_uptr_ty>                        _my_row_elem_ty;
-  typedef std::unique_ptr<_my_row_ty>                          _my_row_uptr_ty;  
-  typedef std::pair<const std::string, _my_row_uptr_ty>        _my_col_elem_ty;    
-  typedef std::lock_guard<std::recursive_mutex>                _my_lock_guard_type;
+    typedef DataStreamInterface<DateTimeTy, GenericTy> _my_stream_ty;  
+    typedef std::unique_ptr<_my_stream_ty> _my_stream_uptr_ty; 
 
-  std::recursive_mutex* const _mtx;
-  std::unordered_map<std::string, _my_row_uptr_ty>  _block;
+    typedef std::map<const TOS_Topics::TOPICS, 
+                     _my_stream_uptr_ty, 
+                     TOS_Topics::top_less> _my_row_ty;
 
-  size_type      _block_sz;
-  str_set_type   _item_names;  
-  topic_set_type _topic_enums;
-  bool           _datetime;  
+    typedef std::pair<const TOS_Topics::TOPICS, _my_stream_uptr_ty> _my_row_elem_ty;
+    typedef std::unique_ptr<_my_row_ty> _my_row_uptr_ty;  
+    typedef std::pair<const std::string, _my_row_uptr_ty> _my_col_elem_ty;    
+    typedef std::lock_guard<std::recursive_mutex>  _my_lock_guard_type;
 
-  RawDataBlock(str_set_type sItems, 
-               topic_set_type tTopics, 
-               const size_type sz, 
-               bool datetime);
+    std::recursive_mutex* const _mtx;
+    std::unordered_map<std::string, _my_row_uptr_ty> _block;
 
-  RawDataBlock(const size_type sz, bool datetime);
+    size_type _block_sz;
+    str_set_type _item_names;  
+    topic_set_type _topic_enums;
+    bool _datetime;  
 
-  RawDataBlock(const RawDataBlock& block)
-      : 
-          _mtx(new std::recursive_mutex) 
-      { 
-          /* ++_block_count_; */ 
-      }
+    RawDataBlock(str_set_type sItems, 
+                 topic_set_type tTopics, 
+                 const size_type sz, 
+                 bool datetime);
 
-  RawDataBlock(RawDataBlock&& block)
-      :
-          _mtx(new std::recursive_mutex) 
-      { 
-          /* */ 
-      }
+    RawDataBlock(const size_type sz, bool datetime);
 
-  RawDataBlock& 
-  operator=(const RawDataBlock& block);
+    RawDataBlock(const RawDataBlock& block)
+        : 
+            _mtx(new std::recursive_mutex) 
+        { 
+            /* ++_block_count_; */ 
+        }
 
-  RawDataBlock& 
-  operator=(RawDataBlock&& block);
+    RawDataBlock(RawDataBlock&& block)
+        :
+            _mtx(new std::recursive_mutex) 
+        { 
+            /* */ 
+        }
 
-  void 
-  _init();
+    RawDataBlock& 
+    operator=(const RawDataBlock& block);
 
-  _my_row_ty*     
-  _insert_topic(_my_row_ty*, TOS_Topics::TOPICS topic);
+    RawDataBlock& 
+    operator=(RawDataBlock&& block);
 
-  _my_row_uptr_ty 
-  _populate_tblock(_my_row_uptr_ty);
+    void 
+    _init();
+
+    _my_row_ty*     
+    _insert_topic(_my_row_ty*, TOS_Topics::TOPICS topic);
+
+    _my_row_uptr_ty 
+    _populate_tblock(_my_row_uptr_ty);
 
 public:
-  typedef GenericTy             generic_type;
-  typedef DateTimeTy            datetime_type;
-
-  typedef _my_stream_ty         stream_type;
-  typedef const _my_stream_ty*  stream_const_ptr_type;
-  
-  typedef std::vector<generic_type>             vector_type; 
-  typedef std::pair<std::string, generic_type>  pair_type; 
-  typedef std::map<std::string, generic_type>   map_type; 
-  typedef std::map<std::string, map_type>       matrix_type;
+    typedef GenericTy generic_type;
+    typedef DateTimeTy datetime_type;
+    typedef _my_stream_ty stream_type;
+    typedef const _my_stream_ty* stream_const_ptr_type;
     
-  typedef std::pair<std::vector<generic_type>, 
-                    std::vector<DateTimeStamp>>            vector_datetime_type;
-  
-  typedef std::map<std::string, 
-                   std::pair<generic_type,datetime_type>>  map_datetime_type;
+    typedef std::vector<generic_type> vector_type; 
+    typedef std::pair<std::string, generic_type> pair_type; 
+    typedef std::map<std::string, generic_type> map_type; 
+    typedef std::map<std::string, map_type> matrix_type;
+      
+    typedef std::pair<std::vector<generic_type>, 
+                      std::vector<DateTimeStamp>> vector_datetime_type;
+    
+    typedef std::map<std::string, 
+                     std::pair<generic_type,datetime_type>> map_datetime_type;
 
-  typedef std::map<std::string, map_datetime_type>         matrix_datetime_type; 
+    typedef std::map<std::string, map_datetime_type> matrix_datetime_type; 
 
-  static RawDataBlock* const 
-  CreateBlock(const str_set_type sItems, 
-              const topic_set_type tTopics,               
-              const size_type sz,
-              const bool datetime);
+    static RawDataBlock* const 
+    CreateBlock(const str_set_type sItems, 
+                const topic_set_type tTopics,               
+                const size_type sz,
+                const bool datetime);
 
-  static RawDataBlock* const 
-  CreateBlock(const size_type sz,const bool datetime);
+    static RawDataBlock* const 
+    CreateBlock(const size_type sz,const bool datetime);
 
-  static inline size_type 
-  block_count() { return _block_count_; }
+    static inline size_type 
+    block_count() 
+    { 
+        return _block_count_; 
+    }
 
-  static inline size_type 
-  max_block_count() { return _max_block_count_; }
+    static inline size_type 
+    max_block_count() 
+    { 
+        return _max_block_count_; 
+    }
 
-  static inline size_type 
-  max_block_count(const size_type m){
-      return (m >= _block_count_) ? (_max_block_count_ = m) : _max_block_count_; 
-  }
-  
-  size_type 
-  block_size(size_type b);
+    static inline size_type 
+    max_block_count(const size_type m)
+    {
+        return (m >= _block_count_) ? (_max_block_count_ = m) : _max_block_count_; 
+    }
+    
+    size_type 
+    block_size(size_type b);
 
-  inline size_type 
-  block_size() const { return this->_block_sz; }  
+    inline size_type 
+    block_size() const 
+    { 
+        return this->_block_sz; 
+    }  
 
-  inline size_type 
-  item_count() const { return (size_type)(this->_item_names.size()); }
+    inline size_type 
+    item_count() const 
+    { 
+        return (size_type)(this->_item_names.size()); 
+    }
 
-  inline size_type 
-  topic_count() const { return (size_type)(this->_topic_enums.size()); }
+    inline size_type 
+    topic_count() const 
+    { 
+        return (size_type)(this->_topic_enums.size()); 
+    }
 
-  void add_item(std::string item); 
-  void remove_item(std::string item); 
-  void add_topic(TOS_Topics::TOPICS topic); 
-  void remove_topic(TOS_Topics::TOPICS topic); 
+    void 
+    add_item(std::string item); 
 
-  template<typename Val, typename DT> void 
-  insert_data(TOS_Topics::TOPICS topic,std::string item,Val val,DT datetime); 
+    void 
+    remove_item(std::string item); 
 
-  const _my_stream_ty* 
-  raw_stream_ptr(std::string item, TOS_Topics::TOPICS topic) const ;
+    void 
+    add_topic(TOS_Topics::TOPICS topic); 
 
-  map_type 
-  map_of_frame_items(TOS_Topics::TOPICS topic) const ;
+    void 
+    remove_topic(TOS_Topics::TOPICS topic); 
 
-  map_type 
-  map_of_frame_topics(std::string item) const ;
+    template<typename Val, typename DT> 
+    void 
+    insert_data(TOS_Topics::TOPICS topic,std::string item,Val val,DT datetime); 
 
-  map_datetime_type 
-  pair_map_of_frame_items(TOS_Topics::TOPICS) const ;
+    const _my_stream_ty* 
+    raw_stream_ptr(std::string item, TOS_Topics::TOPICS topic) const;
 
-  map_datetime_type 
-  pair_map_of_frame_topics(std::string item) const ;
+    map_type 
+    map_of_frame_items(TOS_Topics::TOPICS topic) const;
 
-  matrix_type 
-  matrix_of_frame() const ;
+    map_type 
+    map_of_frame_topics(std::string item) const;
 
-  matrix_datetime_type 
-  pair_matrix_of_frame() const ;
-  
-  inline topic_set_type 
-  topics() const { return _topic_enums; }
+    map_datetime_type 
+    pair_map_of_frame_items(TOS_Topics::TOPICS) const;
 
-  inline str_set_type 
-  items() const { return _item_names; }
+    map_datetime_type 
+    pair_map_of_frame_topics(std::string item) const;
 
-  inline bool 
-  has_topic(TOS_Topics::TOPICS topic) const {
-      return (_topic_enums.find(topic) != _topic_enums.cend());
-  }
+    matrix_type 
+    matrix_of_frame() const ;
 
-  inline bool 
-  has_item(const char* item) const {
-      return (_item_names.find(item) != _item_names.cend());
-  }
+    matrix_datetime_type 
+    pair_matrix_of_frame() const ;
+    
+    inline topic_set_type 
+    topics() const 
+    { 
+        return _topic_enums; 
+    }
 
-  inline bool 
-  uses_dtstamp() const { return this->_datetime; }
+    inline str_set_type 
+    items() const 
+    { 
+        return _item_names; 
+    }
 
-  ~RawDataBlock() 
-  {   /* all other deallocs are handled by unique_ptr destructors */  
-      delete _mtx;        
-      --_block_count_;
-  }
+    inline bool 
+    has_topic(TOS_Topics::TOPICS topic) const 
+    {
+        return (_topic_enums.find(topic) != _topic_enums.cend());
+    }
+
+    inline bool 
+    has_item(const char* item) const 
+    {
+        return (_item_names.find(item) != _item_names.cend());
+    }
+
+    inline bool 
+    uses_dtstamp() const 
+    { 
+        return this->_datetime; 
+    }
+
+    ~RawDataBlock() 
+    {   /* all other deallocs are handled by unique_ptr destructors */  
+        delete _mtx;        
+        --_block_count_;
+    }
 }; 
 
 #include "raw_data_block.tpp"

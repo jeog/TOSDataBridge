@@ -18,9 +18,12 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 #include "tos_databridge.h"
 
 namespace{
+
 typedef TOS_Topics::topic_map_entry_type pair_ty;
+
 /* VS2012 doesnt provide initlist support for maps so we do it the hard way */
 TOS_Topics::topic_map_type BuildTopicsMapping();
+
 };
 
 template<> const TOS_Topics::topic_map_type TOS_Topics::map = BuildTopicsMapping();

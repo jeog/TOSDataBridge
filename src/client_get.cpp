@@ -589,7 +589,7 @@ TOSDB_GetMarkerPosition(std::string id,
     db = GetBlockOrThrow(id);
     dat = db->block->raw_stream_ptr(sItem, tTopic);      
     try{
-        return (dat->marker_position());
+        return dat->marker_position();
     }catch(const DataStreamError& e){
         throw TOSDB_DataStreamError(e, "TOSDB_GetMarkerPosition");
     }
@@ -700,7 +700,8 @@ struct GRetType;
 template<typename T>
 struct GRetType<T, true>{
     std::pair<T, DateTimeStamp> 
-    operator()(T val, DateTimeStamp dts){      
+    operator()(T val, DateTimeStamp dts)
+    {      
         return std::pair<T, DateTimeStamp>(val, std::move(dts));
     }
 };
@@ -708,13 +709,18 @@ struct GRetType<T, true>{
 template<typename T>
 struct GRetType<T, false>{
     T 
-    operator()(T val, DateTimeStamp dts) { return val; }
+    operator()(T val, DateTimeStamp dts) 
+    { 
+        return val; 
+    }
 };
 
 template<typename T, bool b> 
 auto 
-TOSDB_Get(std::string id, std::string sItem, TOS_Topics::TOPICS tTopic, long indx) 
-    -> typename std::conditional<b, std::pair<T, DateTimeStamp>, T>::type
+TOSDB_Get(std::string id, 
+          std::string sItem, 
+          TOS_Topics::TOPICS tTopic, 
+          long indx) -> typename std::conditional<b, std::pair<T, DateTimeStamp>, T>::type
 {
     T tmp;
     DateTimeStamp datetime;
@@ -891,8 +897,10 @@ TOSDB_GetStreamSnapshot<generic_type, true>(std::string id,
     dat = db->block->raw_stream_ptr(sItem, tTopic);
     try{
         return std::pair<std::vector<generic_type>,
-                         std::vector<DateTimeStamp>>(dat->vector(end, beg), 
-                                                     dat->secondary_vector(end,beg));
+                         std::vector<DateTimeStamp>>(
+                                dat->vector(end, beg), 
+                                dat->secondary_vector(end,beg)
+                         );
     }catch(const DataStreamError& e){
         throw TOSDB_DataStreamError(e, "TOSDB_GetStreamSnapshot<generic_type,true>");
     }    
@@ -920,7 +928,8 @@ struct GSSRetType<T, true>{
         std::vector<T> v(diff); /* adjust for [) -> [ ] */
         std::vector<DateTimeStamp> dtsv(diff); /* adjust for [) -> [ ] */  
         if(diff > 0)
-            dat->copy(&(*(v.begin())), diff, end, beg, &(*(dtsv.begin())));     
+            dat->copy(&(*(v.begin())), diff, end, beg, &(*(dtsv.begin())));  
+   
         return std::pair<std::vector<T>,std::vector<DateTimeStamp>>(v, dtsv);
     }
 };
@@ -935,7 +944,8 @@ struct GSSRetType<T, false>{
     {  
         std::vector<T> v(diff); /* adjust for [) -> [ ] */
         if(diff > 0)
-            dat->copy(&(*(v.begin())), diff, end, beg, nullptr);      
+            dat->copy(&(*(v.begin())), diff, end, beg, nullptr); 
+     
         return v;
     }
 };
@@ -947,8 +957,9 @@ TOSDB_GetStreamSnapshot(std::string id,
                         TOS_Topics::TOPICS tTopic, 
                         long end, 
                         long beg) 
-    -> typename std::conditional<b, std::pair<std::vector<T>,std::vector<DateTimeStamp>>, 
-                                    std::vector<T>>::type
+    -> typename std::conditional<b, 
+                                 std::pair<std::vector<T>, std::vector<DateTimeStamp>>, 
+                                 std::vector<T>>::type
 { 
     size_type sz;
     long diff;  
@@ -1322,31 +1333,36 @@ TOSDB_GetItemFrame_(LPCSTR id,
         GLOBAL_RLOCK_GUARD;
         /* --- CRITICAL SECTION --- */
         db = GetBlockOrThrow(id);
+
         if(datetime){  
-            generic_dts_map_type dtsm = db->block->pair_map_of_frame_items(tTopic);
-            generic_dts_map_type::const_iterator b_iter = dtsm.cbegin();
-            generic_dts_map_type::const_iterator e_iter = dtsm.cend();
+            auto dtsm = db->block->pair_map_of_frame_items(tTopic);
+            auto b_iter = dtsm.cbegin();
+            auto e_iter = dtsm.cend();
+
             for( size_type i = 0; 
                  (i < array_len) && (b_iter != e_iter); 
                  ++b_iter, ++i )
             {
                 dest[i] = (T)b_iter->second.first;
                 datetime[i] = b_iter->second.second;
+
                 if(dest2){
                     err = strcpy_s(dest2[i], str_len2, (b_iter->first).c_str());
                     if(err) 
                         return err; 
                 }
-            }           
+            }      
         }else{        
-            generic_map_type m = db->block->map_of_frame_items(tTopic);
-            generic_map_type::const_iterator b_iter = m.cbegin();
-            generic_map_type::const_iterator e_iter = m.cend();              
+            auto m = db->block->map_of_frame_items(tTopic);
+            auto b_iter = m.cbegin();
+            auto e_iter = m.cend();   
+           
             for( size_type i = 0; 
                  (i < array_len) && (b_iter != e_iter); 
                  ++b_iter, ++i )  
             {      
-                dest[i] = (T)b_iter->second;  
+                dest[i] = (T)b_iter->second; 
+ 
                 if(dest2){
                     err = strcpy_s(dest2[i], str_len2, (b_iter->first).c_str());
                     if(err) 
@@ -1458,37 +1474,43 @@ TOSDB_GetItemFrameStrings(LPCSTR id,
         GLOBAL_RLOCK_GUARD;
         /* --- CRITICAL SECTION --- */
         db = GetBlockOrThrow(id);
+
         if(datetime){      
-            generic_dts_map_type dtsm = db->block->pair_map_of_frame_items(tTopic);
-            generic_dts_map_type::const_iterator b_iter = dtsm.cbegin();
-            generic_dts_map_type::const_iterator e_iter = dtsm.cend();             
+            auto dtsm = db->block->pair_map_of_frame_items(tTopic);
+            auto b_iter = dtsm.cbegin();
+            auto e_iter = dtsm.cend();        
+     
             for( size_type i = 0; 
                  (i < array_len) && (b_iter != e_iter); 
                   ++b_iter, ++i)
             {
                 datetime[i] = b_iter->second.second;
+
                 err = strcpy_s(dest[i], str_len, (b_iter->second.first).as_string().c_str());
                 if(err) 
-                    return err;    
+                    return err;   
+ 
                 if(label_dest){
-                    err = strcpy_s(label_dest[i],label_str_len,(b_iter->first).c_str());
+                    err = strcpy_s(label_dest[i], label_str_len, (b_iter->first).c_str());
                     if(err)              
                         return err;
                 }
             }    
         }else{          
-            generic_map_type m = db->block->map_of_frame_items(tTopic);
-            generic_map_type::const_iterator b_iter = m.cbegin();
-            generic_map_type::const_iterator e_iter = m.cend();            
+            auto m = db->block->map_of_frame_items(tTopic);
+            auto b_iter = m.cbegin();
+            auto e_iter = m.cend();   
+         
             for( size_type i = 0; 
                  (i < array_len) && (b_iter != e_iter); 
                  ++b_iter, ++i )
             {
-                err = strcpy_s(dest[i],str_len,(b_iter->second).as_string().c_str());
+                err = strcpy_s(dest[i], str_len, (b_iter->second).as_string().c_str());
                 if(err)
                     return err;
+
                 if(label_dest){
-                    err = strcpy_s(label_dest[i],label_str_len,(b_iter->first).c_str());             
+                    err = strcpy_s(label_dest[i], label_str_len, (b_iter->first).c_str());             
                     if(err)
                         return err; 
                 }
@@ -1551,18 +1573,22 @@ TOSDB_GetTopicFrameStrings(LPCSTR id,
         GLOBAL_RLOCK_GUARD;
         /* --- CRITICAL SECTION --- */
         db = GetBlockOrThrow(id);
+
         if(datetime){       
-            generic_dts_map_type dtsm = db->block->pair_map_of_frame_topics(sItem);
-            generic_dts_map_type::const_iterator b_iter = dtsm.cbegin();
-            generic_dts_map_type::const_iterator e_iter = dtsm.cend();   
+            auto dtsm = db->block->pair_map_of_frame_topics(sItem);
+            auto b_iter = dtsm.cbegin();
+            auto e_iter = dtsm.cend(); 
+  
             for( size_type i = 0; 
                  (i < array_len) && (b_iter != e_iter); 
                  ++b_iter, ++i)
             {
                 datetime[i] = b_iter->second.second;
+
                 err = strcpy_s(dest[i], str_len, (b_iter->second.first).as_string().c_str());
                 if(err) 
                     return err;   
+
                 if(label_dest){
                     err = strcpy_s(label_dest[i], label_str_len, (b_iter->first).c_str());
                     if(err)              
@@ -1570,18 +1596,20 @@ TOSDB_GetTopicFrameStrings(LPCSTR id,
                 }
             }    
         }else{    
-            generic_map_type m = db->block->map_of_frame_topics(sItem);
-            generic_map_type::const_iterator b_iter = m.cbegin();
-            generic_map_type::const_iterator e_iter = m.cend();      
+            auto m = db->block->map_of_frame_topics(sItem);
+            auto b_iter = m.cbegin();
+            auto e_iter = m.cend();     
+ 
             for( size_type i = 0; 
                  (i < array_len) && (b_iter != e_iter); 
                  ++b_iter, ++i)
             {
-                err = strcpy_s(dest[i],str_len,(b_iter->second).as_string().c_str());
+                err = strcpy_s(dest[i], str_len, (b_iter->second).as_string().c_str());
                 if(err) 
                     return err;
+
                 if(label_dest){
-                    err = strcpy_s(label_dest[i],label_str_len,(b_iter->first).c_str());
+                    err = strcpy_s(label_dest[i], label_str_len, (b_iter->first).c_str());
                     if(err)
                         return err;  
                 }

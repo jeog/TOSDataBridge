@@ -53,56 +53,58 @@ typename RAW_DATA_BLOCK_CLASS::_my_row_ty*
 RAW_DATA_BLOCK_CLASS::_insert_topic(typename RAW_DATA_BLOCK_CLASS::_my_row_ty* row, 
                                    TOS_Topics::TOPICS topic)
 {    
-  _my_stream_ty *stream; /*
-  stream = new DataStream< TOS_Topics::Type<topic>::type, 
-                           datetime_type, generic_type, this->_datetime >(_block_sz);
+    _my_stream_ty *stream; /*
+    stream = new DataStream<TOS_Topics::Type<topic>::type, 
+                            datetime_type, generic_type, this->_datetime>(_block_sz);
 
-  */
-  switch(TOS_Topics::TypeBits(topic)){ 
-  case TOSDB_STRING_BIT :
-    stream = this->_datetime 
-        ? new DataStream<std::string, datetime_type, generic_type, true>(_block_sz) 
-        : new DataStream<std::string, datetime_type, generic_type, false>(_block_sz);
-    break;
-  case TOSDB_INTGR_BIT :
-    stream = this->_datetime 
-        ? new DataStream<def_size_type, datetime_type, generic_type, true>(_block_sz) 
-        : new DataStream<def_size_type, datetime_type, generic_type, false>(_block_sz);
-    break;
-  case TOSDB_QUAD_BIT :
-    stream = this->_datetime 
-        ? new DataStream<ext_price_type, datetime_type, generic_type, true>(_block_sz) 
-        : new DataStream<ext_price_type, datetime_type, generic_type, false>(_block_sz);
-    break;
-  case TOSDB_INTGR_BIT | TOSDB_QUAD_BIT :
-    stream = this->_datetime 
-        ? new DataStream<ext_size_type, datetime_type, generic_type, true>(_block_sz)
-        : new DataStream<ext_size_type, datetime_type, generic_type, false>(_block_sz);
-    break;
-  default :
-    stream = this->_datetime 
-        ? new DataStream<def_price_type, datetime_type, generic_type, true>(_block_sz) 
-        : new DataStream<def_price_type, datetime_type, generic_type, false>(_block_sz);
-  } 
-  try{
-    row->erase(topic);
-    row->insert(_my_row_elem_ty(topic,_my_stream_uptr_ty(stream)));
-  }catch(...){
-    TOSDB_LogH("RawDataBlock","problem inserting t-block");
-    if(stream)
-        delete stream;
-  }
-  return row;
+    */
+    switch(TOS_Topics::TypeBits(topic)){ 
+    case TOSDB_STRING_BIT :
+        stream = this->_datetime 
+               ? new DataStream<std::string, datetime_type, generic_type, true>(_block_sz) 
+               : new DataStream<std::string, datetime_type, generic_type, false>(_block_sz);
+        break;
+    case TOSDB_INTGR_BIT :
+        stream = this->_datetime 
+               ? new DataStream<def_size_type, datetime_type, generic_type, true>(_block_sz) 
+               : new DataStream<def_size_type, datetime_type, generic_type, false>(_block_sz);
+        break;
+    case TOSDB_QUAD_BIT :
+        stream = this->_datetime 
+               ? new DataStream<ext_price_type, datetime_type, generic_type, true>(_block_sz) 
+               : new DataStream<ext_price_type, datetime_type, generic_type, false>(_block_sz);
+        break;
+    case TOSDB_INTGR_BIT | TOSDB_QUAD_BIT :
+        stream = this->_datetime 
+               ? new DataStream<ext_size_type, datetime_type, generic_type, true>(_block_sz)
+               : new DataStream<ext_size_type, datetime_type, generic_type, false>(_block_sz);
+        break;
+    default :
+        stream = this->_datetime 
+               ? new DataStream<def_price_type, datetime_type, generic_type, true>(_block_sz) 
+               : new DataStream<def_price_type, datetime_type, generic_type, false>(_block_sz);
+    } 
+
+    try{
+        row->erase(topic);
+        row->insert(_my_row_elem_ty(topic,_my_stream_uptr_ty(stream)));
+    }catch(...){
+        TOSDB_LogH("RawDataBlock","problem inserting t-block");
+        if(stream)
+            delete stream;
+    }
+
+    return row;
 }
 
 RAW_DATA_BLOCK_TEMPLATE
 typename RAW_DATA_BLOCK_CLASS::_my_row_uptr_ty 
 RAW_DATA_BLOCK_CLASS::_populate_tblock(typename RAW_DATA_BLOCK_CLASS::_my_row_uptr_ty tBlock)
 {    
-  for(auto elem : this->_topic_enums)
-      this->_insert_topic(tBlock.get(), elem);
+    for(auto elem : this->_topic_enums)
+        this->_insert_topic(tBlock.get(), elem);
 
-  return tBlock;
+    return tBlock;
 }
 
 RAW_DATA_BLOCK_TEMPLATE
@@ -203,8 +205,8 @@ RAW_DATA_BLOCK_CLASS::add_item(std::string item)
             return;
         
         this->_block.erase(item);
-        _my_row_uptr_ty tmp = 
-            this->_populate_tblock(_my_row_uptr_ty(new _my_row_ty));
+
+        _my_row_uptr_ty tmp = this->_populate_tblock(_my_row_uptr_ty(new _my_row_ty));
         this->_block.insert(_my_col_elem_ty(item,std::move(tmp)));           
         /* --- CRITICAL SECTION --- */
     }catch(const std::exception & e){
@@ -324,8 +326,12 @@ RAW_DATA_BLOCK_CLASS::map_of_frame_topics(std::string item) const
             return map;
             
         for(auto & elem : *row){
-            map.insert( pair_type( TOS_Topics::map[elem.first],
-                                   elem.second->operator[](0)) );
+            map.insert( 
+                pair_type( 
+                    TOS_Topics::map[elem.first],
+                    elem.second->operator[](0)
+                ) 
+            );
         }        
         /* --- CRITICAL SECTION --- */
     }catch(const std::out_of_range& e){
@@ -349,8 +355,9 @@ RAW_DATA_BLOCK_CLASS::map_of_frame_items(TOS_Topics::TOPICS topic) const
         _my_lock_guard_type lock(*_mtx);
         /* --- CRITICAL SECTION --- */
         for(auto & elem : this->_block){
-            map.insert( pair_type( elem.first,
-                                   elem.second->at(topic)->operator[](0)) );  
+            map.insert( 
+                pair_type(elem.first, elem.second->at(topic)->operator[](0)) 
+            );  
         }
         /* --- CRITICAL SECTION --- */
     }catch(const std::out_of_range& e){
@@ -378,9 +385,12 @@ RAW_DATA_BLOCK_CLASS::pair_map_of_frame_topics(std::string item) const
             return map;
 
         for(auto & elem : *row){
-            map.insert( map_datetime_type::value_type(
-                            TOS_Topics::map[elem.first],
-                            elem.second->both(0)) );
+            map.insert( 
+                map_datetime_type::value_type(
+                    TOS_Topics::map[elem.first],
+                    elem.second->both(0)
+                ) 
+            );
         }        
         /* --- CRITICAL SECTION --- */
     }catch(const std::out_of_range& e){
@@ -404,9 +414,12 @@ RAW_DATA_BLOCK_CLASS::pair_map_of_frame_items(TOS_Topics::TOPICS topic) const
         _my_lock_guard_type lock(*_mtx);
         /* --- CRITICAL SECTION --- */
         for(auto & elem : this->_block){
-            map.insert( map_datetime_type::value_type(
-                            elem.first, 
-                            elem.second->at(topic)->both(0)) );       
+            map.insert( 
+                map_datetime_type::value_type(
+                    elem.first, 
+                    elem.second->at(topic)->both(0)
+                ) 
+            );       
         }
         /* --- CRITICAL SECTION --- */
     }catch(const std::out_of_range& e){
@@ -432,9 +445,12 @@ RAW_DATA_BLOCK_CLASS::matrix_of_frame() const
         for(auto & items : this->_block){         
             map_type map; 
             for(auto & tops : *items.second){
-                map.insert( map_type::value_type(
-                                TOS_Topics::map[tops.first],
-                                tops.second->operator[](0)) ); 
+                map.insert( 
+                    map_type::value_type(
+                        TOS_Topics::map[tops.first],
+                        tops.second->operator[](0)
+                    ) 
+                ); 
             }
             matrix.insert(matrix_type::value_type(items.first, std::move(map)));
         }    
@@ -458,12 +474,15 @@ RAW_DATA_BLOCK_CLASS::pair_matrix_of_frame() const
         for(auto & items : this->_block){      
             map_datetime_type map; 
             for(auto & tops : *items.second){
-                map.insert( map_datetime_type::value_type(
-                                TOS_Topics::map[tops.first],
-                                tops.second->both(0)) ); 
+                map.insert( 
+                    map_datetime_type::value_type(
+                        TOS_Topics::map[tops.first],
+                        tops.second->both(0)
+                    ) 
+                ); 
             }
             matrix.insert(
-                matrix_datetime_type::value_type(items.first,std::move(map)));
+                matrix_datetime_type::value_type(items.first, std::move(map)));
         }    
         /* --- CRITICAL SECTION --- */
     }catch(const DataStreamError& e){

@@ -81,7 +81,7 @@ class SlowHeapManager{
     /* NOT NECESSARY TO BE OPTIMAL - VERY SMALL HEAP, VERY LOW USAGE */
     typedef unsigned long  _head_ty;
     typedef unsigned char* _ptr_ty;    
-    typedef std::pair<size_t, _ptr_ty>  _heap_pair_ty;    
+    typedef std::pair<size_t, _ptr_ty> _heap_pair_ty;    
 
     static const unsigned int HEAD_SZ = sizeof(_head_ty);
     /* make sure offset can fit in an unsigned 4 bytes 
@@ -89,13 +89,12 @@ class SlowHeapManager{
     static const unsigned long MAX_SZ = LONG_MAX;
 
     std::multimap<size_t, _ptr_ty> _free_heap;
-    std::set<_ptr_ty>              _allocated_set;
+    std::set<_ptr_ty> _allocated_set;
 
     inline bool 
     _valid_start(void* start)
     {     
-        return ( this->_allocated_set.find((_ptr_ty)start) 
-                 != this->_allocated_set.cend() );
+        return (this->_allocated_set.find((_ptr_ty)start) != this->_allocated_set.cend());
     }
 
 public:     
@@ -133,18 +132,21 @@ public:
     struct shem_chunk{
         long offset; /* should only be unsigned for an actual 'chunk' */                               
         size_t sz;
+
         shem_chunk() 
             : 
                 offset(0), 
                 sz(0) 
             {
-            }      
+            } 
+     
         shem_chunk(long offset, size_t sz)
             : 
                 offset(offset), 
                 sz(sz) 
             {
             }
+
         ~shem_chunk()
             {
             }
@@ -168,13 +170,19 @@ protected:
     static const unsigned int ALLOC = 1;
     static const unsigned int DEALLOC = 2;
     static const unsigned int PING = 4;
-    static const int   PAUSE = 1000;    
-    static const int   ACL_SIZE = 144;
+    static const int PAUSE = 1000;    
+    static const int ACL_SIZE = 144;
     static const char* KMUTEX_NAME;
     
-    std::string _shem_str, _xtrnl_pipe_str, _intrnl_pipe_str;
-    void *_fmap_hndl, *_mmap_addr, *_xtrnl_pipe_hndl, *_intrnl_pipe_hndl, *_mtx;    
-    size_t _mmap_sz; /* should be unsinged ! */
+    std::string _shem_str;
+    std::string _xtrnl_pipe_str;
+    std::string _intrnl_pipe_str;
+    void *_fmap_hndl;
+    void *_mmap_addr;
+    void *_xtrnl_pipe_hndl;
+    void *_intrnl_pipe_hndl;
+    void *_mtx;    
+    size_t _mmap_sz; /* should be unsinged */
 
     DynamicIPCBase(std::string name, size_t sz = 0)
         :
@@ -201,8 +209,8 @@ protected:
         }
 
 public:
-  /* insert/extract take pointers to raw data insead of refs like the rest of
-     the interface; it just seems more intuitive for what's actually happening */
+    /* insert/extract take pointers to raw data insead of refs like the rest of
+       the interface; it just seems more intuitive for what's actually happening */
     template<typename T>
     shem_chunk 
     insert(T* data, size_t data_len = 1)
@@ -213,7 +221,7 @@ public:
         if(!blk || memcpy_s(blk, sz, data, sz))
             return shem_chunk(0,0);
 
-		    /* cast to long OK; blk can't be > LONG_MAX from _mmap_addr */
+		 /* cast to long OK; blk can't be > LONG_MAX from _mmap_addr */
         return shem_chunk((long)((size_t)blk - (size_t)_mmap_addr), sz);        
     }
 
@@ -242,16 +250,25 @@ public:
     offset(void* start) const;
 
     inline bool 
-    send(const long val) const { return this->_send(shem_chunk(val,0)); }
+    send(const long val) const 
+    { 
+        return this->_send(shem_chunk(val,0)); 
+    }
 
     bool 
     recv(long& val) const;
 
     inline bool 
-    send(const shem_chunk& chunk) const { return this->_send(chunk); }
+    send(const shem_chunk& chunk) const 
+    { 
+        return this->_send(chunk); 
+    }
 
     inline bool 
-    recv(shem_chunk& chunk) const { return this->_recv(chunk); }
+    recv(shem_chunk& chunk) const 
+    { 
+        return this->_recv(chunk); 
+    }
 
     const DynamicIPCBase& 
     operator<<(const shem_chunk& chunk) const;
@@ -260,10 +277,11 @@ public:
     operator>>(shem_chunk& chunk) const; 
 };
 
-class DynamicIPCMaster
-  : public DynamicIPCBase {    
 
+class DynamicIPCMaster
+        : public DynamicIPCBase {    
     volatile bool _pipe_held;
+
 public:    
     DynamicIPCMaster(std::string name)
         : 
@@ -293,18 +311,21 @@ public:
     connected() const;
 
     inline bool 
-    pipe_held() const { return this->_pipe_held; }    
+    pipe_held() const 
+    { 
+        return this->_pipe_held; 
+    }    
 };
 
+
 class DynamicIPCSlave
-  : public DynamicIPCBase {  
-    
+        : public DynamicIPCBase {      
     static const int NSECURABLE = 3;
 
     std::unordered_map<Securable, SECURITY_ATTRIBUTES> _sec_attr;
     std::unordered_map<Securable, SECURITY_DESCRIPTOR> _sec_desc;     
-    std::unordered_map<Securable, SmartBuffer<void>>   _sids; 
-    std::unordered_map<Securable, SmartBuffer<ACL>>    _acls;        
+    std::unordered_map<Securable, SmartBuffer<void>> _sids; 
+    std::unordered_map<Securable, SmartBuffer<ACL>> _acls;        
     
     typedef std::unique_ptr<SlowHeapManager> _uptr_heap_ty;
     
