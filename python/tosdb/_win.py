@@ -151,7 +151,10 @@ def init(dllpath=None, root="C:\\", bypass_check=False):
 
 
 def connect():
-    """ Attempts to connect to the library """            
+    """ Attempts to connect to the library
+
+    Note: this returns a boolean and does not raise an exception on failure
+    """            
     ret = _lib_call("TOSDB_Connect", error_check=False) 
     return (ret == 0) # 0 on success (error code)
 
@@ -194,18 +197,18 @@ def Init(dllpath=None, root="C:\\", bypass_check=False):
 
 def get_block_limit():
     """ Returns the block limit of C/C++ RawDataBlock factory """
-    return _lib_call("TOSDB_GetBlockLimit", ret_type=_uint32_)
+    return _lib_call("TOSDB_GetBlockLimit", ret_type=_uint32_, error_check=False)
 
 
 def set_block_limit(new_limit):
     """ Changes the block limit of C/C++ RawDataBlock factory """
     _lib_call("TOSDB_SetBlockLimit", new_limit, ret_type=_uint32_, 
-              arg_types=(_uint32_,))
+              arg_types=(_uint32_,), error_check=False)
 
 
 def get_block_count():
     """ Returns the count of current instantiated blocks """
-    return _lib_call("TOSDB_GetBlockCount", ret_type=_uint32_)
+    return _lib_call("TOSDB_GetBlockCount", ret_type=_uint32_, error_check=False)
 
 
 def type_bits(topic):

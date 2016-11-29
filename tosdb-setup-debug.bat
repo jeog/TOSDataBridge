@@ -24,9 +24,9 @@ IF /I "%2"=="admin" (
 
 IF "%1"=="x64" (  
     set vcRedist=vcredist_x64.exe
-    set servBin=%cd%\\bin\\Release\\x64\\tos-databridge-serv-x64_d.exe
-    set engBin=%cd%\\bin\\Release\\x64\\tos-databridge-engine-x64_d.exe
-    set createCmd=%cd%\\bin\\Release\\x64\\tos-databridge-serv-x64_d.exe%servCmd%       
+    set servBin=%cd%\\bin\\Debug\\x64\\tos-databridge-serv-x64_d.exe
+    set engBin=%cd%\\bin\\Debug\\x64\\tos-databridge-engine-x64_d.exe
+    set createCmd=%cd%\\bin\\Debug\\x64\\tos-databridge-serv-x64_d.exe%servCmd%       
 ) else ( 
     IF "%1"=="x86" (  
         IF EXIST C:/Windows/SysWOW64 set bCRTfiles=false
@@ -36,9 +36,9 @@ IF "%1"=="x64" (
             )
         )
         set vcRedist=vcredist_x86.exe
-        set servBin=%cd%\\bin\\Release\\Win32\\tos-databridge-serv-x86_d.exe 
-        set engBin=%cd%\\bin\\Release\\Win32\\tos-databridge-engine-x86_d.exe
-        set createCmd=%cd%\bin\Release\Win32\tos-databridge-serv-x86_d.exe%servCmd%     
+        set servBin=%cd%\\bin\\Debug\\Win32\\tos-databridge-serv-x86_d.exe 
+        set engBin=%cd%\\bin\\Debug\\Win32\\tos-databridge-engine-x86_d.exe
+        set createCmd=%cd%\bin\Debug\Win32\tos-databridge-serv-x86_d.exe%servCmd%     
     ) else (
         echo - Invalid Command Line Argument. Use 'x86' or 'x64' to signify which build to setup.        
         EXIT /B 1

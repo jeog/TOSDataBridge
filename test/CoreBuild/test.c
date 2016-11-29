@@ -2,7 +2,7 @@
 #include "tos_databridge.h"
 
 void StaticAdminTests();
-void DynamicAdminTests();
+int DynamicAdminTests();
 void GetTests();
 void StreamSnapshotTests();
 void FromMarkerTests();
@@ -18,15 +18,22 @@ int
 main(int argc, char* argv[])
 {
     printf("\n*** BEGIN %s BEGIN ***\n\n", argv[0]);
+
     StaticAdminTests();
+
     Sleep(500);
-    DynamicAdminTests();
+    if( DynamicAdminTests() )
+        return 1;
+
     Sleep(500);
     GetTests();
+
     Sleep(500);
     StreamSnapshotTests();
+
     Sleep(500);
     CloseTests();
+
     printf("\n*** END %s END ***\n\n", argv[0]);
     return 0;
 }
@@ -46,7 +53,7 @@ StaticAdminTests()
 #endif
 }
 
-void
+int
 DynamicAdminTests()
 {
     int ret;
@@ -57,7 +64,7 @@ DynamicAdminTests()
     printf("+ TOSDB_Connect() :: %i \n", ret);
     if(ret){
         printf("- Couldn't Connect \n");
-        return;
+        return 1;
     }
 
     printf("+ TOSDB_IsConnected() :: %i \n",   TOSDB_IsConnected());
@@ -106,6 +113,7 @@ DynamicAdminTests()
     printf("\n");
     DeleteStrings(buf1, icount);
 
+    return 0;
 }
 
 
@@ -120,7 +128,7 @@ GetTests()
    printf("+ TOSDB_GetDouble(): %s, %s, %d, %f \n", "SPY", "LAST", 0, d1);
 
    TOSDB_GetLongLong(block1_id,"QQQ","VOLUME",0,&ll1,&dts);
-   printf("+ TOSD_GetLongLong(): %s, %s, %d, %lld, %d:%d:%d \n", "QQQ", "VOLUME", 0, ll1,
+   printf("+ TOSDB_GetLongLong(): %s, %s, %d, %lld, %d:%d:%d \n", "QQQ", "VOLUME", 0, ll1,
            dts.ctime_struct.tm_hour, dts.ctime_struct.tm_min, dts.ctime_struct.tm_sec);
 
 #ifdef __cplusplus
@@ -134,7 +142,7 @@ GetTests()
           sp.second.ctime_struct.tm_sec);
 
    auto g = TOSDB_Get<generic_type,false>(block1_id,"SPY",TOS_Topics::TOPICS::LAST, 0);
-   printf("+ TOSDB_Get<generic_type,false>(): %s, %s, %d, %f \n", "SPY", "LASTX", 0, g.as_double());
+   printf("+ TOSDB_Get<generic_type,false>(): %s, %s, %d, %f \n", "SPY", "LAST", 0, g.as_double());
    std::cout << "  Check Generic Type: \n";
    std::cout << "    size: " << g.size() << std::endl;
    std::cout << "    is_float: " << std::boolalpha<< g.is_float() << std::endl;
@@ -161,7 +169,7 @@ StreamSnapshotTests()
    
 #ifdef __cplusplus
    auto gvec = TOSDB_GetStreamSnapshot<generic_type,true>(block1_id,"SPY",TOS_Topics::TOPICS::LAST);
-   printf("+ TOSDB_GetStreamSnapshot<generic_type,true>(): %s, %s \n", "SPY", "LASTX");
+   printf("+ TOSDB_GetStreamSnapshot<generic_type,true>(): %s, %s \n", "SPY", "LAST");
    std::cout<< "   ";
    for(auto& i : gvec.first)
        std::cout<< i.as_string() << ' ';
