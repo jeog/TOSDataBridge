@@ -624,6 +624,11 @@ TOSDB_DumpSharedBufferStatus();
 DLL_SPEC_IFACE int   
 TOSDB_Add(std::string id, str_set_type sItems, topic_set_type tTopics);
 
+/* Nov 29 2016 */
+DLL_SPEC_IFACE  int   
+TOSDB_AddItem(std::string id, std::string sItem);
+/* Nov 29 2016 */
+
 DLL_SPEC_IFACE  int   
 TOSDB_AddTopic(std::string id, TOS_Topics::TOPICS tTopic);
 
@@ -632,6 +637,9 @@ TOSDB_AddTopics(std::string id, topic_set_type tTopics);
 
 DLL_SPEC_IFACE  int   
 TOSDB_AddItems(std::string id, str_set_type sItems);
+
+DLL_SPEC_IFACE int   
+TOSDB_RemoveItem(std::string id, std::string sItem); 
 
 DLL_SPEC_IFACE int   
 TOSDB_RemoveTopic(std::string id, TOS_Topics::TOPICS tTopic); 

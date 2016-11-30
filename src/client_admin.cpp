@@ -47,7 +47,7 @@ typedef std::chrono::duration<long, std::milli>  milli_sec_ty;
 
 typedef DynamicIPCMaster::shem_chunk  shem_chunk_ty;
 
-LPCSTR LOG_NAME   = "client-log.log";
+LPCSTR LOG_NAME = "client-log.log";
 
 std::map<std::string,TOSDBlock*>  dde_blocks;
 
@@ -516,11 +516,11 @@ TOSDB_Add(std::string id, str_set_type sItems, topic_set_type tTopics)
         return -2;
     }    
 	
- /* remove NULL topics */
+    /* remove NULL topics */
     auto is_null = [&](TOS_Topics::TOPICS t)
                    { 
                        return t == TOS_Topics::TOPICS::NULL_TOPIC; 
-	               };    
+                   };    
 
     tTopics.erase(std::remove_if(tTopics.begin(), tTopics.end(), is_null), tTopics.end());	
 
@@ -624,6 +624,13 @@ int
 TOSDB_AddTopic(std::string id, TOS_Topics::TOPICS tTopic)
 {
     return TOSDB_Add(id, str_set_type(), tTopic);
+}
+
+
+int   
+TOSDB_AddItem(std::string id, std::string sItem)
+{
+    return TOSDB_Add(id(id, sItem, topic_set_type());
 }
 
 
@@ -739,10 +746,9 @@ TOSDB_RemoveTopic(std::string id, TOS_Topics::TOPICS tTopic)
         return -3;
     }   
 
-	/* OCT 30 2016 --- if not in block, check if in pre-cache, before returning error */
+    /* OCT 30 2016 --- if not in block, check if in pre-cache, before returning error */
     if( db->block->has_topic(tTopic) ){
-
-        for(const std::string & item : db->block->items())
+        for(auto & item : db->block->items())
         {
             ReleaseBuffer(tTopic, item, db); 
             if( RequestStreamOP(tTopic, item, db->timeout, TOSDB_SIG_REMOVE) ){
@@ -759,7 +765,6 @@ TOSDB_RemoveTopic(std::string id, TOS_Topics::TOPICS tTopic)
                 db->block->remove_item(item); 
             }  
         }
-
     }else if(db->topic_precache.find(tTopic) == db->topic_precache.end()){
         err = -4;  
     }
@@ -768,6 +773,15 @@ TOSDB_RemoveTopic(std::string id, TOS_Topics::TOPICS tTopic)
     return err;
     /* --- CRITICAL SECTION --- */
 }
+
+
+int   
+TOSDB_RemoveItem(std::string id, std::string sItem)
+{
+    return TOSDB_RemoveItem(id.c_str(), sItem.c_str());
+
+}
+
 
 int 
 TOSDB_RemoveItem(LPCSTR id, LPCSTR sItem)
@@ -799,8 +813,7 @@ TOSDB_RemoveItem(LPCSTR id, LPCSTR sItem)
 
     /* OCT 30 2016 --- if not in block, check if in pre-cache, before returning error */
     if( db->block->has_item(sItem) ){
-
-        for(const TOS_Topics::TOPICS topic : db->block->topics())
+        for(auto topic : db->block->topics())
         {
             ReleaseBuffer(topic, sItem, db); 
             if( RequestStreamOP(topic, sItem, db->timeout, TOSDB_SIG_REMOVE) ){
@@ -817,7 +830,6 @@ TOSDB_RemoveItem(LPCSTR id, LPCSTR sItem)
                 db->block->remove_topic(topic);
             }
         }
-
     }else if(db->item_precache.find(sItem) == db->item_precache.end()){
         err = -4;  
     }
@@ -826,6 +838,7 @@ TOSDB_RemoveItem(LPCSTR id, LPCSTR sItem)
     return err;
   /* --- CRITICAL SECTION --- */
 }
+
 
 int 
 TOSDB_CloseBlock(LPCSTR id)
@@ -855,9 +868,9 @@ TOSDB_CloseBlock(LPCSTR id)
         return -2;
     }  
 
-    for(const std::string & item : db->block->items())
-    {
-        for(TOS_Topics::TOPICS topic : db->block->topics()){
+    for(auto & item : db->block->items()){
+        for(auto topic : db->block->topics())
+        {
             ReleaseBuffer(topic, item, db);
             if( RequestStreamOP(topic, item, db->timeout, TOSDB_SIG_REMOVE) ){
                 ++err;
@@ -868,10 +881,8 @@ TOSDB_CloseBlock(LPCSTR id)
 
     dde_blocks.erase(id);       
 
-    /* try to spin-off block destruction - and potentially a large number of
-       internal dealloactions - to its own thread so we don't block the main */
-    del_thrd_hndl = CreateThread(NULL, 0, BlockCleanup, 
-                                 (LPVOID)db->block, 0, &(del_thrd_id));
+    /* spin-off block destruction to its own thread so we don't block main */
+    del_thrd_hndl = CreateThread(NULL, 0, BlockCleanup, (LPVOID)db->block, 0, &(del_thrd_id));
     if(!del_thrd_hndl){
         err = -3;
         TOSDB_LogH("THREAD", "using main thread to clean-up(THIS MAY BLOCK)"); 
@@ -879,6 +890,7 @@ TOSDB_CloseBlock(LPCSTR id)
     }
 
     delete db;
+
     return err;
     /* --- CRITICAL SECTION --- */
 }
@@ -895,7 +907,7 @@ TOSDB_CloseBlocks()
         /* need a copy, _CloseBlock removes from original */    
         std::insert_iterator<std::map<std::string,TOSDBlock*>> i(bcopy,bcopy.begin());
         std::copy(dde_blocks.begin(), dde_blocks.end(), i); 
-        for(const auto& b: bcopy){    
+        for(auto & b: bcopy){    
             if( TOSDB_CloseBlock(b.first.c_str()) )
                 ++err;
         }
@@ -1015,7 +1027,7 @@ TOSDB_SetLatency(UpdateLatency latency)
 
 
 const TOSDBlock* 
-GetBlockPtr(const std::string id,bool log)
+GetBlockPtr(const std::string id, bool log)
 {
     try{      
         return dde_blocks.at(id);

@@ -17,23 +17,74 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 
 #include "tos_databridge.h"
 
-/* NOTE: this 'shell' was thrown together to test the interface of 
-tos-databridge. It does not check input, format all output etc. etc. */
+/* 
+    NOTE: this shell is for testing/querying/debugging interface and engine. 
+
+   *** It DOES NOT check input, format all output etc. etc.***
+ */
 
 namespace{
 
-std::string cmmnd;
-std::string block;
-std::string item;
-std::string topic;
-size_type size;
-size_type nItems;
-size_type nTopics;
-char dtsB;
-long indx;
-pDateTimeStamp dtsRay;
-char **itemArray;
-char **topicArray;
+#define CHECK_DISPLAY_RET_DEF(r) \
+do{ \
+    if(r) \
+        std::cout<< "error: "<< r << std::endl; \
+    else \
+        std::cout<< "SUCCESS" << std::endl; \
+}
+
+#define CHECK_DISPLAY_RET_VAL(r,v) \
+do{ \
+    if(r) \
+        std::cout<< "error: "<< r << std::endl; \
+    else \
+        std::cout<< v << std::endl; \
+}
+
+#define CHECK_DISPLAY_RET_VAL_DTS(r,v,d) \
+do{ \
+    if(r) \
+        std::cout<< "error: "<< r << std::endl; \
+    else \
+        std::cout<< v << ' ' << d << std::endl; \
+}
+
+#define CHECK_DISPLAY_RET_BOOL(r,b) \
+do{ \
+    if(r) \
+        std::cout<< "error: "<< r << std::endl; \
+    else \
+        std::cout<< std::boolalpha << b << std::endl; \
+}
+
+#define CHECK_DISPLAY_RET_MULTI(r,array,n) \
+do{ \
+    if(r) \
+        std::cout<< "error: "<< r << std::endl; \
+    else{ \
+        for(size_type i = 0; i < n; ++i) \
+            std::cout<< array[i] << std::endl; \
+    } \
+}
+
+#define PROMPT_FOR_BLOCK_ITEM_TOPIC(block,item,topic) \
+do{ \
+    prompt<<"block id: "; \
+    prompt>> block; \
+    prompt<<"item: "; \
+    prompt>> item; \
+    prompt<<"topic: "; \
+    prompt>> topic; \
+}    
+
+#define PROMPT_FOR_BLOCK_ITEM_TOPIC(block,item,topic,index) \
+do{ \
+    PROMPT_FOR_BLOCK_ITEM_TOPIC(block,item,topic); \
+    prompt<<"index: "; \
+    prompt>> index; \
+\
+}    
+
 
 class stream_prompt {
     std::string _prmpt;
@@ -64,27 +115,114 @@ public:
 } prompt("[-->");
 
 
-void 
-get_block_item_topic();
+std::string admin_commands[] = {   
+    "Connect", 
+    "Disconnect", 
+    "IsConnected",
+    "CreateBlock", 
+    "CloseBlock", 
+    "CloseBlocks",
+    "GetBlockLimit",
+    "SetBlockLimit",   
+    "GetBlockCount",
+    "GetBlockIDs",
+    "GetBlockSize", 
+    "SetBlockSize",
+    "GetLatency", 
+    "SetLatency",
+    "Add",
+    "AddTopic",
+    "AddItem",
+    "AddTopics",
+    "AddItems", 
+    "RemoveTopic",
+    "RemoveItem",
+    "GetItemCount",
+    "GetTopicCount",
+    "GetTopicNames",
+    "GetItemNames",
+    "GetPreCachedTopicEnums",    
+    "GetPreCachedItemCount", 
+    "GetPreCachedTopicCount",
+    "GetPreCachedItemNames", 
+    "GetPreCachedTopicNames",
+    "GetTypeBits",
+    "GetTypeString",
+    "IsUsingDateTime",
+    "GetStreamOccupancy",
+    "GetMarkerPosition",
+    "IsMarkerDirty",
+    "DumpBufferStatus"
+};
+
+std::string get_val_commands[] = { 
+    "GetDouble",
+    "GetFloat",
+    "GetLongLong",
+    "GetLong",
+    "GetString",
+    "GetGeneric"
+};
+
+std::string get_ds_commands[] = {
+    "GetStreamSnapshotDoubles",
+    "GetStreamSnapshotFloats", 
+    "GetStreamSnapshotLongLongs",
+    "GetStreamSnapshotLongs",
+    "GetStreamSnapshotStrings",
+    "GetStreamSnapshotGenerics",
+    "GetStreamSnapshotDoublesFromMarker",
+    "GetStreamSnapshotFloatsFromMarker", 
+    "GetStreamSnapshotLongLongsFromMarker",
+    "GetStreamSnapshotLongsFromMarker",
+    "GetStreamSnapshotStringsFromMarker",
+};
+
+std::string get_frame_commands[] = {
+    "GetItemFrame",
+    "GetItemFrameStrings",
+    "GetItemFrameDoubles",
+    "GetItemFrameFloats",
+    "GetItemFrameLongLongs",
+    "GetItemFrameLongs",
+    "GetTopicFrame",
+    "GetTopicFrameStrings",
+    "GetTotalFrame"
+};
+
+bool 
+use_cpp_version(int recurse=1);
 
 void 
-get_block_item_topic_indx();
+on_cmd_commands();
+
+bool 
+on_cmd_admin(std::string cmd)
+
+bool 
+on_cmd_get(std::string cmd)
+
+bool 
+on_cmd_stream_snapshot(std::string cmd)
+
+bool 
+on_cmd_frame(std::string cmd)
+
+size_type 
+get_cstr_items(char ***p);
+
+size_type
+get_cstr_topics(char ***p);
 
 void 
-get_cstr_items();
+del_cstr_items(char **items, size_type nitems);
 
 void 
-get_cstr_topics();
-
-void 
-del_cstr_items();
-
-void 
-del_cstr_topics();
+del_cstr_topics(char **topics, size_type ntopics);
 
 template<typename T>
 void 
-deal_with_stream_data(size_type len, T* dataRay, bool show_dts);
+deal_with_stream_data(size_type len, T* dat, pDateTimeStamp dts=nullptr);
 
 template<typename T>
 void 
@@ -109,70 +247,14 @@ template<typename T>
 void 
 _getStreamSnapshotFromMarker(int(*func)(LPCSTR,LPCSTR,LPCSTR,T*,size_type,pDateTimeStamp,long,long*));
 
-std::string admin_commands[] = {
-    "AddDefault",
-    "Connect", "Disconnect", "IsConnected",
-    "CreateBlock", "CloseBlock", "CloseBlocks",
-    "GetBlockLimit","SetBlockLimit",   
-    "GetBlockCount",
-    "GetBlockIDs","GetBlockIDsCPP",
-    "GetBlockSize", "GetBlockSizeCPP", "SetBlockSize",
-    "GetLatency", "SetLatency",
-    "Add","AddTopic","AddItem","AddTopics","AddItems","AddCPP","AddTopicCPP","AddTopicsCPP","AddItemsCPP",
-    "RemoveTopic","RemoveItem","RemoveTopicCPP",
-    "GetItemCount","GetItemCountCPP","GetTopicCount","GetTopicCountCPP",
-    "GetTopicNames","GetItemNames","GetTopicNamesCPP","GetItemNamesCPP","GetTopicEnumsCPP",  
-    "GetPreCachedItemNamesCPP","GetPreCachedTopicNamesCPP","GetPreCachedTopicEnums",
-    "GetPreCachedItemCountCPP", "GetPreCachedTopicCountCPP",
-    "GetPreCachedItemCount", "GetPreCachedTopicCount",
-    "GetPreCachedItemNames", "GetPreCachedTopicNames",
-    "GetTypeBits","GetTypeString","IsUsingDateTime","IsUsingDateTimeCPP",
-    "GetStreamOccupancy","GetStreamOccupancyCPP",
-    "GetMarkerPosition","GetMarkerPositionCPP",
-    "IsMarkerDirty","IsMarkerDirty",
-    "DumpBufferStatus"
-};
-
-std::string get_val_commands[] = { 
-    "GetDouble","GetFloat","GetLongLong","GetLong","GetString",
-    "Get<generic>", "Get<double>","Get<float>","Get<longlong>","Get<long>","Get<std::string>"
-};
-
-std::string get_ds_commands[] = {
-    "GetStreamSnapshotDoubles",
-    "GetStreamSnapshotFloats", 
-    "GetStreamSnapshotLongLongs",
-    "GetStreamSnapshotLongs",
-    "GetStreamSnapshotStrings",
-    "GetStreamSnapshot<generic>",
-    "GetStreamSnapshot<double>",
-    "GetStreamSnapshot<float>",
-    "GetStreamSnapshot<long_long>",
-    "GetStreamSnapshot<long>",
-    "GetStreamSnapshot<std::string>",
-    "GetStreamSnapshotDoublesFromMarker",
-    "GetStreamSnapshotFloatsFromMarker", 
-    "GetStreamSnapshotLongLongsFromMarker",
-    "GetStreamSnapshotLongsFromMarker",
-    "GetStreamSnapshotStringsFromMarker",
-};
-
-std::string get_frame_commands[] = {
-    "GetItemFrame",
-    "GetItemFrameStrings",
-    "GetItemFrameDoubles",
-    "GetItemFrameFloats",
-    "GetItemFrameLongLongs",
-    "GetItemFrameLongs",
-    "GetTopicFrame",
-    "GetTopicFrameStrings",
-    "GetTotalFrame"
-};
 
 };
 
 int main(int argc, char* argv[])
 {  
+    std::string cmd;
+    char lpath[MAX_PATH+40+40];
+
     std::cout<<"[-------------------------------------------------------------]" <<std::endl;
     std::cout<<"[--                                                         --]" <<std::endl;
     std::cout<<"[--     Welcome to the TOS-DataBridge Debug Shell           --]" <<std::endl;
@@ -183,1090 +265,1226 @@ int main(int argc, char* argv[])
     std::cout<<"[-- This program is distributed WITHOUT ANY WARRANTY.       --]" <<std::endl;
     std::cout<<"[-- See the GNU General Public License for more details.    --]" <<std::endl;
     std::cout<<"[--                                                         --]" <<std::endl;
-    std::cout<<"[-- Use the 'Connect' command to connect to the Service.    --]" <<std::endl;
-    std::cout<<"[-- Type 'commands' for a list of commands; 'exit' to exit. --]" <<std::endl;
+    std::cout<<"[--   Use 'Connect' command to connect to the Service.      --]" <<std::endl;
+    std::cout<<"[--   Use 'commands' for a list of commands by category.    --]" <<std::endl;
+    std::cout<<"[--   Use 'exit' to exit.                                   --]" <<std::endl;
     std::cout<<"[--                                                         --]" <<std::endl;
     std::cout<<"[-- NOTE: Topics/Items are case sensitive; use upper-case   --]" <<std::endl;
     std::cout<<"[--                                                         --]" <<std::endl;
     std::cout<<"[-------------------------------------------------------------]" <<std::endl;
-
-    char lpath[MAX_PATH+40+40];
+    
     TOSDB_GetClientLogPath(lpath,MAX_PATH+40+40);
     std::cout<<"LOG: " << lpath << std::endl << std::endl;
 
-    while(1)
-    {    
-        try
-        {
-            prompt>> cmmnd ;    
-            if(cmmnd == "commands")
-            {
-              std::string i_cmmnd;
-              int count = 0;          
-              while(1)
-              {
-                prompt<<"What type of command?"<<std::endl<<std::endl;;
-                std::cout<<"- admin"<<std::endl;
-                std::cout<<"- get"<<std::endl;
-                std::cout<<"- stream-snapshot"<<std::endl;
-                std::cout<<"- frame"<<std::endl;
-                std::cout<<"- back"<<std::endl<<std::endl;
-                prompt>> i_cmmnd;
-                std::cin.get();
-                if(i_cmmnd == "admin")
-                {        
-                  std::cout<< "ADMINISTRATIVE COMMANDS:" <<std::endl<<std::endl;
-                  for(auto & x : ILSet< std::string>(admin_commands))
-                  {      
-                    std::cout<<"- "<< x << std::endl;
-                    if(!(++count % 20))
-                    {            
-                      std::cout<<"(Press Enter)";
-                      std::cin.get();
-                      std::cout<< std::endl;
-                    }          
-                  }
-                  count = 0;
-                  std::cout<< std::endl;
-                  continue;
-                }
-                if(i_cmmnd == "get")
-                {  
-                  std::cout<< "GET COMMANDS:" <<std::endl<<std::endl;
-                  for(auto & x : ILSet< std::string>(get_val_commands))                
-                    std::cout<<"- "<< x << std::endl;        
-                  std::cout<< std::endl;
-                  continue;
-                }
-                if(i_cmmnd == "stream-snapshot")
-                {  
-                  std::cout<< "STREAM SNAPSHOT COMMANDS:" <<std::endl<<std::endl;
-                  for(auto & x : ILSet< std::string>(get_ds_commands))                
-                    std::cout<<"- "<< x << std::endl;            
-                  std::cout<< std::endl;
-                  continue;
-                }
-                if(i_cmmnd == "frame")
-                {  
-                  std::cout<< "FRAME COMMANDS:" <<std::endl<<std::endl;
-                  for(auto & x : ILSet< std::string>(get_frame_commands))                
-                    std::cout<<"- "<< x << std::endl;          
-                  std::cout<< std::endl;
-                  continue;
-                }
-                if(i_cmmnd == "back")
+    while(1){    
+        try{
+            prompt>> cmd;   
+            if(cmd == "exit" || cmd == "quit" || cmd == "close")
+                break;
+            else if(cmd == "commands")
+                on_cmd_commands();
+            else{
+                if( on_cmd_admin(cmd) 
+                    || on_cmd_get(cmd)
+                    || on_cmd_stream_snapshot(cmd)
+                    || on_cmd_frame(cmd) )
                 {
-                  break;
+                    continue;
                 }
-                std::cout<< "BAD COMMAND!"<<std::endl;
-              }      
-              continue;
-            }
-            if(cmmnd == "Connect")
-            {      
-              int ret = TOSDB_Connect();
-              if(ret)  std::cout<<"error: "<<ret<<std::endl;
-              else std::cout<<"Success!"<<std::endl;
-              continue;
-            }
-            if(cmmnd == "Disconnect")
-            {
-              int ret = TOSDB_Disconnect();
-              if(ret)  std::cout<<"error: "<<ret<<std::endl;
-              else std::cout<<"Success!"<<std::endl;
-              continue;
-            }
-            if(cmmnd == "IsConnected")
-            {
-              std::cout<< std::boolalpha << (TOSDB_IsConnected() == 1) << std::endl;
-              continue;
-            }
-          
-            if(cmmnd == "CreateBlock")
-            {
-              unsigned long timeout;
-              prompt<<"block id: ";
-              prompt>> block;
-              prompt<<"block size: ";
-              prompt>> size;
-              prompt<<"use datetime stamp?(y/n): ";    
-              std::cin.get();
-              prompt>> dtsB ;
-              prompt<<"timeout: ";
-              prompt>> timeout;
-              int ret =  TOSDB_CreateBlock(block.c_str(), size, (dtsB == 'y'), timeout);      
-              if(ret)  std::cout<<"error: "<<ret<<std::endl;
-              else std::cout<<"Success!"<<std::endl;
-              continue;      
-            }
-            if(cmmnd == "CloseBlock")
-            {
-              prompt<<"block id: ";
-              prompt>> block;          
-              int ret =  TOSDB_CloseBlock(block.c_str());
-              if(ret)  std::cout<<"error: "<<ret<<std::endl;
-              else std::cout<<"Success!"<<std::endl;
-              continue;
-            }
-            if(cmmnd == "CloseBlocks")
-            {
-              int ret =  TOSDB_CloseBlocks();
-              if(ret)  std::cout<<"error: "<<ret<<std::endl;
-              else std::cout<<"Success!"<<std::endl;
-              continue;
-            }
-          
-            if(cmmnd == "GetBlockLimit")
-            {      
-              std::cout<< TOSDB_GetBlockLimit() <<std::endl;
-              continue;
-            }
-            if(cmmnd == "SetBlockLimit")
-            {    
-              prompt<<"block limit: ";
-              prompt>> size;
-              std::cout<< TOSDB_SetBlockLimit(size)<<std::endl;
-              continue;
-            }
-            if(cmmnd == "GetBlockCount")
-            {    
-              std::cout<< TOSDB_GetBlockCount() <<std::endl;
-              continue;
-            }
-            if(cmmnd == "GetBlockIDs")
-            {              
-              size_type bCount = TOSDB_GetBlockCount();
-              char** strArray = NewStrings(bCount, TOSDB_BLOCK_ID_SZ);
-              int ret = TOSDB_GetBlockIDs(strArray,bCount,TOSDB_BLOCK_ID_SZ);
-              if(ret) std::cout<< "error: "<<ret<<std::endl;
-              else
-                for(size_type i = 0; i < bCount; ++i)
-                  std::cout<< strArray[i] <<std::endl;
-              DeleteStrings(strArray, bCount);
-              continue;
-            }
-            if(cmmnd == "GetBlockIDsCPP")
-            {                
-              str_set_type ids = TOSDB_GetBlockIDs();
-              for(const auto& str : ids)
-                std::cout<< str << std::endl;
-              continue;
-            }
-
-            if(cmmnd == "GetBlockSize")
-            {
-              prompt<<"block id: ";
-              prompt>> block;
-              size_type sz;
-              int ret = TOSDB_GetBlockSize(block.c_str(), &sz);
-              if(ret)  std::cout<<"error: "<<ret<<std::endl;
-              else std::cout<< sz <<std::endl;      
-              continue;
-            }
-            if(cmmnd == "GetBlockSizeCPP")
-            {
-              prompt<<"block id: ";
-              prompt>> block;
-              std::cout<< TOSDB_GetBlockSize(block) <<std::endl;
-              continue;
-            }
-            if(cmmnd == "SetBlockSize")
-            {
-              prompt<<"block id: ";
-              prompt>> block;
-              prompt<<"block size: ";
-              prompt>> size;
-              int ret = TOSDB_SetBlockSize(block.c_str(), size);
-              if(ret)  std::cout<<"error: "<<ret<<std::endl;
-              else std::cout<< "Success!" <<std::endl;
-              continue;
-            }
-            if(cmmnd == "GetLatency")
-            {      
-              std::cout<< TOSDB_GetLatency() <<std::endl;
-              continue;
-            }
-            if(cmmnd == "SetLatency")
-            {
-              unsigned long lat;
-              prompt<<"enter latency value(milleseconds)";
-              prompt>> lat;        
-              TOSDB_SetLatency((UpdateLatency)lat);
-              continue;
-            }
-            if(cmmnd == "Add")
-            {      
-              prompt<<"block id: "; 
-              prompt>> block;    
-              get_cstr_items();
-              get_cstr_topics();      
-              int ret = TOSDB_Add(block.c_str(), (const char**)itemArray, nItems, (const char**)topicArray, nTopics);
-              if(ret) std::cout<< "error: "<< ret <<std::endl;
-              else std::cout<< "Success!"<<std::endl;
-              del_cstr_items();
-              del_cstr_topics();      
-              continue;
-            }
-            if(cmmnd == "AddTopic")
-            {    
-              prompt<<"block id: ";
-              prompt>> block;
-              prompt<<"topic: ";
-              prompt>> topic;    
-              int ret =  TOSDB_AddTopic(block.c_str(), topic.c_str());
-              if(ret) std::cout<< "error: "<< ret <<std::endl;
-              else std::cout<< "Success!"<<std::endl;
-              continue;
-            }
-            if(cmmnd == "AddItem")
-            {    
-              prompt<<"block id: ";
-              prompt>> block;
-              prompt<<"item: ";
-              prompt>> item;    
-              int ret =  TOSDB_AddItem(block.c_str(), item.c_str());
-              if(ret) std::cout<< "error: "<< ret <<std::endl;
-              else std::cout<< "Success!"<<std::endl;
-              continue;
-            }
-            if(cmmnd == "AddTopics")
-            {      
-              prompt<<"block id: ";
-              prompt>> block;
-              get_cstr_topics();      
-              int ret = TOSDB_AddTopics(block.c_str(), (const char**)topicArray, nTopics);
-              if(ret) std::cout<< "error: "<< ret <<std::endl;
-              else std::cout<< "Success!"<<std::endl;
-              del_cstr_topics();
-              continue;
-            }
-            if(cmmnd == "AddItems")
-            {        
-              prompt<<"block id: ";
-              prompt>> block;
-              get_cstr_items();    
-              int ret =  TOSDB_AddItems(block.c_str(), (const char**)itemArray, nItems);
-              if(ret) std::cout<< "error: "<< ret <<std::endl;
-              else std::cout<< "Success!"<<std::endl;
-              del_cstr_items();      
-              continue;
-            }
-            if(cmmnd == "AddCPP")
-            {      
-              prompt<<"block id: ";
-              prompt>> block;    
-              get_cstr_items();
-              get_cstr_topics();      
-              int ret =  TOSDB_Add(
-                    block, 
-                    str_set_type(itemArray,nItems), 
-                    topic_set_type(topicArray,nTopics,[=](LPCSTR str){ return TOS_Topics::MAP()[str];}));
-              if(ret) std::cout<< "error: "<< ret <<std::endl;
-              else std::cout<< "Success!"<<std::endl;
-              del_cstr_items();
-              del_cstr_topics();      
-              continue;
-            }
-            if(cmmnd == "AddTopicCPP")
-            {    
-              prompt<<"block id: ";
-              prompt>> block;
-              prompt<<"topic: ";
-              prompt>> topic;    
-              int ret =  TOSDB_AddTopic(block, TOS_Topics::MAP()[topic]);
-              if(ret) std::cout<< "error: "<< ret <<std::endl;
-              else std::cout<< "Success!"<<std::endl;
-              continue;
-            }
-            if(cmmnd == "AddTopicsCPP")
-            {      
-              prompt<<"block id: ";
-              prompt>> block;
-              get_cstr_topics();      
-              int ret = TOSDB_AddTopics(
-                    block, 
-                    topic_set_type(topicArray, nTopics, 
-                    [=](LPCSTR str){ return TOS_Topics::MAP()[str]; }));
-              if(ret) std::cout<< "error: "<< ret <<std::endl;
-              else std::cout<< "Success!"<<std::endl;
-              del_cstr_topics();
-              continue;
-            }
-            if(cmmnd == "AddItemsCPP")
-            {        
-              prompt<<"block id: ";
-              prompt>> block;
-              get_cstr_items();    
-              int ret = TOSDB_AddItems(
-                    block, 
-                    str_set_type(itemArray, nItems));
-              if(ret) std::cout<< "error: "<< ret <<std::endl;
-              else std::cout<< "Success!"<<std::endl;
-              del_cstr_items();      
-              continue;
-            }
-
-            if(cmmnd == "RemoveTopic")
-            {    
-              prompt<<"block id: ";
-              prompt>> block;
-              prompt<<"topic: ";
-              prompt>> topic;    
-              int ret =  TOSDB_RemoveTopic(block.c_str(), topic.c_str());
-              if(ret) std::cout<< "error: "<< ret <<std::endl;
-              else std::cout<< "Success!"<<std::endl;
-              continue;
-            }
-            if(cmmnd == "RemoveItem")
-            {    
-              prompt<<"block id: ";
-              prompt>> block;
-              prompt<<"item: ";
-              prompt>> item;    
-              int ret =  TOSDB_RemoveItem(block.c_str(), item.c_str());
-              if(ret) std::cout<< "error: "<< ret <<std::endl;
-              else std::cout<< "Success!"<<std::endl;
-              continue;
-            }
-            if(cmmnd == "RemoveTopicCPP")
-            {    
-              prompt<<"block id: ";
-              prompt>> block;
-              prompt<<"topic: ";
-              prompt>> topic;    
-              int ret =  TOSDB_RemoveTopic(block, TOS_Topics::MAP()[topic]);
-              if(ret) std::cout<< "error: "<< ret <<std::endl;
-              else std::cout<< "Success!"<<std::endl;
-              continue;
-            }
-
-            if(cmmnd == "GetItemCount")
-            {
-              prompt<<"block id: ";
-              prompt>> block;
-              size_type itemLen;
-              int ret = TOSDB_GetItemCount(block.c_str(), &itemLen);
-              if(ret) std::cout<< "error: "<< ret <<std::endl;
-              else std::cout<< itemLen<<std::endl;
-              continue;
-            }
-            if(cmmnd == "GetItemCountCPP")
-            {
-              prompt<<"block id: ";
-              prompt>> block;
-              std::cout<< TOSDB_GetItemCount(block) <<std::endl;
-              continue;
-            }
-            if(cmmnd == "GetTopicCount")
-            {
-              prompt<<"block id: ";
-              prompt>> block;
-              size_type topicLen;
-              int ret = TOSDB_GetTopicCount(block.c_str(), &topicLen);
-              if(ret) std::cout<< "error: "<< ret <<std::endl;
-              else std::cout<< topicLen<<std::endl;
-              continue;
-            }
-            if(cmmnd == "GetTopicCountCPP")
-            {
-              prompt<<"block id: ";
-              prompt>> block;
-              std::cout<< TOSDB_GetTopicCount(block) <<std::endl;
-              continue;
-            }
-
-            if(cmmnd == "GetTopicNames")
-            {    
-              prompt<<"block id: ";
-              prompt>> block;
-              size_type topicLen = TOSDB_GetTopicCount(block);
-              char** strArray = NewStrings(topicLen, TOSDB_MAX_STR_SZ);
-              int ret = TOSDB_GetTopicNames(block.c_str(),strArray,topicLen,TOSDB_MAX_STR_SZ);
-              if(ret) std::cout<< "error: "<< ret <<std::endl;
-              else 
-                for(size_type i = 0; i < topicLen; ++i)
-                  std::cout<< strArray[i] <<std::endl;
-              DeleteStrings(strArray, topicLen);
-              continue;
-            }
-            if(cmmnd == "GetItemNames")
-            {
-              prompt<<"block id: ";
-              prompt>> block;
-              size_type itemLen = TOSDB_GetItemCount(block);
-              char** strArray = NewStrings(itemLen, TOSDB_MAX_STR_SZ);
-              int ret = TOSDB_GetItemNames(block.c_str(),strArray,itemLen,TOSDB_MAX_STR_SZ);
-              if(ret) std::cout<< "error: "<< ret <<std::endl;
-              else 
-                for(size_type i = 0; i < itemLen; ++i)
-                  std::cout<< strArray[i] <<std::endl;
-              DeleteStrings(strArray, itemLen);
-              continue;
-            }
-            if(cmmnd == "GetTopicNamesCPP")
-            {
-              str_set_type topicSet;
-              prompt<<"block id: ";
-              prompt>> block;
-              topicSet = TOSDB_GetTopicNames(block);
-              for(auto & t : topicSet)
-                std::cout<< t << std::endl;
-              continue;
-            }
-            if(cmmnd == "GetItemNamesCPP")
-            {    
-              str_set_type itemSet;
-              prompt<<"block id: ";
-              prompt>> block;
-              itemSet = TOSDB_GetItemNames(block);
-              for(auto & i : itemSet)
-                std::cout<< i << std::endl;
-              continue;
-            }
-            if(cmmnd == "GetTopicEnumsCPP")
-            {    
-              prompt<<"block id: ";
-              prompt>> block;      
-              topic_set_type topSet = TOSDB_GetTopicEnums(block);
-              for(auto & t : topSet)
-                std::cout<< (TOS_Topics::enum_value_type)t <<' '<< TOS_Topics::MAP()[t] << std::endl;
-              continue;
-            }
-            
-            if(cmmnd == "GetPreCachedTopicNamesCPP")
-            {    
-              prompt<<"block id: ";
-              prompt>> block;
-              str_set_type topSet = TOSDB_GetPreCachedTopicNames(block);
-              for(auto & t : topSet)
-                std::cout<< t << std::endl;
-              continue;
-            }
-            if(cmmnd == "GetPreCachedItemNamesCPP")
-            {    
-              prompt<<"block id: ";
-              prompt>> block;
-              str_set_type itemSet = TOSDB_GetPreCachedItemNames(block);
-              for(auto & t : itemSet)
-                std::cout<< t << std::endl;
-              continue;
-            }
-            if(cmmnd == "GetPreCachedTopicEnumsCPP")
-            {    
-              prompt<<"block id: ";
-              prompt>> block;      
-              topic_set_type topSet = TOSDB_GetPreCachedTopicEnums(block);
-              for(auto & t : topSet)
-                std::cout<< (TOS_Topics::enum_value_type)t << ' ' << TOS_Topics::MAP()[t] << std::endl;
-              continue;
-            }    
-
-
-            /*** --- BEGIN --- Oct 30 2016 ***/
-
-
-            if(cmmnd == "GetPreCachedItemCount")
-            {
-              prompt<<"block id: ";
-              prompt>> block;
-              size_type itemLen;
-              int ret = TOSDB_GetPreCachedItemCount(block.c_str(), &itemLen);
-              if(ret) std::cout<< "error: "<< ret <<std::endl;
-              else std::cout<< itemLen<<std::endl;
-              continue;
-            }
-            if(cmmnd == "GetPreCachedItemCountCPP")
-            {
-              prompt<<"block id: ";
-              prompt>> block;
-              std::cout<< TOSDB_GetPreCachedItemCount(block) <<std::endl;
-              continue;
-            }
-            if(cmmnd == "GetPreCachedTopicCount")
-            {
-              prompt<<"block id: ";
-              prompt>> block;
-              size_type topicLen;
-              int ret = TOSDB_GetPreCachedTopicCount(block.c_str(), &topicLen);
-              if(ret) std::cout<< "error: "<< ret <<std::endl;
-              else std::cout<< topicLen<<std::endl;
-              continue;
-            }
-            if(cmmnd == "GetPreCachedTopicCountCPP")
-            {
-              prompt<<"block id: ";
-              prompt>> block;
-              std::cout<< TOSDB_GetPreCachedTopicCount(block) <<std::endl;
-              continue;
-            }
-
-            if(cmmnd == "GetPreCachedTopicNames")
-            {    
-              prompt<<"block id: ";
-              prompt>> block;
-              size_type topicLen = TOSDB_GetPreCachedTopicCount(block);
-              char** strArray = NewStrings(topicLen, TOSDB_MAX_STR_SZ);
-              int ret = TOSDB_GetPreCachedTopicNames(block.c_str(),strArray,topicLen,TOSDB_MAX_STR_SZ);
-              if(ret) std::cout<< "error: "<< ret <<std::endl;
-              else 
-                for(size_type i = 0; i < topicLen; ++i)
-                  std::cout<< strArray[i] <<std::endl;
-              DeleteStrings(strArray, topicLen);
-              continue;
-            }
-            if(cmmnd == "GetPreCachedItemNames")
-            {
-              prompt<<"block id: ";
-              prompt>> block;
-              size_type itemLen = TOSDB_GetPreCachedItemCount(block);
-              char** strArray = NewStrings(itemLen, TOSDB_MAX_STR_SZ);
-              int ret = TOSDB_GetPreCachedItemNames(block.c_str(),strArray,itemLen,TOSDB_MAX_STR_SZ);
-              if(ret) std::cout<< "error: "<< ret <<std::endl;
-              else 
-                for(size_type i = 0; i < itemLen; ++i)
-                  std::cout<< strArray[i] <<std::endl;
-              DeleteStrings(strArray, itemLen);
-              continue;
-            }
-
-            /*** --- END --- Oct 30 2016 ***/
-
-
-            if(cmmnd == "GetTypeBits")
-            {
-              prompt<<"topic: ";
-              prompt>> topic;
-              type_bits_type bits;
-              int ret = TOSDB_GetTypeBits(topic.c_str(), &bits); 
-              if(ret) std::cout<<"error: "<<ret<<std::endl;
-              else std::cout<< bits<<std::endl;
-              continue;
-            }
-            if(cmmnd == "GetTypeString")
-            {
-              char str[256];
-              prompt<<"topic: ";
-              prompt>> topic;
-              int ret = TOSDB_GetTypeString(topic.c_str(), str, 256);
-              if(ret) std::cout<<"error: "<<ret<<std::endl;
-              else std::cout<< str << std::endl;
-              continue;
-            }
-            if(cmmnd == "GetTypeBitsCPP")
-            {
-              prompt<<"topic: ";
-              prompt>> topic;      
-              std::cout<< TOSDB_GetTypeBits(TOS_Topics::MAP()[topic])<<std::endl;       
-              continue;
-            }
-            if(cmmnd == "GetTypeStringCPP")
-            {      
-              prompt<<"topic: ";
-              prompt>> topic;
-              std::cout<< TOSDB_GetTypeString(TOS_Topics::MAP()[topic])<<std::endl;      
-              continue;
-            }
-
-            if(cmmnd == "IsUsingDateTime")
-            {      
-              prompt<<"block id: ";
-              prompt>> block;
-              unsigned int b;
-              int ret = TOSDB_IsUsingDateTime(block.c_str(), &b);
-              if(ret) std::cout<<"error: "<<ret<<std::endl;
-              else std::cout<< std::boolalpha << (b==1) <<std::endl;
-              continue;
-            }
-            if(cmmnd == "IsUsingDateTimeCPP")
-            {      
-              prompt<<"block id: ";
-              prompt>> block;
-              std::cout<< std::boolalpha << TOSDB_IsUsingDateTime(block) <<std::endl;
-              continue;
-            }
-            if(cmmnd == "GetStreamOccupancy")
-            {
-              get_block_item_topic();    
-              size_type sz;
-              int ret = TOSDB_GetStreamOccupancy(block.c_str(), item.c_str(), topic.c_str(), &sz);
-              if(ret) std::cout<<"error: "<<ret<<std::endl;
-              else std::cout<< sz <<std::endl;
-              continue;
-            }
-            if(cmmnd == "GetStreamOccupancyCPP")
-            {
-              get_block_item_topic();    
-              std::cout<< TOSDB_GetStreamOccupancy(block, item, TOS_Topics::MAP()[topic])<<std::endl;    
-              continue;
-            }
-            if(cmmnd == "GetMarkerPosition")
-            {
-              get_block_item_topic();    
-              long long sz;
-              int ret = TOSDB_GetMarkerPosition(block.c_str(), item.c_str(), topic.c_str(), &sz);
-              if(ret) std::cout<<"error: "<<ret<<std::endl;
-              else std::cout<< sz <<std::endl;
-              continue;
-            }
-            if(cmmnd == "GetMarkerPositionCPP")
-            {
-              get_block_item_topic();    
-              std::cout<< TOSDB_GetMarkerPosition(block, item, TOS_Topics::MAP()[topic])<<std::endl;    
-              continue;
-            }
-            if(cmmnd == "IsMarkerDirty")
-            {      
-              get_block_item_topic(); 
-              unsigned int b;
-              int ret = TOSDB_IsMarkerDirty(block.c_str(), item.c_str(),topic.c_str(), &b);
-              if(ret) std::cout<<"error: "<<ret<<std::endl;
-              else std::cout<< std::boolalpha << (b==1) <<std::endl;
-              continue;
-            }
-            if(cmmnd == "IsMarkerDirty")
-            {      
-              get_block_item_topic(); 
-              std::cout<< std::boolalpha << TOSDB_IsMarkerDirty(block, item,TOS_Topics::MAP()[topic]) <<std::endl;
-              continue;
-            }
-            if(cmmnd == "DumpBufferStatus")
-            {        
-              TOSDB_DumpSharedBufferStatus();
-              continue;
-            }
-
-            if(cmmnd == "GetDouble")
-            {
-              _get(TOSDB_GetDouble);
-              continue;
-            }
-            if(cmmnd == "GetFloat")
-            {
-              _get(TOSDB_GetFloat);
-              continue;
-            }
-            if(cmmnd == "GetLongLong")
-            {
-              _get(TOSDB_GetLongLong);
-              continue;
-            }
-            if(cmmnd == "GetLong")
-            {
-              _get(TOSDB_GetLong);
-              continue;
-            }
-            if(cmmnd == "GetString")
-            {
-              char str[100];
-              DateTimeStamp dts;
-              get_block_item_topic_indx();
-              int ret = TOSDB_GetString(block.c_str(),item.c_str(),topic.c_str(),indx,str,100,&dts);
-              if(ret) std::cout<<"error: "<<ret<<std::endl;
-              else std::cout<< str<<' '<<dts<<std::endl;
-              continue;
-            }
-
-            if(cmmnd == "Get<generic>")
-            {      
-              _get< generic_type >();    
-              continue; 
-            }
-            if(cmmnd == "Get<double>")
-            {      
-              _get< double >();    
-              continue; 
-            }
-            if(cmmnd == "Get<float>")
-            {      
-              _get< float >();    
-              continue; 
-            }
-            if(cmmnd == "Get<longlong>")
-            {      
-              _get< long long >();    
-              continue; 
-            }
-            if(cmmnd == "Get<long>")
-            {      
-              _get< long >();    
-              continue; 
-            }
-            if(cmmnd == "Get<std::string>")
-            {      
-              _get< std::string >();    
-              continue; 
-            }
-            if(cmmnd == "GetStreamSnapshotDoubles")
-            {
-              _getStreamSnapshot<double>(TOSDB_GetStreamSnapshotDoubles);
-              continue;
-            }
-            if(cmmnd == "GetStreamSnapshotFloats")
-            {
-              _getStreamSnapshot<float>(TOSDB_GetStreamSnapshotFloats);
-              continue;
-            }
-            if(cmmnd == "GetStreamSnapshotLongLongs")
-            {
-              _getStreamSnapshot<long long>(TOSDB_GetStreamSnapshotLongLongs);
-              continue;
-            }
-            if(cmmnd == "GetStreamSnapshotLongs")
-            {
-              _getStreamSnapshot<long>(TOSDB_GetStreamSnapshotLongs);
-              continue;
-            }
-            if(cmmnd == "GetStreamSnapshotStrings")
-            {
-              size_type len;
-              long beg, end;
-              get_block_item_topic();
-              prompt<<"length of array to pass: ";
-              prompt>>len;
-              char** dataRay = NewStrings(len, TOSDB_STR_DATA_SZ - 1);
-              dtsRay = new DateTimeStamp[len];
-              prompt<<"beginning datastream index: ";
-              prompt>>beg;
-              prompt<<"ending datastream index: ";
-              prompt>>end;
-              int ret = TOSDB_GetStreamSnapshotStrings(block.c_str(),item.c_str(),topic.c_str(),
-                                                       dataRay,len,TOSDB_STR_DATA_SZ,dtsRay,end,beg);
-              if(ret) std::cout<<"error: "<<ret<<std::endl;
-              else deal_with_stream_data(len, dataRay,false);
-              DeleteStrings(dataRay, len);
-              delete dtsRay;
-              continue;
-            }
-
-            if(cmmnd == "GetStreamSnapshot<double>") 
-            {      
-              _getStreamSnapshot< double >();
-              continue;
-            }    
-            if(cmmnd == "GetStreamSnapshot<float>") 
-            {      
-              _getStreamSnapshot< float >();
-              continue;
-            }
-            if(cmmnd == "GetStreamSnapshot<long_long>") 
-            {      
-              _getStreamSnapshot< long long >();
-              continue;
-            }
-            if(cmmnd == "GetStreamSnapshot<long>") 
-            {      
-              _getStreamSnapshot< long >();
-              continue;
-            }
-            if(cmmnd == "GetStreamSnapshot<std::string>") 
-            {      
-              _getStreamSnapshot< std::string >();
-              continue;
-            }
-            if(cmmnd == "GetStreamSnapshot<generic>") 
-            {      
-              _getStreamSnapshot< generic_type >();
-              continue;
-            }
-
-            /********/
-
-            if(cmmnd == "GetStreamSnapshotDoublesFromMarker")
-            {
-              _getStreamSnapshotFromMarker<double>(
-                TOSDB_GetStreamSnapshotDoublesFromMarker);
-              continue;
-            }
-            if(cmmnd == "GetStreamSnapshotFloatsFromMarker")
-            {
-              _getStreamSnapshotFromMarker<float>(
-                TOSDB_GetStreamSnapshotFloatsFromMarker);
-              continue;
-            }
-            if(cmmnd == "GetStreamSnapshotLongLongsFromMarker")
-            {
-              _getStreamSnapshotFromMarker<long long>(
-                TOSDB_GetStreamSnapshotLongLongsFromMarker);
-              continue;
-            }
-            if(cmmnd == "GetStreamSnapshotLongsFromMarker")
-            {
-              _getStreamSnapshotFromMarker<long>(
-                TOSDB_GetStreamSnapshotLongsFromMarker);
-              continue;
-            }
-            if(cmmnd == "GetStreamSnapshotStringsFromMarker")
-            {
-              size_type len;
-              long beg, get_size;
-              get_block_item_topic();
-              prompt<<"length of array to pass: ";
-              prompt>>len;
-              char** dataRay = NewStrings(len, TOSDB_STR_DATA_SZ - 1);
-              dtsRay = new DateTimeStamp[len];
-              prompt<<"beginning datastream index: ";
-              prompt>>beg;         
-              int ret = TOSDB_GetStreamSnapshotStringsFromMarker(
-                block.c_str(),item.c_str(),topic.c_str(),dataRay,len,
-                TOSDB_STR_DATA_SZ,dtsRay,beg, &get_size);
-              if(ret) std::cout<<"error: "<<ret<<std::endl;
-              else deal_with_stream_data(len, dataRay,false);
-              DeleteStrings(dataRay, len);
-              delete dtsRay;
-              continue;
-            }
-
-            /*******/
-
-            if(cmmnd == "GetItemFrame") 
-            {      
-              prompt<<"block id: ";
-              prompt>> block;
-              prompt<<"topic: ";
-              prompt>> topic;  
-              prompt<<"get datetime stamp?(y/n): ";    
-              std::cin.get();
-              prompt>> dtsB ;
-              if(dtsB == 'y')
-                std::cout<< TOSDB_GetItemFrame<true>(block,TOS_Topics::MAP()[topic]);
-              else
-                std::cout<< TOSDB_GetItemFrame<false>(block,TOS_Topics::MAP()[topic]);          
-              std::cout<<std::endl;
-              continue;
-            }
-            if(cmmnd == "GetItemFrameDoubles")
-            {  
-              _getItemFrame(TOSDB_GetItemFrameLongs);      
-              continue;
-            }
-            if(cmmnd == "GetItemFrameFloats")
-            {  
-              _getItemFrame(TOSDB_GetItemFrameLongs);      
-              continue;
-            }
-            if(cmmnd == "GetItemFrameLongLongs")
-            {  
-              _getItemFrame(TOSDB_GetItemFrameLongs);      
-              continue;
-            }
-            if(cmmnd == "GetItemFrameLongs")
-            {  
-              _getItemFrame(TOSDB_GetItemFrameLongs);      
-              continue;
-            }
-            if(cmmnd == "GetItemFrameStrings")
-            {  
-              prompt<<"block id: ";
-              prompt>> block;
-              prompt<<"topic: ";
-              prompt>> topic;    
-              size_type nItems;
-              TOSDB_GetItemCount(block.c_str(), &nItems);
-              char** dataRay = NewStrings(nItems, TOSDB_STR_DATA_SZ - 1);
-              char** labelRay = NewStrings(nItems, TOSDB_STR_DATA_SZ - 1);    
-              dtsRay = new DateTimeStamp[ nItems ];
-              int ret = TOSDB_GetItemFrameStrings(block.c_str(),topic.c_str(),dataRay,nItems,
-                                                  TOSDB_STR_DATA_SZ,labelRay,TOSDB_STR_DATA_SZ,dtsRay);
-              if(ret) std::cout<<"error: "<<ret<<std::endl;
-              else 
-                for(size_type i = 0; i < nItems; ++i)
-                  std::cout<<' '<<labelRay[i]<<' '<<dataRay[i]<<' '<<dtsRay[i]<<std::endl;
-              DeleteStrings(dataRay, nItems);
-              DeleteStrings(labelRay, nItems);
-              delete dtsRay;
-              continue;      
-            }  
-
-            if(cmmnd == "GetTopicFrameStrings")
-            {        
-              prompt<<"block id: ";
-              prompt>> block;
-              prompt<<"item: ";
-              prompt>> item;    
-              size_type nItems;
-              TOSDB_GetItemCount(block.c_str(), &nItems);
-              char** dataRay = NewStrings(nTopics, TOSDB_STR_DATA_SZ -1);
-              char** labelRay = NewStrings(nTopics, TOSDB_STR_DATA_SZ - 1);  
-              dtsRay = new DateTimeStamp[ nTopics ];
-              int ret = TOSDB_GetTopicFrameStrings(block.c_str(),item.c_str(),dataRay,nTopics,
-                                                   TOSDB_STR_DATA_SZ,labelRay,TOSDB_STR_DATA_SZ,dtsRay);
-              if(ret) std::cout<<"error: "<<ret<<std::endl;
-              else
-                for(size_type i = 0; i < nTopics; ++i)
-                  std::cout<<labelRay[i]<<' '<<dataRay[i]<<' '<<dtsRay[i]<<std::endl;
-              DeleteStrings(dataRay, nTopics);
-              DeleteStrings(labelRay, nTopics);
-              delete dtsRay;
-              continue;      
-            }
-
-            if(cmmnd == "GetTopicFrame") 
-            {      
-              prompt<<"block id: ";
-              prompt>> block;
-              prompt<<"item: ";
-              prompt>> item;  
-              prompt<<"get datetime stamp?(y/n): ";    
-              std::cin.get();
-              prompt>> dtsB ;
-              if(dtsB == 'y')      
-                std::cout<< TOSDB_GetTopicFrame<true>(block,item) <<std::endl;      
-              else
-                std::cout<< TOSDB_GetTopicFrame<false>(block,item) <<std::endl;                  
-            
-              continue;
-            }
-            if(cmmnd == "GetTotalFrame")
-            {
-              prompt<<"block id:";
-              prompt>>block;
-              prompt<<"get datetime stamp?(y/n): ";
-              std::cin.get();
-              prompt>> dtsB;
-              if(dtsB == 'y')
-                std::cout<< TOSDB_GetTotalFrame<true>(block) <<std::endl;
-              else
-                std::cout<< TOSDB_GetTotalFrame<false>(block)<<std::endl;
-              continue;
-            }
-          
-            if(cmmnd == "exit" || cmmnd == "quit" || cmmnd == "close")
-            {
-              break;
-            }
-            std::cout<< "BAD COMMAND!"<<std::endl;
-
-        }catch(const TOSDB_Error& e){      
-          std::cerr<< "!!! TOSDB_Error caught by shell !!!" << std::endl;
-          std::cerr<< "Process ID: "<< e.processID() <<std::endl;
-          std::cerr<< "Thread ID: "<< e.threadID() <<std::endl;
-          std::cerr<< "tag: " << e.tag() <<std::endl;
-          std::cerr<< "info: " << e.info() <<std::endl;
-          std::cerr<< "what: " << e.what() <<std::endl;
-          prompt<<"try to continue?(y/n): ";
-          std::cin.get();
-          prompt>> dtsB;
-          if(dtsB == 'y')
-              continue;
-          else
-              throw;
+                std::cout<< "BAD COMMAND" << std::endl;
+            }
+        }catch(TOSDB_Error& e){      
+            std::cerr<< "*** TOSDB_Error caught by shell **" << std::endl
+                     << std::setw(20) << "    Process ID: "<< e.processID() << std::endl
+                     << std::setw(20) << "    Thread ID: "<< e.threadID() << std::endl
+                     << std::setw(20) << "    tag: " << e.tag() << std::endl
+                     << std::setw(20) << "    info: " << e.info() << std::endl
+                     << std::setw(20) << "    what: " << e.what() << std::endl;
         }
-    }    
+    }
+
     return 0;
 }
 
+
 namespace{
 
-void 
-get_block_item_topic()
+#define CMD_OUT_PER_PAGE 20
+
+void
+decr_page_latch_and_wait(int *n)
 {
-    prompt<<"block id: ";
-    prompt>> block;
-    prompt<<"item: ";
-    prompt>> item;
-    prompt<<"topic: ";
-    prompt>> topic;
+    if(*n > 0){
+        --(*n);       
+    }else{
+        std::cout<<"(Press Enter)";
+        std::cin.get();
+        std::cout<< std::endl;
+    }
 }
 
 void 
-get_block_item_topic_indx()
+on_cmd_commands()
 {
-    get_block_item_topic();
-    prompt<<"indx: ";
-    prompt>> indx;
+    std::string cmd;
+    int count = CMD_OUT_PER_PAGE;        
+
+    prompt<< "What type of command?" << std::endl << std::endl;
+    std::cout<<"- admin"<<std::endl
+             <<"- get"<<std::endl
+             <<"- stream-snapshot"<<std::endl
+             <<"- frame"<<std::endl
+             <<"- back"<<std::endl<<std::endl;
+    prompt>> cmd;
+    std::cin.get();
+
+    if(cmd == "admin"){      
+  
+        std::cout<< "ADMINISTRATIVE COMMANDS:" <<std::endl<<std::endl;
+        for(auto & x : ILSet< std::string>(admin_commands)){      
+            std::cout<<"- "<< x << std::endl;
+            decr_page_latch_and_wait(&count);                    
+        }
+
+    }else if(cmd == "get"){  
+
+        std::cout<< "GET COMMANDS:" <<std::endl<<std::endl;
+        for(auto & x : ILSet< std::string>(get_val_commands)){      
+            std::cout<<"- "<< x << std::endl;
+            decr_page_latch_and_wait(&count);                    
+        }
+     
+    }else if(cmd == "stream-snapshot"){  
+
+        std::cout<< "STREAM SNAPSHOT COMMANDS:" <<std::endl<<std::endl;
+        for(auto & x : ILSet< std::string>(get_ds_commands)){      
+            std::cout<<"- "<< x << std::endl;
+            decr_page_latch_and_wait(&count);                    
+        }
+        
+    }else if(cmd == "frame"){  
+
+        std::cout<< "FRAME COMMANDS:" <<std::endl<<std::endl;
+        for(auto & x : ILSet< std::string>(get_frame_commands)){      
+            std::cout<<"- "<< x << std::endl;
+            decr_page_latch_and_wait(&count);                    
+        }         
+        
+        
+    }else if(cmd != "back"){
+
+        std::cout<< "BAD COMMAND" << std::endl;
+
+    }
+
+    std::cout<< std::endl;
 }
 
-template<typename T >
-void 
-deal_with_stream_data(size_type len, T* dataRay, bool show_dts)
+
+bool 
+on_cmd_admin(std::string cmd)
 {
-    std::string indx_inpt;
-    char loopA = 'n';
-    do
-    {
-        prompt<< "Show data from what index value?('all' to show all): ";
-        prompt>> indx_inpt;
-        if(indx_inpt == "all"){
-            for(size_type i = 0; i < len; ++i)
-            {
-                if(show_dts)
-                   std::cout<<dataRay[i]<<' '<< dtsRay[i] <<std::endl;
-                else
-                    std::cout<<dataRay[i]<<' ' <<std::endl;
+    if(cmd == "Connect"){  
+
+        int ret = TOSDB_Connect();
+        CHECK_DISPLAY_RET_DEF(ret);
+
+    }else if(cmd == "Disconnect"){
+
+        int ret = TOSDB_Disconnect();
+        CHECK_DISPLAY_RET_DEF(ret);
+   
+    }else if(cmd == "IsConnected"){
+
+        unsigned int ret = TOSDB_IsConnected();
+        std::cout<< std::boolalpha << ret == 1 << std::endl;
+
+    }else if(cmd == "CreateBlock"){
+
+        unsigned long timeout;
+        std::string block;
+        std::string size;
+        char dts_y_or_n;
+
+        prompt<<"block id: ";
+        prompt>> block;
+        prompt<<"block size: ";
+        prompt>> size;
+        prompt<<"use datetime stamp?(y/n): ";    
+        std::cin.get();
+        prompt>> dts_y_or_n ;
+        prompt<<"timeout: ";
+        prompt>> timeout;
+
+        int ret =  TOSDB_CreateBlock(block.c_str(), size, (dts_y_or_n == 'y'), timeout);      
+        CHECK_DISPLAY_RET_DEF(ret);
+            
+    }else if(cmd == "CloseBlock"){
+
+        std::string block;
+
+        prompt<<"block id: ";
+        prompt>> block;          
+
+        int ret = TOSDB_CloseBlock(block.c_str());
+        CHECK_DISPLAY_RET_DEF(ret);
+
+    }else if(cmd == "CloseBlocks"){
+
+        int ret =  TOSDB_CloseBlocks();
+        CHECK_DISPLAY_RET_DEF(ret);
+
+    }else if(cmd == "GetBlockLimit"){   
+
+        std::cout<< TOSDB_GetBlockLimit() <<std::endl;
+
+    }else if(cmd == "SetBlockLimit"){  
+
+        std::string size;
+
+        prompt<<"block limit: ";
+        prompt>> size;
+        std::cout<< TOSDB_SetBlockLimit(size)<<std::endl;
+
+    }else if(cmd == "GetBlockCount"){    
+
+        std::cout<< TOSDB_GetBlockCount() <<std::endl;
+
+    }else if(cmd == "GetBlockIDs"){  
+
+        if(use_cpp_version()){
+            for(auto & str : TOSDB_GetBlockIDs())
+                std::cout<< str << std::endl;
+        }else{        
+            size_type nblocks = TOSDB_GetBlockCount();            
+            try{
+                char** strs = NewStrings(nblocks, TOSDB_BLOCK_ID_SZ);
+
+                int ret = TOSDB_GetBlockIDs(strs, nblocks, TOSDB_BLOCK_ID_SZ);
+                CHECK_DISPLAY_RET_MULTI(ret,strs,nblocks);
+
+                DeleteStrings(strs, nblocks);
+            }catch(...){    
+                DeleteStrings(strs, nblocks);
+                throw;
+            }            
+        }
+
+    }else if(cmd == "GetBlockSize"){
+
+        std::string block;
+
+        if(use_cpp_version()){
+            prompt<<"block id: ";
+            prompt>> block;
+            std::cout<< TOSDB_GetBlockSize(block) << std::endl;
+        }else{
+            size_type sz = 0;
+
+            prompt<<"block id: ";
+            prompt>> block;                    
+
+            int ret = TOSDB_GetBlockSize(block.c_str(), &sz);
+            CHECK_DISPLAY_RET_DEF(ret);      
+        }
+
+    }else if(cmd == "SetBlockSize"){
+
+        std::string block;
+        std::string size;      
+
+        prompt<<"block id: ";
+        prompt>> block;
+        prompt<<"block size: ";
+        prompt>> size;
+
+        int ret = TOSDB_SetBlockSize(block.c_str(), size);
+        CHECK_DISPLAY_RET_DEF(ret);
+
+    }else if(cmd == "GetLatency"){
+
+        std::cout<< TOSDB_GetLatency() <<std::endl;
+
+    }else if(cmd == "SetLatency"){
+
+        unsigned long lat;
+
+        prompt<<"enter latency value(milleseconds)";
+        prompt>> lat;       
+
+        TOSDB_SetLatency((UpdateLatency)lat);
+
+    }else if(cmd == "Add"){   
+
+        std::string block;
+
+        char **items_raw;
+        char **topics_raw;
+        size_type nitems;
+        size_type ntopics;
+
+        prompt<<"block id: ";
+        prompt>> block;   
+
+        try{
+            nitems = get_cstr_items(&items_raw);
+            ntopics = get_cstr_topics(&topics_raw);
+
+            if(use_cpp_version()){    
+                auto topics = topic_set_type( topic_raw, 
+                                              ntopics,
+                                              [=](LPCSTR str)
+                                              { 
+                                                  return TOS_Topics::MAP()[str];
+                                              }
+                                             );
+                auto items = str_set_type(item_raw, nitems);
+                int ret =  TOSDB_Add(block, items, topics);                  
+            }else{             
+                int ret = TOSDB_Add(block.c_str(), items_raw, nitems, topics_raw, ntopics);          
+            }   
+            CHECK_DISPLAY_RET_DEF(ret);
+
+            del_cstr_items(items_raw, nitems);
+            del_cstr_topics(topics_raw, ntopics); 
+        }catch(...){
+            del_cstr_items(items_raw, nitems);
+            del_cstr_topics(topics_raw, ntopics); 
+            throw;
+        }
+       
+    }else if(cmd == "AddTopic"){    
+
+        std::string block;
+        std::string topic;
+
+        prompt<<"block id: ";
+        prompt>> block;
+        prompt<<"topic: ";
+        prompt>> topic;  
+
+        if(use_cpp_version())  
+            int ret = TOSDB_AddTopic(block, TOS_Topics::MAP()[topic]);         
+        else           
+            int ret = TOSDB_AddTopic(block.c_str(), topic.c_str());            
+        
+        CHECK_DISPLAY_RET_DEF(ret);
+
+    }else if(cmd == "AddItem"){    
+
+        std::string block;
+        std::string item;
+
+        prompt<<"block id: ";
+        prompt>> block;
+        prompt<<"item: ";
+        prompt>> item;    
+
+        if(use_cpp_version())
+            int ret =  TOSDB_AddItem(block, item);
+        else
+            int ret =  TOSDB_AddItem(block.c_str(), item.c_str());
+
+        CHECK_DISPLAY_RET_DEF(ret);
+
+    }else if(cmd == "AddTopics"){      
+
+        std::string block;
+        char **topics_raw;
+        size_type ntopics;
+
+        prompt<<"block id: ";
+        prompt>> block;
+
+        try{ 
+            ntopics = get_cstr_topics(&topics_raw); 
+
+            if(use_cpp_version()){
+                auto topics = topic_set_type( topics_raw, 
+                                              ntopics, 
+                                              [=](LPCSTR str)
+                                              { 
+                                                  return TOS_Topics::MAP()[str]; 
+                                              }
+                                             );
+                int ret = TOSDB_AddTopics(block, topics);
+            }else{    
+                int ret = TOSDB_AddTopics(block.c_str(), topics_raw, ntopics);
             }
+            CHECK_DISPLAY_RET_DEF(ret);
+     
+            del_cstr_topics(topics_raw, ntopics);
+        }catch(...){
+            del_cstr_topics(topics_raw, ntopics);
+            throw;
+        }
+    
+    }else if(cmd == "AddItems"){        
+
+        std::string block;
+        char **items_raw;
+        size_type nitems;
+
+        prompt<<"block id: ";
+        prompt>> block;
+           
+        try{ 
+            nitems = get_cstr_items(&items_raw);
+
+            if(use_cpp_version()){
+                auto items = str_set_type(items_raw, nitems);
+                int ret = TOSDB_AddItems(block, items);
+            }else{
+                int ret =  TOSDB_AddItems(block.c_str(), items_raw, nitems);
+            }
+            CHECK_DISPLAY_RET_DEF(ret);
+
+            del_cstr_items(items_raw, nitems);
+        }catch(...){
+            del_cstr_items(items_raw, nitems);      
+            throw;
+        }         
+
+    }else if(cmd == "RemoveTopic"){    
+
+        std::string block;
+        std::string topic;
+
+        prompt<<"block id: ";
+        prompt>> block;
+        prompt<<"topic: ";
+        prompt>> topic;  
+
+        if(use_cpp_version())
+            int ret =  TOSDB_RemoveTopic(block, TOS_Topics::MAP()[topic]);
+        else  
+            int ret =  TOSDB_RemoveTopic(block.c_str(), topic.c_str());
+        
+        CHECK_DISPLAY_RET_DEF(ret);
+
+    }else if(cmd == "RemoveItem"){    
+
+        std::string block;
+        std::string item;
+
+        prompt<<"block id: ";
+        prompt>> block;
+        prompt<<"item: ";
+        prompt>> item;    
+
+        if(use_cpp_version())
+            int ret = TOSDB_RemoveItem(block, item);
+        else
+            int ret = TOSDB_RemoveItem(block.c_str(), item.c_str());
+
+        CHECK_DISPLAY_RET_DEF(ret);
+
+    }else if(cmd == "GetItemCount"){
+
+        std::string block;
+
+        prompt<<"block id: ";
+        prompt>> block;
+
+        if(use_cpp_version()){
+            try{
+                std::cout<< TOSDB_GetItemCount(block) <<std::endl;
+            }catch(std::exception & e){
+                std::cout<< "error: " << e.what() << std::endl;
+            }
+        }else{
+            size_type l;
+
+            int ret = TOSDB_GetItemCount(block.c_str(), &l);
+            CHECK_DISPLAY_RET_VAL(ret, l);
+        }
+
+    }else if(cmd == "GetTopicCount"){
+
+        std::string block;
+
+        prompt<<"block id: ";
+        prompt>> block;
+
+        if(use_cpp_version()){
+            try{
+                std::cout<< TOSDB_GetTopicCount(block) << std::endl;
+            }catch(std::exception & e){
+                std::cout<< "error: " << e.what() << std::endl;
+            }
+        }else{
+            size_type l;
+
+            int ret = TOSDB_GetTopicCount(block.c_str(), &l);
+            CHECK_DISPLAY_RET_VAL(ret, l);
+        }
+         
+    }else if(cmd == "GetTopicNames"){    
+
+        std::string block;
+
+        prompt<<"block id: ";
+        prompt>> block;
+
+        if(use_cpp_version()){         
+            try{                                        
+                for(auto & t : TOSDB_GetTopicNames(block))
+                    std::cout<< t << std::endl;
+            }catch(std::exception & e){
+                std::cout<< "error: " << e.what() << std::endl;
+            }
+        }else{
+            size_type l = TOSDB_GetTopicCount(block);            
+            try{
+                char **strs = NewStrings(l, TOSDB_MAX_STR_SZ);
+
+                int ret = TOSDB_GetTopicNames(block.c_str(),strs,l,TOSDB_MAX_STR_SZ);
+                CHECK_DISPLAY_RET_MULTI(ret,strs,l);
+
+                DeleteStrings(strs, l);
+            }catch(...){
+                DeleteStrings(strs, l);
+                throw;
+            }            
+        }
+
+    }else if(cmd == "GetItemNames"){
+
+        std::string block;
+
+        prompt<<"block id: ";
+        prompt>> block;
+
+        if(use_cpp_version()){         
+            try{                                        
+                for(auto & i : TOSDB_GetItemNames(block))
+                    std::cout<< i << std::endl;
+            }catch(std::exception & e){
+                std::cout<< "error: " << e.what() << std::endl;
+            }
+        }else{
+            size_type l = TOSDB_GetItemCount(block);            
+            try{
+                char **strs = NewStrings(l, TOSDB_MAX_STR_SZ);
+
+                int ret = TOSDB_GetItemNames(block.c_str(),strs,l,TOSDB_MAX_STR_SZ);
+                CHECK_DISPLAY_RET_MULTI(ret,strs,l);
+
+                DeleteStrings(strs, l);
+            }catch(...){
+                DeleteStrings(strs, l);
+                throw;
+            }
+        }
+
+    }else if(cmd == "GetTopicEnums"){    
+
+        std::string block;
+
+        prompt<<"block id: ";
+        prompt>> block;      
+      
+        for(auto & t : TOSDB_GetTopicEnums(block))
+            std::cout<< (TOS_Topics::enum_value_type)t <<' '
+                     << TOS_Topics::MAP()[t] << std::endl;
+    
+    }else if(cmd == "GetPreCachedTopicNames"){
+
+        std::string block;
+
+        prompt<<"block id: ";
+        prompt>> block;
+
+        if(use_cpp_version()){    
+            try{            
+                for(auto & t : TOSDB_GetPreCachedTopicNames(block))
+                    std::cout<< t << std::endl;
+            }catch(std::exception & e){
+                std::cout<< "error: " << e.what() << std::endl;
+            }
+        }else{                  
+            size_type l = TOSDB_GetPreCachedTopicCount(block);
+            try{
+                char **strs = NewStrings(l, TOSDB_MAX_STR_SZ);
+
+                int ret = TOSDB_GetPreCachedTopicNames(block.c_str(),strs,l,TOSDB_MAX_STR_SZ);
+                CHECK_DISPLAY_RET_MULTI(ret,strs,l);
+
+                DeleteStrings(strs, l);
+            }catch(...){
+                DeleteStrings(strs, l);
+                throw;
+            }          
+        }
+
+    }else if(cmd == "GetPreCachedItemNames"){    
+
+        std::string block;
+
+        prompt<<"block id: ";
+        prompt>> block;
+
+        if(use_cpp_version()){    
+            try{            
+                for(auto & i : TOSDB_GetPreCachedItemNames(block))
+                    std::cout<< i << std::endl;
+            }catch(std::exception & e){
+                std::cout<< "error: " << e.what() << std::endl;
+            }
+        }else{                
+            size_type l = TOSDB_GetPreCachedItemCount(block);
+            try{
+                char **strs = NewStrings(l, TOSDB_MAX_STR_SZ);
+
+                int ret = TOSDB_GetPreCachedItemNames(block.c_str(),strs,l,TOSDB_MAX_STR_SZ);
+                CHECK_DISPLAY_RET_MULTI(ret,strs,l);
+
+                DeleteStrings(strs, l);
+            }catch(...){
+                DeleteStrings(strs, l);
+                throw;
+            }            
+        }
+
+    }else if(cmd == "GetPreCachedTopicEnums"){    
+
+        std::string block;
+
+        prompt<<"block id: ";
+        prompt>> block;      
+      
+        for(auto & t : TOSDB_GetPreCachedTopicEnums(block))
+            std::cout<< (TOS_Topics::enum_value_type)t << ' ' 
+                     << TOS_Topics::MAP()[t] << std::endl;
+
+    }else if(cmd == "GetPreCachedItemCount"){
+
+        std::string block;
+
+        prompt<<"block id: ";
+        prompt>> block;
+
+        if(use_cpp_version()){
+            try{
+                std::cout<< TOSDB_GetPreCachedItemCount(block) << std::endl;
+            }catch(std::exception & e){
+                std::cout<< "error: " << e.what() << std::endl;
+            }
+        }else{
+            size_type l;
+            int ret = TOSDB_GetPreCachedItemCount(block.c_str(), &l);
+            CHECK_DISPLAY_RET_VAL(ret, l);
+        }
+
+    }else if(cmd == "GetPreCachedTopicCount"){
+
+        std::string block;
+
+        prompt<<"block id: ";
+        prompt>> block;
+
+        if(use_cpp_version()){
+            try{
+                std::cout<< TOSDB_GetPreCachedTopicCount(block) << std::endl;
+            }catch(std::exception & e){
+                std::cout<< "error: " << e.what() << std::endl;
+            }
+        }else{
+            size_type l;
+            int ret = TOSDB_GetPreCachedTopicCount(block.c_str(), &l);
+            CHECK_DISPLAY_RET_VAL(ret, l);
+        }
+
+    }else if(cmd == "GetTypeBits"){
+
+        std::string topic;
+
+        prompt<<"topic: ";
+        prompt>> topic;
+
+        if(use_cpp_version()){
+            try{
+                std::cout<< TOSDB_GetTypeBits(TOS_Topics::MAP()[topic])<<std::endl; 
+            }catch(std::exception & e){
+                std::cout<< "error: " << e.what() << std::endl;
+            }
+        }else{
+            type_bits_type bits;
+            int ret = TOSDB_GetTypeBits(topic.c_str(), &bits);
+            CHECK_DISPLAY_RET_VAL(ret, bits);
+        }
+
+    }else if(cmd == "GetTypeString"){
+        
+        std::string topic;
+
+        prompt<<"topic: ";
+        prompt>> topic;
+
+        if(use_cpp_version()){
+            try{
+                std::cout<< TOSDB_GetTypeString(TOS_Topics::MAP()[topic])<<std::endl; 
+            }catch(std::exception & e){
+                std::cout<< "error: " << e.what() << std::endl;
+            }
+        }else{
+            char s[256];
+            int ret = TOSDB_GetTypeString(topic.c_str(), s, 256);
+            CHECK_DISPLAY_RET_VAL(ret, s);
+        }         
+
+    }else if(cmd == "IsUsingDateTime"){      
+
+        unsigned int b;
+        std::string block;     
+
+        prompt<<"block id: ";
+        prompt>> block;
+
+        if(use_cpp_version()){
+            try{
+                std::cout<< std::boolalpha << TOSDB_IsUsingDateTime(block) <<std::endl; 
+            }catch(std::exception & e){
+                std::cout<< "error: " << e.what() << std::endl;
+            }
+        }else{
+            int ret = TOSDB_IsUsingDateTime(block.c_str(), &b);
+            CHECK_DISPLAY_RET_BOOL(ret, (b==1));           
+        }
+   
+    }else if(cmd == "GetStreamOccupancy"){
+
+        std::string block;
+        std::string item;
+        std::string topic;
+
+        PROMPT_FOR_BLOCK_ITEM_TOPIC(block,item,topic);
+
+        if(use_cpp_version()){
+            std::cout<< TOSDB_GetStreamOccupancy(block, item, TOS_Topics::MAP()[topic])<<std::endl; 
+        }else{ 
+            size_type sz;
+            int ret = TOSDB_GetStreamOccupancy(block.c_str(), item.c_str(), topic.c_str(), &sz);
+            CHECK_DISPLAY_RET_VAL(ret, sz);
+        }
+      
+    }else if(cmd == "GetMarkerPosition"){
+
+        std::string block;
+        std::string item;
+        std::string topic;
+
+        PROMPT_FOR_BLOCK_ITEM_TOPIC(block,item,topic);  
+
+        if(use_cpp_version()){
+            std::cout<< TOSDB_GetMarkerPosition(block, item, TOS_Topics::MAP()[topic])<<std::endl; 
+        }else{ 
+            long long sz;
+            int ret = TOSDB_GetMarkerPosition(block.c_str(), item.c_str(), topic.c_str(), &sz);
+            CHECK_DISPLAY_RET_VAL(ret, sz);
+        }
+
+    }else if(cmd == "IsMarkerDirty"){      
+
+        std::string block;
+        std::string item;
+        std::string topic;
+
+        PROMPT_FOR_BLOCK_ITEM_TOPIC(block,item,topic);
+
+        if(use_cpp_version()){
+            std::cout<< std::boolalpha << TOSDB_IsMarkerDirty(block, item,TOS_Topics::MAP()[topic]) <<std::endl; 
+        }else{ 
+            unsigned int b;
+            int ret = TOSDB_IsMarkerDirty(block.c_str(), item.c_str(),topic.c_str(), &b);
+            CHECK_DISPLAY_RET_BOOL(ret, (b==1));
+        }
+
+    }else if(cmd == "DumpBufferStatus"){       
+        TOSDB_DumpSharedBufferStatus();
+    }else{        
+        return false;
+    }
+
+    return true;
+}
+
+
+bool 
+on_cmd_get(std::string cmd)
+{       
+    if(cmd == "GetDouble"){
+
+        use_cpp_version() ? _get<double>() : _get(TOSDB_GetDouble);       
+
+    }else if(cmd == "GetFloat"){
+
+        use_cpp_version() ? _get<float>() : _get(TOSDB_GetFloat);
+       
+    }else if(cmd == "GetLongLong"){
+
+       use_cpp_version() ? _get<long long>() : _get(TOSDB_GetLongLong);
+       
+    }else if(cmd == "GetLong"){
+
+       use_cpp_version() ? _get<long>() : _get(TOSDB_GetLong);
+       
+    }else if(cmd == "GetString"){
+
+        if(use_cpp_version()){
+            _get<std::string>();
+        }else{
+            char str[TOSDB_STR_DATA_SZ];
+            DateTimeStamp dts;
+
+            std::string block;
+            std::string item;
+            std::string topic;
+            long index;
+
+            PROMPT_FOR_BLOCK_ITEM_TOPIC(block,item,topic,long);
+
+            int ret = TOSDB_GetString(block.c_str(),item.c_str(),topic.c_str(),index,str,100,&dts);
+            CHECK_DISPLAY_RET_VAL_DTS(ret, str, dts);
+        }
+       
+    }else if(cmd == "GetGeneric"){      
+
+        _get<generic_type >();    
+        
+    }else{
+        return false;
+    }
+
+    return true;
+}
+
+
+bool 
+on_cmd_stream_snapshot(std::string cmd)
+{
+    if(cmd == "GetStreamSnapshotDoubles"){
+
+        use_cpp_version() ? _getStreamSnapshot<double>() 
+                          : _getStreamSnapshot<double>(TOSDB_GetStreamSnapshotDoubles);
+       
+    }else if(cmd == "GetStreamSnapshotFloats"){
+
+        use_cpp_version() ? _getStreamSnapshot<float>() 
+                          : _getStreamSnapshot<float>(TOSDB_GetStreamSnapshotFloats);
+       
+    }else if(cmd == "GetStreamSnapshotLongLongs"){
+
+        use_cpp_version() ? _getStreamSnapshot<long long>() 
+                          : _getStreamSnapshot<long long>(TOSDB_GetStreamSnapshotLongLongs);
+       
+    }else if(cmd == "GetStreamSnapshotLongs"){
+
+        use_cpp_version() ? _getStreamSnapshot<long>() 
+                          : _getStreamSnapshot<long>(TOSDB_GetStreamSnapshotLongs);
+       
+    }else if(cmd == "GetStreamSnapshotStrings"){
+
+        if(use_cpp_version()){
+            _getStreamSnapshot< std::string >();
+        }else{
+            size_type len;
+            char **dat;
+            long beg;
+            long end;
+            pDataTimeStamp dts;
+
+            std::string block;
+            std::string item;
+            std::string topic;
+    
+            PROMPT_FOR_BLOCK_ITEM_TOPIC(block,item,topic);
+
+            prompt<<"length of array to pass: ";
+            prompt>>len;
+            prompt<<"beginning datastream index: ";
+            prompt>>beg;
+            prompt<<"ending datastream index: ";
+            prompt>>end;
+
+            dat = NewStrings(len, TOSDB_STR_DATA_SZ - 1);
+            dts = new DateTimeStamp[len];
+            try{
+                int ret = TOSDB_GetStreamSnapshotStrings(block.c_str(), item.c_str(), topic.c_str(),
+                                                         dat, len, TOSDB_STR_DATA_SZ, dts, end, beg);
+                if(ret) 
+                    std::cout<<"error: "<<ret<<std::endl;
+                else 
+                    deal_with_stream_data(len, dat, false);
+
+                DeleteStrings(dat, len);
+                if(dts)
+                    delete dts;
+
+            }catch(...){
+                DeleteStrings(dat, len);
+                if(dts)
+                    delete dts;        
+                throw;
+            }
+            
+        }
+
+    }else if(cmd == "GetStreamSnapshotGenerics"){      
+
+        _getStreamSnapshot<generic_type>();
+       
+    }else if(cmd == "GetStreamSnapshotDoublesFromMarker"){
+
+        _getStreamSnapshotFromMarker<double>(TOSDB_GetStreamSnapshotDoublesFromMarker);
+       
+    }else if(cmd == "GetStreamSnapshotFloatsFromMarker"){      
+
+        _getStreamSnapshotFromMarker<float>(TOSDB_GetStreamSnapshotFloatsFromMarker);
+       
+    }else if(cmd == "GetStreamSnapshotLongLongsFromMarker"){
+
+        _getStreamSnapshotFromMarker<long long>(TOSDB_GetStreamSnapshotLongLongsFromMarker);
+       
+    }else if(cmd == "GetStreamSnapshotLongsFromMarker"){
+
+        _getStreamSnapshotFromMarker<long>(TOSDB_GetStreamSnapshotLongsFromMarker);
+       
+    }else if(cmd == "GetStreamSnapshotStringsFromMarker"){
+
+        size_type len;
+        char **dat;
+        long beg;
+        long get_size;
+        pDataTimeStamp dts;
+
+        std::string block;
+        std::string item;
+        std::string topic;
+
+        PROMPT_FOR_BLOCK_ITEM_TOPIC(block,item,topic);
+
+        prompt<<"length of array to pass: ";
+        prompt>>len;
+        prompt<<"beginning datastream index: ";
+        prompt>>beg;
+
+        try{         
+            dat = NewStrings(len, TOSDB_STR_DATA_SZ - 1);
+            dts = new DateTimeStamp[len];
+
+            int ret = TOSDB_GetStreamSnapshotStringsFromMarker(block.c_str(), item.c_str(),
+                                                               topic.c_str(), dat, len,
+                                                               TOSDB_STR_DATA_SZ, dts, beg, &get_size);
+            if(ret) 
+                std::cout<<"error: "<<ret<<std::endl;
+            else 
+                deal_with_stream_data(len, dat, false);
+
+            DeleteStrings(dat, len);
+            if(dts)
+                delete dts;
+
+        }catch(...){
+            DeleteStrings(dat, len);
+            if(dts)
+                delete dts;
+        }      
+    }else{
+        return false;
+    }
+
+    return true;
+}
+
+
+bool 
+on_cmd_frame(std::string cmd)
+{           
+    if(cmd == "GetItemFrame"){
+      
+        std::string block;
+        std::string topic;
+        char dts_y_or_n;
+
+        prompt<<"block id: ";
+        prompt>> block;
+        prompt<<"topic: ";
+        prompt>> topic;  
+        prompt<<"get datetime stamp?(y/n): ";    
+        std::cin.get();
+        prompt>> dts_y_or_n ;
+        if(dts_y_or_n == 'y')
+            std::cout<< TOSDB_GetItemFrame<true>(block,TOS_Topics::MAP()[topic]) << std::endl;
+        else
+            std::cout<< TOSDB_GetItemFrame<false>(block,TOS_Topics::MAP()[topic]) << std::endl;          
+       
+    }else if(cmd == "GetItemFrameDoubles"){  
+
+        _getItemFrame(TOSDB_GetItemFrameLongs);      
+       
+    }else if(cmd == "GetItemFrameFloats"){  
+
+        _getItemFrame(TOSDB_GetItemFrameLongs);      
+       
+    }else if(cmd == "GetItemFrameLongLongs"){
+  
+        _getItemFrame(TOSDB_GetItemFrameLongs);      
+       
+    }else if(cmd == "GetItemFrameLongs"){  
+
+        _getItemFrame(TOSDB_GetItemFrameLongs);      
+       
+    }else if(cmd == "GetItemFrameStrings"){  
+
+        size_type nitems;
+        std::string block;
+        std::string topic;
+        char **dat;
+        char **lab;
+        pDateTimeStamp dts;
+
+        prompt<<"block id: ";
+        prompt>> block;
+        prompt<<"topic: ";
+        prompt>> topic;    
+        
+        TOSDB_GetItemCount(block.c_str(), &nitems);
+
+        try{
+            dat = NewStrings(nitems, TOSDB_STR_DATA_SZ - 1);
+            lab = NewStrings(nitems, TOSDB_STR_DATA_SZ - 1);    
+            dts = new DateTimeStamp[ nitems ];
+
+            int ret = TOSDB_GetItemFrameStrings(block.c_str(),topic.c_str(),dat,nitems,
+                                                TOSDB_STR_DATA_SZ,lab,TOSDB_STR_DATA_SZ,dts);
+            if(ret) 
+                std::cout<< "error: " << ret << std::endl;
+            else{ 
+                for(size_type i = 0; i < nitems; ++i)
+                    std::cout<< lab[i] << ' ' << dat[i] << ' ' << dts[i] << std::endl;
+            }
+
+            DeleteStrings(dat, nitems);
+            DeleteStrings(lab, nitems);
+            if(dts)
+                delete dts;
+
+        }catch(...){
+            DeleteStrings(dat, nitems);
+            DeleteStrings(lab, nitems);
+            if(dts)
+                delete dts;
+            throw;
+        }             
+
+    }else if(cmd == "GetTopicFrameStrings"){
+        
+        size_type nitems;
+        std::string block;
+        std::string item;
+        char** dat;
+        char** lab;
+        pDateTimeStamp dts;
+
+        prompt<<"block id: ";
+        prompt>> block;
+        prompt<<"item: ";
+        prompt>> item;   
+
+        TOSDB_GetItemCount(block.c_str(), &nitems);
+        try{
+            dat = NewStrings(ntopics, TOSDB_STR_DATA_SZ -1);
+            lab = NewStrings(ntopics, TOSDB_STR_DATA_SZ - 1);  
+            dts = new DateTimeStamp[ ntopics ];
+     
+            int ret = TOSDB_GetTopicFrameStrings(block.c_str(), item.c_str(), dat, ntopics,
+                                                 TOSDB_STR_DATA_SZ, lab, TOSDB_STR_DATA_SZ, dts);
+            if(ret) 
+                std::cout<< "error: " << ret << std::endl;
+            else{
+                for(size_type i = 0; i < ntopics; ++i)
+                    std::cout<< lab[i] << ' ' << dat[i] << ' ' << dts[i] << std::endl;
+            }
+
+            DeleteStrings(dat, ntopics);
+            DeleteStrings(lab, ntopics);
+            if(dts)
+                delete dts; 
+
+        }catch(...){
+            DeleteStrings(dat, ntopics);
+            DeleteStrings(lab, ntopics);
+            if(dts)
+                delete dts;
+        }  
+            
+    }else if(cmd == "GetTopicFrame"){      
+
+        std::string block;
+        std::string item;
+        char dts_y_or_n;
+
+        prompt<<"block id: ";
+        prompt>> block;
+        prompt<<"item: ";
+        prompt>> item;  
+        prompt<<"get datetime stamp?(y/n): ";    
+        std::cin.get();
+        prompt>> dts_y_or_n ;
+        if(dts_y_or_n == 'y')      
+            std::cout<< TOSDB_GetTopicFrame<true>(block,item) <<std::endl;      
+        else
+            std::cout<< TOSDB_GetTopicFrame<false>(block,item) <<std::endl;                  
+             
+    }else if(cmd == "GetTotalFrame"){
+
+        std::string block;
+        char dts_y_or_n;
+
+        prompt<<"block id:";
+        prompt>>block;
+        prompt<<"get datetime stamp?(y/n): ";
+        std::cin.get();
+        prompt>> dts_y_or_n;
+        if(dts_y_or_n == 'y')
+            std::cout<< TOSDB_GetTotalFrame<true>(block) <<std::endl;
+        else
+            std::cout<< TOSDB_GetTotalFrame<false>(block)<<std::endl;
+         
+    }else{
+        return false;
+    }
+
+    return true;                  
+}
+
+
+bool 
+use_cpp_version(int recurse)
+{
+    std::string cpp_y_or_no;
+
+    prompt<< "use C++ version? (y/n):" ;   
+    std::cin.get(); 
+    prompt>> cpp_y_or_no;
+
+    if(cpp_y_or_no == 'y')
+        return true;
+    else if(cpp_y_or_no == 'n')
+        return false;
+    else if(recurse > 0){
+        prompt<< "- invalid - enter 'y' or 'n'" << std::endl;
+        return use_cpp_version(recurse-1);
+    }else{
+        prompt<< "- invalid (again) - defaulting to C version" << std::endl;
+        return false;
+    }
+}
+
+
+size_type 
+get_cstr_items(char ***p)
+{  
+    prompt<<"how many items? ";
+    prompt>> nitems;
+
+    *p = NewStrings(nitems, TOSDB_MAX_STR_SZ);
+
+    for(size_type i = 0; i < nitems; ++i){
+        prompt<<"item #"<<i+1<<": ";
+        prompt>> item;    
+        strcpy_s((*p)[i], item.length() + 1, item.c_str());
+    }
+
+    return nitems;
+}
+
+size_type
+get_cstr_topics(char ***p)
+{  
+    prompt<<"how many topics? ";
+    prompt>> ntopics;
+ 
+    *p = NewStrings(ntopics, TOSDB_MAX_STR_SZ);
+
+    for(size_type i = 0; i < ntopics; ++i){
+      prompt<<"topic #"<<i+1<<": ";
+      prompt>> topic;  
+      strcpy_s((*p)[i], topic.length() + 1, topic.c_str());
+    }
+
+    return ntopics;
+}
+
+
+void 
+del_cstr_items(char **items, size_type nitems)
+{
+    DeleteStrings(items, nitems);
+}
+
+
+void 
+del_cstr_topics(char **topics, size_type ntopics)
+{
+    DeleteStrings(topics, ntopics);
+}
+
+
+template<typename T>
+void 
+deal_with_stream_data(size_type len, T* dat, pDateTimeStamp dts=nullptr)
+{
+    std::string index;
+    char loop = 'n';
+    do{
+        prompt<< "Show data from what index value?('all' to show all): ";
+        prompt>> index;
+
+        if(index == "all"){
+            for(size_type i = 0; i < len; ++i){
+                std::cout<< dat[i] << ' ' << dts ? dts[i] : ' ' << std::endl;   
+           
             break;
         }else{
             try{
-                long long ind1 = std::stoll(indx_inpt);
+                long long i = std::stoll(index);
 
-                if(show_dts)
-                    std::cout<<dataRay[ind1]<<' '<< dtsRay[ind1] <<std::endl;
-                else
-                    std::cout<<dataRay[ind1]<<' ' <<std::endl;
+                std::cout<< dat[i] << ' ' << dts ? dts[i] : ' ' << std::endl;             
             }catch(...){
                 std::cerr<<"BAD INPUT";
                 continue;
             }      
         }
         std::cout<<std::endl;
+
         prompt<<"Show more data?(y/n): ";
-        prompt>>loopA;
-    }while(loopA == 'y');
-}
+        prompt>>loop;
 
-void 
-get_cstr_items()
-{  
-    prompt<<"how many items? ";
-    prompt>> nItems;
-    itemArray = NewStrings(nItems, TOSDB_MAX_STR_SZ);
-
-    for(size_type i = 0; i < nItems; ++i){
-        prompt<<"item #"<<i+1<<": ";
-        prompt>> item;    
-        strcpy_s(itemArray[i],item.length() + 1,item.c_str());
-    }
-}
-
-void 
-get_cstr_topics()
-{  
-    prompt<<"how many topics? ";
-    prompt>> nTopics;
-    topicArray = NewStrings(nTopics, TOSDB_MAX_STR_SZ);
-
-    for(size_type i = 0; i < nTopics; ++i){
-      prompt<<"topic #"<<i+1<<": ";
-      prompt>> topic;  
-      strcpy_s(topicArray[i],topic.length() + 1, topic.c_str());
-    }
-}
-
-void 
-del_cstr_items()
-{
-    DeleteStrings(itemArray, nItems);
-}
-
-void 
-del_cstr_topics()
-{
-    DeleteStrings(topicArray, nTopics);
+    }while(loop == 'y');
 }
 
 template<typename T>
 void 
 _get()
 {  
-    get_block_item_topic_indx();    
+    std::string block;
+    std::string item;
+    std::string topic;
+    char dts_y_or_n;
+    long index;
+
+    PROMPT_FOR_BLOCK_ITEM_TOPIC(block,item,topic,long);
+   
     prompt<<"get datetime stamp?(y/n): ";    
     std::cin.get();
-    prompt>> dtsB ; 
+    prompt>> dts_y_or_n ; 
  
-    if(dtsB == 'y')
-        std::cout<< TOSDB_Get<T,true>(block, item, TOS_Topics::MAP()[topic], indx)<<std::endl;    
+    if(dts_y_or_n == 'y')
+        std::cout<< TOSDB_Get<T,true>(block, item, TOS_Topics::MAP()[topic], index)<<std::endl;    
     else
-        std::cout<< TOSDB_Get<T,false>(block.c_str(),item.c_str(),TOS_Topics::MAP()[topic],indx)<<std::endl;            
+        std::cout<< TOSDB_Get<T,false>(block.c_str(),item.c_str(),TOS_Topics::MAP()[topic],index)<<std::endl;            
 }
 
 template<typename T>
@@ -1275,23 +1493,24 @@ _get(int(*func)(LPCSTR,LPCSTR,LPCSTR,long,T*,pDateTimeStamp))
 {
     T d;
     DateTimeStamp dts;
-    get_block_item_topic_indx();
+    std::string block;
+    std::string item;
+    std::string topic;
+    char dts_y_or_n;
+    long index;
+
+    PROMPT_FOR_BLOCK_ITEM_TOPIC(block,item,topic,long);
+
     prompt<<"get datetime stamp?(y/n): ";    
     std::cin.get();
-    prompt>> dtsB ;
+    prompt>> dts_y_or_n ;
 
-    if(dtsB == 'y'){
-      int ret = func(block.c_str(),item.c_str(),topic.c_str(),indx,&d,&dts);
-      if(ret) 
-          std::cout<<"error: "<<ret<<std::endl;
-      else 
-          std::cout<<d<<' '<<dts<<std::endl;          
+    if(dts_y_or_n == 'y'){
+        int ret = func(block.c_str(),item.c_str(),topic.c_str(),index,&d,&dts);
+        CHECK_DISPLAY_RET_VAL_DTS(ret,d,dts);          
     }else{
-        int ret = func(block.c_str(),item.c_str(),topic.c_str(),indx,&d,nullptr);
-        if(ret) 
-            std::cout<<"error: "<<ret<<std::endl;
-        else 
-            std::cout<<d<<std::endl;    
+        int ret = func(block.c_str(),item.c_str(),topic.c_str(),index,&d,nullptr);
+        CHECK_DISPLAY_RET_VAL(ret,d);             
     }
   
 }
@@ -1300,17 +1519,24 @@ template<typename T>
 void 
 _getStreamSnapshot()
 {
-    long beg, end;
-    get_block_item_topic();      
+    long beg; 
+    long end;
+    std::string block;
+    std::string item;
+    std::string topic;
+    char dts_y_or_n;
+
+    PROMPT_FOR_BLOCK_ITEM_TOPIC(block,item,topic);      
+
     prompt<<"beginning datastream index: ";
     prompt>>beg;
     prompt<<"ending datastream index: ";
     prompt>>end;
     prompt<<"get datetime stamp?(y/n): ";    
     std::cin.get();
-    prompt>> dtsB ;
+    prompt>> dts_y_or_n ;
 
-    if(dtsB == 'y')      
+    if(dts_y_or_n == 'y')      
         std::cout<<TOSDB_GetStreamSnapshot<T,true>(block.c_str(),item.c_str(),TOS_Topics::MAP()[topic],end,beg);
     else
         std::cout<<TOSDB_GetStreamSnapshot<T,false>(block.c_str(),item.c_str(),TOS_Topics::MAP()[topic],end,beg);            
@@ -1322,36 +1548,48 @@ void
 _getStreamSnapshot(int(*func)(LPCSTR,LPCSTR,LPCSTR,T*,size_type,pDateTimeStamp,long,long))
 {
     size_type len;
-    long beg, end;
-    get_block_item_topic();
+    long beg;
+    long end;
+
+    std::string block;
+    std::string item;
+    std::string topic;
+    char dts_y_or_n;
+
+    PROMPT_FOR_BLOCK_ITEM_TOPIC(block,item,topic);
+
     prompt<<"length of array to pass: ";
     prompt>>len;
-    T* dataRay = new T[len];
-    dtsRay = new DateTimeStamp[len];
-    prompt<<"beginning datastream index: ";
-    prompt>>beg;
-    prompt<<"ending datastream index: ";
-    prompt>>end;
-    prompt<<"get datetime stamp?(y/n): ";    
-    std::cin.get();
-    prompt>> dtsB ;
 
-    if(dtsB == 'y'){
-      int ret = func(block.c_str(),item.c_str(),topic.c_str(),dataRay,len,dtsRay,end,beg);
-      if(ret) 
-          std::cout<<"error: "<<ret<<std::endl;
-      else 
-          deal_with_stream_data(len, dataRay, true);
-    }else{
-      int ret = func(block.c_str(),item.c_str(),topic.c_str(),dataRay,len,nullptr,end,beg);
-      if(ret) 
-          std::cout<<"error: "<<ret<<std::endl;
-      else 
-          deal_with_stream_data(len, dataRay, false);
-    } 
+    try{
+        T* dat = new T[len];
+        dts = new DateTimeStamp[len];
+        prompt<<"beginning datastream index: ";
+        prompt>>beg;
+        prompt<<"ending datastream index: ";
+        prompt>>end;
+        prompt<<"get datetime stamp?(y/n): ";    
+        std::cin.get();
+        prompt>> dts_y_or_n ;
+
+        int ret = func(block.c_str(), item.c_str(), topic.c_str(), dat, len,
+                       (dts_y_or_n == 'y') ? dts : nullptr, end, beg);
+        if(ret) 
+            std::cout<<"error: "<<ret<<std::endl;
+        else 
+            deal_with_stream_data(len, dat, (dts_y_or_n == 'y'));
  
-    delete[] dataRay;
-    delete[] dtsRay;
+        if(dat)
+            delete[] dat;
+        if(dts)
+            delete[] dts;
+
+    }catch(...){
+        if(dat)
+            delete[] dat;
+        if(dts)
+            delete[] dts;
+    }
 }
 
 
@@ -1360,34 +1598,44 @@ void
 _getStreamSnapshotFromMarker(int(*func)(LPCSTR,LPCSTR,LPCSTR,T*,size_type,pDateTimeStamp,long,long*))
 {
     size_type len;
-    long beg, get_size;
-    get_block_item_topic();
+    long beg;
+    long get_size;
+    char dts_y_or_n;
+
+    std::string block;
+    std::string item;
+    std::string topic;
+
+    PROMPT_FOR_BLOCK_ITEM_TOPIC(block,item,topic);
+
     prompt<<"length of array to pass: ";
     prompt>>len;
-    T* dataRay = new T[len];
-    dtsRay = new DateTimeStamp[len];
-    prompt<<"beginning datastream index: ";
-    prompt>>beg;
-    prompt<<"get datetime stamp?(y/n): ";    
-    std::cin.get();
-    prompt>> dtsB ;
+    try{
+        T* dat = new T[len];
+        dts = new DateTimeStamp[len];
+        prompt<<"beginning datastream index: ";
+        prompt>>beg;
+        prompt<<"get datetime stamp?(y/n): ";    
+        std::cin.get();
+        prompt>> dts_y_or_n ;
 
-    if(dtsB == 'y'){
-      int ret = func(block.c_str(),item.c_str(),topic.c_str(),dataRay,len,dtsRay,beg,&get_size);
-      if(ret) 
-          std::cout<<"error: "<<ret<<std::endl;
-      else 
-          deal_with_stream_data(len, dataRay, true);
-    }else{
-      int ret = func(block.c_str(),item.c_str(),topic.c_str(),dataRay,len,nullptr,beg,&get_size);
-      if(ret) 
-          std::cout<<"error: "<<ret<<std::endl;
-      else 
-          deal_with_stream_data(len, dataRay, false);
-    }  
+        int ret = func(block.c_str(), item.c_str(), topic.c_str(), dat, len,
+                       (dts_y_or_n == 'y') ? dts : nullptr, beg, &get_size);
+        if(ret) 
+            std::cout<<"error: "<<ret<<std::endl;
+        else 
+            deal_with_stream_data(len, dat, (dts_y_or_n == 'y') ? dts : nullptr);
 
-    delete[] dataRay;
-    delete[] dtsRay;
+        if(dat)
+            delete[] dat;
+        if(dts)
+            delete[] dts;
+    }catch(...){
+        if(dat)
+            delete[] dat;
+        if(dts)
+            delete[] dts;
+    }
 }
 
 
@@ -1395,33 +1643,50 @@ template<typename T>
 void 
 _getItemFrame(int(*func)(LPCSTR,LPCSTR,T*,size_type,LPSTR*,size_type,pDateTimeStamp))
 {
+    std::string block;
+    std::string topic;
+    size_type nitems;
+
     prompt<<"block id: ";
     prompt>> block;
     prompt<<"topic: ";
     prompt>> topic;    
-    size_type nItems;
-    TOSDB_GetItemCount(block.c_str(), &nItems);
-    T* dataRay = new T[ nItems ];
-    char** labelRay = new char*[nItems];
+
+    TOSDB_GetItemCount(block.c_str(), &nitems);
+
+    try{
+        T* dat = new T[nitems];
   
-    for(size_type i = 0; i < nItems; ++i)
-    {      
-      labelRay[i] = new char[TOSDB_MAX_STR_SZ];
+        char** lab = new char*[nitems];      
+        for(size_type i = 0; i < nitems; ++i)              
+            lab[i] = new char[TOSDB_MAX_STR_SZ];
+  
+        dts = new DateTimeStamp[nitems];
+
+        int ret = func(block.c_str(), topic.c_str() ,dat , nitems, lab, TOSDB_MAX_STR_SZ, dts);
+        if(ret) 
+            std::cout<<"error: "<<ret<<std::endl;
+        else
+          for(size_type i = 0; i < nitems; ++i)
+              std::cout<< lab[i] << ' ' << dat[i] << ' ' << dts[i] << std::endl;
+
+        for(size_type i = 0; i < nitems; ++i)   
+            if(lab[nitems])     
+                delete[] lab[nitems];
+        if(dat)
+            delete[] dat;
+        if(lab)
+            delete[] lab;
+
+    }catch(...){
+        for(size_type i = 0; i < nitems; ++i)   
+            if(lab[nitems])     
+                delete[] lab[nitems];
+        if(dat)
+            delete[] dat;
+        if(lab)
+            delete[] lab;
     }
-
-    dtsRay = new DateTimeStamp[ nItems ];
-    int ret = func(block.c_str(),topic.c_str(),dataRay,nItems,labelRay,TOSDB_MAX_STR_SZ,dtsRay);
-    if(ret) 
-        std::cout<<"error: "<<ret<<std::endl;
-    else
-      for(size_type i = 0; i < nItems; ++i)
-          std::cout<<labelRay[i]<<' '<<dataRay[i]<<' '<<dtsRay[i]<<std::endl;
-
-    while(nItems--)        
-        delete[] labelRay[nItems];
-
-    delete[] dataRay;
-    delete[] labelRay;
 
 }
 };
