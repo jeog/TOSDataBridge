@@ -43,6 +43,22 @@ operator<<(std::ostream& out, const DateTimeStamp& dts)
 
 
 std::ostream& 
+operator<<(std::ostream& out, const DateTimeStamp* dts)
+{
+    if(dts){       
+        out << dts->ctime_struct.tm_mon+1 << '/'
+            << dts->ctime_struct.tm_mday << '/'
+            << dts->ctime_struct.tm_year+1900 <<' '
+            << dts->ctime_struct.tm_hour<<':'
+            << dts->ctime_struct.tm_min<<':'
+            << dts->ctime_struct.tm_sec<<':'
+            << dts->micro_second;
+    }
+
+    return out;
+}
+
+std::ostream& 
 operator<<(std::ostream& out, const generic_matrix_type& mat)
 {  
     for(auto & item : mat){

@@ -630,7 +630,7 @@ TOSDB_AddTopic(std::string id, TOS_Topics::TOPICS tTopic)
 int   
 TOSDB_AddItem(std::string id, std::string sItem)
 {
-    return TOSDB_Add(id(id, sItem, topic_set_type());
+    return TOSDB_Add(id, sItem, topic_set_type());
 }
 
 

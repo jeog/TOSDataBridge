@@ -955,6 +955,11 @@ operator<<(std::ostream&, const generic_type&);
 DLL_SPEC_IFACE std::ostream& 
 operator<<(std::ostream&, const DateTimeStamp&); 
 
+/* Nov 30 2016 */
+DLL_SPEC_IFACE std::ostream& 
+operator<<(std::ostream&, const DateTimeStamp*); 
+/* Nov 30 2016 */
+
 DLL_SPEC_IFACE std::ostream& 
 operator<<(std::ostream&, const generic_matrix_type&); 
 
