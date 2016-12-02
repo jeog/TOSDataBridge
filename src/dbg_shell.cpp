@@ -27,51 +27,6 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 
 namespace{
 
-#define CHECK_DISPLAY_RET_DEF(r) \
-do{ \
-    if(r) \
-        std::cout<< std::endl << "error: "<< r << std::endl << std::endl; \
-    else \
-        std::cout<< std::endl << "SUCCESS" << std::endl << std::endl; \
-}while(0)
-
-#define CHECK_DISPLAY_RET_VAL(r,v) \
-do{ \
-    if(r) \
-        std::cout<< std::endl << "error: "<< r << std::endl << std::endl; \
-    else \
-        std::cout<< std::endl << v << std::endl << std::endl; \
-}while(0)
-
-#define CHECK_DISPLAY_RET_VAL_DTS(r,v,d) \
-do{ \
-    if(r) \
-        std::cout<< std::endl << "error: "<< r << std::endl << std::endl; \
-    else \
-        std::cout<< std::endl << v << ' ' << d << std::endl << std::endl; \
-}while(0)
-
-#define CHECK_DISPLAY_RET_BOOL(r,b) \
-do{ \
-    if(r) \
-        std::cout<< std::endl << "error: "<< r << std::endl << std::endl; \
-    else \
-        std::cout<< std::endl << std::boolalpha << b << std::endl << std::endl; \
-}while(0)
-
-#define CHECK_DISPLAY_RET_MULTI(r,dat,n) \
-do{ \
-    if(r) \
-        std::cout<< std::endl << "error: "<< r << std::endl << std::endl; \
-    else{ \
-        std::cout<< std::endl; \
-        for(size_type i = 0; i < n; ++i) \
-            std::cout<< dat[i] << std::endl; \
-        std::cout<< std::endl; \
-    } \
-}while(0)
-
-
 
 class stream_prompt {
     std::string _prmpt;
@@ -83,22 +38,22 @@ public:
        }
 
     template<typename T>
-    //std::ostream& 
-    stream_prompt&
+    std::ostream& 
+    //stream_prompt&
     operator<<(const T& val)
     {
         std::cout<<_prmpt<<' '<<val; 
-        return *this;
+        return std::cout;
     }
 
     template< typename T >
-    //std::istream& 
-    stream_prompt&
+    std::istream& 
+    //stream_prompt&
     operator>>(T& val)
     {
         std::cout<<_prmpt<<' ';
         std::cin>>val;
-        return *this;
+        return std::cin;
     }
 
 } prompt("[-->");
@@ -236,7 +191,35 @@ void
 _get_stream_snapshot_from_marker( int(*func)(LPCSTR, LPCSTR, LPCSTR, T*,
                                              size_type, pDateTimeStamp, long, long*) );
 
+void 
+check_display_ret(int r);
+
+template<typename T>
+void 
+check_display_ret(int r, T v);
+
+template<typename T>
+void 
+check_display_ret(int r, T v, pDateTimeStamp d);
+
+template<>
+void 
+check_display_ret(int r, bool v);
+
+template<typename T>
+void 
+check_display_ret(int r, T *v, size_type n);
+
+template<typename T>
+void 
+check_display_ret(int r, T *v, size_type n, pDateTimeStamp d);
+
+template<typename T>
+void 
+check_display_ret(int r, T *v, char **l, size_type n, pDateTimeStamp d);
+
 };
+
 
 int main(int argc, char* argv[])
 {  
@@ -285,13 +268,28 @@ int main(int argc, char* argv[])
                 }
                 std::cout<< std::endl << "BAD COMMAND" << std::endl << std::endl;
             }
-        }catch(TOSDB_Error& e){      
+        }catch(TOSDB_Error& e){ 
+            std::string cont;
             std::cerr<< std::endl << "*** TOSDB_Error caught by shell **" << std::endl
                      << std::setw(15) << "    Process ID: "<< e.processID() << std::endl
                      << std::setw(15) << "    Thread ID: "<< e.threadID() << std::endl
                      << std::setw(15) << "    tag: " << e.tag() << std::endl
                      << std::setw(15) << "    info: " << e.info() << std::endl
                      << std::setw(15) << "    what: " << e.what() << std::endl << std::endl;
+
+            /* use goto so we can cleanly break out of main while loop */
+            exit_prompt: 
+                std::cout<< std::endl << "Exit shell? (y/n) ";
+                prompt>> cont;
+                std::cout<< std::endl;
+                if(cont == "y")
+                    break;
+                else if(cont != "n"){
+                    std::cout<< "INVALID - enter 'y' or 'n'" << std::endl;
+                    goto exit_prompt;
+                }
+            
+
         }
     }
 
@@ -450,12 +448,12 @@ on_cmd_admin(std::string cmd)
     if(cmd == "Connect"){  
 
         int ret = TOSDB_Connect();
-        CHECK_DISPLAY_RET_DEF(ret);
+        check_display_ret(ret);
 
     }else if(cmd == "Disconnect"){
 
         int ret = TOSDB_Disconnect();
-        CHECK_DISPLAY_RET_DEF(ret);
+        check_display_ret(ret);
    
     }else if(cmd == "IsConnected"){
 
@@ -485,7 +483,7 @@ on_cmd_admin(std::string cmd)
         prompt>> timeout;
 
         ret =  TOSDB_CreateBlock(block.c_str(), std::stoul(size) , (dts_y_or_n == "y"), timeout);      
-        CHECK_DISPLAY_RET_DEF(ret);
+        check_display_ret(ret);
             
     }else if(cmd == "CloseBlock"){
 
@@ -496,12 +494,12 @@ on_cmd_admin(std::string cmd)
         prompt>> block;          
 
         ret = TOSDB_CloseBlock(block.c_str());
-        CHECK_DISPLAY_RET_DEF(ret);
+        check_display_ret(ret);
 
     }else if(cmd == "CloseBlocks"){
 
         int ret =  TOSDB_CloseBlocks();
-        CHECK_DISPLAY_RET_DEF(ret);
+        check_display_ret(ret);
 
     }else if(cmd == "GetBlockLimit"){   
 
@@ -535,7 +533,7 @@ on_cmd_admin(std::string cmd)
                 strs = NewStrings(nblocks, TOSDB_BLOCK_ID_SZ);
 
                 ret = TOSDB_GetBlockIDs(strs, nblocks, TOSDB_BLOCK_ID_SZ);
-                CHECK_DISPLAY_RET_MULTI(ret,strs,nblocks);
+                check_display_ret(ret,strs,nblocks);
 
                 DeleteStrings(strs, nblocks);
             }catch(...){    
@@ -558,7 +556,7 @@ on_cmd_admin(std::string cmd)
             std::cout<< std::endl << TOSDB_GetBlockSize(block) << std::endl << std::endl;
         }else{          
             ret = TOSDB_GetBlockSize(block.c_str(), &sz);
-            CHECK_DISPLAY_RET_VAL(ret, sz);      
+            check_display_ret(ret, sz);      
         }
 
     }else if(cmd == "SetBlockSize"){
@@ -573,7 +571,7 @@ on_cmd_admin(std::string cmd)
         prompt>> size;
 
         ret = TOSDB_SetBlockSize(block.c_str(), std::stoul(size));
-        CHECK_DISPLAY_RET_DEF(ret);
+        check_display_ret(ret);
 
     }else if(cmd == "GetLatency"){
 
@@ -617,7 +615,7 @@ on_cmd_admin(std::string cmd)
                                 (const char**)topics_raw, ntopics);          
             }   
 
-            CHECK_DISPLAY_RET_DEF(ret);
+            check_display_ret(ret);
 
             del_cstr_items(items_raw, nitems);
             del_cstr_topics(topics_raw, ntopics); 
@@ -642,7 +640,7 @@ on_cmd_admin(std::string cmd)
             ? TOSDB_AddTopic(block, TOS_Topics::MAP()[topic])
             : TOSDB_AddTopic(block.c_str(), topic.c_str());            
         
-        CHECK_DISPLAY_RET_DEF(ret);
+        check_display_ret(ret);
 
     }else if(cmd == "AddItem"){    
 
@@ -659,7 +657,7 @@ on_cmd_admin(std::string cmd)
             ? TOSDB_AddItem(block, item)
             : TOSDB_AddItem(block.c_str(), item.c_str());
 
-        CHECK_DISPLAY_RET_DEF(ret);
+        check_display_ret(ret);
 
     }else if(cmd == "AddTopics"){      
 
@@ -685,7 +683,7 @@ on_cmd_admin(std::string cmd)
             }else{    
                 ret = TOSDB_AddTopics(block.c_str(), (const char**)topics_raw, ntopics);
             }
-            CHECK_DISPLAY_RET_DEF(ret);
+            check_display_ret(ret);
      
             del_cstr_topics(topics_raw, ntopics);
         }catch(...){
@@ -711,7 +709,7 @@ on_cmd_admin(std::string cmd)
                 ? TOSDB_AddItems(block, str_set_type(items_raw, nitems))
                 : TOSDB_AddItems(block.c_str(), (const char**)items_raw, nitems);
             
-            CHECK_DISPLAY_RET_DEF(ret);
+            check_display_ret(ret);
             del_cstr_items(items_raw, nitems);
         }catch(...){
             del_cstr_items(items_raw, nitems);      
@@ -733,7 +731,7 @@ on_cmd_admin(std::string cmd)
             ? TOSDB_RemoveTopic(block, TOS_Topics::MAP()[topic])
             : TOSDB_RemoveTopic(block.c_str(), topic.c_str());   
 
-        CHECK_DISPLAY_RET_DEF(ret);
+        check_display_ret(ret);
 
     }else if(cmd == "RemoveItem"){    
 
@@ -750,7 +748,7 @@ on_cmd_admin(std::string cmd)
             ? TOSDB_RemoveItem(block, item)
             : TOSDB_RemoveItem(block.c_str(), item.c_str());
 
-        CHECK_DISPLAY_RET_DEF(ret);
+        check_display_ret(ret);
 
     }else if(cmd == "GetItemCount"){
 
@@ -770,7 +768,7 @@ on_cmd_admin(std::string cmd)
             }
         }else{         
             ret = TOSDB_GetItemCount(block.c_str(), &count);
-            CHECK_DISPLAY_RET_VAL(ret, count);
+            check_display_ret(ret, count);
         }
 
     }else if(cmd == "GetTopicCount"){
@@ -791,7 +789,7 @@ on_cmd_admin(std::string cmd)
             }
         }else{         
             ret = TOSDB_GetTopicCount(block.c_str(), &count);
-            CHECK_DISPLAY_RET_VAL(ret, count);
+            check_display_ret(ret, count);
         }
          
     }else if(cmd == "GetTopicNames"){    
@@ -820,7 +818,7 @@ on_cmd_admin(std::string cmd)
                 strs = NewStrings(count, TOSDB_MAX_STR_SZ);
 
                 ret = TOSDB_GetTopicNames(block.c_str(), strs, count, TOSDB_MAX_STR_SZ);
-                CHECK_DISPLAY_RET_MULTI(ret, strs, count);
+                check_display_ret(ret, strs, count);
 
                 DeleteStrings(strs, count);
             }catch(...){
@@ -855,7 +853,7 @@ on_cmd_admin(std::string cmd)
                 strs = NewStrings(count, TOSDB_MAX_STR_SZ);
 
                 ret = TOSDB_GetItemNames(block.c_str(), strs, count, TOSDB_MAX_STR_SZ);
-                CHECK_DISPLAY_RET_MULTI(ret, strs, count);
+                check_display_ret(ret, strs, count);
 
                 DeleteStrings(strs, count);
             }catch(...){
@@ -903,7 +901,7 @@ on_cmd_admin(std::string cmd)
                 strs = NewStrings(count, TOSDB_MAX_STR_SZ);
 
                 ret = TOSDB_GetPreCachedTopicNames(block.c_str(), strs, count, TOSDB_MAX_STR_SZ);
-                CHECK_DISPLAY_RET_MULTI(ret, strs, count);
+                check_display_ret(ret, strs, count);
 
                 DeleteStrings(strs, count);
             }catch(...){
@@ -936,7 +934,7 @@ on_cmd_admin(std::string cmd)
                 strs = NewStrings(count, TOSDB_MAX_STR_SZ);
 
                 ret = TOSDB_GetPreCachedItemNames(block.c_str(), strs, count, TOSDB_MAX_STR_SZ);
-                CHECK_DISPLAY_RET_MULTI(ret, strs, count);
+                check_display_ret(ret, strs, count);
 
                 DeleteStrings(strs, count);
             }catch(...){
@@ -978,7 +976,7 @@ on_cmd_admin(std::string cmd)
             }
         }else{            
             ret = TOSDB_GetPreCachedItemCount(block.c_str(), &count);
-            CHECK_DISPLAY_RET_VAL(ret, count);
+            check_display_ret(ret, count);
         }
 
     }else if(cmd == "GetPreCachedTopicCount"){
@@ -1001,7 +999,7 @@ on_cmd_admin(std::string cmd)
             }
         }else{            
             ret = TOSDB_GetPreCachedTopicCount(block.c_str(), &count);
-            CHECK_DISPLAY_RET_VAL(ret, count);
+            check_display_ret(ret, count);
         }
 
     }else if(cmd == "GetTypeBits"){
@@ -1024,7 +1022,7 @@ on_cmd_admin(std::string cmd)
             }
         }else{            
             ret = TOSDB_GetTypeBits(topic.c_str(), &bits);
-            CHECK_DISPLAY_RET_VAL(ret, ((int)bits));
+            check_display_ret(ret, ((int)bits));
         }
 
     }else if(cmd == "GetTypeString"){
@@ -1046,7 +1044,7 @@ on_cmd_admin(std::string cmd)
             }
         }else{            
             ret = TOSDB_GetTypeString(topic.c_str(), tstring, 256);
-            CHECK_DISPLAY_RET_VAL(ret, tstring);
+            check_display_ret(ret, tstring);
         }         
 
     }else if(cmd == "IsUsingDateTime"){      
@@ -1069,7 +1067,7 @@ on_cmd_admin(std::string cmd)
             }
         }else{
             int ret = TOSDB_IsUsingDateTime(block.c_str(), &using_dt);
-            CHECK_DISPLAY_RET_BOOL(ret, (using_dt==1));           
+            check_display_ret(ret, (using_dt==1));           
         }
    
     }else if(cmd == "GetStreamOccupancy"){
@@ -1089,7 +1087,7 @@ on_cmd_admin(std::string cmd)
                      << std::endl << std::endl; 
         }else{            
             ret = TOSDB_GetStreamOccupancy(block.c_str(), item.c_str(), topic.c_str(), &occ);
-            CHECK_DISPLAY_RET_VAL(ret, occ);
+            check_display_ret(ret, occ);
         }
       
     }else if(cmd == "GetMarkerPosition"){
@@ -1109,7 +1107,7 @@ on_cmd_admin(std::string cmd)
                      << std::endl << std::endl; 
         }else{             
             ret = TOSDB_GetMarkerPosition(block.c_str(), item.c_str(), topic.c_str(), &pos);
-            CHECK_DISPLAY_RET_VAL(ret, pos);
+            check_display_ret(ret, pos);
         }
 
     }else if(cmd == "IsMarkerDirty"){      
@@ -1129,7 +1127,7 @@ on_cmd_admin(std::string cmd)
                      << std::endl << std::endl; 
         }else{
             ret = TOSDB_IsMarkerDirty(block.c_str(), item.c_str(),topic.c_str(), &is_dirty);
-            CHECK_DISPLAY_RET_BOOL(ret, (is_dirty==1));
+            check_display_ret(ret, (is_dirty==1));
         }
 
     }else if(cmd == "DumpBufferStatus"){   
@@ -1168,7 +1166,7 @@ on_cmd_get(std::string cmd)
         if(prompt_for_cpp()){
             _get<std::string>();
         }else{
-            char str[TOSDB_STR_DATA_SZ];
+            char s[TOSDB_STR_DATA_SZ];
             DateTimeStamp dts;
             std::string block;
             std::string item;
@@ -1181,10 +1179,10 @@ on_cmd_get(std::string cmd)
 
             get_dts = prompt_for_datetime(block);
 
-            ret = TOSDB_GetString(block.c_str(), item.c_str(), topic.c_str(), index, str, 
+            ret = TOSDB_GetString(block.c_str(), item.c_str(), topic.c_str(), index, s, 
                                   TOSDB_STR_DATA_SZ, (get_dts ? &dts : nullptr));
 
-            CHECK_DISPLAY_RET_VAL_DTS(ret, str, (get_dts ? &dts : nullptr));
+            check_display_ret(ret, s, (get_dts ? &dts : nullptr));
         }
        
     }else if(cmd == "GetGeneric"){      
@@ -1252,15 +1250,14 @@ on_cmd_stream_snapshot(std::string cmd)
 
             try{
                 dat = NewStrings(len, TOSDB_STR_DATA_SZ - 1);
-                dts = new DateTimeStamp[len];
+
+                if(get_dts)
+                    dts = new DateTimeStamp[len];
 
                 ret = TOSDB_GetStreamSnapshotStrings(block.c_str(), item.c_str(), topic.c_str(),
-                                                     dat, len, TOSDB_STR_DATA_SZ, 
-                                                     (get_dts ? dts : nullptr), end, beg);
-                if(ret) 
-                    std::cout<< std::endl << "error: " << ret << std::endl << std::endl;
-                else 
-                    display_stream_data(len, dat, (get_dts ? dts : nullptr));
+                                                     dat, len, TOSDB_STR_DATA_SZ, dts, end, beg);
+           
+                check_display_ret(ret, dat, len, dts);
 
                 DeleteStrings(dat, len);
                 if(dts)
@@ -1318,15 +1315,15 @@ on_cmd_stream_snapshot(std::string cmd)
 
         try{         
             dat = NewStrings(len, TOSDB_STR_DATA_SZ - 1);
-            dts = new DateTimeStamp[len];
+
+            if(get_dts)
+                dts = new DateTimeStamp[len];
 
             ret = TOSDB_GetStreamSnapshotStringsFromMarker(block.c_str(), item.c_str(), topic.c_str(), 
                                                            dat, len, TOSDB_STR_DATA_SZ, 
-                                                           (get_dts ? dts : nullptr), beg, &get_size);
-            if(ret) 
-                std::cout<< std::endl << "error:  "<< ret << std::endl << std::endl;
-            else 
-                display_stream_data(len, dat, (get_dts ? dts : nullptr));
+                                                           dts, beg, &get_size);
+
+            check_display_ret(ret, dat, len, dts);
 
             DeleteStrings(dat, len);
             if(dts)
@@ -1407,19 +1404,15 @@ on_cmd_frame(std::string cmd)
         try{
             dat = NewStrings(nitems, TOSDB_STR_DATA_SZ - 1);
             lab = NewStrings(nitems, TOSDB_STR_DATA_SZ - 1);    
-            dts = new DateTimeStamp[ nitems ];
 
-            ret = TOSDB_GetItemFrameStrings(block.c_str(), topic.c_str(), dat, nitems, TOSDB_STR_DATA_SZ,
-                                            lab, TOSDB_STR_DATA_SZ, (get_dts ? dts : nullptr) );
-            if(ret) 
-                std::cout<< std::endl << "error: " << ret << std::endl << std::endl;
-            else{ 
-                std::cout<< std::endl;
-                for(size_type i = 0; i < nitems; ++i)
-                    std::cout<< lab[i] << ' ' << dat[i] << ' ' << (get_dts ? &dts[i] : nullptr)  << std::endl;
-                std::cout<< std::endl;
-            }
+            if(get_dts)
+                dts = new DateTimeStamp[ nitems ];
 
+            ret = TOSDB_GetItemFrameStrings(block.c_str(), topic.c_str(), dat, nitems, 
+                                            TOSDB_STR_DATA_SZ, lab, TOSDB_STR_DATA_SZ, dts);
+
+            check_display_ret(ret, dat, lab, nitems, dts);
+                      
             DeleteStrings(dat, nitems);
             DeleteStrings(lab, nitems);
             if(dts)
@@ -1456,18 +1449,14 @@ on_cmd_frame(std::string cmd)
         try{       
             dat = NewStrings(ntopics, TOSDB_STR_DATA_SZ -1);
             lab = NewStrings(ntopics, TOSDB_STR_DATA_SZ - 1);  
-            dts = new DateTimeStamp[ntopics];
+
+            if(get_dts)
+                dts = new DateTimeStamp[ntopics];
                  
-            ret = TOSDB_GetTopicFrameStrings(block.c_str(), item.c_str(), dat, ntopics, TOSDB_STR_DATA_SZ, 
-                                             lab, TOSDB_STR_DATA_SZ, (get_dts ? dts : nullptr) );
-            if(ret) 
-                std::cout<< std::endl << "error: " << ret << std::endl << std::endl;
-            else{
-                std::cout<< std::endl;
-                for(size_type i = 0; i < ntopics; ++i)
-                    std::cout<< lab[i] << ' ' << dat[i] << ' ' << (get_dts ? &dts[i] : nullptr) << std::endl;
-                std::cout<< std::endl;
-            }
+            ret = TOSDB_GetTopicFrameStrings(block.c_str(), item.c_str(), dat, ntopics, 
+                                             TOSDB_STR_DATA_SZ, lab, TOSDB_STR_DATA_SZ, dts);
+            
+            check_display_ret(ret, dat, lab, ntopics, dts);
 
             DeleteStrings(dat, ntopics);
             DeleteStrings(lab, ntopics);
@@ -1663,7 +1652,7 @@ _get( int(*func)(LPCSTR, LPCSTR, LPCSTR, long, T*, pDateTimeStamp) )
     get_dts = prompt_for_datetime(block);
 
     ret = func(block.c_str(), item.c_str(), topic.c_str(), index, &d, (get_dts ? &dts : nullptr));
-    CHECK_DISPLAY_RET_VAL_DTS(ret, d, (get_dts ? &dts : nullptr));  
+    check_display_ret(ret, d, (get_dts ? &dts : nullptr));  
 
     std::cout<< std::endl;  
 }
@@ -1731,14 +1720,13 @@ _get_stream_snapshot( int(*func)(LPCSTR, LPCSTR, LPCSTR, T*,
 
     try{
         dat = new T[len];
-        dts = new DateTimeStamp[len];
 
-        ret = func(block.c_str(), item.c_str(), topic.c_str(), dat, len,
-                   (get_dts ? dts : nullptr), end, beg);
-        if(ret) 
-            std::cout<< std::endl << "error: " << ret << std::endl << std::endl;
-        else 
-            display_stream_data(len, dat, (get_dts ? dts : nullptr));
+        if(get_dts)
+            dts = new DateTimeStamp[len];
+
+        ret = func(block.c_str(), item.c_str(), topic.c_str(), dat, len, dts, end, beg);
+
+        check_display_ret(ret, dat, len, dts);
  
         if(dat)
             delete[] dat;
@@ -1781,14 +1769,13 @@ _get_stream_snapshot_from_marker( int(*func)(LPCSTR, LPCSTR, LPCSTR, T*,
 
     try{
         dat = new T[len];
-        dts = new DateTimeStamp[len];
 
-        ret = func(block.c_str(), item.c_str(), topic.c_str(), dat, len,
-                   (get_dts ? dts : nullptr), beg, &get_size);
-        if(ret) 
-            std::cout<< std::endl << "error: " << ret << std::endl << std::endl;
-        else 
-            display_stream_data(len, dat, (get_dts ? dts : nullptr));
+        if(get_dts)
+            dts = new DateTimeStamp[len];
+
+        ret = func(block.c_str(), item.c_str(), topic.c_str(), dat, len, dts, beg, &get_size);
+
+        check_display_ret(ret, dat, len, dts);
 
         if(dat)
             delete[] dat;
@@ -1828,20 +1815,15 @@ _get_item_frame( int(*func)(LPCSTR, LPCSTR, T*, size_type,
     TOSDB_GetItemCount(block.c_str(), &nitems);  
 
     try{
-        dat = new T[nitems];
-        dts = new DateTimeStamp[nitems];  
+        dat = new T[nitems];         
         lab = NewStrings(nitems, TOSDB_MAX_STR_SZ);        
 
-        ret = func(block.c_str(), topic.c_str() ,dat , nitems, lab, 
-                   TOSDB_MAX_STR_SZ, (get_dts ? dts : nullptr));
-        if(ret) 
-            std::cout<< std::endl << "error:  "<< ret << std::endl << std::endl;
-        else{
-            std::cout<< std::endl;
-            for(size_type i = 0; i < nitems; ++i)
-                std::cout<< lab[i] << ' ' << dat[i] << ' ' << (get_dts ? &dts[i] : nullptr) << std::endl;
-            std::cout<< std::endl;
-        }
+        if(get_dts)
+            dts = new DateTimeStamp[nitems]; 
+
+        ret = func(block.c_str(), topic.c_str() ,dat , nitems, lab, TOSDB_MAX_STR_SZ, dts);
+        
+        check_display_ret(ret, dat, lab, nitems, dts);
 
         DeleteStrings(lab, nitems);
         if(dat)
@@ -1856,6 +1838,90 @@ _get_item_frame( int(*func)(LPCSTR, LPCSTR, T*, size_type,
             delete[] dts;
     }
 
+}
+
+
+void 
+check_display_ret(int r)
+{
+    if(r) 
+        std::cout<< std::endl << "error: "<< r << std::endl << std::endl; 
+    else 
+        std::cout<< std::endl << "SUCCESS" << std::endl << std::endl; 
+}
+
+
+template<typename T>
+void 
+check_display_ret(int r, T v)
+{
+    if(r) 
+        std::cout<< std::endl << "error: "<< r << std::endl << std::endl; 
+    else 
+        std::cout<< std::endl << v << std::endl << std::endl; 
+}
+
+
+template<typename T>
+void 
+check_display_ret(int r, T v, pDateTimeStamp d)
+{
+    if(r) 
+        std::cout<< std::endl << "error: "<< r << std::endl << std::endl; 
+    else 
+        std::cout<< std::endl << v << ' ' << d << std::endl << std::endl; 
+}
+
+
+template<>
+void 
+check_display_ret(int r, bool v)
+{
+    if(r) 
+        std::cout<< std::endl << "error: "<< r << std::endl << std::endl; 
+    else 
+        std::cout<< std::endl << std::boolalpha << v << std::endl << std::endl; 
+}
+
+
+template<typename T>
+void 
+check_display_ret(int r, T *v, size_type n)
+{
+    if(r) 
+        std::cout<< std::endl << "error: "<< r << std::endl << std::endl; 
+    else{ 
+        std::cout<< std::endl; 
+        for(size_type i = 0; i < n; ++i) 
+            std::cout<< v[i] << std::endl; 
+        std::cout<< std::endl; 
+    } 
+}
+
+
+template<typename T>
+void 
+check_display_ret(int r, T *v, size_type n, pDateTimeStamp d)
+{
+    if(r) 
+        std::cout<< std::endl << "error: " << r << std::endl << std::endl;
+    else 
+        display_stream_data(n, v, d);
+}
+
+
+template<typename T>
+void 
+check_display_ret(int r, T *v, char **l, size_type n, pDateTimeStamp d)
+{
+    if(r) 
+          std::cout<< std::endl << "error: " << r << std::endl << std::endl;
+    else{
+        std::cout<< std::endl;
+        for(size_type i = 0; i < n; ++i)
+            std::cout<< l[i] << ' ' << v[i] << ' ' << (d ? (d + i) : d) << std::endl;
+        std::cout<< std::endl;
+    }
 }
 
 };
