@@ -16,6 +16,7 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 */
 
 #include <iomanip>
+#include <algorithm>
 
 #include "tos_databridge.h"
 
@@ -25,8 +26,11 @@ along with this program.  If not, see http://www.gnu.org/licenses.
    *** It DOES NOT check input, format all output etc. etc.***
  */
 
-namespace{
+#define MAX_DISPLAY_WIDTH 80
+#define LEFT_INDENT_SIZE 10
+#define CMD_OUT_PER_PAGE 10
 
+namespace{
 
 class stream_prompt {
     std::string _prmpt;
@@ -137,6 +141,9 @@ std::string get_frame_commands[] = {
 bool
 on_cmd_commands();
 
+void
+on_cmd_topics();
+
 bool 
 on_cmd_admin(std::string cmd);
 
@@ -160,6 +167,9 @@ del_cstr_items(char **items, size_type nitems);
 
 void 
 del_cstr_topics(char **topics, size_type ntopics);
+
+size_type
+min_stream_len(std::string block, long beg, long end, size_type len);
 
 template<typename T>
 void 
@@ -218,38 +228,24 @@ template<typename T>
 void 
 check_display_ret(int r, T *v, char **l, size_type n, pDateTimeStamp d);
 
+template<int W, const char FILL>
+void
+display_header_line(std::string pre, std::string post, std::string text);
+
+template<int W, int INDENT, char H>
+void
+display_header(std::string hpre, std::string hpost);
+
 };
 
+ 
 
 int main(int argc, char* argv[])
-{  
+{         
     std::string cmd;
-    char lpath[MAX_PATH+40+40];
 
-    std::cout<<"[-------------------------------------------------------------]" <<std::endl;
-    std::cout<<"[--                                                         --]" <<std::endl;
-    std::cout<<"[--     Welcome to the TOS-DataBridge Debug Shell           --]" <<std::endl;
-    std::cout<<"[--       Copyright (C) 2014 Jonathon Ogden                 --]" <<std::endl;
-    std::cout<<"[--                                                         --]" <<std::endl;
-    std::cout<<"[-------------------------------------------------------------]" <<std::endl;
-    std::cout<<"[--                                                         --]" <<std::endl;
-    std::cout<<"[-- This program is distributed WITHOUT ANY WARRANTY.       --]" <<std::endl;
-    std::cout<<"[-- See the GNU General Public License for more details.    --]" <<std::endl;
-    std::cout<<"[--                                                         --]" <<std::endl;
-    std::cout<<"[--   Use 'Connect' command to connect to the Service.      --]" <<std::endl;
-    std::cout<<"[--   Use 'commands' for a list of commands by category.    --]" <<std::endl;
-    std::cout<<"[--   Use 'exit' to exit.                                   --]" <<std::endl;
-    std::cout<<"[--                                                         --]" <<std::endl;
-    std::cout<<"[-- NOTE: Topics/Items are case sensitive; use upper-case   --]" <<std::endl;
-    std::cout<<"[--                                                         --]" <<std::endl;
-    std::cout<<"[-------------------------------------------------------------]" <<std::endl;
-    
-    TOSDB_GetClientLogPath(lpath,MAX_PATH+40+40);
+    display_header<MAX_DISPLAY_WIDTH, LEFT_INDENT_SIZE, '-'>("[--", "--]");
 
-    std::cout<< std::endl << std::setw(6) << std::left << "LOG: " << lpath 
-             << std::endl << std::setw(6) << std::left << "PID: " << GetCurrentProcessId() 
-             << std::endl << std::endl;
-   
     while(1){    
         try{
             prompt>> cmd;   
@@ -258,6 +254,8 @@ int main(int argc, char* argv[])
             else if(cmd == "commands"){
                 if( !on_cmd_commands() )
                     break;
+            }else if(cmd == "topics"){
+                on_cmd_topics();
             }else{
                 if( on_cmd_admin(cmd) 
                     || on_cmd_get(cmd)
@@ -299,7 +297,7 @@ int main(int argc, char* argv[])
 
 namespace{
 
-#define CMD_OUT_PER_PAGE 10
+
 
 bool
 decr_page_latch_and_wait(int *n, std::function<void(void)> cb_on_wait )
@@ -386,6 +384,46 @@ prompt_for_block_item_topic_index(std::string *pblock,
 }
 
 
+void
+on_cmd_topics()
+{
+    const int SPC = 3;  
+    const std::string TOPIC_HEAD("TOPICS:   ");
+
+    int wc;
+    
+    std::vector<std::string> topics;
+    
+    std::transform(
+        TOS_Topics::MAP().cbegin(), 
+        TOS_Topics::MAP().cend(), 
+        std::insert_iterator<std::vector<std::string>>(topics,topics.begin()),
+        [&](const TOS_Topics::topic_map_entry_type& e){ return e.second; }
+    );
+
+    std::sort(topics.begin(), topics.end(), std::less<std::string>());
+
+    std::cout<< std::endl << TOPIC_HEAD;   
+    wc = TOPIC_HEAD.size();
+
+    for(auto & t : topics){
+        if(t == " ") /* exclude NULL Topic */
+            continue;       
+        if(wc + t.size() > MAX_DISPLAY_WIDTH){ /* stay within maxw chars */
+            std::cout<< std::endl << std::string(TOPIC_HEAD.size(),' ');
+            wc = TOPIC_HEAD.size();
+        }
+        std::cout<< t;
+        wc += t.size();
+        if(wc + SPC < MAX_DISPLAY_WIDTH){
+            std::cout<< std::string(SPC,' ');
+            wc += SPC;
+        }        
+    }
+    std::cout<< std::endl << std::endl;
+}
+
+
 bool 
 on_cmd_commands()
 {
@@ -395,8 +433,8 @@ on_cmd_commands()
     std::cout<< std::endl << "What type of command?" << std::endl << std::endl
              << "- admin" << std::endl
              << "- get" << std::endl
-             << "- stream-snapshot" << std::endl
-             << "- frame" << std::endl
+             << "- stream" << std::endl
+             << "- frame" << std::endl << std::endl
              << "- back" << std::endl << std::endl;
 
     prompt>> cmd;
@@ -419,7 +457,7 @@ on_cmd_commands()
                 break;     
             std::cout<<"- "<< x << std::endl;
         }    
-    }else if(cmd == "stream-snapshot"){  
+    }else if(cmd == "stream"){  
         std::cout<< std::endl << "STREAM SNAPSHOT COMMANDS:" << std::endl << std::endl;
         for(auto & x : ILSet<std::string>(get_ds_commands)){                  
             if( !decr_page_latch_and_wait(&count, [&count](){ count = CMD_OUT_PER_PAGE; } ) )
@@ -441,7 +479,6 @@ on_cmd_commands()
     return true;
 }
 
-
 bool 
 on_cmd_admin(std::string cmd)
 {
@@ -462,10 +499,11 @@ on_cmd_admin(std::string cmd)
 
     }else if(cmd == "CreateBlock"){
 
-        unsigned long timeout;
+        std::string timeout;
         std::string block;
         std::string size;
         std::string dts_y_or_n;
+        unsigned long timeout_num;
         int ret;
 
         prompt<<"block id: ";
@@ -479,10 +517,25 @@ on_cmd_admin(std::string cmd)
         if(dts_y_or_n != "y" && dts_y_or_n != "n")
             std::cerr<< std::endl << "INVALID - default to 'n'" << std::endl << std::endl;
 
-        prompt<<"timeout: ";
+        prompt<<"timeout(milliseconds) [positive number, otherwise use default]: ";
         prompt>> timeout;
+                       
+        try{
+            timeout_num = std::stoul(timeout);
+            if(timeout_num <= 0)
+                throw std::exception("dummy");
 
-        ret =  TOSDB_CreateBlock(block.c_str(), std::stoul(size) , (dts_y_or_n == "y"), timeout);      
+            if(timeout_num < TOSDB_MIN_TIMEOUT){
+                std::cout<< std::endl << "WARNING - using a timeout < " << TOSDB_MIN_TIMEOUT
+                         << " milliseconds is NOT recommended" << std::endl;
+            }
+        }catch(...){
+            timeout_num = TOSDB_DEF_TIMEOUT;
+            std::cout<< std::endl << "Using default timeout of " << timeout_num
+                     << " milliseconds" << std::endl;           
+        }
+
+        ret =  TOSDB_CreateBlock(block.c_str(), std::stoul(size) , (dts_y_or_n == "y"), timeout_num);      
         check_display_ret(ret);
             
     }else if(cmd == "CloseBlock"){
@@ -923,8 +976,10 @@ on_cmd_admin(std::string cmd)
 
         if(prompt_for_cpp()){    
             try{            
+                std::cout<< std::endl;
                 for(auto & i : TOSDB_GetPreCachedItemNames(block))
                     std::cout<< i << std::endl;
+                std::cout<< std::endl;
             }catch(std::exception & e){
                 std::cout<< std::endl << "error: " << e.what() << std::endl << std::endl;
             }
@@ -1066,7 +1121,7 @@ on_cmd_admin(std::string cmd)
                 std::cout<< std::endl << "error: " << e.what() << std::endl << std::endl;
             }
         }else{
-            int ret = TOSDB_IsUsingDateTime(block.c_str(), &using_dt);
+            ret = TOSDB_IsUsingDateTime(block.c_str(), &using_dt);
             check_display_ret(ret, (using_dt==1));           
         }
    
@@ -1225,7 +1280,8 @@ on_cmd_stream_snapshot(std::string cmd)
         if(prompt_for_cpp()){
             _get_stream_snapshot<std::string>();
         }else{
-            size_type len;            
+            size_type len;   
+            size_type display_len;
             long beg;
             long end;
             int ret;
@@ -1257,7 +1313,9 @@ on_cmd_stream_snapshot(std::string cmd)
                 ret = TOSDB_GetStreamSnapshotStrings(block.c_str(), item.c_str(), topic.c_str(),
                                                      dat, len, TOSDB_STR_DATA_SZ, dts, end, beg);
            
-                check_display_ret(ret, dat, len, dts);
+                display_len = min_stream_len(block,beg,end,len);
+
+                check_display_ret(ret, dat, display_len, dts);
 
                 DeleteStrings(dat, len);
                 if(dts)
@@ -1323,7 +1381,7 @@ on_cmd_stream_snapshot(std::string cmd)
                                                            dat, len, TOSDB_STR_DATA_SZ, 
                                                            dts, beg, &get_size);
 
-            check_display_ret(ret, dat, len, dts);
+            check_display_ret(ret, dat, abs(get_size), dts);
 
             DeleteStrings(dat, len);
             if(dts)
@@ -1569,12 +1627,32 @@ del_cstr_topics(char **topics, size_type ntopics)
 }
 
 
+size_type
+min_stream_len(std::string block, long beg, long end, size_type len)
+{
+    size_type block_size = TOSDB_GetBlockSize(block);
+    size_type min_size = 0;
+
+    if(end < 0)
+        end += block_size;
+    if(beg < 0)
+        beg += block_size;
+
+    min_size = min( end-beg+1, len );
+
+    if(beg < 0 || end < 0 || beg >= block_size || end >= block_size || min_size <= 0)
+        throw TOSDB_Error("STREAM DATA", "invalid beg or end index values");
+
+    return min_size;
+}
+
+
 template<typename T>
 void 
 display_stream_data(size_type len, T* dat, pDateTimeStamp dts)
 {
     std::string index;
-    char loop = 'n';
+   
     do{
         std::cout<< std::endl;
         std::cout<< "Show data from what index value?('all' to show all, 'none' to quit) ";
@@ -1600,12 +1678,9 @@ display_stream_data(size_type len, T* dat, pDateTimeStamp dts)
         }catch(...){
             std::cerr<< std::endl << "BAD INPUT" << std::endl << std::endl;
             continue;
-        }      
-       
-        std::cout<< std::endl << "Continue? (y/n) ";
-        prompt>>loop;
+        }   
 
-    }while(loop == 'y');
+    }while(1);
 
     std::cout<< std::endl;
 }
@@ -1690,12 +1765,14 @@ _get_stream_snapshot()
     std::cout<< std::endl;
 }
 
+
 template<typename T>
 void 
 _get_stream_snapshot( int(*func)(LPCSTR, LPCSTR, LPCSTR, T*,
                                  size_type, pDateTimeStamp, long, long))
 {
     size_type len;
+    size_type display_len;
     long beg;
     long end;
     int ret;
@@ -1726,7 +1803,9 @@ _get_stream_snapshot( int(*func)(LPCSTR, LPCSTR, LPCSTR, T*,
 
         ret = func(block.c_str(), item.c_str(), topic.c_str(), dat, len, dts, end, beg);
 
-        check_display_ret(ret, dat, len, dts);
+        display_len = min_stream_len(block,beg,end,len);
+
+        check_display_ret(ret, dat, display_len, dts);
  
         if(dat)
             delete[] dat;
@@ -1775,7 +1854,7 @@ _get_stream_snapshot_from_marker( int(*func)(LPCSTR, LPCSTR, LPCSTR, T*,
 
         ret = func(block.c_str(), item.c_str(), topic.c_str(), dat, len, dts, beg, &get_size);
 
-        check_display_ret(ret, dat, len, dts);
+        check_display_ret(ret, dat, abs(get_size), dts);
 
         if(dat)
             delete[] dat;
@@ -1922,6 +2001,65 @@ check_display_ret(int r, T *v, char **l, size_type n, pDateTimeStamp d)
             std::cout<< l[i] << ' ' << v[i] << ' ' << (d ? (d + i) : d) << std::endl;
         std::cout<< std::endl;
     }
+}
+
+template<int W, const char FILL>
+void
+display_header_line(std::string pre, std::string post, std::string text)
+{
+  int f = W - (pre.size() + post.size() + text.size()) - 1; // account for newline
+  if(f < 0)
+      throw std::exception("can't fit header line");
+  
+  std::cout<< pre << std::string(int(f/2), FILL) 
+           << text << std::string(f - int(f/2), FILL) 
+           << post << std::endl;
+}
+
+template<int W, int INDENT, char H>
+void
+display_header(std::string hpre, std::string hpost)
+{
+    char lpath[MAX_PATH+40+40];  
+    TOSDB_GetClientLogPath(lpath,MAX_PATH+40+40);   
+
+    display_header_line<W, H>(hpre,hpost, "");
+    display_header_line<W, H>(hpre,hpost, "");
+    display_header_line<W,' '>(hpre,hpost, "");
+    display_header_line<W,' '>(hpre,hpost, "Welcome to the TOS-DataBridge Debug Shell");
+    display_header_line<W,' '>(hpre,hpost, "Copyright (C) 2014 Jonathon Ogden");
+    display_header_line<W,' '>(hpre,hpost, "");
+    display_header_line<W, H>(hpre,hpost, "");
+    display_header_line<W, H>(hpre,hpost, "");
+    display_header_line<W,' '>(hpre,hpost, "");
+    display_header_line<W,' '>(hpre,hpost, "This program is distributed WITHOUT ANY WARRANTY.");
+    display_header_line<W,' '>(hpre,hpost, "See the GNU General Public License for more details.");
+    display_header_line<W,' '>(hpre,hpost, "");
+    display_header_line<W,' '>(hpre,hpost, "Use 'Connect' command to connect to the Service.");
+    display_header_line<W,' '>(hpre,hpost, "Use 'commands' for a list of commands by category.");
+    display_header_line<W,' '>(hpre,hpost, "Use 'topics' for a list of topics(fields) TOS accepts.");
+    display_header_line<W,' '>(hpre,hpost, "Use 'exit' to exit.");
+    display_header_line<W,' '>(hpre,hpost, "");
+    display_header_line<W,' '>(hpre,hpost, "NOTE: Topics/Items are case sensitive; use upper-case");
+    display_header_line<W,' '>(hpre,hpost, "");
+    display_header_line<W, H>(hpre,hpost, "");           
+    display_header_line<W, H>(hpre,hpost, "");
+        
+    int wc = INDENT;
+
+    std::cout<< std::endl << std::setw(INDENT) << std::left << "LOG: ";    
+    for(auto s : std::string(lpath)){
+        if(++wc >= MAX_DISPLAY_WIDTH){
+            std::cout<< std::endl << std::string(INDENT,' ') ;
+            wc = INDENT;
+        }
+        std::cout<< s;
+    }
+
+    std::cout<< std::endl << std::endl << std::setw(INDENT) << std::left 
+             << "PID: " << GetCurrentProcessId() << std::endl;
+
+    on_cmd_topics(); 
 }
 
 };
