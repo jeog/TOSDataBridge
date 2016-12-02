@@ -710,18 +710,18 @@ class _VTOS_Hub(_Thread):
                         good_auth = handle_auth_serv(conn,self._password)                       
                         if not good_auth:
                             print('\n- CLIENT AUTHENTICATION FAILED -')
-                            print('    ',conn[1])
+                            print('    ',conn[1],'\n')
                             conn[0].close()
                             # TODO: add delay/throttle mechanism
                             continue
                         else:
                             print('\n+ CLIENT AUTHENTICATION SUCCEEDED +')
-                            print('    ',conn[1])
+                            print('    ',conn[1],'\n')
                         ### AUTHENTICATE ###                
                 except TOSDB_VirtualizationError as e:
                     print('\n- HANDSHAKE FAILED -')
                     print('    ',conn[1])
-                    print('    ', str(e))
+                    print('    ', str(e),'\n')
                     conn[0].close()        
                     continue          
                 conn[0].settimeout(None)
@@ -738,7 +738,7 @@ class _VTOS_Hub(_Thread):
         
 def _vcall(msg, my_sock, hub_addr, rcnt=3):
     try:
-        #clear any stale data in the stream(e.g our last call timedout midway)
+        #clear any stale data in the stream(e.g our last call timed-out midway)
         old_timeout = my_sock.gettimeout()
         my_sock.settimeout(0) #set to non-blocking
         try:
