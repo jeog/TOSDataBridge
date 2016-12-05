@@ -19,86 +19,89 @@ along with this program.  If not, see http://www.gnu.org/licenses.
   
 namespace{
 
-void Connect(void *ctx=nullptr); 
-void Disconnect(void *ctx=nullptr); 
-void IsConnected(void *ctx=nullptr);
-void CreateBlock(void *ctx=nullptr); 
-void CloseBlock(void *ctx=nullptr); 
-void CloseBlocks(void *ctx=nullptr);
-void GetBlockLimit(void *ctx=nullptr);
-void SetBlockLimit(void *ctx=nullptr);   
-void GetBlockCount(void *ctx=nullptr);
-void GetBlockIDs(void *ctx=nullptr);
-void GetBlockSize(void *ctx=nullptr); 
-void SetBlockSize(void *ctx=nullptr);
-void GetLatency(void *ctx=nullptr); 
-void SetLatency(void *ctx=nullptr);
-void Add(void *ctx=nullptr);
-void AddTopic(void *ctx=nullptr);
-void AddItem(void *ctx=nullptr);
-void AddTopics(void *ctx=nullptr);
-void AddItems(void *ctx=nullptr); 
-void RemoveTopic(void *ctx=nullptr);
-void RemoveItem(void *ctx=nullptr);
-void GetItemCount(void *ctx=nullptr);
-void GetTopicCount(void *ctx=nullptr);
-void GetTopicNames(void *ctx=nullptr);
-void GetItemNames(void *ctx=nullptr);
-void GetPreCachedTopicEnums(void *ctx=nullptr);    
-void GetPreCachedItemCount(void *ctx=nullptr); 
-void GetPreCachedTopicCount(void *ctx=nullptr);
-void GetPreCachedItemNames(void *ctx=nullptr); 
-void GetPreCachedTopicNames(void *ctx=nullptr);
-void GetTypeBits(void *ctx=nullptr);
-void GetTypeString(void *ctx=nullptr);
-void IsUsingDateTime(void *ctx=nullptr);
-void GetStreamOccupancy(void *ctx=nullptr);
-void GetMarkerPosition(void *ctx=nullptr);
-void IsMarkerDirty(void *ctx=nullptr);
-void DumpBufferStatus(void *ctx=nullptr);
+void Connect(CommandCtx *ctx); 
+void Disconnect(CommandCtx *ctx); 
+void IsConnected(CommandCtx *ctx);
+void CreateBlock(CommandCtx *ctx); 
+void CloseBlock(CommandCtx *ctx); 
+void CloseBlocks(CommandCtx *ctx);
+void GetBlockLimit(CommandCtx *ctx);
+void SetBlockLimit(CommandCtx *ctx);   
+void GetBlockCount(CommandCtx *ctx);
+void GetBlockIDs(CommandCtx *ctx);
+void GetBlockSize(CommandCtx *ctx); 
+void SetBlockSize(CommandCtx *ctx);
+void GetLatency(CommandCtx *ctx); 
+void SetLatency(CommandCtx *ctx);
+void Add(CommandCtx *ctx);
+void AddTopic(CommandCtx *ctx);
+void AddItem(CommandCtx *ctx);
+void AddTopics(CommandCtx *ctx);
+void AddItems(CommandCtx *ctx); 
+void RemoveTopic(CommandCtx *ctx);
+void RemoveItem(CommandCtx *ctx);
+void GetItemCount(CommandCtx *ctx);
+void GetTopicCount(CommandCtx *ctx);
+void GetTopicNames(CommandCtx *ctx);
+void GetItemNames(CommandCtx *ctx);
+void GetTopicEnums(CommandCtx *ctx);
+void GetPreCachedTopicEnums(CommandCtx *ctx);    
+void GetPreCachedItemCount(CommandCtx *ctx); 
+void GetPreCachedTopicCount(CommandCtx *ctx);
+void GetPreCachedItemNames(CommandCtx *ctx); 
+void GetPreCachedTopicNames(CommandCtx *ctx);
+void GetTypeBits(CommandCtx *ctx);
+void GetTypeString(CommandCtx *ctx);
+void IsUsingDateTime(CommandCtx *ctx);
+void GetStreamOccupancy(CommandCtx *ctx);
+void GetMarkerPosition(CommandCtx *ctx);
+void IsMarkerDirty(CommandCtx *ctx);
+void DumpBufferStatus(CommandCtx *ctx);
+
 
 commands_map_ty
-build_commands_map_admin()
+build_commands_map()
 {
-    commands_map_ty m;
-
-    m.insert( commands_map_elem_ty("Connect",Connect) );
-    m.insert( commands_map_elem_ty("Disconnect",Disconnect) );
-    m.insert( commands_map_elem_ty("IsConnected",IsConnected) );
-    m.insert( commands_map_elem_ty("CreateBlock",CreateBlock) );
-    m.insert( commands_map_elem_ty("CloseBlock",CloseBlock) );
-    m.insert( commands_map_elem_ty("CloseBlocks",CloseBlocks) );
-    m.insert( commands_map_elem_ty("GetBlockLimit",GetBlockLimit) );
-    m.insert( commands_map_elem_ty("SetBlockLimit",SetBlockLimit) );
-    m.insert( commands_map_elem_ty("GetBlockCount",GetBlockCount) );
-    m.insert( commands_map_elem_ty("GetBlockIDs",GetBlockIDs) );
-    m.insert( commands_map_elem_ty("GetBlockSize",GetBlockSize) );
-    m.insert( commands_map_elem_ty("SetBlockSize",SetBlockSize) );
-    m.insert( commands_map_elem_ty("GetLatency",GetLatency) );
-    m.insert( commands_map_elem_ty("SetLatency",SetLatency) );
-    m.insert( commands_map_elem_ty("Add",Add) );
-    m.insert( commands_map_elem_ty("AddTopic",AddTopic) );
-    m.insert( commands_map_elem_ty("AddItem",AddItem) );
-    m.insert( commands_map_elem_ty("AddTopics",AddTopics) );
-    m.insert( commands_map_elem_ty("AddItems",AddItems) );
-    m.insert( commands_map_elem_ty("RemoveTopic",RemoveTopic) );
-    m.insert( commands_map_elem_ty("RemoveItem",RemoveItem) );
-    m.insert( commands_map_elem_ty("GetItemCount",GetItemCount) );
-    m.insert( commands_map_elem_ty("GetTopicCount",GetTopicCount) );
-    m.insert( commands_map_elem_ty("GetTopicNames",GetTopicNames) );
-    m.insert( commands_map_elem_ty("GetItemNames",GetItemNames) );
-    m.insert( commands_map_elem_ty("GetPreCachedTopicEnums",GetPreCachedTopicEnums) );
-    m.insert( commands_map_elem_ty("GetPreCachedItemCount",GetPreCachedItemCount) );
-    m.insert( commands_map_elem_ty("GetPreCachedTopicCount",GetPreCachedTopicCount) );
-    m.insert( commands_map_elem_ty("GetPreCachedItemNames",GetPreCachedItemNames) );
-    m.insert( commands_map_elem_ty("GetPreCachedTopicNames",GetPreCachedTopicNames) );
-    m.insert( commands_map_elem_ty("GetTypeBits",GetTypeBits) );
-    m.insert( commands_map_elem_ty("GetTypeString",GetTypeString) );
-    m.insert( commands_map_elem_ty("IsUsingDateTime",IsUsingDateTime) );
-    m.insert( commands_map_elem_ty("GetStreamOccupancy",GetStreamOccupancy) );
-    m.insert( commands_map_elem_ty("GetMarkerPosition",GetMarkerPosition) );
-    m.insert( commands_map_elem_ty("IsMarkerDirty",IsMarkerDirty) );
-    m.insert( commands_map_elem_ty("DumpBufferStatus",DumpBufferStatus) );
+    commands_map_ty m; 
+    
+    m.insert( build_commands_map_elem("Connect",Connect) );
+    m.insert( build_commands_map_elem("Disconnect",Disconnect) );
+    m.insert( build_commands_map_elem("IsConnected",IsConnected) );
+    m.insert( build_commands_map_elem("CreateBlock",CreateBlock) );
+    m.insert( build_commands_map_elem("CloseBlock",CloseBlock) );
+    m.insert( build_commands_map_elem("CloseBlocks",CloseBlocks) );
+    m.insert( build_commands_map_elem("GetBlockLimit",GetBlockLimit) );
+    m.insert( build_commands_map_elem("SetBlockLimit",SetBlockLimit) );
+    m.insert( build_commands_map_elem("GetBlockCount",GetBlockCount) );
+    m.insert( build_commands_map_elem("GetBlockIDs",GetBlockIDs) );
+    m.insert( build_commands_map_elem("GetBlockSize",GetBlockSize) );
+    m.insert( build_commands_map_elem("SetBlockSize",SetBlockSize) );
+    m.insert( build_commands_map_elem("GetLatency",GetLatency) );
+    m.insert( build_commands_map_elem("SetLatency",SetLatency) );
+    m.insert( build_commands_map_elem("Add",Add) );
+    m.insert( build_commands_map_elem("AddTopic",AddTopic) );
+    m.insert( build_commands_map_elem("AddItem",AddItem) );
+    m.insert( build_commands_map_elem("AddTopics",AddTopics) );
+    m.insert( build_commands_map_elem("AddItems",AddItems) );
+    m.insert( build_commands_map_elem("RemoveTopic",RemoveTopic) );
+    m.insert( build_commands_map_elem("RemoveItem",RemoveItem) );
+    m.insert( build_commands_map_elem("GetItemCount",GetItemCount) );
+    m.insert( build_commands_map_elem("GetTopicCount",GetTopicCount) );
+    m.insert( build_commands_map_elem("GetTopicNames",GetTopicNames) );    
+    m.insert( build_commands_map_elem("GetItemNames",GetItemNames) );
+    m.insert( build_commands_map_elem("GetTopicEnums",GetTopicEnums) );
+    m.insert( build_commands_map_elem("GetPreCachedTopicEnums",GetPreCachedTopicEnums) );
+    m.insert( build_commands_map_elem("GetPreCachedItemCount",GetPreCachedItemCount) );
+    m.insert( build_commands_map_elem("GetPreCachedTopicCount",GetPreCachedTopicCount) );
+    m.insert( build_commands_map_elem("GetPreCachedItemNames",GetPreCachedItemNames) );
+    m.insert( build_commands_map_elem("GetPreCachedTopicNames",GetPreCachedTopicNames) );
+    m.insert( build_commands_map_elem("GetTypeBits",GetTypeBits) );
+    m.insert( build_commands_map_elem("GetTypeString",GetTypeString) );
+    m.insert( build_commands_map_elem("IsUsingDateTime",IsUsingDateTime) );
+    m.insert( build_commands_map_elem("GetStreamOccupancy",GetStreamOccupancy) );
+    m.insert( build_commands_map_elem("GetMarkerPosition",GetMarkerPosition) );
+    m.insert( build_commands_map_elem("IsMarkerDirty",IsMarkerDirty) );
+    m.insert( build_commands_map_elem("DumpBufferStatus",DumpBufferStatus) );
 
     return m;
 }
@@ -106,14 +109,14 @@ build_commands_map_admin()
 };
 
 
-commands_map_ty commands_admin = build_commands_map_admin();
+commands_map_ty commands_admin = build_commands_map();
 
 
 namespace {
 
 
 void 
-Connect(void *ctx)
+Connect(CommandCtx *ctx)
 {
     int ret = TOSDB_Connect();
     check_display_ret(ret);
@@ -121,7 +124,7 @@ Connect(void *ctx)
 
   
 void
-Disconnect(void *ctx)
+Disconnect(CommandCtx *ctx)
 {
     int ret = TOSDB_Disconnect();
     check_display_ret(ret);
@@ -129,7 +132,7 @@ Disconnect(void *ctx)
    
 
 void
-IsConnected(void *ctx)
+IsConnected(CommandCtx *ctx)
 {
     unsigned int ret = TOSDB_IsConnected();
     std::cout<< std::endl << std::boolalpha << (ret == 1) << std::endl << std::endl;
@@ -137,7 +140,7 @@ IsConnected(void *ctx)
 
 
 void
-CreateBlock(void *ctx)
+CreateBlock(CommandCtx *ctx)
 {
     std::string timeout;
     std::string block;
@@ -146,19 +149,14 @@ CreateBlock(void *ctx)
     unsigned long timeout_num;
     int ret;
 
-    prompt<<"block id: ";
-    prompt>> block;
-    prompt<<"block size: ";
-    prompt>> size;
-        
-    prompt<<"use datetime stamp?(y/n) ";    
-    std::cin.get();
-    prompt>> dts_y_or_n ;
+    prompt_for("block id", &block, ctx);
+    prompt_for("block size", &size, ctx);        
+    prompt_for("use datetime stamp?(y/n)", &dts_y_or_n, ctx);
+
     if(dts_y_or_n != "y" && dts_y_or_n != "n")
         std::cerr<< std::endl << "INVALID - default to 'n'" << std::endl << std::endl;
 
-    prompt<<"timeout(milliseconds) [positive number, otherwise use default]: ";
-    prompt>> timeout;
+    prompt_for("timeout(milliseconds) [positive number or defaults]", &timeout, ctx);
                        
     try{
         timeout_num = std::stoul(timeout);
@@ -181,13 +179,12 @@ CreateBlock(void *ctx)
 
 
 void
-CloseBlock(void *ctx)
+CloseBlock(CommandCtx *ctx)
 {
     int ret;
     std::string block;
 
-    prompt<<"block id: ";
-    prompt>> block;          
+    prompt_for("block id", &block, ctx);    
 
     ret = TOSDB_CloseBlock(block.c_str());
     check_display_ret(ret);
@@ -195,7 +192,7 @@ CloseBlock(void *ctx)
 
 
 void
-CloseBlocks(void *ctx)
+CloseBlocks(CommandCtx *ctx)
 {
     int ret =  TOSDB_CloseBlocks();
     check_display_ret(ret);
@@ -203,33 +200,33 @@ CloseBlocks(void *ctx)
 
 
 void
-GetBlockLimit(void *ctx)
+GetBlockLimit(CommandCtx *ctx)
 {
-      std::cout<< std::endl << TOSDB_GetBlockLimit() << std::endl << std::endl;
+    std::cout<< std::endl << TOSDB_GetBlockLimit() << std::endl << std::endl;
 }
 
 
 void
-SetBlockLimit(void *ctx)
+SetBlockLimit(CommandCtx *ctx)
 {
     std::string size;
 
-    prompt<<"block limit: ";
-    prompt>> size;
+    prompt_for("block limit", &size, ctx);
+    
     std::cout<< std::endl << TOSDB_SetBlockLimit(std::stoul(size)) << std::endl << std::endl;
 }
 
 void
-GetBlockCount(void *ctx)
+GetBlockCount(CommandCtx *ctx)
 {
-    std::cout<< TOSDB_GetBlockCount() <<std::endl;
+    std::cout<< std::endl << TOSDB_GetBlockCount() << std::endl << std::endl;
 }
 
 
 void
-GetBlockIDs(void *ctx)
+GetBlockIDs(CommandCtx *ctx)
 {
-    if(prompt_for_cpp()){
+    if(prompt_for_cpp(ctx)){
         std::cout<< std::endl;
         for(auto & str : TOSDB_GetBlockIDs())
             std::cout<< str << std::endl;
@@ -255,17 +252,16 @@ GetBlockIDs(void *ctx)
 
 
 void
-GetBlockSize(void *ctx)
+GetBlockSize(CommandCtx *ctx)
 {
     int ret;
     std::string block;
 
     size_type sz = 0;
 
-    prompt<<"block id: ";
-    prompt>> block;
+     prompt_for("block id", &block, ctx);
 
-    if(prompt_for_cpp()){            
+    if(prompt_for_cpp(ctx)){            
         std::cout<< std::endl << TOSDB_GetBlockSize(block) << std::endl << std::endl;
     }else{          
         ret = TOSDB_GetBlockSize(block.c_str(), &sz);
@@ -275,16 +271,14 @@ GetBlockSize(void *ctx)
 
 
 void
-SetBlockSize(void *ctx)
+SetBlockSize(CommandCtx *ctx)
 {
     int ret;
     std::string block;
     std::string size;      
 
-    prompt<<"block id: ";
-    prompt>> block;
-    prompt<<"block size: ";
-    prompt>> size;
+    prompt_for("block id", &block, ctx);
+    prompt_for("block size", &size, ctx);    
 
     ret = TOSDB_SetBlockSize(block.c_str(), std::stoul(size));
     check_display_ret(ret);
@@ -292,26 +286,25 @@ SetBlockSize(void *ctx)
 
 
 void
-GetLatency(void *ctx)
+GetLatency(CommandCtx *ctx)
 {
-     std::cout<< TOSDB_GetLatency() <<std::endl;
+     std::cout<< std::endl << TOSDB_GetLatency() << std::endl << std::endl;
 }
 
 
 void
-SetLatency(void *ctx)
+SetLatency(CommandCtx *ctx)
 {
-    unsigned long lat;
+    std::string lat;
 
-    prompt<<"enter latency value(milleseconds)";
-    prompt>> lat;       
+    prompt_for("latency value(milleseconds)", &lat, ctx);    
 
-    TOSDB_SetLatency((UpdateLatency)lat);
+    TOSDB_SetLatency((UpdateLatency)std::stoul(lat));
 }
 
 
 void
-Add(void *ctx)
+Add(CommandCtx *ctx)
 {
     std::string block;
     size_type nitems;
@@ -321,14 +314,13 @@ Add(void *ctx)
     char **items_raw = nullptr;
     char **topics_raw = nullptr;
 
-    prompt<<"block id: ";
-    prompt>> block;   
+    prompt_for("block id", &block, ctx);    
 
     try{           
-        nitems = get_cstr_items(&items_raw);
-        ntopics = get_cstr_topics(&topics_raw);
+        nitems = get_cstr_items(&items_raw, ctx);
+        ntopics = get_cstr_topics(&topics_raw, ctx);
 
-        if(prompt_for_cpp()){    
+        if(prompt_for_cpp(ctx)){    
             auto topics = topic_set_type( 
                               topics_raw, 
                               ntopics,
@@ -353,18 +345,16 @@ Add(void *ctx)
 
 
 void
-AddTopic(void *ctx)
+AddTopic(CommandCtx *ctx)
 {
     std::string block;
     std::string topic;
     int ret;
 
-    prompt<<"block id: ";
-    prompt>> block;
-    prompt<<"topic: ";
-    prompt>> topic;  
+    prompt_for("block id", &block, ctx); 
+    prompt_for("topic", &topic, ctx);    
 
-    ret = prompt_for_cpp()
+    ret = prompt_for_cpp(ctx)
         ? TOSDB_AddTopic(block, TOS_Topics::MAP()[topic])
         : TOSDB_AddTopic(block.c_str(), topic.c_str());            
         
@@ -373,18 +363,16 @@ AddTopic(void *ctx)
 
 
 void
-AddItem(void *ctx)
+AddItem(CommandCtx *ctx)
 {    
     std::string block;
     std::string item;
     int ret;
 
-    prompt<<"block id: ";
-    prompt>> block;
-    prompt<<"item: ";
-    prompt>> item;    
-
-    ret = prompt_for_cpp()
+    prompt_for("block id", &block, ctx); 
+    prompt_for("item", &item, ctx);
+    
+    ret = prompt_for_cpp(ctx)
         ? TOSDB_AddItem(block, item)
         : TOSDB_AddItem(block.c_str(), item.c_str());
 
@@ -393,7 +381,7 @@ AddItem(void *ctx)
 
 
 void
-AddTopics(void *ctx)
+AddTopics(CommandCtx *ctx)
 {
     std::string block;        
     size_type ntopics;
@@ -401,13 +389,12 @@ AddTopics(void *ctx)
 
     char **topics_raw = nullptr;
 
-    prompt<<"block id: ";
-    prompt>> block;
+    prompt_for("block id", &block, ctx); 
 
     try{ 
-        ntopics = get_cstr_topics(&topics_raw); 
+        ntopics = get_cstr_topics(&topics_raw, ctx); 
 
-        if(prompt_for_cpp()){
+        if(prompt_for_cpp(ctx)){
             auto topics = topic_set_type( 
                               topics_raw, 
                               ntopics, 
@@ -428,7 +415,7 @@ AddTopics(void *ctx)
 
 
 void
-AddItems(void *ctx)
+AddItems(CommandCtx *ctx)
 {
     std::string block;       
     size_type nitems;
@@ -436,13 +423,12 @@ AddItems(void *ctx)
 
     char **items_raw = nullptr;
 
-    prompt<<"block id: ";
-    prompt>> block;
+    prompt_for("block id", &block, ctx); 
            
     try{            
-        nitems = get_cstr_items(&items_raw);
+        nitems = get_cstr_items(&items_raw, ctx);
 
-        ret = prompt_for_cpp()
+        ret = prompt_for_cpp(ctx)
             ? TOSDB_AddItems(block, str_set_type(items_raw, nitems))
             : TOSDB_AddItems(block.c_str(), (const char**)items_raw, nitems);
             
@@ -456,18 +442,16 @@ AddItems(void *ctx)
 
 
 void
-RemoveTopic(void *ctx)
+RemoveTopic(CommandCtx *ctx)
 {
     std::string block;
     std::string topic;
     int ret;
 
-    prompt<<"block id: ";
-    prompt>> block;
-    prompt<<"topic: ";
-    prompt>> topic;  
-
-    ret = prompt_for_cpp() 
+    prompt_for("block id", &block, ctx); 
+    prompt_for("topic", &topic, ctx);
+    
+    ret = prompt_for_cpp(ctx) 
         ? TOSDB_RemoveTopic(block, TOS_Topics::MAP()[topic])
         : TOSDB_RemoveTopic(block.c_str(), topic.c_str());   
 
@@ -476,18 +460,16 @@ RemoveTopic(void *ctx)
 
 
 void
-RemoveItem(void *ctx)
+RemoveItem(CommandCtx *ctx)
 {
     std::string block;
     std::string item;
     int ret;
 
-    prompt<<"block id: ";
-    prompt>> block;
-    prompt<<"item: ";
-    prompt>> item;    
-
-    ret = prompt_for_cpp() 
+    prompt_for("block id", &block, ctx); 
+    prompt_for("item: ", &item, ctx);
+    
+    ret = prompt_for_cpp(ctx) 
         ? TOSDB_RemoveItem(block, item)
         : TOSDB_RemoveItem(block.c_str(), item.c_str());
 
@@ -496,17 +478,16 @@ RemoveItem(void *ctx)
 
 
 void
-GetItemCount(void *ctx)
+GetItemCount(CommandCtx *ctx)
 {
     std::string block;        
     int ret;
 
     size_type count = 0;
 
-    prompt<<"block id: ";
-    prompt>> block;
+    prompt_for("block id", &block, ctx); 
 
-    if(prompt_for_cpp()){
+    if(prompt_for_cpp(ctx)){
         try{
             std::cout<< std::endl << TOSDB_GetItemCount(block) << std::endl << std::endl;
         }catch(std::exception & e){
@@ -520,17 +501,16 @@ GetItemCount(void *ctx)
 
 
 void
-GetTopicCount(void *ctx)
+GetTopicCount(CommandCtx *ctx)
 {
     std::string block;
     int ret;
 
     size_type count = 0;
 
-    prompt<<"block id: ";
-    prompt>> block;
+    prompt_for("block id", &block, ctx); 
 
-    if(prompt_for_cpp()){
+    if(prompt_for_cpp(ctx)){
         try{
             std::cout<< std::endl << TOSDB_GetTopicCount(block) << std::endl << std::endl;
         }catch(std::exception & e){
@@ -544,7 +524,7 @@ GetTopicCount(void *ctx)
 
 
 void
-GetTopicNames(void *ctx)
+GetTopicNames(CommandCtx *ctx)
 {              
     std::string block;
     int ret;
@@ -552,10 +532,9 @@ GetTopicNames(void *ctx)
 
     size_type count = 0;
 
-    prompt<<"block id: ";
-    prompt>> block;
+    prompt_for("block id", &block, ctx); 
 
-    if(prompt_for_cpp()){         
+    if(prompt_for_cpp(ctx)){         
         try{           
             std::cout<< std::endl;
             for(auto & t : TOSDB_GetTopicNames(block))
@@ -582,7 +561,7 @@ GetTopicNames(void *ctx)
 
 
 void
-GetItemNames(void *ctx)
+GetItemNames(CommandCtx *ctx)
 {
     int ret;
     char **strs;
@@ -590,10 +569,9 @@ GetItemNames(void *ctx)
 
     size_type count = 0;
 
-    prompt<<"block id: ";
-    prompt>> block;
+    prompt_for("block id", &block, ctx); 
 
-    if(prompt_for_cpp()){         
+    if(prompt_for_cpp(ctx)){         
         try{     
             std::cout<< std::endl;
             for(auto & i : TOSDB_GetItemNames(block))
@@ -620,12 +598,11 @@ GetItemNames(void *ctx)
 
 
 void
-GetTopicEnums(void *ctx)
+GetTopicEnums(CommandCtx *ctx)
 {
     std::string block;
 
-    prompt<<"block id: ";
-    prompt>> block;      
+    prompt_for("block id", &block, ctx);       
       
     std::cout<< std::endl;
     for(auto & t : TOSDB_GetTopicEnums(block))
@@ -635,7 +612,7 @@ GetTopicEnums(void *ctx)
 }
 
 void
-GetPreCachedTopicNames(void *ctx)
+GetPreCachedTopicNames(CommandCtx *ctx)
 {
     char **strs;
     int ret;
@@ -643,10 +620,9 @@ GetPreCachedTopicNames(void *ctx)
 
     size_type count = 0;
 
-    prompt<<"block id: ";
-    prompt>> block;
+    prompt_for("block id", &block, ctx); 
 
-    if(prompt_for_cpp()){    
+    if(prompt_for_cpp(ctx)){    
         try{         
             std::cout<< std::endl;
             for(auto & t : TOSDB_GetPreCachedTopicNames(block))
@@ -673,7 +649,7 @@ GetPreCachedTopicNames(void *ctx)
 
 
 void
-GetPreCachedItemNames(void *ctx)
+GetPreCachedItemNames(CommandCtx *ctx)
 {
     char **strs;
     int ret;
@@ -681,10 +657,9 @@ GetPreCachedItemNames(void *ctx)
 
     size_type count = 0;
 
-    prompt<<"block id: ";
-    prompt>> block;
+    prompt_for("block id", &block, ctx); 
 
-    if(prompt_for_cpp()){    
+    if(prompt_for_cpp(ctx)){    
         try{            
             std::cout<< std::endl;
             for(auto & i : TOSDB_GetPreCachedItemNames(block))
@@ -710,12 +685,11 @@ GetPreCachedItemNames(void *ctx)
 }
 
 void
-GetPreCachedTopicEnums(void *ctx)
+GetPreCachedTopicEnums(CommandCtx *ctx)
 {
     std::string block;
 
-    prompt<<"block id: ";
-    prompt>> block;      
+    prompt_for("block id", &block, ctx);       
         
     std::cout<< std::endl; 
     for(auto & t : TOSDB_GetPreCachedTopicEnums(block))
@@ -726,17 +700,16 @@ GetPreCachedTopicEnums(void *ctx)
 
 
 void
-GetPreCachedItemCount(void *ctx)
+GetPreCachedItemCount(CommandCtx *ctx)
 {
     int ret;
     std::string block;
 
     size_type count = 0;
 
-    prompt<<"block id: ";
-    prompt>> block;
+    prompt_for("block id", &block, ctx); 
 
-    if(prompt_for_cpp()){
+    if(prompt_for_cpp(ctx)){
         try{
             std::cout<< std::endl 
                       << TOSDB_GetPreCachedItemCount(block) 
@@ -752,17 +725,16 @@ GetPreCachedItemCount(void *ctx)
 
 
 void
-GetPreCachedTopicCount(void *ctx)
+GetPreCachedTopicCount(CommandCtx *ctx)
 {
     int ret;
     std::string block;
 
     size_type count = 0;
 
-    prompt<<"block id: ";
-    prompt>> block;
+    prompt_for("block id", &block, ctx); 
 
-    if(prompt_for_cpp()){
+    if(prompt_for_cpp(ctx)){
         try{
             std::cout<< std::endl 
                       << TOSDB_GetPreCachedTopicCount(block) 
@@ -778,42 +750,43 @@ GetPreCachedTopicCount(void *ctx)
 
 
 void
-GetTypeBits(void *ctx)
+GetTypeBits(CommandCtx *ctx)
 {
     int ret;
     std::string topic;
 
     type_bits_type bits = 0;
 
-    prompt<<"topic: ";
-    prompt>> topic;
+    prompt_for("topic", &topic, ctx); 
 
-    if(prompt_for_cpp()){
+    if(prompt_for_cpp(ctx)){
         try{
-            std::cout<< std::endl 
-                      << TOSDB_GetTypeBits(TOS_Topics::MAP()[topic]) 
+            std::cout<< std::endl << std::hex
+                      << (int)TOSDB_GetTypeBits(TOS_Topics::MAP()[topic]) 
                       << std::endl << std::endl; 
         }catch(std::exception & e){
             std::cout<< std::endl <<"error: " << e.what() << std::endl << std::endl;
         }
     }else{            
         ret = TOSDB_GetTypeBits(topic.c_str(), &bits);
-        check_display_ret(ret, ((int)bits));
+        if(ret) 
+            std::cout<< std::endl << "error: "<< ret << std::endl << std::endl; 
+        else 
+            std::cout<< std::endl << std::hex << (int)bits << std::endl << std::endl;         
     }
 }
 
 
 void
-GetTypeString(void *ctx)
+GetTypeString(CommandCtx *ctx)
 {        
     int ret;
     char tstring[256];
     std::string topic;
 
-    prompt<<"topic: ";
-    prompt>> topic;
-
-    if(prompt_for_cpp()){
+    prompt_for("topic", &topic, ctx);
+    
+    if(prompt_for_cpp(ctx)){
         try{
             std::cout<< std::endl 
                       << TOSDB_GetTypeString(TOS_Topics::MAP()[topic]) 
@@ -829,17 +802,16 @@ GetTypeString(void *ctx)
 
 
 void
-IsUsingDateTime(void *ctx)
+IsUsingDateTime(CommandCtx *ctx)
 {
     int ret;        
     std::string block;     
 
     unsigned int using_dt = 0;
 
-    prompt<<"block id: ";
-    prompt>> block;
+    prompt_for("block id", &block, ctx); 
 
-    if(prompt_for_cpp()){
+    if(prompt_for_cpp(ctx)){
         try{
             std::cout<< std::endl << std::boolalpha 
                       << TOSDB_IsUsingDateTime(block) 
@@ -855,7 +827,7 @@ IsUsingDateTime(void *ctx)
 
 
 void
-GetStreamOccupancy(void *ctx)
+GetStreamOccupancy(CommandCtx *ctx)
 {
     int ret;
     std::string block;
@@ -864,9 +836,9 @@ GetStreamOccupancy(void *ctx)
 
     size_type occ = 0;
 
-    prompt_for_block_item_topic(&block, &item, &topic);
+    prompt_for_block_item_topic(&block, &item, &topic, ctx);
 
-    if(prompt_for_cpp()){
+    if(prompt_for_cpp(ctx)){
         std::cout<< std::endl 
                   << TOSDB_GetStreamOccupancy(block, item, TOS_Topics::MAP()[topic]) 
                   << std::endl << std::endl; 
@@ -878,7 +850,7 @@ GetStreamOccupancy(void *ctx)
 
 
 void
-GetMarkerPosition(void *ctx)
+GetMarkerPosition(CommandCtx *ctx)
 {
     int ret;
     std::string block;
@@ -887,9 +859,9 @@ GetMarkerPosition(void *ctx)
 
     long long pos = 0;
 
-    prompt_for_block_item_topic(&block, &item, &topic);  
+    prompt_for_block_item_topic(&block, &item, &topic, ctx);  
 
-    if(prompt_for_cpp()){
+    if(prompt_for_cpp(ctx)){
         std::cout<< std::endl 
                   << TOSDB_GetMarkerPosition(block, item, TOS_Topics::MAP()[topic]) 
                   << std::endl << std::endl; 
@@ -901,7 +873,7 @@ GetMarkerPosition(void *ctx)
 
 
 void
-IsMarkerDirty(void *ctx)
+IsMarkerDirty(CommandCtx *ctx)
 {
     int ret;
     std::string block;
@@ -910,9 +882,9 @@ IsMarkerDirty(void *ctx)
         
     unsigned int is_dirty = false;
 
-    prompt_for_block_item_topic(&block, &item, &topic);
+    prompt_for_block_item_topic(&block, &item, &topic, ctx);
 
-    if(prompt_for_cpp()){
+    if(prompt_for_cpp(ctx)){
         std::cout<< std::endl << std::boolalpha 
                   << TOSDB_IsMarkerDirty(block, item,TOS_Topics::MAP()[topic]) 
                   << std::endl << std::endl; 
@@ -924,7 +896,7 @@ IsMarkerDirty(void *ctx)
 
 
 void
-DumpBufferStatus(void *ctx)
+DumpBufferStatus(CommandCtx *ctx)
 {
     TOSDB_DumpSharedBufferStatus();
 }

@@ -20,30 +20,30 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 
 namespace{
 
-void GetItemFrame(void *ctx=nullptr);
-void GetItemFrameStrings(void *ctx=nullptr);
-void GetItemFrameDoubles(void *ctx=nullptr);
-void GetItemFrameFloats(void *ctx=nullptr);
-void GetItemFrameLongLongs(void *ctx=nullptr);
-void GetItemFrameLongs(void *ctx=nullptr);
-void GetTopicFrame(void *ctx=nullptr);
-void GetTopicFrameStrings(void *ctx=nullptr);
-void GetTotalFrame(void *ctx=nullptr);
+void GetItemFrame(CommandCtx *ctx);
+void GetItemFrameStrings(CommandCtx *ctx);
+void GetItemFrameDoubles(CommandCtx *ctx);
+void GetItemFrameFloats(CommandCtx *ctx);
+void GetItemFrameLongLongs(CommandCtx *ctx);
+void GetItemFrameLongs(CommandCtx *ctx);
+void GetTopicFrame(CommandCtx *ctx);
+void GetTopicFrameStrings(CommandCtx *ctx);
+void GetTotalFrame(CommandCtx *ctx);
 
 commands_map_ty
-build_commands_map_frame()
+build_commands_map()
 {
     commands_map_ty m;
 
-    m.insert( commands_map_elem_ty("GetItemFrame",GetItemFrame) );
-    m.insert( commands_map_elem_ty("GetItemFrameStrings",GetItemFrameStrings) );
-    m.insert( commands_map_elem_ty("GetItemFrameDoubles",GetItemFrameDoubles) );
-    m.insert( commands_map_elem_ty("GetItemFrameFloats",GetItemFrameFloats) );
-    m.insert( commands_map_elem_ty("GetItemFrameLongLongs",GetItemFrameLongLongs) );
-    m.insert( commands_map_elem_ty("GetItemFrameLongs",GetItemFrameLongs) );
-    m.insert( commands_map_elem_ty("GetTopicFrame",GetTopicFrame) );
-    m.insert( commands_map_elem_ty("GetTopicFrameStrings",GetTopicFrameStrings) );
-    m.insert( commands_map_elem_ty("GetTotalFrame",GetTotalFrame) );
+    m.insert( build_commands_map_elem("GetItemFrame",GetItemFrame) );
+    m.insert( build_commands_map_elem("GetItemFrameStrings",GetItemFrameStrings) );
+    m.insert( build_commands_map_elem("GetItemFrameDoubles",GetItemFrameDoubles) );
+    m.insert( build_commands_map_elem("GetItemFrameFloats",GetItemFrameFloats) );
+    m.insert( build_commands_map_elem("GetItemFrameLongLongs",GetItemFrameLongLongs) );
+    m.insert( build_commands_map_elem("GetItemFrameLongs",GetItemFrameLongs) );
+    m.insert( build_commands_map_elem("GetTopicFrame",GetTopicFrame) );
+    m.insert( build_commands_map_elem("GetTopicFrameStrings",GetTopicFrameStrings) );
+    m.insert( build_commands_map_elem("GetTotalFrame",GetTotalFrame) );
 
     return m;
 }
@@ -51,7 +51,7 @@ build_commands_map_frame()
 };
 
 
-commands_map_ty commands_frame = build_commands_map_frame();
+commands_map_ty commands_frame = build_commands_map();
 
 
 namespace{
@@ -59,22 +59,21 @@ namespace{
 template<typename T>
 void 
 _get_item_frame( int(*func)(LPCSTR, LPCSTR, T*, size_type,
-                            LPSTR*,size_type,pDateTimeStamp) );
+                            LPSTR*,size_type,pDateTimeStamp),
+                 CommandCtx *ctx );
 
 
 void
-GetItemFrame(void *ctx)
+GetItemFrame(CommandCtx *ctx)
 {      
     std::string block;
     std::string topic;
     bool get_dts;
 
-    prompt<<"block id: ";
-    prompt>> block;
-    prompt<<"topic: ";
-    prompt>> topic;  
+    prompt_for("block id", &block, ctx);
+    prompt_for("topic", &topic, ctx);  
 
-    get_dts = prompt_for_datetime(block);
+    get_dts = prompt_for_datetime(block, ctx);
 
     if(get_dts)
         std::cout<< std::endl << TOSDB_GetItemFrame<true>(block,TOS_Topics::MAP()[topic]);
@@ -86,35 +85,35 @@ GetItemFrame(void *ctx)
 
 
 void
-GetItemFrameDoubles(void *ctx)
+GetItemFrameDoubles(CommandCtx *ctx)
 {
-    _get_item_frame(TOSDB_GetItemFrameDoubles);      
+    _get_item_frame(TOSDB_GetItemFrameDoubles, ctx);      
 }
 
        
 void
-GetItemFrameFloats(void *ctx)
+GetItemFrameFloats(CommandCtx *ctx)
 {
-    _get_item_frame(TOSDB_GetItemFrameFloats);      
+    _get_item_frame(TOSDB_GetItemFrameFloats, ctx);      
 }
 
 
 void
-GetItemFrameLongLongs(void *ctx)
+GetItemFrameLongLongs(CommandCtx *ctx)
 {  
-    _get_item_frame(TOSDB_GetItemFrameLongLongs);      
+    _get_item_frame(TOSDB_GetItemFrameLongLongs, ctx);      
 }
 
 
 void
-GetItemFrameLongs(void *ctx)
+GetItemFrameLongs(CommandCtx *ctx)
 {
-    _get_item_frame(TOSDB_GetItemFrameLongs);      
+    _get_item_frame(TOSDB_GetItemFrameLongs, ctx);      
 }
 
 
 void
-GetItemFrameStrings(void *ctx)
+GetItemFrameStrings(CommandCtx *ctx)
 {
     size_type nitems;
     std::string block;
@@ -126,12 +125,10 @@ GetItemFrameStrings(void *ctx)
     char **lab = nullptr;
     pDateTimeStamp dts = nullptr;
 
-    prompt<<"block id: ";
-    prompt>> block;
-    prompt<<"topic: ";
-    prompt>> topic;    
+    prompt_for("block id", &block, ctx);
+    prompt_for("topic", &topic, ctx);   
         
-    get_dts = prompt_for_datetime(block);
+    get_dts = prompt_for_datetime(block,ctx);
 
     TOSDB_GetItemCount(block.c_str(), &nitems);
         
@@ -162,7 +159,7 @@ GetItemFrameStrings(void *ctx)
 
 
 void
-GetTopicFrameStrings(void *ctx)
+GetTopicFrameStrings(CommandCtx *ctx)
 {        
     size_type ntopics;
     std::string block;
@@ -174,12 +171,10 @@ GetTopicFrameStrings(void *ctx)
     char** lab = nullptr;
     pDateTimeStamp dts = nullptr;
 
-    prompt<<"block id: ";
-    prompt>> block;
-    prompt<<"item: ";
-    prompt>> item;   
+    prompt_for("block id", &block, ctx);
+    prompt_for("item", &item, ctx);  
         
-    get_dts = prompt_for_datetime(block);
+    get_dts = prompt_for_datetime(block, ctx);
 
     TOSDB_GetTopicCount(block.c_str(), &ntopics);
 
@@ -210,18 +205,16 @@ GetTopicFrameStrings(void *ctx)
 
 
 void
-GetTopicFrame(void *ctx)
+GetTopicFrame(CommandCtx *ctx)
 {
     std::string block;
     std::string item;
     bool get_dts;
 
-    prompt<<"block id: ";
-    prompt>> block;
-    prompt<<"item: ";
-    prompt>> item;  
-
-    get_dts = prompt_for_datetime(block);
+    prompt_for("block id", &block, ctx);
+    prompt_for("item", &item, ctx);
+    
+    get_dts = prompt_for_datetime(block, ctx);
 
     if(get_dts)      
         std::cout<< std::endl << TOSDB_GetTopicFrame<true>(block,item);      
@@ -233,15 +226,14 @@ GetTopicFrame(void *ctx)
 
 
 void
-GetTotalFrame(void *ctx)
+GetTotalFrame(CommandCtx *ctx)
 {
     std::string block; 
     bool get_dts;
 
-    prompt<<"block id:";
-    prompt>>block;
+    prompt_for("block id", &block, ctx);
 
-    get_dts = prompt_for_datetime(block);
+    get_dts = prompt_for_datetime(block, ctx);
 
     if(get_dts)
         std::cout<< std::endl << TOSDB_GetTotalFrame<true>(block);
@@ -258,7 +250,8 @@ GetTotalFrame(void *ctx)
 template<typename T>
 void 
 _get_item_frame( int(*func)(LPCSTR, LPCSTR, T*, size_type,
-                            LPSTR*, size_type, pDateTimeStamp) )
+                            LPSTR*, size_type, pDateTimeStamp),
+                 CommandCtx *ctx )
 {
     std::string block;
     std::string topic;
@@ -270,12 +263,10 @@ _get_item_frame( int(*func)(LPCSTR, LPCSTR, T*, size_type,
     T *dat = nullptr;
     char** lab = nullptr;
 
-    prompt<<"block id: ";
-    prompt>> block;
-    prompt<<"topic: ";
-    prompt>> topic;    
+    prompt_for("block id", &block, ctx);
+    prompt_for("topic", &topic, ctx);
 
-    get_dts = prompt_for_datetime(block);
+    get_dts = prompt_for_datetime(block,ctx);
 
     TOSDB_GetItemCount(block.c_str(), &nitems);  
 

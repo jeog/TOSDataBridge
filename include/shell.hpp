@@ -98,45 +98,102 @@ public:
         {
         }
 
-    /* return the base */
+    /* RETURN THE BASE */
     template<typename T>
     stream_prompt_base& 
     operator<<(const T& val)
     {
-        std::cout<< _prmpt << ' ' << val; 
+        std::cout<< _prmpt << ' ' << val << ' '; 
         return *this;
-    }   
+    }  
+};
 
+class stream_prompt_basic
+        : public stream_prompt_base {
+public:
+    explicit stream_prompt_basic(std::string prompt)
+        :      
+            stream_prompt_base(prompt)
+        {
+        }
+
+    /* DONT RETURN THE BASE */
+    template<typename T>
+    stream_prompt_basic& 
+    operator<<(const T& val)
+    {
+        std::cout<< _prmpt << ' ' << val << ' '; 
+        return *this;
+    }  
 };
 
 extern stream_prompt prompt;
+extern stream_prompt_basic prompt_b;
 
+/* fwrd decl */
+struct CommandCtx;
 
-typedef std::unordered_map<std::string, void(*)(void*)> commands_map_ty;
-typedef commands_map_ty::value_type commands_map_elem_ty;
+typedef void(*commands_func_ty)(CommandCtx*);
 
+struct CommandCtx{
+    std::string name;
+    commands_func_ty func;
+    bool exit;
+};
 
-extern commands_map_ty commands_admin;
+typedef std::map<std::string, CommandCtx> commands_map_ty;
+
+commands_map_ty::value_type
+build_commands_map_elem(std::string name, commands_func_ty);
+
+extern commands_map_ty commands_admin; 
 extern commands_map_ty commands_get;
 extern commands_map_ty commands_stream;
 extern commands_map_ty commands_frame;
 extern commands_map_ty commands_local;
 
+typedef std::pair<std::string,commands_map_ty> command_display_pair;
+typedef std::unordered_map<std::string, command_display_pair> commands_map_of_maps_ty;
+
+/* should be const but we can't use init lists so manually instantiate in util.cpp */
+extern commands_map_of_maps_ty commands;
+
 
 size_type 
-get_cstr_items(char ***p);
+get_cstr_entries(std::string label, char ***pstrs, CommandCtx *ctx);
 
-size_type
-get_cstr_topics(char ***p);
 
-void 
-del_cstr_items(char **items, size_type nitems);
+inline size_type 
+get_cstr_items(char ***p, CommandCtx *ctx)
+{  
+    return get_cstr_entries("item",p,ctx); 
+}
 
-void 
-del_cstr_topics(char **topics, size_type ntopics);
+
+inline size_type
+get_cstr_topics(char ***p, CommandCtx *ctx)
+{  
+    return get_cstr_entries("topic",p,ctx);
+}
+
+
+inline void 
+del_cstr_items(char **items, size_type nitems)
+{
+    DeleteStrings(items, nitems);
+}
+
+
+inline void 
+del_cstr_topics(char **topics, size_type ntopics)
+{
+    DeleteStrings(topics, ntopics);
+}
+
 
 size_type
 min_stream_len(std::string block, long beg, long end, size_type len);
+
 
 template<typename T>
 void 
@@ -162,12 +219,14 @@ display_stream_data(size_type len, T* dat, pDateTimeStamp dts)
         try{
             long long i = std::stoll(index);
             if(i >= len){
-                std::cerr<< std::endl << "BAD INPUT - index must be < array length" << std::endl;
+                std::cerr<< std::endl 
+                         << "BAD INPUT - index must be < min(array length, abs(end-beg))" 
+                         << std::endl;
                 continue;
             }
             std::cout<< std::endl << dat[i] << ' ' << (dts ? &dts[i] : nullptr) << std::endl;             
         }catch(...){
-            std::cerr<< std::endl << "BAD INPUT" << std::endl << std::endl;
+            std::cerr<< std::endl << "INVALID INPUT" << std::endl << std::endl;
             continue;
         }   
 
@@ -179,24 +238,33 @@ display_stream_data(size_type len, T* dat, pDateTimeStamp dts)
 bool
 decr_page_latch_and_wait(int *n, std::function<void(void)> cb_on_wait );
 
-bool 
-prompt_for_cpp(int recurse=2);
+inline void 
+prompt_for(std::string sout, std::string* sin, CommandCtx *ctx)
+{
+    prompt_b<< ctx->name << sout >> *sin;
+}
 
 bool 
-prompt_for_datetime(std::string block);
+prompt_for_cpp(CommandCtx *ctx, int recurse=2);
+
+bool 
+prompt_for_datetime(std::string block, CommandCtx *ctx);
 
 void
-prompt_for_block_item_topic(std::string *pblock, std::string *pitem, std::string *ptopic);
+prompt_for_block_item_topic(std::string *pblock, 
+                            std::string *pitem, 
+                            std::string *ptopic,
+                            CommandCtx *ctx);
 
 void
 prompt_for_block_item_topic_index(std::string *pblock, 
                                   std::string *pitem, 
                                   std::string *ptopic, 
-                                  long *pindex);
+                                  std::string *pindex, 
+                                  CommandCtx *ctx);
 
 void 
 check_display_ret(int r);
-
 
 template<typename T>
 void 

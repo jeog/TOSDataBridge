@@ -21,39 +21,39 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 
 namespace{
 
-void local_topics(void *ctx=nullptr);
-void local_commands(void *ctx=nullptr);
-void local_exit(void *ctx=nullptr);
+void local_topics(CommandCtx *ctx);
+void local_commands(CommandCtx *ctx);
+void local_exit(CommandCtx *ctx);
 
 
 commands_map_ty
-build_commands_map_local()
+build_commands_map()
 {
     commands_map_ty m;
 
-    m.insert( commands_map_elem_ty("topics",local_topics) );
-    m.insert( commands_map_elem_ty("commands",local_commands) );
-    m.insert( commands_map_elem_ty("quit",local_exit) );
-    m.insert( commands_map_elem_ty("exit",local_exit) );
-    m.insert( commands_map_elem_ty("close",local_exit) );
+    m.insert( build_commands_map_elem("topics",local_topics) );
+    m.insert( build_commands_map_elem("commands",local_commands) );
+    m.insert( build_commands_map_elem("quit",local_exit) );
+    m.insert( build_commands_map_elem("exit",local_exit) );
+    m.insert( build_commands_map_elem("close",local_exit) );
     
     return m;
 }
 
 };
 
-commands_map_ty commands_local = build_commands_map_local();
+commands_map_ty commands_local = build_commands_map();
 
 namespace{
 
 void 
-local_exit(void *ctx)
+local_exit(CommandCtx *ctx)
 {
-    *(bool*)ctx = false;        
+    ctx->exit = true;       
 }
 
 void
-local_topics(void *ctx)
+local_topics(CommandCtx *ctx)
 {
     const int SPC = 3;  
     const std::string TOPIC_HEAD("TOPICS:   ");
@@ -88,67 +88,51 @@ local_topics(void *ctx)
             wc += SPC;
         }        
     }
-    std::cout<< std::endl << std::endl;
-    if(ctx)
-        *(bool*)ctx = true;        
+    std::cout<< std::endl << std::endl;          
 }
 
 
 void 
-local_commands(void *ctx)
+local_commands(CommandCtx *ctx)
 {
     std::string cmd;
-    int count = CMD_OUT_PER_PAGE;        
 
-    std::cout<< std::endl << "What type of command?" << std::endl << std::endl
-             << "- admin" << std::endl
-             << "- get" << std::endl
-             << "- stream" << std::endl
-             << "- frame" << std::endl << std::endl
-             << "- back" << std::endl << std::endl;
+    int count = CMD_OUT_PER_PAGE;   
+    auto reset_count = [&count](){ count = CMD_OUT_PER_PAGE; };
 
-    prompt>> cmd;
-    std::cin.get();
-
-    if(cmd == "exit"){
-        *(bool*)ctx = false;
-        return;
-    }       
-
-    if(cmd == "admin"){     
-        std::cout<< std::endl << "ADMINISTRATIVE COMMANDS:" << std::endl << std::endl;
-        for(auto & p : commands_admin){                  
-            if( !decr_page_latch_and_wait(&count, [&count](){ count = CMD_OUT_PER_PAGE; } ) )
-                break;
-            std::cout<<"- "<< p.first << std::endl;
-        }
-    }else if(cmd == "get"){  
-        std::cout<< std::endl << "GET COMMANDS:" << std::endl << std::endl;
-        for(auto & p : commands_get){             
-            if( !decr_page_latch_and_wait(&count, [&count](){ count = CMD_OUT_PER_PAGE; } ) )
-                break;     
-            std::cout<<"- "<< p.first << std::endl;
-        }    
-    }else if(cmd == "stream"){  
-        std::cout<< std::endl << "STREAM SNAPSHOT COMMANDS:" << std::endl << std::endl;
-        for(auto & p : commands_stream){                  
-            if( !decr_page_latch_and_wait(&count, [&count](){ count = CMD_OUT_PER_PAGE; } ) )
-                break;   
-            std::cout<<"- "<< p.first << std::endl;
-        }  
-    }else if(cmd == "frame"){  
-        std::cout<< std::endl << "FRAME COMMANDS:" << std::endl << std::endl;
-        for(auto & p : commands_frame){                 
-            if( !decr_page_latch_and_wait(&count, [&count](){ count = CMD_OUT_PER_PAGE; } ) )
-                break;       
-            std::cout<<"- "<< p.second << std::endl;
-        }                   
-    }else if(cmd != "back"){
-        std::cout<< std::endl << "BAD COMMAND" << std::endl ;        
+    std::cout<< std::endl << "What type of command?" << std::endl << std::endl;
+    for(auto & p : commands){
+        std::cout<< "- " << p.first << std::endl;
     }
-    
-    std::cout<< std::endl;
-    *(bool*)ctx = true;   
+    std::cout<< std::endl << "- back" << std::endl << std::endl;
+
+    while(1){
+        prompt_b<< "commands" >> cmd;
+
+        if(cmd == "exit"){
+            ctx->exit = true;       
+            return;
+        }     
+
+        if(cmd == "back")
+            return;      
+
+        for(auto & p : commands){
+            if(cmd == p.first){
+                std::cout<< std::endl << p.second.first << " COMMANDS:" 
+                         << std::endl << std::endl;
+                for(auto & pp : p.second.second){                  
+                    if( !decr_page_latch_and_wait(&count, reset_count) )
+                        break;
+                    std::cout<<"- "<< pp.first << std::endl;
+                }
+                std::cout<< std::endl;
+                return;
+            }
+        }
+
+        std::cout<< std::endl << "BAD COMMAND" << std::endl << std::endl ;                   
+    }
 }
 
 };

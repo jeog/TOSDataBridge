@@ -33,7 +33,7 @@
     <ClCompile Include="..\src\shell\main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\shell\util.cpp">
+    <ClCompile Include="..\src\shell\shell.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

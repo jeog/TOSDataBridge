@@ -36,121 +36,136 @@ along with this program.  If not, see http://www.gnu.org/licenses.
   
 namespace{
   
-void GetDouble(void *ctx=nullptr);
-void GetFloat(void *ctx=nullptr);
-void GetLongLong(void *ctx=nullptr);
-void GetLong(void *ctx=nullptr);
-void GetString(void *ctx=nullptr);
-void GetGeneric(void *ctx=nullptr);
+void GetDouble(CommandCtx *ctx);
+void GetFloat(CommandCtx *ctx);
+void GetLongLong(CommandCtx *ctx);
+void GetLong(CommandCtx *ctx);
+void GetString(CommandCtx *ctx);
+void GetGeneric(CommandCtx *ctx);
 
 commands_map_ty
-build_commands_map_get()
+build_commands_map()
 {
     commands_map_ty m;
 
-    m.insert( commands_map_elem_ty("GetDouble",GetDouble) );
-    m.insert( commands_map_elem_ty("GetFloat",GetFloat) );
-    m.insert( commands_map_elem_ty("GetLongLong",GetLongLong) );
-    m.insert( commands_map_elem_ty("GetLong",GetLong) );
-    m.insert( commands_map_elem_ty("GetString",GetString) );
-    m.insert( commands_map_elem_ty("GetGeneric",GetGeneric) );
+    m.insert( build_commands_map_elem("GetDouble",GetDouble) );
+    m.insert( build_commands_map_elem("GetFloat",GetFloat) );
+    m.insert( build_commands_map_elem("GetLongLong",GetLongLong) );
+    m.insert( build_commands_map_elem("GetLong",GetLong) );
+    m.insert( build_commands_map_elem("GetString",GetString) );
+    m.insert( build_commands_map_elem("GetGeneric",GetGeneric) );
 
     return m;
 }
 
 };
 
-commands_map_ty commands_get = build_commands_map_get();
-
+commands_map_ty commands_get = build_commands_map();
 
 
 namespace {
 
 template<typename T>
 void 
-_get();
+_get(CommandCtx *ctx);
+
 
 template<typename T>
 void 
-_get( int(*func)(LPCSTR, LPCSTR, LPCSTR, long, T*, pDateTimeStamp) );
+_get( int(*func)(LPCSTR, LPCSTR, LPCSTR, long, T*, pDateTimeStamp), CommandCtx *ctx );
 
 
 void
-GetDouble(void *ctx)
+GetDouble(CommandCtx *ctx)
 {
-    prompt_for_cpp() ? _get<double>() : _get(TOSDB_GetDouble);       
+    prompt_for_cpp(ctx) ? _get<double>(ctx) : _get(TOSDB_GetDouble, ctx);       
 }
 
 
 void
-GetFloat(void *ctx)
+GetFloat(CommandCtx *ctx)
 {
-    prompt_for_cpp() ? _get<float>() : _get(TOSDB_GetFloat);
-}
-       
-
-void
-GetLongLong(void *ctx)
-{
-    prompt_for_cpp() ? _get<long long>() : _get(TOSDB_GetLongLong);
+    prompt_for_cpp(ctx) ? _get<float>(ctx) : _get(TOSDB_GetFloat, ctx);
 }
        
 
 void
-GetLong(void *ctx)
+GetLongLong(CommandCtx *ctx)
 {
-    prompt_for_cpp() ? _get<long>() : _get(TOSDB_GetLong);
+    prompt_for_cpp(ctx) ? _get<long long>(ctx) : _get(TOSDB_GetLongLong, ctx);
+}
+       
+
+void
+GetLong(CommandCtx *ctx)
+{
+    prompt_for_cpp(ctx) ? _get<long>(ctx) : _get(TOSDB_GetLong, ctx);
 }
 
 
 void
-GetString(void *ctx)
+GetString(CommandCtx *ctx)
 {
-    if(prompt_for_cpp()){
-        _get<std::string>();
+    if(prompt_for_cpp(ctx)){
+        _get<std::string>(ctx);
     }else{
         char s[TOSDB_STR_DATA_SZ];
         DateTimeStamp dts;
         std::string block;
         std::string item;
         std::string topic;
-        long index;
+        std::string index_s;
         int ret;
         bool get_dts;
 
-        prompt_for_block_item_topic_index(&block, &item, &topic, &index);
+        prompt_for_block_item_topic_index(&block, &item, &topic, &index_s, ctx);
 
-        get_dts = prompt_for_datetime(block);
+        long index = 0;
+        try{         
+            index = std::stol(index_s);            
+        }catch(...){
+            std::cerr<< std::endl << "INVALID INPUT" << std::endl << std::endl;
+            return;
+        }
 
-        ret = TOSDB_GetString(block.c_str(), item.c_str(), topic.c_str(), index, s, 
-                              TOSDB_STR_DATA_SZ, (get_dts ? &dts : nullptr));
+        get_dts = prompt_for_datetime(block, ctx);
+
+        ret = TOSDB_GetString(block.c_str(), item.c_str(), topic.c_str(), index, 
+                              s, TOSDB_STR_DATA_SZ, (get_dts ? &dts : nullptr));
 
         check_display_ret(ret, s, (get_dts ? &dts : nullptr));
     }
 }
 
+
 void
-GetGeneric(void *ctx)
+GetGeneric(CommandCtx *ctx)
 {
-    _get<generic_type >();    
+    _get<generic_type>(ctx);    
 }
-
-
 
 
 template<typename T>
 void 
-_get()
+_get(CommandCtx *ctx)
 {  
     std::string block;
     std::string item;
     std::string topic;    
-    long index;
+    std::string index_s;  
     bool get_dts;
 
-    prompt_for_block_item_topic_index(&block, &item, &topic, &index);
-   
-    get_dts = prompt_for_datetime(block); 
+    prompt_for_block_item_topic_index(&block, &item, &topic, &index_s, ctx);   
+      
+    long index = 0;
+    try{         
+        index = std::stol(index_s);            
+    }catch(...){
+        std::cerr<< std::endl << "INVALID INPUT" << std::endl << std::endl;
+        return;
+    }
+
+    get_dts = prompt_for_datetime(block, ctx); 
  
     if(get_dts)
         std::cout<< std::endl 
@@ -158,31 +173,39 @@ _get()
                  << std::endl << std::endl;    
     else 
         std::cout<< std::endl 
-                 << TOSDB_Get<T,false>(block,item,TOS_Topics::MAP()[topic],index)
+                 << TOSDB_Get<T,false>(block,item,TOS_Topics::MAP()[topic], index)
                  <<std::endl << std::endl;            
 }
 
+
 template<typename T>
 void 
-_get( int(*func)(LPCSTR, LPCSTR, LPCSTR, long, T*, pDateTimeStamp) )
+_get( int(*func)(LPCSTR, LPCSTR, LPCSTR, long, T*, pDateTimeStamp), CommandCtx *ctx )
 {
     T d;
     DateTimeStamp dts;
     std::string block;
     std::string item;
     std::string topic;
-    long index;
+    std::string index_s;
     int ret;
     bool get_dts;
 
-    prompt_for_block_item_topic_index(&block, &item, &topic, &index);
+    prompt_for_block_item_topic_index(&block, &item, &topic, &index_s, ctx);
 
-    get_dts = prompt_for_datetime(block);
+    long index = 0;
+    try{         
+        index = std::stol(index_s);            
+    }catch(...){
+        std::cerr<< std::endl << "INVALID INPUT" << std::endl << std::endl;
+        return;
+    }
 
-    ret = func(block.c_str(), item.c_str(), topic.c_str(), index, &d, (get_dts ? &dts : nullptr));
+    get_dts = prompt_for_datetime(block, ctx);
+
+    ret = func(block.c_str(), item.c_str(), topic.c_str(), index, 
+               &d, (get_dts ? &dts : nullptr));
     check_display_ret(ret, d, (get_dts ? &dts : nullptr));  
-
-    std::cout<< std::endl;  
 }
 
 };

@@ -27,7 +27,7 @@ along with this program.  If not, see http://www.gnu.org/licenses.
  */
 
 stream_prompt prompt("[-->");
-
+stream_prompt_basic prompt_b("[-->");
 
 namespace{
 
@@ -38,8 +38,7 @@ _display_header_line(std::string pre, std::string post, std::string text);
 template<int W, int INDENT, char H>
 void
 _display_header(std::string hpre, std::string hpost);
-
-}
+};
 
 int main(int argc, char* argv[])
 {         
@@ -51,49 +50,18 @@ int main(int argc, char* argv[])
         new_command:
         try{
             prompt>> cmd;   
-
-            /* handle local commands */
-            bool r = true;
-            for(auto & p : commands_local){
-                if(p.first == cmd){                    
-                    p.second((void*)&r);
-                    if(!r)
-                        goto exit_prompt;
-                    goto new_command;
-                }
-            }
             
-            /* handle 'admin' api commands */
-            for(auto & p : commands_admin){
-                if(p.first == cmd){                    
-                    p.second(nullptr);
-                    goto new_command;
+            for(auto & c : commands){
+                for(auto & p : c.second.second){
+                    p.second.exit = false;
+                    if(p.first == cmd){                    
+                        p.second.func(&p.second);
+                        if(p.second.exit)
+                            goto exit_prompt;
+                        goto new_command;
+                    }
                 }
-            }
-
-            /* handle 'get' api commands */
-            for(auto & p : commands_get){
-                if(p.first == cmd){                    
-                    p.second(nullptr);
-                    goto new_command;
-                }
-            }
-
-            /* handle 'stream' api commands */
-            for(auto & p : commands_stream){
-                if(p.first == cmd){                    
-                    p.second(nullptr);
-                    goto new_command;
-                }
-            }
-
-            /* handle 'frame' api commands */
-            for(auto & p : commands_frame){
-                if(p.first == cmd){                    
-                    p.second(nullptr);
-                    goto new_command;
-                }
-            }
+            }      
 
             /* default to here */        
             std::cout<< std::endl << "BAD COMMAND" << std::endl << std::endl;
@@ -188,7 +156,7 @@ _display_header(std::string hpre, std::string hpost)
     std::cout<< std::endl << std::endl << std::setw(INDENT) << std::left 
              << "PID: " << GetCurrentProcessId() << std::endl;
 
-    commands_local["topics"](nullptr); 
+    commands_local["topics"].func(nullptr); 
 }
 
 };

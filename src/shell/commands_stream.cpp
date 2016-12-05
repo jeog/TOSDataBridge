@@ -19,35 +19,35 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 
 namespace{
   
-void GetStreamSnapshotDoubles(void *ctx=nullptr);
-void GetStreamSnapshotFloats(void *ctx=nullptr); 
-void GetStreamSnapshotLongLongs(void *ctx=nullptr);
-void GetStreamSnapshotLongs(void *ctx=nullptr);
-void GetStreamSnapshotStrings(void *ctx=nullptr);
-void GetStreamSnapshotGenerics(void *ctx=nullptr);
-void GetStreamSnapshotDoublesFromMarker(void *ctx=nullptr);
-void GetStreamSnapshotFloatsFromMarker(void *ctx=nullptr); 
-void GetStreamSnapshotLongLongsFromMarker(void *ctx=nullptr);
-void GetStreamSnapshotLongsFromMarker(void *ctx=nullptr);
-void GetStreamSnapshotStringsFromMarker(void *ctx=nullptr);
+void GetStreamSnapshotDoubles(CommandCtx *ctx);
+void GetStreamSnapshotFloats(CommandCtx *ctx); 
+void GetStreamSnapshotLongLongs(CommandCtx *ctx);
+void GetStreamSnapshotLongs(CommandCtx *ctx);
+void GetStreamSnapshotStrings(CommandCtx *ctx);
+void GetStreamSnapshotGenerics(CommandCtx *ctx);
+void GetStreamSnapshotDoublesFromMarker(CommandCtx *ctx);
+void GetStreamSnapshotFloatsFromMarker(CommandCtx *ctx); 
+void GetStreamSnapshotLongLongsFromMarker(CommandCtx *ctx);
+void GetStreamSnapshotLongsFromMarker(CommandCtx *ctx);
+void GetStreamSnapshotStringsFromMarker(CommandCtx *ctx);
 
 
 commands_map_ty
-build_commands_map_stream()
+build_commands_map()
 {
     commands_map_ty m;
 
-    m.insert( commands_map_elem_ty("GetStreamSnapshotDoubles",GetStreamSnapshotDoubles) );
-    m.insert( commands_map_elem_ty("GetStreamSnapshotFloats",GetStreamSnapshotFloats) );
-    m.insert( commands_map_elem_ty("GetStreamSnapshotLongLongs",GetStreamSnapshotLongLongs) );
-    m.insert( commands_map_elem_ty("GetStreamSnapshotLongs",GetStreamSnapshotLongs) );
-    m.insert( commands_map_elem_ty("GetStreamSnapshotStrings",GetStreamSnapshotStrings) );
-    m.insert( commands_map_elem_ty("GetStreamSnapshotGenerics",GetStreamSnapshotGenerics) );
-    m.insert( commands_map_elem_ty("GetStreamSnapshotDoublesFromMarker",GetStreamSnapshotDoublesFromMarker) );
-    m.insert( commands_map_elem_ty("GetStreamSnapshotFloatsFromMarker",GetStreamSnapshotFloatsFromMarker) );
-    m.insert( commands_map_elem_ty("GetStreamSnapshotLongLongsFromMarker",GetStreamSnapshotLongLongsFromMarker) );
-    m.insert( commands_map_elem_ty("GetStreamSnapshotLongsFromMarker",GetStreamSnapshotLongsFromMarker) );
-    m.insert( commands_map_elem_ty("GetStreamSnapshotStringsFromMarker",GetStreamSnapshotStringsFromMarker) );
+    m.insert( build_commands_map_elem("GetStreamSnapshotDoubles",GetStreamSnapshotDoubles) );
+    m.insert( build_commands_map_elem("GetStreamSnapshotFloats",GetStreamSnapshotFloats) );
+    m.insert( build_commands_map_elem("GetStreamSnapshotLongLongs",GetStreamSnapshotLongLongs) );
+    m.insert( build_commands_map_elem("GetStreamSnapshotLongs",GetStreamSnapshotLongs) );
+    m.insert( build_commands_map_elem("GetStreamSnapshotStrings",GetStreamSnapshotStrings) );
+    m.insert( build_commands_map_elem("GetStreamSnapshotGenerics",GetStreamSnapshotGenerics) );
+    m.insert( build_commands_map_elem("GetStreamSnapshotDoublesFromMarker",GetStreamSnapshotDoublesFromMarker) );
+    m.insert( build_commands_map_elem("GetStreamSnapshotFloatsFromMarker",GetStreamSnapshotFloatsFromMarker) );
+    m.insert( build_commands_map_elem("GetStreamSnapshotLongLongsFromMarker",GetStreamSnapshotLongLongsFromMarker) );
+    m.insert( build_commands_map_elem("GetStreamSnapshotLongsFromMarker",GetStreamSnapshotLongsFromMarker) );
+    m.insert( build_commands_map_elem("GetStreamSnapshotStringsFromMarker",GetStreamSnapshotStringsFromMarker) );
     
     return m;
 }
@@ -55,7 +55,7 @@ build_commands_map_stream()
 };
 
 
-commands_map_ty commands_stream = build_commands_map_stream();
+commands_map_ty commands_stream = build_commands_map();
 
 
 namespace{
@@ -63,74 +63,88 @@ namespace{
 template<typename T>
 void 
 _get_stream_snapshot( int(*func)(LPCSTR, LPCSTR, LPCSTR, T*, 
-                                 size_type, pDateTimeStamp, long, long) );
+                                 size_type, pDateTimeStamp, long, long),
+                      CommandCtx *ctx );
 
 template<typename T>
-void _get_stream_snapshot();
+void _get_stream_snapshot(CommandCtx *ctx);
 
 template<typename T>
 void 
 _get_stream_snapshot_from_marker( int(*func)(LPCSTR, LPCSTR, LPCSTR, T*,
-                                             size_type, pDateTimeStamp, long, long*) );
+                                             size_type, pDateTimeStamp, long, long*),
+                                  CommandCtx *ctx );
 
 
 void
-GetStreamSnapshotDoubles(void *ctx)
+GetStreamSnapshotDoubles(CommandCtx *ctx)
 {
-    prompt_for_cpp() ? _get_stream_snapshot<double>() 
-                      : _get_stream_snapshot<double>(TOSDB_GetStreamSnapshotDoubles);
+    prompt_for_cpp(ctx) 
+        ? _get_stream_snapshot<double>(ctx) 
+        : _get_stream_snapshot<double>(TOSDB_GetStreamSnapshotDoubles, ctx);
 }
 
 void
-GetStreamSnapshotFloats(void *ctx)
+GetStreamSnapshotFloats(CommandCtx *ctx)
 {
-    prompt_for_cpp() ? _get_stream_snapshot<float>() 
-                      : _get_stream_snapshot<float>(TOSDB_GetStreamSnapshotFloats);
+    prompt_for_cpp(ctx) 
+        ? _get_stream_snapshot<float>(ctx) 
+        : _get_stream_snapshot<float>(TOSDB_GetStreamSnapshotFloats, ctx);
 }
 
 void
-GetStreamSnapshotLongLongs(void *ctx)
+GetStreamSnapshotLongLongs(CommandCtx *ctx)
 {
-    prompt_for_cpp() ? _get_stream_snapshot<long long>() 
-                      : _get_stream_snapshot<long long>(TOSDB_GetStreamSnapshotLongLongs);
+    prompt_for_cpp(ctx) 
+        ? _get_stream_snapshot<long long>(ctx) 
+        : _get_stream_snapshot<long long>(TOSDB_GetStreamSnapshotLongLongs, ctx);
 }
 
 void
-GetStreamSnapshotLongs(void *ctx)
+GetStreamSnapshotLongs(CommandCtx *ctx)
 {
-    prompt_for_cpp() ? _get_stream_snapshot<long>() 
-                      : _get_stream_snapshot<long>(TOSDB_GetStreamSnapshotLongs);
+    prompt_for_cpp(ctx) 
+        ? _get_stream_snapshot<long>(ctx) 
+        : _get_stream_snapshot<long>(TOSDB_GetStreamSnapshotLongs, ctx);
 }
 
 void
-GetStreamSnapshotStrings(void *ctx)
+GetStreamSnapshotStrings(CommandCtx *ctx)
 {
-    if(prompt_for_cpp()){
-        _get_stream_snapshot<std::string>();
-    }else{
-        size_type len;   
-        size_type display_len;
-        long beg;
-        long end;
+    if(prompt_for_cpp(ctx)){
+        _get_stream_snapshot<std::string>(ctx);
+    }else{        
+        size_type display_len;           
         int ret;
         std::string block;
         std::string item;
         std::string topic;
+        std::string len_s;
+        std::string beg_s;
+        std::string end_s;
         bool get_dts;
                         
         char **dat = nullptr;
         pDateTimeStamp dts = nullptr;
 
-        prompt_for_block_item_topic(&block, &item, &topic);
+        prompt_for_block_item_topic(&block, &item, &topic, ctx);
+        prompt_for("length of array", &len_s, ctx);        
+        prompt_for("beginning datastream index", &beg_s, ctx);        
+        prompt_for("ending datastream index", &end_s, ctx);
 
-        prompt<<"length of array to pass: ";
-        prompt>>len;
-        prompt<<"beginning datastream index: ";
-        prompt>>beg;
-        prompt<<"ending datastream index: ";
-        prompt>>end;
-
-        get_dts = prompt_for_datetime(block);
+        size_type len = 0;
+        long beg = 0;
+        long end = 0;
+        try{
+            len = std::stoul(len_s);
+            beg = std::stol(beg_s);
+            end = std::stol(end_s);
+        }catch(...){
+            std::cerr<< std::endl << "INVALID INPUT" << std::endl << std::endl;
+            return;
+        }
+        
+        get_dts = prompt_for_datetime(block, ctx);
 
         try{
             dat = NewStrings(len, TOSDB_STR_DATA_SZ - 1);
@@ -159,61 +173,69 @@ GetStreamSnapshotStrings(void *ctx)
 
 
 void
-GetStreamSnapshotGenerics(void *ctx)
+GetStreamSnapshotGenerics(CommandCtx *ctx)
 {
-    _get_stream_snapshot<generic_type>();
+    _get_stream_snapshot<generic_type>(ctx);
 }
 
 void
-GetStreamSnapshotDoublesFromMarker(void *ctx)
+GetStreamSnapshotDoublesFromMarker(CommandCtx *ctx)
 {
-    _get_stream_snapshot_from_marker<double>(TOSDB_GetStreamSnapshotDoublesFromMarker);
-}
-
-
-void
-GetStreamSnapshotFloatsFromMarker(void *ctx)
-{
-    _get_stream_snapshot_from_marker<float>(TOSDB_GetStreamSnapshotFloatsFromMarker);
-}
-
-void
-GetStreamSnapshotLongLongsFromMarker(void *ctx)
-{
-    _get_stream_snapshot_from_marker<long long>(TOSDB_GetStreamSnapshotLongLongsFromMarker);
+    _get_stream_snapshot_from_marker<double>(TOSDB_GetStreamSnapshotDoublesFromMarker, ctx);
 }
 
 
 void
-GetStreamSnapshotLongsFromMarker(void *ctx)
+GetStreamSnapshotFloatsFromMarker(CommandCtx *ctx)
 {
-    _get_stream_snapshot_from_marker<long>(TOSDB_GetStreamSnapshotLongsFromMarker);
+    _get_stream_snapshot_from_marker<float>(TOSDB_GetStreamSnapshotFloatsFromMarker, ctx);
+}
+
+void
+GetStreamSnapshotLongLongsFromMarker(CommandCtx *ctx)
+{
+    _get_stream_snapshot_from_marker<long long>(TOSDB_GetStreamSnapshotLongLongsFromMarker, ctx);
 }
 
 
 void
-GetStreamSnapshotStringsFromMarker(void *ctx)
+GetStreamSnapshotLongsFromMarker(CommandCtx *ctx)
 {
-    size_type len;        
-    long beg;
+    _get_stream_snapshot_from_marker<long>(TOSDB_GetStreamSnapshotLongsFromMarker, ctx);
+}
+
+
+void
+GetStreamSnapshotStringsFromMarker(CommandCtx *ctx)
+{    
     long get_size;
     int ret;
     std::string block;
     std::string item;
     std::string topic;
+    std::string len_s;
+    std::string beg_s;
     bool get_dts;
 
     char **dat = nullptr;
     pDateTimeStamp dts= nullptr;
 
-    prompt_for_block_item_topic(&block, &item, &topic);
+    prompt_for_block_item_topic(&block, &item, &topic, ctx);
 
-    prompt<<"length of array to pass: ";
-    prompt>>len;
-    prompt<<"beginning datastream index: ";
-    prompt>>beg;
+    prompt_for("length of array", &len_s, ctx);        
+    prompt_for("beginning datastream index", &beg_s, ctx);        
+      
+    size_type len = 0;
+    long beg = 0;      
+    try{
+        len = std::stoul(len_s);
+        beg = std::stol(beg_s);      
+    }catch(...){
+        std::cerr<< std::endl << "INVALID INPUT" << std::endl << std::endl;
+        return;
+    }
 
-    get_dts = prompt_for_datetime(block);
+    get_dts = prompt_for_datetime(block, ctx);
 
     try{         
         dat = NewStrings(len, TOSDB_STR_DATA_SZ - 1);
@@ -241,23 +263,30 @@ GetStreamSnapshotStringsFromMarker(void *ctx)
 
 template<typename T>
 void 
-_get_stream_snapshot()
-{
-    long beg; 
-    long end;
+_get_stream_snapshot(CommandCtx *ctx)
+{  
     std::string block;
     std::string item;
     std::string topic;
+    std::string beg_s;
+    std::string end_s;
     bool get_dts;
 
-    prompt_for_block_item_topic(&block, &item, &topic);      
+    prompt_for_block_item_topic(&block, &item, &topic, ctx);         
+    prompt_for("beginning datastream index", &beg_s, ctx);        
+    prompt_for("ending datastream index", &end_s, ctx);
+      
+    long beg = 0;
+    long end = 0;
+    try{
+        beg = std::stol(beg_s);
+        end = std::stol(end_s);
+    }catch(...){
+        std::cerr<< std::endl << "INVALID INPUT" << std::endl << std::endl;
+        return;
+    }
 
-    prompt<<"beginning datastream index: ";
-    prompt>>beg;
-    prompt<<"ending datastream index: ";
-    prompt>>end;
-
-    get_dts = prompt_for_datetime(block);
+    get_dts = prompt_for_datetime(block, ctx);
 
     if(get_dts)
         std::cout<< std::endl 
@@ -276,31 +305,40 @@ _get_stream_snapshot()
 template<typename T>
 void 
 _get_stream_snapshot( int(*func)(LPCSTR, LPCSTR, LPCSTR, T*,
-                                 size_type, pDateTimeStamp, long, long))
-{
-    size_type len;
-    size_type display_len;
-    long beg;
-    long end;
+                                 size_type, pDateTimeStamp, long, long),
+                      CommandCtx *ctx )
+{  
+    size_type display_len;   
     int ret;
     std::string block;
     std::string item;
     std::string topic;
+    std::string len_s;
+    std::string beg_s;
+    std::string end_s;
     bool get_dts;
 
     pDateTimeStamp dts = nullptr;
     T *dat = nullptr;
    
-    prompt_for_block_item_topic(&block, &item, &topic);
+    prompt_for_block_item_topic(&block, &item, &topic, ctx);
+    prompt_for("length of array", &len_s, ctx);        
+    prompt_for("beginning datastream index", &beg_s, ctx);        
+    prompt_for("ending datastream index", &end_s, ctx);
 
-    prompt<<"length of array to pass: ";
-    prompt>>len;
-    prompt<<"beginning datastream index: ";
-    prompt>>beg;
-    prompt<<"ending datastream index: ";
-    prompt>>end;
+    size_type len = 0;
+    long beg = 0;
+    long end = 0;
+    try{
+        len = std::stoul(len_s);
+        beg = std::stol(beg_s);
+        end = std::stol(end_s);
+    }catch(...){
+        std::cerr<< std::endl << "INVALID INPUT" << std::endl << std::endl;
+        return;
+    }
     
-    get_dts = prompt_for_datetime(block);
+    get_dts = prompt_for_datetime(block, ctx);
 
     try{
         dat = new T[len];
@@ -330,28 +368,36 @@ _get_stream_snapshot( int(*func)(LPCSTR, LPCSTR, LPCSTR, T*,
 template<typename T>
 void 
 _get_stream_snapshot_from_marker( int(*func)(LPCSTR, LPCSTR, LPCSTR, T*,
-                                             size_type, pDateTimeStamp, long, long*))
-{
-    size_type len;
-    long beg;
+                                             size_type, pDateTimeStamp, long, long*),
+                                  CommandCtx *ctx )
+{   
     long get_size;
     int ret;
     std::string block;
     std::string item;
     std::string topic;
+    std::string beg_s;
+    std::string len_s;
     bool get_dts;
 
     pDateTimeStamp dts = nullptr;
     T *dat = nullptr;
 
-    prompt_for_block_item_topic(&block, &item, &topic);
+    prompt_for_block_item_topic(&block, &item, &topic, ctx);
+    prompt_for("length of array", &len_s, ctx);        
+    prompt_for("beginning datastream index", &beg_s, ctx);         
 
-    prompt<<"length of array to pass: ";
-    prompt>>len;
-    prompt<<"beginning datastream index: ";
-    prompt>>beg;
+    size_type len = 0;
+    long beg = 0;  
+    try{
+        len = std::stoul(len_s);
+        beg = std::stol(beg_s);          
+    }catch(...){
+        std::cerr<< std::endl << "INVALID INPUT" << std::endl << std::endl;
+        return;
+    }
 
-    get_dts = prompt_for_datetime(block);
+    get_dts = prompt_for_datetime(block, ctx);
 
     try{
         dat = new T[len];

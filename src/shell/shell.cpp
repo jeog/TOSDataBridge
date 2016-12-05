@@ -17,6 +17,37 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 
 #include "shell.hpp"
 
+namespace{
+
+commands_map_of_maps_ty
+build_commands_map_of_maps()
+{
+    typedef commands_map_of_maps_ty::value_type elem_ty;
+
+    commands_map_of_maps_ty m;
+
+    m.insert( elem_ty("admin", command_display_pair("ADMINISTRATIVE",commands_admin)) );
+    m.insert( elem_ty("get", command_display_pair("GET",commands_get)) );
+    m.insert( elem_ty("stream", command_display_pair("STREAM-SNAPSHOT",commands_stream)) );
+    m.insert( elem_ty("frame", command_display_pair("FRAME",commands_frame)) );
+    m.insert( elem_ty("local", command_display_pair("LOCAL",commands_local)) );
+
+    return m;
+}
+
+};
+
+commands_map_of_maps_ty commands = build_commands_map_of_maps();
+
+
+commands_map_ty::value_type
+build_commands_map_elem(std::string name, commands_func_ty func)
+{
+    CommandCtx c = {name, func, false};  
+    auto v = commands_map_ty::value_type(name, std::move(c));
+    return v;
+}
+
 
 bool
 decr_page_latch_and_wait(int *n, std::function<void(void)> cb_on_wait )
@@ -38,20 +69,19 @@ decr_page_latch_and_wait(int *n, std::function<void(void)> cb_on_wait )
 
 
 bool 
-prompt_for_cpp(int recurse) /*recurse=2*/
+prompt_for_cpp(CommandCtx *ctx, int recurse) /*recurse=2*/
 {
-    std::string cpp_y_or_no;
+    std::string cpp_y_or_n;
 
-    prompt<< "use C++ version? (y/n) " ;      
-    prompt>> cpp_y_or_no;
+    prompt_for("use C++ version? (y/n)", &cpp_y_or_n, ctx);
 
-    if(cpp_y_or_no == "y")
+    if(cpp_y_or_n == "y")
         return true;
-    else if(cpp_y_or_no == "n")
+    else if(cpp_y_or_n == "n")
         return false;
     else if(recurse > 0){
         std::cout<< "INVALID - enter 'y' or 'n'" << std::endl;
-        return prompt_for_cpp(recurse-1);
+        return prompt_for_cpp(ctx, recurse-1);
     }else{
         std::cout<< "INVALID - defaulting to C version" << std::endl;
         return false;
@@ -60,16 +90,15 @@ prompt_for_cpp(int recurse) /*recurse=2*/
 
 
 bool 
-prompt_for_datetime(std::string block)
+prompt_for_datetime(std::string block, CommandCtx *ctx)
 {
     std::string dts_y_or_n;
   
     if( !TOSDB_IsUsingDateTime(block) )
         return false;          
    
-    prompt<<"get datetime stamp? (y/n) ";       
-    prompt>> dts_y_or_n ;
-                
+    prompt_for("get datetime stamp? (y/n)", &dts_y_or_n, ctx);
+                    
     if(dts_y_or_n == "y")
         return true;
     else if(dts_y_or_n != "n")              
@@ -80,14 +109,14 @@ prompt_for_datetime(std::string block)
 
 
 void
-prompt_for_block_item_topic(std::string *pblock, std::string *pitem, std::string *ptopic)
+prompt_for_block_item_topic(std::string *pblock, 
+                            std::string *pitem, 
+                            std::string *ptopic,
+                            CommandCtx *ctx)
 {
-    prompt<<"block id: "; 
-    prompt>> *pblock; 
-    prompt<<"item: "; 
-    prompt>> *pitem; 
-    prompt<<"topic: "; 
-    prompt>> *ptopic; 
+    prompt_for("block", pblock, ctx);
+    prompt_for("item", pitem, ctx);    
+    prompt_for("topic", ptopic, ctx);
 }
 
 
@@ -95,66 +124,11 @@ void
 prompt_for_block_item_topic_index(std::string *pblock, 
                                   std::string *pitem, 
                                   std::string *ptopic, 
-                                  long *pindex)
+                                  std::string *pindex, 
+                                  CommandCtx *ctx)
 {
-    prompt_for_block_item_topic(pblock, pitem, ptopic);
-    prompt<< "index: "; 
-    prompt>> *pindex; 
-}
-
-
-size_type 
-get_cstr_items(char ***p)
-{  
-    std::string nitems;
-    std::string item;
-
-    prompt<<"how many items? ";
-    prompt>> nitems;
-
-    *p = NewStrings(std::stoul(nitems), TOSDB_MAX_STR_SZ);
-
-    for(size_type i = 0; i < std::stoul(nitems); ++i){
-        prompt<<"item #"<<i+1<<": ";
-        prompt>> item;    
-        strcpy_s((*p)[i], item.length() + 1, item.c_str());
-    }
-
-    return std::stoul(nitems);
-}
-
-size_type
-get_cstr_topics(char ***p)
-{  
-    std::string ntopics;
-    std::string topic;
-
-    prompt<<"how many topics? ";
-    prompt>> ntopics;
- 
-    *p = NewStrings(std::stoul(ntopics), TOSDB_MAX_STR_SZ);
-
-    for(size_type i = 0; i < std::stoul(ntopics); ++i){
-      prompt<<"topic #"<<i+1<<": ";
-      prompt>> topic;  
-      strcpy_s((*p)[i], topic.length() + 1, topic.c_str());
-    }
-
-    return std::stoul(ntopics);
-}
-
-
-void 
-del_cstr_items(char **items, size_type nitems)
-{
-    DeleteStrings(items, nitems);
-}
-
-
-void 
-del_cstr_topics(char **topics, size_type ntopics)
-{
-    DeleteStrings(topics, ntopics);
+    prompt_for_block_item_topic(pblock, pitem, ptopic, ctx);
+    prompt_for("index", pindex, ctx); 
 }
 
 
@@ -178,6 +152,40 @@ min_stream_len(std::string block, long beg, long end, size_type len)
 }
 
 
+size_type 
+get_cstr_entries(std::string label, char ***pstrs, CommandCtx *ctx)
+{  
+    std::string nentry;
+    std::string item;
+
+    prompt_for("# " + label + "s", &nentry, ctx);    
+
+    unsigned long n = 0;
+    try{
+        n = std::stoul(nentry);
+    }catch(...){
+        std::cerr<< std::endl << "INVALID INPUT" << std::endl << std::endl;
+        *pstrs = nullptr;
+        return 0;
+    }
+
+    try{
+        *pstrs = NewStrings(n, TOSDB_MAX_STR_SZ);
+
+        for(size_type i = 0; i < n; ++i){
+            prompt_b<< ctx->name;
+            prompt<< label << " (" << (i+1) << ") " >> item;        
+            strcpy_s((*pstrs)[i], item.length() + 1, item.c_str());
+        }
+    }catch(...){
+        DeleteStrings(*pstrs, n);
+        *pstrs = nullptr;
+        return 0;
+    }
+
+    return n;
+}
+
 /* template overloads in shell.hpp */
 void 
 check_display_ret(int r)
@@ -197,5 +205,4 @@ check_display_ret(int r, bool v)
     else 
         std::cout<< std::endl << std::boolalpha << v << std::endl << std::endl; 
 }
-
 
