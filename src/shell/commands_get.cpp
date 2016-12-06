@@ -74,6 +74,9 @@ template<typename T>
 void 
 _get( int(*func)(LPCSTR, LPCSTR, LPCSTR, long, T*, pDateTimeStamp), CommandCtx *ctx );
 
+template<typename T>
+void 
+_check_display_ret(int r, T v, pDateTimeStamp d);
 
 void
 GetDouble(CommandCtx *ctx)
@@ -133,7 +136,7 @@ GetString(CommandCtx *ctx)
         ret = TOSDB_GetString(block.c_str(), item.c_str(), topic.c_str(), index, 
                               s, TOSDB_STR_DATA_SZ, (get_dts ? &dts : nullptr));
 
-        check_display_ret(ret, s, (get_dts ? &dts : nullptr));
+        _check_display_ret(ret, s, (get_dts ? &dts : nullptr));
     }
 }
 
@@ -205,7 +208,17 @@ _get( int(*func)(LPCSTR, LPCSTR, LPCSTR, long, T*, pDateTimeStamp), CommandCtx *
 
     ret = func(block.c_str(), item.c_str(), topic.c_str(), index, 
                &d, (get_dts ? &dts : nullptr));
-    check_display_ret(ret, d, (get_dts ? &dts : nullptr));  
+    _check_display_ret(ret, d, (get_dts ? &dts : nullptr));  
+}
+
+template<typename T>
+void 
+_check_display_ret(int r, T v, pDateTimeStamp d)
+{
+    if(r) 
+        std::cout<< std::endl << "error: "<< r << std::endl << std::endl; 
+    else 
+        std::cout<< std::endl << v << ' ' << d << std::endl << std::endl; 
 }
 
 };

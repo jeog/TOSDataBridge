@@ -64,7 +64,7 @@ build_commands_map()
 {
     commands_map_ty m; 
     
-    m.insert( build_commands_map_elem("Connect",Connect) );
+    m.insert( build_commands_map_elem("Connect",Connect,"connect to the library") );
     m.insert( build_commands_map_elem("Disconnect",Disconnect) );
     m.insert( build_commands_map_elem("IsConnected",IsConnected) );
     m.insert( build_commands_map_elem("CreateBlock",CreateBlock) );
@@ -113,13 +113,55 @@ commands_map_ty commands_admin = build_commands_map();
 
 
 namespace {
+  
+template<typename T>
+void 
+_check_display_ret(int r, T v);
+
+void 
+_check_display_ret(int r);
+
+template<>
+void 
+_check_display_ret(int r, bool v);
+
+template<typename T>
+void 
+_check_display_ret(int r, T *v, size_type n);
+
+inline size_type 
+_get_cstr_items(char ***p, CommandCtx *ctx)
+{  
+    return get_cstr_entries("item", p, ctx); 
+}
+
+
+inline size_type
+_get_cstr_topics(char ***p, CommandCtx *ctx)
+{  
+    return get_cstr_entries("topic", p, ctx);
+}
+
+
+inline void 
+_del_cstr_items(char **items, size_type nitems)
+{
+    DeleteStrings(items, nitems);
+}
+
+
+inline void 
+_del_cstr_topics(char **topics, size_type ntopics)
+{
+    DeleteStrings(topics, ntopics);
+}
 
 
 void 
 Connect(CommandCtx *ctx)
 {
     int ret = TOSDB_Connect();
-    check_display_ret(ret);
+    _check_display_ret(ret);
 }
 
   
@@ -127,7 +169,7 @@ void
 Disconnect(CommandCtx *ctx)
 {
     int ret = TOSDB_Disconnect();
-    check_display_ret(ret);
+    _check_display_ret(ret);
 }
    
 
@@ -174,7 +216,7 @@ CreateBlock(CommandCtx *ctx)
     }
 
     ret =  TOSDB_CreateBlock(block.c_str(), std::stoul(size) , (dts_y_or_n == "y"), timeout_num);      
-    check_display_ret(ret);            
+    _check_display_ret(ret);            
 }
 
 
@@ -187,7 +229,7 @@ CloseBlock(CommandCtx *ctx)
     prompt_for("block id", &block, ctx);    
 
     ret = TOSDB_CloseBlock(block.c_str());
-    check_display_ret(ret);
+    _check_display_ret(ret);
 }
 
 
@@ -195,7 +237,7 @@ void
 CloseBlocks(CommandCtx *ctx)
 {
     int ret =  TOSDB_CloseBlocks();
-    check_display_ret(ret);
+    _check_display_ret(ret);
 }
 
 
@@ -240,7 +282,7 @@ GetBlockIDs(CommandCtx *ctx)
             strs = NewStrings(nblocks, TOSDB_BLOCK_ID_SZ);
 
             ret = TOSDB_GetBlockIDs(strs, nblocks, TOSDB_BLOCK_ID_SZ);
-            check_display_ret(ret,strs,nblocks);
+            _check_display_ret(ret,strs,nblocks);
 
             DeleteStrings(strs, nblocks);
         }catch(...){    
@@ -265,7 +307,7 @@ GetBlockSize(CommandCtx *ctx)
         std::cout<< std::endl << TOSDB_GetBlockSize(block) << std::endl << std::endl;
     }else{          
         ret = TOSDB_GetBlockSize(block.c_str(), &sz);
-        check_display_ret(ret, sz);      
+        _check_display_ret(ret, sz);      
     }
 }
 
@@ -281,7 +323,7 @@ SetBlockSize(CommandCtx *ctx)
     prompt_for("block size", &size, ctx);    
 
     ret = TOSDB_SetBlockSize(block.c_str(), std::stoul(size));
-    check_display_ret(ret);
+    _check_display_ret(ret);
 }
 
 
@@ -317,8 +359,8 @@ Add(CommandCtx *ctx)
     prompt_for("block id", &block, ctx);    
 
     try{           
-        nitems = get_cstr_items(&items_raw, ctx);
-        ntopics = get_cstr_topics(&topics_raw, ctx);
+        nitems = _get_cstr_items(&items_raw, ctx);
+        ntopics = _get_cstr_topics(&topics_raw, ctx);
 
         if(prompt_for_cpp(ctx)){    
             auto topics = topic_set_type( 
@@ -332,13 +374,13 @@ Add(CommandCtx *ctx)
                             (const char**)topics_raw, ntopics);          
         }   
 
-        check_display_ret(ret);
+        _check_display_ret(ret);
 
-        del_cstr_items(items_raw, nitems);
-        del_cstr_topics(topics_raw, ntopics); 
+        _del_cstr_items(items_raw, nitems);
+        _del_cstr_topics(topics_raw, ntopics); 
     }catch(...){
-        del_cstr_items(items_raw, nitems);
-        del_cstr_topics(topics_raw, ntopics); 
+        _del_cstr_items(items_raw, nitems);
+        _del_cstr_topics(topics_raw, ntopics); 
         throw;
     }
 }
@@ -358,7 +400,7 @@ AddTopic(CommandCtx *ctx)
         ? TOSDB_AddTopic(block, TOS_Topics::MAP()[topic])
         : TOSDB_AddTopic(block.c_str(), topic.c_str());            
         
-    check_display_ret(ret);
+    _check_display_ret(ret);
 }
 
 
@@ -376,7 +418,7 @@ AddItem(CommandCtx *ctx)
         ? TOSDB_AddItem(block, item)
         : TOSDB_AddItem(block.c_str(), item.c_str());
 
-    check_display_ret(ret);
+    _check_display_ret(ret);
 }
 
 
@@ -392,7 +434,7 @@ AddTopics(CommandCtx *ctx)
     prompt_for("block id", &block, ctx); 
 
     try{ 
-        ntopics = get_cstr_topics(&topics_raw, ctx); 
+        ntopics = _get_cstr_topics(&topics_raw, ctx); 
 
         if(prompt_for_cpp(ctx)){
             auto topics = topic_set_type( 
@@ -404,11 +446,11 @@ AddTopics(CommandCtx *ctx)
         }else{    
             ret = TOSDB_AddTopics(block.c_str(), (const char**)topics_raw, ntopics);
         }
-        check_display_ret(ret);
+        _check_display_ret(ret);
      
-        del_cstr_topics(topics_raw, ntopics);
+        _del_cstr_topics(topics_raw, ntopics);
     }catch(...){
-        del_cstr_topics(topics_raw, ntopics);
+        _del_cstr_topics(topics_raw, ntopics);
         throw;
     }
 }
@@ -426,16 +468,16 @@ AddItems(CommandCtx *ctx)
     prompt_for("block id", &block, ctx); 
            
     try{            
-        nitems = get_cstr_items(&items_raw, ctx);
+        nitems = _get_cstr_items(&items_raw, ctx);
 
         ret = prompt_for_cpp(ctx)
             ? TOSDB_AddItems(block, str_set_type(items_raw, nitems))
             : TOSDB_AddItems(block.c_str(), (const char**)items_raw, nitems);
             
-        check_display_ret(ret);
-        del_cstr_items(items_raw, nitems);
+        _check_display_ret(ret);
+        _del_cstr_items(items_raw, nitems);
     }catch(...){
-        del_cstr_items(items_raw, nitems);      
+        _del_cstr_items(items_raw, nitems);      
         throw;
     }         
 }
@@ -455,7 +497,7 @@ RemoveTopic(CommandCtx *ctx)
         ? TOSDB_RemoveTopic(block, TOS_Topics::MAP()[topic])
         : TOSDB_RemoveTopic(block.c_str(), topic.c_str());   
 
-    check_display_ret(ret);
+    _check_display_ret(ret);
 }
 
 
@@ -473,7 +515,7 @@ RemoveItem(CommandCtx *ctx)
         ? TOSDB_RemoveItem(block, item)
         : TOSDB_RemoveItem(block.c_str(), item.c_str());
 
-    check_display_ret(ret);
+    _check_display_ret(ret);
 }
 
 
@@ -495,7 +537,7 @@ GetItemCount(CommandCtx *ctx)
         }
     }else{         
         ret = TOSDB_GetItemCount(block.c_str(), &count);
-        check_display_ret(ret, count);
+        _check_display_ret(ret, count);
     }
 }
 
@@ -518,7 +560,7 @@ GetTopicCount(CommandCtx *ctx)
         }
     }else{         
         ret = TOSDB_GetTopicCount(block.c_str(), &count);
-        check_display_ret(ret, count);
+        _check_display_ret(ret, count);
     }
 }
 
@@ -549,7 +591,7 @@ GetTopicNames(CommandCtx *ctx)
             strs = NewStrings(count, TOSDB_MAX_STR_SZ);
 
             ret = TOSDB_GetTopicNames(block.c_str(), strs, count, TOSDB_MAX_STR_SZ);
-            check_display_ret(ret, strs, count);
+            _check_display_ret(ret, strs, count);
 
             DeleteStrings(strs, count);
         }catch(...){
@@ -586,7 +628,7 @@ GetItemNames(CommandCtx *ctx)
             strs = NewStrings(count, TOSDB_MAX_STR_SZ);
 
             ret = TOSDB_GetItemNames(block.c_str(), strs, count, TOSDB_MAX_STR_SZ);
-            check_display_ret(ret, strs, count);
+            _check_display_ret(ret, strs, count);
 
             DeleteStrings(strs, count);
         }catch(...){
@@ -637,7 +679,7 @@ GetPreCachedTopicNames(CommandCtx *ctx)
             strs = NewStrings(count, TOSDB_MAX_STR_SZ);
 
             ret = TOSDB_GetPreCachedTopicNames(block.c_str(), strs, count, TOSDB_MAX_STR_SZ);
-            check_display_ret(ret, strs, count);
+            _check_display_ret(ret, strs, count);
 
             DeleteStrings(strs, count);
         }catch(...){
@@ -674,7 +716,7 @@ GetPreCachedItemNames(CommandCtx *ctx)
             strs = NewStrings(count, TOSDB_MAX_STR_SZ);
 
             ret = TOSDB_GetPreCachedItemNames(block.c_str(), strs, count, TOSDB_MAX_STR_SZ);
-            check_display_ret(ret, strs, count);
+            _check_display_ret(ret, strs, count);
 
             DeleteStrings(strs, count);
         }catch(...){
@@ -719,7 +761,7 @@ GetPreCachedItemCount(CommandCtx *ctx)
         }
     }else{            
         ret = TOSDB_GetPreCachedItemCount(block.c_str(), &count);
-        check_display_ret(ret, count);
+        _check_display_ret(ret, count);
     }
 }
 
@@ -744,7 +786,7 @@ GetPreCachedTopicCount(CommandCtx *ctx)
         }
     }else{            
         ret = TOSDB_GetPreCachedTopicCount(block.c_str(), &count);
-        check_display_ret(ret, count);
+        _check_display_ret(ret, count);
     }
 }
 
@@ -796,7 +838,7 @@ GetTypeString(CommandCtx *ctx)
         }
     }else{            
         ret = TOSDB_GetTypeString(topic.c_str(), tstring, 256);
-        check_display_ret(ret, tstring);
+        _check_display_ret(ret, tstring);
     }         
 }
 
@@ -821,7 +863,7 @@ IsUsingDateTime(CommandCtx *ctx)
         }
     }else{
         ret = TOSDB_IsUsingDateTime(block.c_str(), &using_dt);
-        check_display_ret(ret, (using_dt==1));           
+        _check_display_ret(ret, (using_dt==1));           
     }
 }
 
@@ -844,7 +886,7 @@ GetStreamOccupancy(CommandCtx *ctx)
                   << std::endl << std::endl; 
     }else{            
         ret = TOSDB_GetStreamOccupancy(block.c_str(), item.c_str(), topic.c_str(), &occ);
-        check_display_ret(ret, occ);
+        _check_display_ret(ret, occ);
     }
 }
 
@@ -867,7 +909,7 @@ GetMarkerPosition(CommandCtx *ctx)
                   << std::endl << std::endl; 
     }else{             
         ret = TOSDB_GetMarkerPosition(block.c_str(), item.c_str(), topic.c_str(), &pos);
-        check_display_ret(ret, pos);
+        _check_display_ret(ret, pos);
     }
 }
 
@@ -890,7 +932,7 @@ IsMarkerDirty(CommandCtx *ctx)
                   << std::endl << std::endl; 
     }else{
         ret = TOSDB_IsMarkerDirty(block.c_str(), item.c_str(),topic.c_str(), &is_dirty);
-        check_display_ret(ret, (is_dirty==1));
+        _check_display_ret(ret, (is_dirty==1));
     }
 }
 
@@ -900,6 +942,52 @@ DumpBufferStatus(CommandCtx *ctx)
 {
     TOSDB_DumpSharedBufferStatus();
 }
+
+template<typename T>
+void 
+_check_display_ret(int r, T v)
+{
+    if(r) 
+        std::cout<< std::endl << "error: "<< r << std::endl << std::endl; 
+    else 
+        std::cout<< std::endl << v << std::endl << std::endl; 
+}
+
+
+void 
+_check_display_ret(int r)
+{
+    if(r) 
+        std::cout<< std::endl << "error: "<< r << std::endl << std::endl; 
+    else 
+        std::cout<< std::endl << "SUCCESS" << std::endl << std::endl; 
+}
+
+template<>
+void 
+_check_display_ret(int r, bool v)
+{
+    if(r) 
+        std::cout<< std::endl << "error: "<< r << std::endl << std::endl; 
+    else 
+        std::cout<< std::endl << std::boolalpha << v << std::endl << std::endl; 
+}
+
+
+template<typename T>
+void 
+_check_display_ret(int r, T *v, size_type n)
+{
+    if(r) 
+        std::cout<< std::endl << "error: "<< r << std::endl << std::endl; 
+    else{ 
+        std::cout<< std::endl; 
+        for(size_type i = 0; i < n; ++i) 
+            std::cout<< v[i] << std::endl; 
+        std::cout<< std::endl; 
+    } 
+}
+
 
 
 };

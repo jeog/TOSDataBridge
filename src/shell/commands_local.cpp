@@ -16,6 +16,7 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 */
 
 #include <algorithm>
+#include <iomanip>
 
 #include "shell.hpp"
 
@@ -24,18 +25,17 @@ namespace{
 void local_topics(CommandCtx *ctx);
 void local_commands(CommandCtx *ctx);
 void local_exit(CommandCtx *ctx);
-
+void local_language(CommandCtx *ctx);
 
 commands_map_ty
 build_commands_map()
 {
     commands_map_ty m;
 
-    m.insert( build_commands_map_elem("topics",local_topics) );
-    m.insert( build_commands_map_elem("commands",local_commands) );
-    m.insert( build_commands_map_elem("quit",local_exit) );
-    m.insert( build_commands_map_elem("exit",local_exit) );
-    m.insert( build_commands_map_elem("close",local_exit) );
+    m.insert( build_commands_map_elem("topics",local_topics,"list TOPICS that TOS accepts") );
+    m.insert( build_commands_map_elem("commands",local_commands, "list commands for this shell") );
+    m.insert( build_commands_map_elem("language",local_language, "set default language(C/C++/none)") ); 
+    m.insert( build_commands_map_elem("exit",local_exit, "exit this shell") );
     
     return m;
 }
@@ -46,10 +46,58 @@ commands_map_ty commands_local = build_commands_map();
 
 namespace{
 
+bool
+_decr_page_latch_and_wait(int *n, std::function<void(void)> cb_on_wait );
+
+void
+_display_default_language()
+{
+    auto l = language_strings[get_default_language()];
+
+    std::cout<< std::endl << "Current default language: " << l.first << " (" << l.second << ")"  
+             << std::endl << std::endl;
+}
+
 void 
 local_exit(CommandCtx *ctx)
 {
     ctx->exit = true;       
+}
+
+void 
+local_language(CommandCtx *ctx)
+{
+    std::string input;
+        
+    _display_default_language();
+
+    std::cout<< "Would you like to change default language?(y/n)";
+    prompt>> input << stream_prompt::endl;
+
+    if(input == "n")
+        return;
+    else if(input != "y"){
+        std::cerr<< "INVALID - did not change default language" << std::endl << std::endl;
+        return;
+    }
+
+    std::cout<< "Please select new default language:" << std::endl;
+    for(auto & s : language_strings)
+        std::cout<< "  - " << std::setw(8) << s.second.first 
+                 << " - " << s.second.second << std::endl;
+    std::cout<< std::endl;
+    prompt>> input;
+
+    for(auto & s : language_strings){
+        if(input == s.second.first){
+            set_default_language(s.first);           
+            _display_default_language();           
+            return;
+        }
+    }
+
+    std::cerr<< std::endl << "INVALID (check case) - did not change default language" 
+             << std::endl << std::endl;   
 }
 
 void
@@ -96,6 +144,7 @@ void
 local_commands(CommandCtx *ctx)
 {
     std::string cmd;
+    int maxl;
 
     int count = CMD_OUT_PER_PAGE;   
     auto reset_count = [&count](){ count = CMD_OUT_PER_PAGE; };
@@ -117,14 +166,18 @@ local_commands(CommandCtx *ctx)
         if(cmd == "back")
             return;      
 
-        for(auto & p : commands){
-            if(cmd == p.first){
-                std::cout<< std::endl << p.second.first << " COMMANDS:" 
+        for(auto & group : commands){
+            if(cmd == group.first){
+                std::cout<< std::endl << group.second.first << " COMMANDS:" 
                          << std::endl << std::endl;
-                for(auto & pp : p.second.second){                  
-                    if( !decr_page_latch_and_wait(&count, reset_count) )
+                maxl = 0;
+                for(auto & c : group.second.second)
+                    maxl = max(maxl, c.first.size());               
+                for(auto & c : group.second.second){                  
+                    if( !_decr_page_latch_and_wait(&count, reset_count) )
                         break;
-                    std::cout<<"- "<< pp.first << std::endl;
+                    std::cout<<"  - "<< std::setw(maxl + 2) << c.first 
+                             << (c.second.doc.empty() ? "" : " - ") << c.second.doc << std::endl;
                 }
                 std::cout<< std::endl;
                 return;
@@ -133,6 +186,24 @@ local_commands(CommandCtx *ctx)
 
         std::cout<< std::endl << "BAD COMMAND" << std::endl << std::endl ;                   
     }
+}
+
+bool
+_decr_page_latch_and_wait(int *n, std::function<void(void)> cb_on_wait )
+{
+    std::string more_y_or_n;
+
+    if(*n > 0){
+        --(*n);       
+    }else{
+        std::cout<< std::endl << "  More? (y/n) ";         
+        prompt>> more_y_or_n;               
+        cb_on_wait();
+        if(more_y_or_n != "y") /* stop on everythin but 'y' */
+            return false;
+        std::cout<< std::endl;
+    }
+    return true;
 }
 
 };

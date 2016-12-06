@@ -171,7 +171,6 @@
     <ClCompile Include="..\src\shell\commands_get.cpp" />
     <ClCompile Include="..\src\shell\commands_local.cpp" />
     <ClCompile Include="..\src\shell\commands_stream.cpp" />
-    <ClCompile Include="..\src\shell\main.cpp" />
     <ClCompile Include="..\src\shell\shell.cpp" />
   </ItemGroup>
   <ItemGroup>

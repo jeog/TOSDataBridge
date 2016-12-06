@@ -75,6 +75,16 @@ _get_stream_snapshot_from_marker( int(*func)(LPCSTR, LPCSTR, LPCSTR, T*,
                                              size_type, pDateTimeStamp, long, long*),
                                   CommandCtx *ctx );
 
+template<typename T>
+void 
+_check_display_ret(int r, T *v, size_type n, pDateTimeStamp d);
+
+template<typename T>
+void 
+_display_stream_data(size_type len, T* dat, pDateTimeStamp dts);
+
+size_type
+_min_stream_len(std::string block, long beg, long end, size_type len);
 
 void
 GetStreamSnapshotDoubles(CommandCtx *ctx)
@@ -155,9 +165,9 @@ GetStreamSnapshotStrings(CommandCtx *ctx)
             ret = TOSDB_GetStreamSnapshotStrings(block.c_str(), item.c_str(), topic.c_str(),
                                                   dat, len, TOSDB_STR_DATA_SZ, dts, end, beg);
            
-            display_len = min_stream_len(block,beg,end,len);
+            display_len = _min_stream_len(block,beg,end,len);
 
-            check_display_ret(ret, dat, display_len, dts);
+            _check_display_ret(ret, dat, display_len, dts);
 
             DeleteStrings(dat, len);
             if(dts)
@@ -247,7 +257,7 @@ GetStreamSnapshotStringsFromMarker(CommandCtx *ctx)
                                                         dat, len, TOSDB_STR_DATA_SZ, 
                                                         dts, beg, &get_size);
 
-        check_display_ret(ret, dat, abs(get_size), dts);
+        _check_display_ret(ret, dat, abs(get_size), dts);
 
         DeleteStrings(dat, len);
         if(dts)
@@ -348,9 +358,9 @@ _get_stream_snapshot( int(*func)(LPCSTR, LPCSTR, LPCSTR, T*,
 
         ret = func(block.c_str(), item.c_str(), topic.c_str(), dat, len, dts, end, beg);
 
-        display_len = min_stream_len(block,beg,end,len);
+        display_len = _min_stream_len(block,beg,end,len);
 
-        check_display_ret(ret, dat, display_len, dts);
+        _check_display_ret(ret, dat, display_len, dts);
  
         if(dat)
             delete[] dat;
@@ -407,7 +417,7 @@ _get_stream_snapshot_from_marker( int(*func)(LPCSTR, LPCSTR, LPCSTR, T*,
 
         ret = func(block.c_str(), item.c_str(), topic.c_str(), dat, len, dts, beg, &get_size);
 
-        check_display_ret(ret, dat, abs(get_size), dts);
+        _check_display_ret(ret, dat, abs(get_size), dts);
 
         if(dat)
             delete[] dat;
@@ -421,5 +431,75 @@ _get_stream_snapshot_from_marker( int(*func)(LPCSTR, LPCSTR, LPCSTR, T*,
     }
 }
 
+
+template<typename T>
+void 
+_check_display_ret(int r, T *v, size_type n, pDateTimeStamp d)
+{
+    if(r) 
+        std::cout<< std::endl << "error: " << r << std::endl << std::endl;
+    else 
+        _display_stream_data(n, v, d);
+}
+
+
+template<typename T>
+void 
+_display_stream_data(size_type len, T* dat, pDateTimeStamp dts)
+{
+    std::string index;
+   
+    do{
+        std::cout<< std::endl;
+        std::cout<< "Show data from what index value?('all' to show all, 'none' to quit) ";
+        prompt>> index;
+
+        if(index == "none")
+            break;
+
+        if(index == "all"){
+            std::cout<< std::endl; 
+            for(size_type i = 0; i < len; ++i)
+                std::cout<< dat[i] << ' ' << (dts ? &dts[i] : nullptr) << std::endl;               
+            break;
+        }
+
+        try{
+            long long i = std::stoll(index);
+            if(i >= len){
+                std::cerr<< std::endl 
+                         << "BAD INPUT - index must be < min(array length, abs(end-beg))" 
+                         << std::endl;
+                continue;
+            }
+            std::cout<< std::endl << dat[i] << ' ' << (dts ? &dts[i] : nullptr) << std::endl;             
+        }catch(...){
+            std::cerr<< std::endl << "INVALID INPUT" << std::endl << std::endl;
+            continue;
+        }   
+
+    }while(1);
+
+    std::cout<< std::endl;
+}
+
+size_type
+_min_stream_len(std::string block, long beg, long end, size_type len)
+{
+    size_type block_size = TOSDB_GetBlockSize(block);
+    size_type min_size = 0;
+
+    if(end < 0)
+        end += block_size;
+    if(beg < 0)
+        beg += block_size;
+
+    min_size = min( end-beg+1, len );
+
+    if(beg < 0 || end < 0 || beg >= block_size || end >= block_size || min_size <= 0)
+        throw TOSDB_Error("STREAM DATA", "invalid beg or end index values");
+
+    return min_size;
+}
 
 };

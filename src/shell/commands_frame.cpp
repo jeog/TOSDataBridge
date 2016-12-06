@@ -62,6 +62,9 @@ _get_item_frame( int(*func)(LPCSTR, LPCSTR, T*, size_type,
                             LPSTR*,size_type,pDateTimeStamp),
                  CommandCtx *ctx );
 
+template<typename T>
+void 
+_check_display_ret(int r, T *v, char **l, size_type n, pDateTimeStamp d);
 
 void
 GetItemFrame(CommandCtx *ctx)
@@ -142,7 +145,7 @@ GetItemFrameStrings(CommandCtx *ctx)
         ret = TOSDB_GetItemFrameStrings(block.c_str(), topic.c_str(), dat, nitems, 
                                         TOSDB_STR_DATA_SZ, lab, TOSDB_STR_DATA_SZ, dts);
 
-        check_display_ret(ret, dat, lab, nitems, dts);
+        _check_display_ret(ret, dat, lab, nitems, dts);
                       
         DeleteStrings(dat, nitems);
         DeleteStrings(lab, nitems);
@@ -188,7 +191,7 @@ GetTopicFrameStrings(CommandCtx *ctx)
         ret = TOSDB_GetTopicFrameStrings(block.c_str(), item.c_str(), dat, ntopics, 
                                           TOSDB_STR_DATA_SZ, lab, TOSDB_STR_DATA_SZ, dts);
             
-        check_display_ret(ret, dat, lab, ntopics, dts);
+        _check_display_ret(ret, dat, lab, ntopics, dts);
 
         DeleteStrings(dat, ntopics);
         DeleteStrings(lab, ntopics);
@@ -279,7 +282,7 @@ _get_item_frame( int(*func)(LPCSTR, LPCSTR, T*, size_type,
 
         ret = func(block.c_str(), topic.c_str() ,dat , nitems, lab, TOSDB_MAX_STR_SZ, dts);
         
-        check_display_ret(ret, dat, lab, nitems, dts);
+        _check_display_ret(ret, dat, lab, nitems, dts);
 
         DeleteStrings(lab, nitems);
         if(dat)
@@ -295,5 +298,22 @@ _get_item_frame( int(*func)(LPCSTR, LPCSTR, T*, size_type,
     }
 
 }
+
+
+
+template<typename T>
+void 
+_check_display_ret(int r, T *v, char **l, size_type n, pDateTimeStamp d)
+{
+    if(r) 
+          std::cout<< std::endl << "error: " << r << std::endl << std::endl;
+    else{
+        std::cout<< std::endl;
+        for(size_type i = 0; i < n; ++i)
+            std::cout<< l[i] << ' ' << v[i] << ' ' << (d ? (d + i) : d) << std::endl;
+        std::cout<< std::endl;
+    }
+}
+
 
 };
