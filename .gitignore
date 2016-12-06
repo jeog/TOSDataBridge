@@ -4,6 +4,7 @@
 *.tosdb
 prov/tmp*
 python/tosdb/_tosdb.py
+core
 
 #################
 ## Eclipse
