@@ -105,7 +105,7 @@ Simply reporting bugs or questioning seemingly idiotic or unintuitive interface 
     
     - *_tos-databridge-[x86|x64].dll* : A back-end library that provides custom concurrency and IPC objects; logging and utilities; as well as the Topic-String mapping. 
     
-    - *tos-databridge-shell-[x86|x64]* : A crude 'shell' used to interact directly with the library calls; for testing and debugging.
+    - *tos-databridge-shell-[x86|x64]* : A shell used to interact directly with the library calls.
 
     *(Going forward we'll exclude the build suffix (i.e. -x64 ) for syntactic convenience. We'll replace it with [] in an attempt to avoid confusion. Unless stated explicitly, if sensible, assume that both builds apply.)*
 
@@ -419,7 +419,7 @@ There are operator\<\< overloads (client_out.cpp) for most of the custom objects
 
 - **Inter-Process Communication(IPC):** Uses a pair of master/slave objects that share two duplexed named pipes and a shared memory segment.  Internally the client library continually calls the masters ->connected() method which is built to fail easily, for any number of reasons.
 
-- **Asymmetric Responsibilities & Leaks:** Connection 'probing' only works one way, from master to slave. The slave(which is owned by the Service) therefore may know that one of the clients isn't there and handle a disconnection, it just doesn't know what stream objects they are responsible for. Internally all it does is keep a ref-count to the streams it's been asked to create and obviously write the necessary data into the appropriate shared memory segments. To see the status of the service and if there are stranded or dangling streams open up the debug shell and use **`TOSDB_DumpSharedBufferStatus`** to dump all the current stream information to /log . 
+- **Asymmetric Responsibilities & Leaks:** Connection 'probing' only works one way, from master to slave. The slave(which is owned by the Service) therefore may know that one of the clients isn't there and handle a disconnection, it just doesn't know what stream objects they are responsible for. Internally all it does is keep a ref-count to the streams it's been asked to create and obviously write the necessary data into the appropriate shared memory segments. To see the status of the service and if there are stranded or dangling streams open up the command shell and use **`TOSDB_DumpSharedBufferStatus`** to dump all the current stream information to /log . 
 
 - **DateTimeStamp:** THESE ARE NOT OFFICIAL STAMPS FROM THE EXCHANGE, they are manually created once the TOS DDE server returns the data. They use the system clock to assure high_resolution( the micro-seconds field) and therefore there is no guarantee that the clock is accurate or won't change between stamps, as is made by the STL's std::steady_clock. 
 
