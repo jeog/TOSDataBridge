@@ -166,7 +166,15 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\src\dbg_shell.cpp" />
+    <ClCompile Include="..\src\shell\commands_admin.cpp" />
+    <ClCompile Include="..\src\shell\commands_frame.cpp" />
+    <ClCompile Include="..\src\shell\commands_get.cpp" />
+    <ClCompile Include="..\src\shell\commands_local.cpp" />
+    <ClCompile Include="..\src\shell\commands_stream.cpp" />
+    <ClCompile Include="..\src\shell\shell.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\include\shell.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -183,9 +183,9 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\src\client_admin.cpp" />
-    <ClCompile Include="..\src\client_out.cpp" />
-    <ClCompile Include="..\src\client_get.cpp" />
+    <ClCompile Include="..\src\client\client_admin.cpp" />
+    <ClCompile Include="..\src\client\client_get.cpp" />
+    <ClCompile Include="..\src\client\client_out.cpp" />
     <ClCompile Include="..\src\generic.cpp" />
   </ItemGroup>
   <ItemGroup>
