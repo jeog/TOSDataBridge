@@ -27,22 +27,15 @@ void local_commands(CommandCtx *ctx);
 void local_exit(CommandCtx *ctx);
 void local_language(CommandCtx *ctx);
 
-commands_map_ty
-build_commands_map()
-{
-    commands_map_ty m;
+}; /* namespace */
 
-    m.insert( build_commands_map_elem("topics",local_topics,"list TOPICS that TOS accepts") );
-    m.insert( build_commands_map_elem("commands",local_commands, "list commands for this shell") );
-    m.insert( build_commands_map_elem("language",local_language, "set default language(C/C++/none)") ); 
-    m.insert( build_commands_map_elem("exit",local_exit, "exit this shell") );
-    
-    return m;
-}
+const CommandsMap commands_local(
+    CommandsMap::InitChain("topics",local_topics,"list TOPICS that TOS accepts") 
+                          ("commands",local_commands, "list commands for this shell")
+                          ("language",local_language, "set default language(C/C++/none)") 
+                          ("exit",local_exit, "exit this shell") 
+);
 
-};
-
-commands_map_ty commands_local = build_commands_map();
 
 namespace{
 
@@ -206,4 +199,4 @@ _decr_page_latch_and_wait(int *n, std::function<void(void)> cb_on_wait )
     return true;
 }
 
-};
+}; /* namespace */

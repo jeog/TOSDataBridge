@@ -43,32 +43,22 @@ void GetLong(CommandCtx *ctx);
 void GetString(CommandCtx *ctx);
 void GetGeneric(CommandCtx *ctx);
 
-commands_map_ty
-build_commands_map()
-{
-    commands_map_ty m;
+}; /* namespace */
 
-    m.insert( build_commands_map_elem("GetDouble",GetDouble) );
-    m.insert( build_commands_map_elem("GetFloat",GetFloat) );
-    m.insert( build_commands_map_elem("GetLongLong",GetLongLong) );
-    m.insert( build_commands_map_elem("GetLong",GetLong) );
-    m.insert( build_commands_map_elem("GetString",GetString) );
-    m.insert( build_commands_map_elem("GetGeneric",GetGeneric) );
-
-    return m;
-}
-
-};
-
-commands_map_ty commands_get = build_commands_map();
-
+const CommandsMap commands_get(
+    CommandsMap::InitChain("GetDouble",GetDouble)
+                          ("GetFloat",GetFloat)
+                          ("GetLongLong",GetLongLong)
+                          ("GetLong",GetLong)
+                          ("GetString",GetString)
+                          ("GetGeneric",GetGeneric) 
+);
 
 namespace {
 
 template<typename T>
 void 
 _get(CommandCtx *ctx);
-
 
 template<typename T>
 void 
@@ -77,6 +67,7 @@ _get( int(*func)(LPCSTR, LPCSTR, LPCSTR, long, T*, pDateTimeStamp), CommandCtx *
 template<typename T>
 void 
 _check_display_ret(int r, T v, pDateTimeStamp d);
+
 
 void
 GetDouble(CommandCtx *ctx)
@@ -211,6 +202,7 @@ _get( int(*func)(LPCSTR, LPCSTR, LPCSTR, long, T*, pDateTimeStamp), CommandCtx *
     _check_display_ret(ret, d, (get_dts ? &dts : nullptr));  
 }
 
+
 template<typename T>
 void 
 _check_display_ret(int r, T v, pDateTimeStamp d)
@@ -221,4 +213,4 @@ _check_display_ret(int r, T v, pDateTimeStamp d)
         std::cout<< std::endl << v << ' ' << d << std::endl << std::endl; 
 }
 
-};
+}; /* namespace */

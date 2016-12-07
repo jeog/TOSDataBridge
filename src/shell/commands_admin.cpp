@@ -58,68 +58,58 @@ void GetMarkerPosition(CommandCtx *ctx);
 void IsMarkerDirty(CommandCtx *ctx);
 void DumpBufferStatus(CommandCtx *ctx);
 
+}; /* namespace */
 
-commands_map_ty
-build_commands_map()
-{
-    commands_map_ty m; 
-    
-    m.insert( build_commands_map_elem("Connect",Connect,"connect to the library") );
-    m.insert( build_commands_map_elem("Disconnect",Disconnect) );
-    m.insert( build_commands_map_elem("IsConnected",IsConnected) );
-    m.insert( build_commands_map_elem("CreateBlock",CreateBlock) );
-    m.insert( build_commands_map_elem("CloseBlock",CloseBlock) );
-    m.insert( build_commands_map_elem("CloseBlocks",CloseBlocks) );
-    m.insert( build_commands_map_elem("GetBlockLimit",GetBlockLimit) );
-    m.insert( build_commands_map_elem("SetBlockLimit",SetBlockLimit) );
-    m.insert( build_commands_map_elem("GetBlockCount",GetBlockCount) );
-    m.insert( build_commands_map_elem("GetBlockIDs",GetBlockIDs) );
-    m.insert( build_commands_map_elem("GetBlockSize",GetBlockSize) );
-    m.insert( build_commands_map_elem("SetBlockSize",SetBlockSize) );
-    m.insert( build_commands_map_elem("GetLatency",GetLatency) );
-    m.insert( build_commands_map_elem("SetLatency",SetLatency) );
-    m.insert( build_commands_map_elem("Add",Add) );
-    m.insert( build_commands_map_elem("AddTopic",AddTopic) );
-    m.insert( build_commands_map_elem("AddItem",AddItem) );
-    m.insert( build_commands_map_elem("AddTopics",AddTopics) );
-    m.insert( build_commands_map_elem("AddItems",AddItems) );
-    m.insert( build_commands_map_elem("RemoveTopic",RemoveTopic) );
-    m.insert( build_commands_map_elem("RemoveItem",RemoveItem) );
-    m.insert( build_commands_map_elem("GetItemCount",GetItemCount) );
-    m.insert( build_commands_map_elem("GetTopicCount",GetTopicCount) );
-    m.insert( build_commands_map_elem("GetTopicNames",GetTopicNames) );    
-    m.insert( build_commands_map_elem("GetItemNames",GetItemNames) );
-    m.insert( build_commands_map_elem("GetTopicEnums",GetTopicEnums) );
-    m.insert( build_commands_map_elem("GetPreCachedTopicEnums",GetPreCachedTopicEnums) );
-    m.insert( build_commands_map_elem("GetPreCachedItemCount",GetPreCachedItemCount) );
-    m.insert( build_commands_map_elem("GetPreCachedTopicCount",GetPreCachedTopicCount) );
-    m.insert( build_commands_map_elem("GetPreCachedItemNames",GetPreCachedItemNames) );
-    m.insert( build_commands_map_elem("GetPreCachedTopicNames",GetPreCachedTopicNames) );
-    m.insert( build_commands_map_elem("GetTypeBits",GetTypeBits) );
-    m.insert( build_commands_map_elem("GetTypeString",GetTypeString) );
-    m.insert( build_commands_map_elem("IsUsingDateTime",IsUsingDateTime) );
-    m.insert( build_commands_map_elem("GetStreamOccupancy",GetStreamOccupancy) );
-    m.insert( build_commands_map_elem("GetMarkerPosition",GetMarkerPosition) );
-    m.insert( build_commands_map_elem("IsMarkerDirty",IsMarkerDirty) );
-    m.insert( build_commands_map_elem("DumpBufferStatus",DumpBufferStatus) );
-
-    return m;
-}
-
-};
-
-
-commands_map_ty commands_admin = build_commands_map();
+const CommandsMap commands_admin(
+    CommandsMap::InitChain("Connect",Connect,"connect to the library")
+                          ("Disconnect",Disconnect)                              
+                          ("IsConnected",IsConnected)                              
+                          ("CreateBlock",CreateBlock)                              
+                          ("CloseBlock",CloseBlock)                              
+                          ("CloseBlocks",CloseBlocks)                              
+                          ("GetBlockLimit",GetBlockLimit)                              
+                          ("SetBlockLimit",SetBlockLimit)                              
+                          ("GetBlockCount",GetBlockCount)                              
+                          ("GetBlockIDs",GetBlockIDs)                              
+                          ("GetBlockSize",GetBlockSize)                              
+                          ("SetBlockSize",SetBlockSize)                              
+                          ("GetLatency",GetLatency)                              
+                          ("SetLatency",SetLatency)                              
+                          ("Add",Add)                              
+                          ("AddTopic",AddTopic)                              
+                          ("AddItem",AddItem)                              
+                          ("AddTopics",AddTopics)                              
+                          ("AddItems",AddItems)                              
+                          ("RemoveTopic",RemoveTopic)                              
+                          ("RemoveItem",RemoveItem)                              
+                          ("GetItemCount",GetItemCount)                              
+                          ("GetTopicCount",GetTopicCount)                              
+                          ("GetTopicNames",GetTopicNames)                                  
+                          ("GetItemNames",GetItemNames)                              
+                          ("GetTopicEnums",GetTopicEnums)                              
+                          ("GetPreCachedTopicEnums",GetPreCachedTopicEnums)                              
+                          ("GetPreCachedItemCount",GetPreCachedItemCount)                              
+                          ("GetPreCachedTopicCount",GetPreCachedTopicCount)                              
+                          ("GetPreCachedItemNames",GetPreCachedItemNames)                              
+                          ("GetPreCachedTopicNames",GetPreCachedTopicNames)                              
+                          ("GetTypeBits",GetTypeBits)                              
+                          ("GetTypeString",GetTypeString)                              
+                          ("IsUsingDateTime",IsUsingDateTime)                              
+                          ("GetStreamOccupancy",GetStreamOccupancy)                              
+                          ("GetMarkerPosition",GetMarkerPosition)                              
+                          ("IsMarkerDirty",IsMarkerDirty)                              
+                          ("DumpBufferStatus",DumpBufferStatus) 
+);
 
 
 namespace {
-  
-template<typename T>
-void 
-_check_display_ret(int r, T v);
 
 void 
 _check_display_ret(int r);
+
+template<typename T>
+void 
+_check_display_ret(int r, T v);
 
 template<>
 void 
@@ -128,6 +118,7 @@ _check_display_ret(int r, bool v);
 template<typename T>
 void 
 _check_display_ret(int r, T *v, size_type n);
+
 
 inline size_type 
 _get_cstr_items(char ***p, CommandCtx *ctx)
@@ -943,6 +934,7 @@ DumpBufferStatus(CommandCtx *ctx)
     TOSDB_DumpSharedBufferStatus();
 }
 
+
 template<typename T>
 void 
 _check_display_ret(int r, T v)
@@ -962,6 +954,7 @@ _check_display_ret(int r)
     else 
         std::cout<< std::endl << "SUCCESS" << std::endl << std::endl; 
 }
+
 
 template<>
 void 
@@ -988,6 +981,4 @@ _check_display_ret(int r, T *v, size_type n)
     } 
 }
 
-
-
-};
+}; /* namespace */

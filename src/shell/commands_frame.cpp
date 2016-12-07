@@ -30,28 +30,20 @@ void GetTopicFrame(CommandCtx *ctx);
 void GetTopicFrameStrings(CommandCtx *ctx);
 void GetTotalFrame(CommandCtx *ctx);
 
-commands_map_ty
-build_commands_map()
-{
-    commands_map_ty m;
 
-    m.insert( build_commands_map_elem("GetItemFrame",GetItemFrame) );
-    m.insert( build_commands_map_elem("GetItemFrameStrings",GetItemFrameStrings) );
-    m.insert( build_commands_map_elem("GetItemFrameDoubles",GetItemFrameDoubles) );
-    m.insert( build_commands_map_elem("GetItemFrameFloats",GetItemFrameFloats) );
-    m.insert( build_commands_map_elem("GetItemFrameLongLongs",GetItemFrameLongLongs) );
-    m.insert( build_commands_map_elem("GetItemFrameLongs",GetItemFrameLongs) );
-    m.insert( build_commands_map_elem("GetTopicFrame",GetTopicFrame) );
-    m.insert( build_commands_map_elem("GetTopicFrameStrings",GetTopicFrameStrings) );
-    m.insert( build_commands_map_elem("GetTotalFrame",GetTotalFrame) );
+}; /* namespace */
 
-    return m;
-}
-
-};
-
-
-commands_map_ty commands_frame = build_commands_map();
+const CommandsMap commands_frame(
+    CommandsMap::InitChain("GetItemFrame",GetItemFrame) 
+                          ("GetItemFrameStrings",GetItemFrameStrings) 
+                          ("GetItemFrameDoubles",GetItemFrameDoubles) 
+                          ("GetItemFrameFloats",GetItemFrameFloats) 
+                          ("GetItemFrameLongLongs",GetItemFrameLongLongs) 
+                          ("GetItemFrameLongs",GetItemFrameLongs) 
+                          ("GetTopicFrame",GetTopicFrame) 
+                          ("GetTopicFrameStrings",GetTopicFrameStrings) 
+                          ("GetTotalFrame",GetTotalFrame) 
+);
 
 
 namespace{
@@ -65,6 +57,7 @@ _get_item_frame( int(*func)(LPCSTR, LPCSTR, T*, size_type,
 template<typename T>
 void 
 _check_display_ret(int r, T *v, char **l, size_type n, pDateTimeStamp d);
+
 
 void
 GetItemFrame(CommandCtx *ctx)
@@ -247,9 +240,6 @@ GetTotalFrame(CommandCtx *ctx)
 }
 
 
-
-
-
 template<typename T>
 void 
 _get_item_frame( int(*func)(LPCSTR, LPCSTR, T*, size_type,
@@ -300,7 +290,6 @@ _get_item_frame( int(*func)(LPCSTR, LPCSTR, T*, size_type,
 }
 
 
-
 template<typename T>
 void 
 _check_display_ret(int r, T *v, char **l, size_type n, pDateTimeStamp d)
@@ -315,5 +304,4 @@ _check_display_ret(int r, T *v, char **l, size_type n, pDateTimeStamp d)
     }
 }
 
-
-};
+}; /* namespace */

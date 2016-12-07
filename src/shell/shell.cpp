@@ -20,18 +20,32 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 
 #include "shell.hpp"
 
-/* 
-    NOTE: this shell is for testing/querying/debugging interface and engine. 
-
-   *** It DOES NOT check input, format all output etc. etc.***
- */
-
 stream_prompt prompt("[-->");
 stream_prompt_basic prompt_b("[-->");
 
+
 namespace{
 
-language default_language = language::none;
+commands_map_of_maps_ty
+_build_commands_map_of_maps();
+
+std::unordered_map<language, std::pair<std::string,std::string>>
+_build_language_strings();
+
+}; /* namespace */
+
+
+/* note: *when* these global externs are 'built' could be an issue 
+         if we're relying on other global object instantiations */
+
+commands_map_of_maps_ty 
+commands = _build_commands_map_of_maps();
+
+std::unordered_map<language, std::pair<std::string,std::string>> 
+language_strings = _build_language_strings();
+
+
+namespace{
 
 template<int W, const char FILL>
 void
@@ -41,31 +55,13 @@ template<int W, int INDENT, char H>
 void
 _display_header(std::string hpre, std::string hpost);
 
-commands_map_of_maps_ty
-build_commands_map_of_maps()
-{
-    typedef commands_map_of_maps_ty::value_type elem_ty;
-
-    commands_map_of_maps_ty m;
-
-    m.insert( elem_ty("admin", command_display_pair("ADMINISTRATIVE",commands_admin)) );
-    m.insert( elem_ty("get", command_display_pair("GET",commands_get)) );
-    m.insert( elem_ty("stream", command_display_pair("STREAM-SNAPSHOT",commands_stream)) );
-    m.insert( elem_ty("frame", command_display_pair("FRAME",commands_frame)) );
-    m.insert( elem_ty("local", command_display_pair("LOCAL",commands_local)) );
-
-    return m;
-}
-
-};
-
-commands_map_of_maps_ty commands = build_commands_map_of_maps();
+}; /* namespace */
 
 
 int main(int argc, char* argv[])
-{         
+{           
     std::string cmd;
-
+ 
     _display_header<MAX_DISPLAY_WIDTH, LEFT_INDENT_SIZE, '-'>("[--", "--]");
 
     while(1){ 
@@ -73,15 +69,16 @@ int main(int argc, char* argv[])
         try{
             prompt>> cmd;   
             
-            for(auto & c : commands){
-                for(auto & p : c.second.second){
-                    p.second.exit = false;
-                    if(p.first == cmd){                    
-                        p.second.func(&p.second);
-                        if(p.second.exit)
-                            goto exit_prompt;
-                        goto new_command;
-                    }
+            for(auto & group : commands){
+                for(auto & c : group.second.second){                    
+                    if(c.first != cmd)
+                        continue;
+                    c.second.exit = false;
+                    c.second.func(&c.second);                  
+                    if(c.second.exit)
+                        goto exit_prompt;
+                    goto new_command;
+                    
                 }
             }      
 
@@ -119,89 +116,18 @@ int main(int argc, char* argv[])
 }
 
 
-namespace{
-  
-template<int W, const char FILL>
-void
-_display_header_line(std::string pre, std::string post, std::string text)
-{
-  int f = W - (pre.size() + post.size() + text.size()) - 1; // account for newline
-  if(f < 0)
-      throw std::exception("can't fit header line");
-  
-  std::cout<< pre << std::string(int(f/2), FILL) 
-           << text << std::string(f - int(f/2), FILL) 
-           << post << std::endl;
-}
+namespace{    
 
-template<int W, int INDENT, char H>
-void
-_display_header(std::string hpre, std::string hpost)
-{
-    char lpath[MAX_PATH+40+40];  
-    TOSDB_GetClientLogPath(lpath,MAX_PATH+40+40);   
+language _default_language = language::none;
 
-    _display_header_line<W, H>(hpre,hpost, "");
-    _display_header_line<W, H>(hpre,hpost, "");
-    _display_header_line<W,' '>(hpre,hpost, "");
-    _display_header_line<W,' '>(hpre,hpost, "Welcome to the TOS-DataBridge Command Shell");
-    _display_header_line<W,' '>(hpre,hpost, "Copyright (C) 2014 Jonathon Ogden");
-    _display_header_line<W,' '>(hpre,hpost, "");
-    _display_header_line<W, H>(hpre,hpost, "");
-    _display_header_line<W, H>(hpre,hpost, "");
-    _display_header_line<W,' '>(hpre,hpost, "");
-    _display_header_line<W,' '>(hpre,hpost, "This program is distributed WITHOUT ANY WARRANTY.");
-    _display_header_line<W,' '>(hpre,hpost, "See the GNU General Public License for more details.");
-    _display_header_line<W,' '>(hpre,hpost, "");
-    _display_header_line<W,' '>(hpre,hpost, "Use 'Connect' command to connect to the Service.");
-    _display_header_line<W,' '>(hpre,hpost, "Use 'commands' for a list of commands by category.");
-    _display_header_line<W,' '>(hpre,hpost, "Use 'topics' for a list of topics(fields) TOS accepts.");
-    _display_header_line<W,' '>(hpre,hpost, "Use 'exit' to exit.");
-    _display_header_line<W,' '>(hpre,hpost, "");
-    _display_header_line<W,' '>(hpre,hpost, "NOTE: Topics/Items are case sensitive; use upper-case");
-    _display_header_line<W,' '>(hpre,hpost, "");
-    _display_header_line<W, H>(hpre,hpost, "");           
-    _display_header_line<W, H>(hpre,hpost, "");
-        
-    int wc = INDENT;
+}; /* namespace */
 
-    std::cout<< std::endl << std::setw(INDENT) << std::left << "LOG: ";    
-    for(auto s : std::string(lpath)){
-        if(++wc >= MAX_DISPLAY_WIDTH){
-            std::cout<< std::endl << std::string(INDENT,' ') ;
-            wc = INDENT;
-        }
-        std::cout<< s;
-    }
-
-    std::cout<< std::endl << std::endl << std::setw(INDENT) << std::left 
-             << "PID: " << GetCurrentProcessId() << std::endl;
-
-    commands_local["topics"].func(nullptr); 
-}
-
-std::unordered_map<language, std::pair<std::string,std::string>>
-build_language_strings()
-{
-    std::unordered_map<language, std::pair<std::string,std::string>> m;
-
-    m.insert( std::make_pair(language::none, std::make_pair("NONE", "no default; ask user during call")) );
-    m.insert( std::make_pair(language::c, std::make_pair("C", "use C version of call(if available)")) );
-    m.insert( std::make_pair(language::cpp, std::make_pair("C++", "use C++ version of call(if available)")) );
-
-    return m; 
-}
-
-};
-
-std::unordered_map<language, std::pair<std::string,std::string>> 
-language_strings = build_language_strings();
 
 language
 set_default_language(language l)
 {
-    language oldl = default_language;
-    default_language = l;
+    language oldl = _default_language;
+    _default_language = l;
     return oldl;
 }
 
@@ -209,16 +135,7 @@ set_default_language(language l)
 language
 get_default_language()
 {
-    return default_language;
-}
-
-
-commands_map_ty::value_type
-build_commands_map_elem(std::string name, commands_func_ty func, std::string doc)
-{
-    CommandCtx c = {name, doc, func, false};  
-    auto v = commands_map_ty::value_type(name, std::move(c));
-    return v;
+    return _default_language;
 }
 
 
@@ -329,4 +246,97 @@ prompt_for_block_item_topic_index(std::string *pblock,
 }
 
 
+namespace{
+  
+commands_map_of_maps_ty
+_build_commands_map_of_maps()
+{
+    typedef commands_map_of_maps_ty::value_type elem_ty;
+
+    commands_map_of_maps_ty m;
+
+    m.insert( elem_ty("admin", command_display_pair("ADMINISTRATIVE",commands_admin)) );
+    m.insert( elem_ty("get", command_display_pair("GET",commands_get)) );
+    m.insert( elem_ty("stream", command_display_pair("STREAM-SNAPSHOT",commands_stream)) );
+    m.insert( elem_ty("frame", command_display_pair("FRAME",commands_frame)) );
+    m.insert( elem_ty("local", command_display_pair("LOCAL",commands_local)) );
+
+    return m;
+}
+
+
+std::unordered_map<language, std::pair<std::string,std::string>>
+_build_language_strings()
+{
+    std::unordered_map<language, std::pair<std::string,std::string>> m;
+
+    m.insert( std::make_pair(language::none, std::make_pair("NONE", "no default; ask user during call")) );
+    m.insert( std::make_pair(language::c, std::make_pair("C", "use C version of call(if available)")) );
+    m.insert( std::make_pair(language::cpp, std::make_pair("C++", "use C++ version of call(if available)")) );
+
+    return m; 
+}
+
+
+template<int W, const char FILL>
+void
+_display_header_line(std::string pre, std::string post, std::string text)
+{
+  int f = W - (pre.size() + post.size() + text.size()) - 1; // account for newline
+  if(f < 0)
+      throw std::exception("can't fit header line");
+  
+  std::cout<< pre << std::string(int(f/2), FILL) 
+           << text << std::string(f - int(f/2), FILL) 
+           << post << std::endl;
+}
+
+
+template<int W, int INDENT, char H>
+void
+_display_header(std::string hpre, std::string hpost)
+{
+    char lpath[MAX_PATH+40+40];  
+    TOSDB_GetClientLogPath(lpath,MAX_PATH+40+40);   
+
+    _display_header_line<W, H>(hpre,hpost, "");
+    _display_header_line<W, H>(hpre,hpost, "");
+    _display_header_line<W,' '>(hpre,hpost, "");
+    _display_header_line<W,' '>(hpre,hpost, "Welcome to the TOS-DataBridge Command Shell");
+    _display_header_line<W,' '>(hpre,hpost, "Copyright (C) 2014 Jonathon Ogden");
+    _display_header_line<W,' '>(hpre,hpost, "");
+    _display_header_line<W, H>(hpre,hpost, "");
+    _display_header_line<W, H>(hpre,hpost, "");
+    _display_header_line<W,' '>(hpre,hpost, "");
+    _display_header_line<W,' '>(hpre,hpost, "This program is distributed WITHOUT ANY WARRANTY.");
+    _display_header_line<W,' '>(hpre,hpost, "See the GNU General Public License for more details.");
+    _display_header_line<W,' '>(hpre,hpost, "");
+    _display_header_line<W,' '>(hpre,hpost, "Use 'Connect' command to connect to the Service.");
+    _display_header_line<W,' '>(hpre,hpost, "Use 'commands' for a list of commands by category.");
+    _display_header_line<W,' '>(hpre,hpost, "Use 'topics' for a list of topics(fields) TOS accepts.");
+    _display_header_line<W,' '>(hpre,hpost, "Use 'exit' to exit.");
+    _display_header_line<W,' '>(hpre,hpost, "");
+    _display_header_line<W,' '>(hpre,hpost, "NOTE: Topics/Items are case sensitive; use upper-case");
+    _display_header_line<W,' '>(hpre,hpost, "");
+    _display_header_line<W, H>(hpre,hpost, "");           
+    _display_header_line<W, H>(hpre,hpost, "");
+        
+    int wc = INDENT;
+
+    std::cout<< std::endl << std::setw(INDENT) << std::left << "LOG: ";    
+    for(auto s : std::string(lpath)){
+        if(++wc >= MAX_DISPLAY_WIDTH){
+            std::cout<< std::endl << std::string(INDENT,' ') ;
+            wc = INDENT;
+        }
+        std::cout<< s;
+    }
+
+    std::cout<< std::endl << std::endl << std::setw(INDENT) << std::left 
+             << "PID: " << GetCurrentProcessId() << std::endl;
+
+    commands_local.at("topics").func(nullptr); 
+}
+
+}; /* namespace */
 

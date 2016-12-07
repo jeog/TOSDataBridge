@@ -316,7 +316,8 @@ protected:
 
     std::recursive_mutex* const _mtx;
 
-    inline void _yld_to_push() const
+    inline void 
+    _yld_to_push() const
     {  
         if(!this->_push_has_priority)      
             std::this_thread::yield();
@@ -346,6 +347,7 @@ public:
     DataStream(size_t sz);     
     DataStream(const _my_ty & stream);
     DataStream(_my_ty && stream);
+
     virtual ~DataStream();
 
     inline bool      
@@ -457,7 +459,8 @@ class DataStream<Ty, SecTy, GenTy, true, Allocator>
     
     _my_sec_impl_ty _my_sec_impl_obj;  
     
-    void _push(const Ty _item, const secondary_ty sec);
+    void 
+    _push(const Ty _item, const secondary_ty sec);
 
 public:
     typedef Ty value_type;

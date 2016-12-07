@@ -31,31 +31,21 @@ void GetStreamSnapshotLongLongsFromMarker(CommandCtx *ctx);
 void GetStreamSnapshotLongsFromMarker(CommandCtx *ctx);
 void GetStreamSnapshotStringsFromMarker(CommandCtx *ctx);
 
+}; /* namespace */
 
-commands_map_ty
-build_commands_map()
-{
-    commands_map_ty m;
-
-    m.insert( build_commands_map_elem("GetStreamSnapshotDoubles",GetStreamSnapshotDoubles) );
-    m.insert( build_commands_map_elem("GetStreamSnapshotFloats",GetStreamSnapshotFloats) );
-    m.insert( build_commands_map_elem("GetStreamSnapshotLongLongs",GetStreamSnapshotLongLongs) );
-    m.insert( build_commands_map_elem("GetStreamSnapshotLongs",GetStreamSnapshotLongs) );
-    m.insert( build_commands_map_elem("GetStreamSnapshotStrings",GetStreamSnapshotStrings) );
-    m.insert( build_commands_map_elem("GetStreamSnapshotGenerics",GetStreamSnapshotGenerics) );
-    m.insert( build_commands_map_elem("GetStreamSnapshotDoublesFromMarker",GetStreamSnapshotDoublesFromMarker) );
-    m.insert( build_commands_map_elem("GetStreamSnapshotFloatsFromMarker",GetStreamSnapshotFloatsFromMarker) );
-    m.insert( build_commands_map_elem("GetStreamSnapshotLongLongsFromMarker",GetStreamSnapshotLongLongsFromMarker) );
-    m.insert( build_commands_map_elem("GetStreamSnapshotLongsFromMarker",GetStreamSnapshotLongsFromMarker) );
-    m.insert( build_commands_map_elem("GetStreamSnapshotStringsFromMarker",GetStreamSnapshotStringsFromMarker) );
-    
-    return m;
-}
-
-};
-
-
-commands_map_ty commands_stream = build_commands_map();
+const CommandsMap commands_stream(
+    CommandsMap::InitChain("GetStreamSnapshotDoubles",GetStreamSnapshotDoubles) 
+                          ("GetStreamSnapshotFloats",GetStreamSnapshotFloats) 
+                          ("GetStreamSnapshotLongLongs",GetStreamSnapshotLongLongs) 
+                          ("GetStreamSnapshotLongs",GetStreamSnapshotLongs) 
+                          ("GetStreamSnapshotStrings",GetStreamSnapshotStrings) 
+                          ("GetStreamSnapshotGenerics",GetStreamSnapshotGenerics) 
+                          ("GetStreamSnapshotDoublesFromMarker",GetStreamSnapshotDoublesFromMarker) 
+                          ("GetStreamSnapshotFloatsFromMarker",GetStreamSnapshotFloatsFromMarker) 
+                          ("GetStreamSnapshotLongLongsFromMarker",GetStreamSnapshotLongLongsFromMarker) 
+                          ("GetStreamSnapshotLongsFromMarker",GetStreamSnapshotLongsFromMarker) 
+                          ("GetStreamSnapshotStringsFromMarker",GetStreamSnapshotStringsFromMarker)
+);
 
 
 namespace{
@@ -86,6 +76,7 @@ _display_stream_data(size_type len, T* dat, pDateTimeStamp dts);
 size_type
 _min_stream_len(std::string block, long beg, long end, size_type len);
 
+
 void
 GetStreamSnapshotDoubles(CommandCtx *ctx)
 {
@@ -93,6 +84,7 @@ GetStreamSnapshotDoubles(CommandCtx *ctx)
         ? _get_stream_snapshot<double>(ctx) 
         : _get_stream_snapshot<double>(TOSDB_GetStreamSnapshotDoubles, ctx);
 }
+
 
 void
 GetStreamSnapshotFloats(CommandCtx *ctx)
@@ -102,6 +94,7 @@ GetStreamSnapshotFloats(CommandCtx *ctx)
         : _get_stream_snapshot<float>(TOSDB_GetStreamSnapshotFloats, ctx);
 }
 
+
 void
 GetStreamSnapshotLongLongs(CommandCtx *ctx)
 {
@@ -110,6 +103,7 @@ GetStreamSnapshotLongLongs(CommandCtx *ctx)
         : _get_stream_snapshot<long long>(TOSDB_GetStreamSnapshotLongLongs, ctx);
 }
 
+
 void
 GetStreamSnapshotLongs(CommandCtx *ctx)
 {
@@ -117,6 +111,7 @@ GetStreamSnapshotLongs(CommandCtx *ctx)
         ? _get_stream_snapshot<long>(ctx) 
         : _get_stream_snapshot<long>(TOSDB_GetStreamSnapshotLongs, ctx);
 }
+
 
 void
 GetStreamSnapshotStrings(CommandCtx *ctx)
@@ -188,6 +183,7 @@ GetStreamSnapshotGenerics(CommandCtx *ctx)
     _get_stream_snapshot<generic_type>(ctx);
 }
 
+
 void
 GetStreamSnapshotDoublesFromMarker(CommandCtx *ctx)
 {
@@ -200,6 +196,7 @@ GetStreamSnapshotFloatsFromMarker(CommandCtx *ctx)
 {
     _get_stream_snapshot_from_marker<float>(TOSDB_GetStreamSnapshotFloatsFromMarker, ctx);
 }
+
 
 void
 GetStreamSnapshotLongLongsFromMarker(CommandCtx *ctx)
@@ -483,6 +480,7 @@ _display_stream_data(size_type len, T* dat, pDateTimeStamp dts)
     std::cout<< std::endl;
 }
 
+
 size_type
 _min_stream_len(std::string block, long beg, long end, size_type len)
 {
@@ -502,4 +500,4 @@ _min_stream_len(std::string block, long beg, long end, size_type len)
     return min_size;
 }
 
-};
+}; /* namespace */

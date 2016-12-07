@@ -19,7 +19,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\src\engine.cpp" />
+    <ClCompile Include="..\src\service\engine.cpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{607451BD-7C91-4990-BC7D-A363B5E70A35}</ProjectGuid>

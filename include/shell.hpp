@@ -22,6 +22,7 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 #include <map>
 
 #include "tos_databridge.h"
+#include "initializer_chain.hpp"
 
 #define MAX_DISPLAY_WIDTH 80
 #define LEFT_INDENT_SIZE 10
@@ -140,18 +141,65 @@ struct CommandCtx{
     bool exit;    
 };
 
-typedef std::map<std::string, CommandCtx> commands_map_ty;
 
-commands_map_ty::value_type
-build_commands_map_elem(std::string name, commands_func_ty, std::string doc="");
+class CommandsMap
+        : public std::map<std::string, CommandCtx> {
+/* 
+    since we have no initlist, wrap map and provide our own InitChain functor that 
+    derives from a 'chaining' mechanism for inline global construction of a const map 
+ */
+public:
+    typedef std::map<std::string, CommandCtx> base_type;
 
-extern commands_map_ty commands_admin; 
-extern commands_map_ty commands_get;
-extern commands_map_ty commands_stream;
-extern commands_map_ty commands_frame;
-extern commands_map_ty commands_local;
+private:
+    typedef std::tuple<std::string, commands_func_ty, std::string> _myInitChainBaseArgTy;
 
-typedef std::pair<std::string,commands_map_ty> command_display_pair;
+    static base_type::value_type
+    _init(_myInitChainBaseArgTy t)
+    {
+        CommandCtx c = {std::get<0>(t), std::get<2>(t), std::get<1>(t), false};
+        return base_type::value_type(std::get<0>(t), std::move(c));
+    }   
+
+    typedef InitializerChain<base_type, _myInitChainBaseArgTy, _init> _myInitChainBaseTy;
+
+public:
+    class InitChain
+            : public _myInitChainBaseTy {   
+    public:
+        explicit 
+        InitChain(std::string name, commands_func_ty func, std::string doc="")                             
+            :
+                _myInitChainBaseTy(_myInitChainBaseArgTy(name,func,doc))
+            {
+            }
+
+        InitChain& 
+        operator()(std::string name, commands_func_ty func, std::string doc="") 
+        {
+            _myInitChainBaseTy::operator()(_myInitChainBaseArgTy(name,func,doc)); 
+            return *this;
+        }      
+    };
+
+    CommandsMap()
+        {
+        }
+
+    CommandsMap(const InitChain& i)
+        :
+            base_type(i)
+        {   
+        }
+};
+
+extern const CommandsMap commands_admin; 
+extern const CommandsMap commands_get; 
+extern const CommandsMap commands_stream;
+extern const CommandsMap commands_frame;
+extern const CommandsMap commands_local;
+
+typedef std::pair<std::string, CommandsMap> command_display_pair;
 typedef std::unordered_map<std::string, command_display_pair> commands_map_of_maps_ty;
 
 /* should be const but we can't use init lists so manually instantiate in util.cpp */
