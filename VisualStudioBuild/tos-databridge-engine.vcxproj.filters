@@ -15,7 +15,7 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\src\service\service.cpp">
+    <ClCompile Include="..\src\service\engine.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

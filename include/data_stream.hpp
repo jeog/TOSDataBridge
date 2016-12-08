@@ -518,7 +518,7 @@ public:
 };  
 
 
-#include "data_stream.tpp"
+#include "../src/data_stream.tpp"
 
 
 class DataStreamError 

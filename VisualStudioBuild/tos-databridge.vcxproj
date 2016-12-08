@@ -186,8 +186,13 @@
     <ClCompile Include="..\src\client\client_admin.cpp" />
     <ClCompile Include="..\src\client\client_get.cpp" />
     <ClCompile Include="..\src\client\client_out.cpp" />
+    <ClCompile Include="..\src\generic.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\include\client.hpp" />
+    <ClInclude Include="..\include\data_stream.hpp" />
+    <ClInclude Include="..\include\generic.hpp" />
+    <ClInclude Include="..\include\raw_data_block.hpp" />
     <ClInclude Include="..\src\data_stream.tpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</ExcludedFromBuild>
       <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</DeploymentContent>

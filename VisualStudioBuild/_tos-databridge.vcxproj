@@ -150,7 +150,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>C:\Python33\include;..\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\include</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>THIS_EXPORTS_IMPLEMENTATION;THIS_DOESNT_IMPORT_INTERFACE</PreprocessorDefinitions>
       <ProgramDataBaseFileName>$(SolutionDir)..\symbols\$(Configuration)\$(TargetName).pdb</ProgramDataBaseFileName>
     </ClCompile>
@@ -166,22 +166,17 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\src\concurrency.cpp" />
-    <ClCompile Include="..\src\generic.cpp" />
     <ClCompile Include="..\src\ipc.cpp" />
     <ClCompile Include="..\src\logging.cpp" />
     <ClCompile Include="..\src\main.cpp" />
     <ClCompile Include="..\src\topics.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\include\client.hpp" />
     <ClInclude Include="..\include\concurrency.hpp" />
     <ClInclude Include="..\include\containers.hpp" />
-    <ClInclude Include="..\include\data_stream.hpp" />
-    <ClInclude Include="..\include\generic.hpp" />
     <ClInclude Include="..\include\initializer_chain.hpp" />
     <ClInclude Include="..\include\ipc.hpp" />
     <ClInclude Include="..\include\exceptions.hpp" />
-    <ClInclude Include="..\include\raw_data_block.hpp" />
     <ClInclude Include="..\include\tos_databridge.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

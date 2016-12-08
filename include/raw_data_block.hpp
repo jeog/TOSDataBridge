@@ -230,6 +230,6 @@ public:
     }
 }; 
 
-#include "raw_data_block.tpp"
+#include "../src/raw_data_block.tpp"
 
 #endif
