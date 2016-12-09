@@ -4,30 +4,29 @@ public key. It should be available on public key servers.
 * Being in a seprate 'sigs' folder you'll have to point the verifier to the 
 corresponding binary file for each signature, or use verify.sh on linux. 
 
-**** WARNING *** the current sig file checksums are incorrect because of new-line 
-issues between windows and linux. 
 
 SHA256 checksums:
 
 (THE SIGNATURE FILES)
-4ee3911b667d508f525939baafab86498e251aa28a5dab4248b128ee601ed600  _tos-databridge-x64.dll.asc
-c4c67d43644ffaafb6075cbb5cc570d05f5e2ecc365921ea3739cddff684d8fa  _tos-databridge-x64.exp.asc
-70c4d47eb803d09efa2eea8ecfb2b3d855729cf47cd40b77c180e8dc326ae8a7  _tos-databridge-x64.lib.asc
-899ab66cfe8cb8079fff1f27401a8a88a7686a75b9b7a22bed5423d67cc5311d  _tos-databridge-x86.dll.asc
-53c357aac151839a9a9ebc1c5104517bff3a8e18ef36f7eb8975d3ed9358adcc  _tos-databridge-x86.exp.asc
-40f24b8b51e2bf112fa028dafe2762d875a17610d07df7ff4764797b53957a57  _tos-databridge-x86.lib.asc
-dacf651fe74b91b0924c56d8f1aeae4ac1ed5fb173e052fa9adddceefd08a34d  tos-databridge-0.5-x64.dll.asc
-16a12e5e7d75d240a6b96883a6b0ba3dc9ee989554803519628acccf2af2580f  tos-databridge-0.5-x64.exp.asc
-2ef2af445d2682565431331b738c163669e0a094ec852fcebdbd85a2728eb8e9  tos-databridge-0.5-x64.lib.asc
-ef446b99c20cde197a8de1d78b6d3244dbcba1aef9af8ed206d36c1bbfdb9f28  tos-databridge-0.5-x86.dll.asc
-839b4c95099a92ff14454b5d811fdeada00645698c15c648220bc806f10e002d  tos-databridge-0.5-x86.exp.asc
-132c56dd12021ac5471e1258d631259007e1998c7002d2c23aa5bcea6b21d060  tos-databridge-0.5-x86.lib.asc
-3fa109504e8cbcf3bc7841a8702f2da60ea13b3317897bc54bd508134082e554  tos-databridge-engine-x64.exe.asc
-3153a336e301b60d381809659074d80c0648ee04916ebaa55fb3236363fcf3b8  tos-databridge-engine-x86.exe.asc
-cd7c04176d64d99a62a64465b580535ee116c063f792b40baa6ee08f9baa0857  tos-databridge-serv-x64.exe.asc
-83e4d118d7e6e1ecac70055d673ea8d9772b090d40eda76ece521a845ea26ea2  tos-databridge-serv-x86.exe.asc
-dd4718ce9c237a5e92462d03e41911852a7a1de00bf29f35738e151f02f7b036  tos-databridge-shell-x64.exe.asc
-4b75561b9d362221895b71b5cf146d963f5ce0bec86a91aee7a744e1a0faaf74  tos-databridge-shell-x86.exe.asc
+e3fb22edced3a98ec2d11af9e08c15c100425d4e2fc0eff7097ebc5b2a8f1aa2  _tos-databridge-x64.dll.sig
+1f7593116591b5e8756cc5d0dabe76497a2b5936a8f98bdd05b6ccf7804701d6  _tos-databridge-x64.exp.sig
+f10d9c96f4fe64f44b980d76e1f6f8ddb1067d8e4d31baa2ffef691c5bdd99d1  _tos-databridge-x64.lib.sig
+cc7cff7db3830d5917bb84009e794c3b3a13c7efdd7adaa451ba51362a68f20c  _tos-databridge-x86.dll.sig
+9865140d37e060d3d19134e790494794ca453d19fb95978297c1e94bc5a50811  _tos-databridge-x86.exp.sig
+02175c8f3aaba68c51011d25d90567e01a23c0e64b8cceecb2cb1c56e92a5d80  _tos-databridge-x86.lib.sig
+2373848b309e1ff2bcabc69b58749ffd8b3ba43f9dfa37164b2d6a6c2d968512  tos-databridge-0.5-x64.dll.sig
+3888fe90911391f8f386831ffa5128adbce66225cf8279a04126f21e59bfb890  tos-databridge-0.5-x64.exp.sig
+6bf8ae5ce867ff795dd349db3014082a2a27df427e0bf490fa6284da704fffe7  tos-databridge-0.5-x64.lib.sig
+39be6f9302f5079ac56105006289be9856cbfe6a1d151b5817bc10ebfdd0e5ab  tos-databridge-0.5-x86.dll.sig
+ececcbac5bd2f9502f8d08044430394f4f65a739f91110e044cb21c5f21322d2  tos-databridge-0.5-x86.exp.sig
+2bb0fe8dc536b57b243c11654ffb35388cbd46ccfc4dcc1b4a2c852f39f94821  tos-databridge-0.5-x86.lib.sig
+dfc32b22847a58aefa0fd079600f854026796f8936a19b255be314d3a7d8b2e6  tos-databridge-engine-x64.exe.sig
+68df42980bc34e8e7bebea493abac3d0d6f12e7c2ba3641f6a428cefe7ac74e1  tos-databridge-engine-x86.exe.sig
+e98e51f5c7795816dfe694b7ca9d4b5c787cd6d48ccfd5e850e5757a9ffe472f  tos-databridge-serv-x64.exe.sig
+d6a5079205287de01b0a1626986f7d125b229bf06c02e7ccd13e6535d4f465cc  tos-databridge-serv-x86.exe.sig
+c8047004f37599304fcea979aeb6455749f3c49bb26654646fadcc1a7ff0b83e  tos-databridge-shell-x64.exe.sig
+18aa2bec855810baa5fd9a422b1769feac2688cee2bf1c904aa05d2a27587d45  tos-databridge-shell-x86.exe.sig
+
 
 (THE ACTUAL BINARIES) 
 b5641d17dc92362efd6a6358e4dadd1889e3c717f616718e98770a1e0fd45e7e  _tos-databridge-x86.dll

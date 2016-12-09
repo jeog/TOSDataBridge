@@ -8,7 +8,7 @@ X86_BIN_DIR=$SIGS_DIR/../bin/Release/Win32
 X64_BIN_DIR=$SIGS_DIR/../bin/Release/x64
 
 
-echo -e "* All the binaries are signed with the jeog.dev.key.asc (jeog.dev@gmail.com) 
+echo -e "* All the binaries are signed with the jeog.dev.key (jeog.dev@gmail.com) 
 public key. It should be available on public key servers. \n" > $CHECK_PATH
 
 echo -e "* Being in a seprate 'sigs' folder you'll have to point the verifier to the 
@@ -16,11 +16,8 @@ corresponding binary file for each signature, or use verify.sh on linux. \n" >> 
 
 echo -e "SHA256 checksums:" >> $CHECK_PATH
 
-echo -e "\n(THE KEY)" >> $CHECK_PATH
-sha256sum $KEY_FILE>> $CHECK_PATH
-
 echo -e "\n(THE SIGNATURE FILES)" >> $CHECK_PATH
-sha256sum $(ls | egrep '\.asc$') >> $CHECK_PATH
+sha256sum $(ls | egrep '\.sig$') >> $CHECK_PATH
 
 echo -e "\n(THE ACTUAL BINARIES)" >> $CHECK_PATH
 cd $X86_BIN_DIR

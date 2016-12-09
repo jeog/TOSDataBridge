@@ -28,11 +28,11 @@ cmp_checksums()
 run_checks()
 {
     files=("${!1}")
-    for sig in ${files[*]}; do
-        echo "::: ${sig%.asc} :::"
+    for s in ${files[*]}; do
+        echo "::: ${s%.sig} :::"
 
         # signature checksums
-        cmp_checksums $sig $sig
+        cmp_checksums $s $s
         if (( $check_return )); then
             vbad_checksum_sig=$(($vbad_checksum_sig+1))
         else
@@ -40,7 +40,7 @@ run_checks()
         fi  
 
         # binary checksums
-        bin="${sig%.asc}"
+        bin="${s%.sig}"
         binpath=$2$bin 
         cmp_checksums $bin $binpath 
         if (( $check_return )); then
@@ -50,7 +50,7 @@ run_checks()
         fi  
 
         # verify
-        gpg --verify $sig $binpath;       
+        gpg --verify $s $binpath;       
         if (( $? )); then
             vbad=$(($vbad+1))
         else
