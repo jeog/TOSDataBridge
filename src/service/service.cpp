@@ -39,8 +39,6 @@ LPCSTR ENGINE_BASE_NAME = "tos-databridge-engine";
 std::string engine_path;
 std::string integrity_level; 
 
-char engine_cmd[12];
-
 PROCESS_INFORMATION  engine_pinfo;      
 SYSTEM_INFO  sys_info;
 SERVICE_STATUS  service_status;
@@ -179,7 +177,7 @@ ServiceController(DWORD cntrl)
 #define SPAWN_LOG_EX(msg) TOSDB_LogEx("SPAWN",msg,GetLastError())
 
 bool 
-SpawnRestrictedProcess(int session = -1)
+SpawnRestrictedProcess(std::string engine_cmd, int session = -1)
 {            
     STARTUPINFO  startup_info;            
     SID_NAME_USE dummy;
@@ -192,7 +190,10 @@ SpawnRestrictedProcess(int session = -1)
     bool ret = false;
 
     SmartBuffer<VOID>  sid_buf(sid_sz);
-    SmartBuffer<CHAR>  dom_buf(dom_sz);            
+    SmartBuffer<CHAR>  dom_buf(dom_sz);    
+    
+    /* 1 for /n of combined str, 1 for the added /n by the call, one for safety */
+    SmartBuffer<CHAR>  cmd_buf(engine_path.size() + engine_cmd.size() + 3);
 
     if( !OpenProcessToken(GetCurrentProcess(), TOKEN_ALL_ACCESS, &tkn_hndl) ){
         SPAWN_LOG_EX("(1) failed to open token handle");                    
@@ -225,7 +226,7 @@ SpawnRestrictedProcess(int session = -1)
     session_id = (session < 0) ? WTSGetActiveConsoleSessionId() : session;         
     
      /* try to get out of Session 0 isolation if we need to */
-    if(is_service && !SetTokenInformation(ctkn_hndl,TokenSessionId,&session_id,sizeof(DWORD)))
+    if(is_service && !SetTokenInformation(ctkn_hndl,TokenSessionId,&session_id,sizeof(DWORD)))    
     { 
         SPAWN_LOG_EX("(4) failed to set session ID");    
     }
@@ -255,8 +256,12 @@ SpawnRestrictedProcess(int session = -1)
            
 
         GetStartupInfo(&startup_info);       
+        
+        /*prepend path to command string*/
+        strcpy(cmd_buf.get(), (engine_path + " " + engine_cmd).c_str());
+
         /* try to create the process with the new token */
-        if( !CreateProcessAsUser(ctkn_hndl, engine_path.c_str(), engine_cmd, NULL, NULL, 
+        if( !CreateProcessAsUser(ctkn_hndl, engine_path.c_str(), cmd_buf.get(), NULL, NULL, 
                                  FALSE, 0, NULL, NULL, &startup_info, &engine_pinfo) )
         {  
             SPAWN_LOG_EX("(6) failed to create core process");
@@ -316,10 +321,11 @@ ServiceMain(DWORD argc, LPSTR argv[])
               );
 
     /* create new process that can communicate with our interface */
-    if(!SpawnRestrictedProcess(custom_session)){      
+    TOSDB_Log("STARTUP", "try to start tos-databridge-engine.exe (AS A SERVICE)");
+    if(!SpawnRestrictedProcess("--spawned --service", custom_session)){      
         std::string serr("failed to spawn ");
         serr.append(engine_path);
-        TOSDB_LogH("ADMIN", serr.c_str());         
+        TOSDB_LogH("STARTUP", serr.c_str());         
     }else{
         /* on success, update and block */
         UpdateStatus(SERVICE_RUNNING, -1);
@@ -334,25 +340,6 @@ ServiceMain(DWORD argc, LPSTR argv[])
     TOSDB_Log("STATE","SERVICE_STOPPED");    
 }
 
-
-void 
-ParseArgs(std::vector<std::string>& vec, std::string str)
-{
-    std::string::size_type i = str.find_first_of(' '); 
-
-    if( str.empty() ){ /* done */
-        return;
-    }else if(i == std::string::npos){ /* only 1 str */
-        vec.push_back(str);
-        return;
-    }else if(i == 0){ /* trim initial space(s) */
-        ParseArgs(vec, str.substr(1,-1));
-        return;
-    }else{ /* atleast 2 strings */
-        vec.push_back(str.substr(0,i));
-        ParseArgs(vec, str.substr(i+1,str.size()));
-    }
-}
 
 int WINAPI 
 WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLn, int nShowCmd)
@@ -436,26 +423,26 @@ WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLn, int nShowCmd)
             << " admin_pos: " << std::to_string(admin_pos) 
             << " no_service_pos: " << std::to_string(no_service_pos);
 		    
-    TOSDB_Log("ARGS", ss_args.str().c_str() );
+    TOSDB_Log("STARTUP", ss_args.str().c_str() );
 
     integrity_level = admin_pos > 0 ? "High Mandatory Level" : "Medium Mandatory Level"; 
     
     /* populate the engine command and if --noservice is passed jump right into
        the engine via SpawnRestrictedProcess; otherwise Start the service which
-       will handle that for us */
+       will handle that for us 
+       
+       prepend '--spawned' so engine knows *we* called it; if someone
+       else passes '--spawned' they deserve what they get */
 
-    if(no_service_pos > 0){
-        strcpy_s(engine_cmd,"--noservice");
+    if(no_service_pos > 0){       
         is_service = false;
-        TOSDB_Log("STARTUP", "tos-databridge-engine.exe starting(NOT AS A SERVICE)");
-        SpawnRestrictedProcess(custom_session); 
-    }else{
-        strcpy_s(engine_cmd,"--service");
+        TOSDB_Log("STARTUP", "starting tos-databridge-engine.exe directly(NOT A SERVICE)");
+        SpawnRestrictedProcess("--spawned --noservice", custom_session); 
+    }else{    
         SERVICE_TABLE_ENTRY dTable[] = {
             {SERVICE_NAME,ServiceMain},
             {NULL,NULL}
-        };
-        TOSDB_Log("STARTUP", "tos-databridge-engine.exe starting(AS A SERVICE)");
+        };        
 
         /* START SERVICE */	
         if( !StartServiceCtrlDispatcher(dTable) )

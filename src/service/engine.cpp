@@ -103,7 +103,8 @@ LPCSTR msg_window_name = "TOSDB_ENGINE_MSG_WNDW";
 
 volatile bool shutdown_flag = false;  
 volatile bool pause_flag = false;
-volatile bool is_service = true;
+volatile bool is_service = false;
+volatile bool is_spawned = false;
 
 /* forward decl (see end of source) */
 template<typename T>
@@ -171,19 +172,59 @@ WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLn, int nShowCmd)
     void *parg3;
     int err;
     size_t indx;    
+    std::stringstream ss_args;
+    std::vector<std::string> args;
 
     /* start logging */
     std::string logpath(TOSDB_LOG_PATH);    
     logpath.append(std::string(LOG_NAME));
-    StartLogging( logpath.c_str() ); 
+    StartLogging( logpath.c_str() );      
+
+    /* parse args, check whether we were spawned by service, warn if not */
+    ParseArgs(args, lpCmdLn);    
+
+    if(!args.empty() && args[0] == "--spawned")
+        is_spawned=true;
+
+    if(!is_spawned){
+        std::string warn_msg("Running tos-databridge-engine directly is not recommended. "
+            "Inadequate privileges can cause connection issues with TOS or fatal errors. \n\n"
+            "Using 'tos-databridge-serv --noservice' to spawn the engine is recommended.\n\n");
+          
+#ifndef NO_KERNEL_GLOBAL_NAMESPACE
+        warn_msg.append(           
+            "NO_KERNEL_GLOBAL_NAMESPACE is not defined and you may not have the "
+            "necessary privileges to create global kernel objects. This may result "
+            " in a CRASH.\n\n"
+         );
+
+        TOSDB_LogH("STARTUP", "engine being run directly without NO_KERNEL_GLOBAL_NAMESPACE");
+#endif
+        if(MessageBox(NULL,warn_msg.c_str(),"Warning",MB_OKCANCEL | MB_ICONWARNING) == IDCANCEL){        
+            TOSDB_LogH("STARTUP", "Warning Box - Cancel; aborting startup");
+            return 0;                
+        }
+    };
+    
+    ss_args<< "lpCmdLn args: ";    
+    for(auto & a : args){ 
+        ss_args<< a << ' ';
+        /* if we get the service arg run as service, pure executable otherwise*/
+        if(a == "--service")
+            is_service = true;
+    }
+
+    if(is_service && !is_spawned){
+        TOSDB_LogH("STARTUP", "can not run as 'unspawned' service; default to --noservice");
+        is_service = false;
+    }
+
+    TOSDB_Log("STARTUP", (is_service ? "is_service == true" : "is_service == false"));   
+    TOSDB_Log("STARTUP", ss_args.str().c_str());
 
     /* the other side of our IPC channel (see client_admin.cpp) */
     DynamicIPCSlave slave(TOSDB_COMM_CHANNEL, TOSDB_SHEM_BUF_SZ);
-    DynamicIPCSlave::shem_chunk shem_buf[COMM_BUFFER_SIZE];   
-    
-    /* if we get the noservice arg we will run as a pure executable */
-    if(!strcmp(lpCmdLn,"--noservice"))
-        is_service = false;
+    DynamicIPCSlave::shem_chunk shem_buf[COMM_BUFFER_SIZE];       
 
     /* initialize our security objects */
     err = SetSecurityPolicy();

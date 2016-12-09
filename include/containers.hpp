@@ -302,14 +302,18 @@ class TwoWayHashMap {
                   "TwoWayHashMap requires different types");    
 public:
     typedef T1 key_type;
-    typedef T2 value_type;
-
+    typedef T2 mapped_type;
+    
     typedef std::unordered_map<T1, T2, Hash1, Key1Eq> map1_type; 
     typedef std::unordered_map<T2, T1, Hash2, Key2Eq> map2_type; 
 
+    /* Dec 8 2016, for initializer_chain compatability */
+    typedef typename map1_type::value_type value_type;
+
+
     typedef typename map1_type::value_type pair1_type; 
     typedef typename map2_type::value_type pair2_type;
-
+        
     typedef typename map1_type::iterator iterator1_type;
     typedef typename map2_type::iterator iterator2_type;
 

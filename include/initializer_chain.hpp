@@ -20,59 +20,77 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 
 /* 
     InitializerChain is a 'chaining' mechanism for inline global construction of 
-    certain objects if initializer lists are not supported. It also accepts an 
-    initialization function.
+    certain 'container' objects if initializer lists are not supported. It accepts a 
+    custom template class that returns a functor to transform each entry. It also also
+    accepts a template class that needs to overload assignment and should behave 
+    like (the default) insert iterator, controling over how each element is inserted.
     
-    The object must support insertion and expose a value_type typedef (map, vector etc.)
+    The 'container' MUST expose an appropriate public 'value_type' typedef 
 
     Ex. 
 
     std::map<std::string, int> my_map_type;
-
-    1) define a function that accepts one arg and returns the value_type(optional):
-            
-        my_map_type::value_type
-        my_transform( std::tuple<std::string,int,int,int> i )
+    
+    template<typename RetTy, typename ArgTy>
+    struct MyTransform{
+        RetTy
+        operator()(ArgTy i)
         {
             int p = std::get<1>(i) * std::get<2>(i) * std::get<3>(i);
             return std::make_pair(std::get<0>(i), p);
-        }
+        }  
+    };
 
-    2) use the InitializerChain like so:
+};
 
-       const my_map_type my_map = 
-           InitializerChain<my_map_type, 
-                            std::tuple<std::string,int,int,int>, 
-                            my_transform>('one',1,1,1)('two',2,2,2)('three',3,3,3);
+    const my_map_type my_map = 
+        InitializerChain<my_map_type, MyTransform>('one',1,1,1)('two',2,2,2)('three',3,3,3);
 
     This is equivalent to:
 
-        const my_map_type my_map = { {'one',3}, {'two',8}, {'three',27} };      
+        const my_map_type my_map = { {'one',3}, {'two',8}, {'three',27} };  
+
+    * * *
+
+    A standard InitList like approach would just use the default template args:
+
+    const my_map_type my_simple_map = 
+        InitializerChain<my_map_type>('one',3)('two',8)('three',27);
+
 */
 
-template<typename T, typename Arg>
-inline T
-NoTransform(Arg arg)
-{    
-    return arg;
-}
 
-template<typename T, typename Arg, 
-         typename T::value_type(*func)(Arg)=NoTransform<typename T::value_type,Arg>>
-class InitializerChain{
+ 
+
+template<typename RetTy, typename ArgTy>
+struct NoTransform{
+    RetTy
+    operator()(ArgTy arg)
+    {
+        return arg;
+    }
+};   
+
+
+template<typename T, 
+         template<typename RetTy, typename ArgTy> class F = NoTransform,
+         template<typename ContainerTy> class I = std::insert_iterator>
+class InitializerChain {
     T _t;  
 
 public:
+    template<typename Arg>
     explicit 
     InitializerChain(Arg arg)                                    
         { 
-            std::inserter(_t,_t.end()) = func(arg);
+            I<T>(_t,_t.end()) = F<T::value_type,Arg>()(arg);            
         }
 
+    template<typename Arg>
     InitializerChain& 
     operator()(Arg arg) 
     {
-        std::inserter(_t,_t.end()) = func(arg);
+        I<T>(_t,_t.end()) = F<T::value_type,Arg>()(arg);
         return *this;
     }  
 

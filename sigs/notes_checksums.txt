@@ -1,50 +1,59 @@
 * All the binaries are signed with the jeog.dev.key.asc (jeog.dev@gmail.com) 
+
 public key. It should be available on public key servers. 
 
+
+
 * Being in a seprate 'sigs' folder you'll have to point the verifier to the 
+
 corresponding binary file for each signature, or use verify.sh on linux. 
+
+
 
 SHA256 checksums:
 
-(THE KEY)
-b975970388cb3b1a71820f82b6f6e333a2bb6d0f3434d5b1612798d75910105a  jeog.dev.key
+
+
+
+
+
 
 (THE SIGNATURE FILES)
-49b3bb1f6d8f9dbf98fce7a138983fbf662db7b59d88112ae80a5cad20d15fa5  tos-databridge-0.5-x64.dll.asc
-573b0f7657bc8a306e27d572ca6e4f33105acae3a3cfb957f57d85b579cc1569  tos-databridge-0.5-x64.exp.asc
-fd16125627816452e91e739582ae584e62e6489f42333316f102a48c1d115ee0  tos-databridge-0.5-x64.lib.asc
-300a50919997a3e34c15d9d2edb9b4e14c11438f027202c5063a3704bae06f65  tos-databridge-0.5-x86.dll.asc
-5df468e3f7838518846b645b11e0f4cc65baf74f4c7d5b5255cefa311a47355e  tos-databridge-0.5-x86.exp.asc
-99d7f5e85431d39689b4a606a407df318649907a18103fa739bb565323bf68c6  tos-databridge-0.5-x86.lib.asc
-42fbc4f56653aa0d72291f8d7eaf237419077a3a7a8bd0c9c5a71e73ea3f092c  tos-databridge-engine-x64.exe.asc
-d2f7666fb061e97c42fceddc4dcdfde20c46828ff8807adda358884b0adb6180  tos-databridge-engine-x86.exe.asc
-de40c90b95149016f66bbbe3981d4ecb688e9abce82fa2156fab236794e047a0  tos-databridge-serv-x64.exe.asc
-574724d76dbb951949960012f1215a6b81d693c07171bc40008dcc428252f457  tos-databridge-serv-x86.exe.asc
-24dad81bb2e18ce5110f655b8a8ff538ac81d2aca8f482a7efae43058f51873c  tos-databridge-shell-x64.exe.asc
-ac6b37d6832371de46e92aa1a60ee9badf866f751072cf9183e3c88f7af79c28  tos-databridge-shell-x86.exe.asc
-aabacd93b6be6558df135c17f38d254e67e4ff7b817c07d4a44413c9f4602727  _tos-databridge-x64.dll.asc
-81585d9f1bdea90af9cbbc2e7ca41874e75ed3fea9b8aea6de47b4908912523f  _tos-databridge-x64.exp.asc
-13049e04c829d14b59826f96be8c05abd6039149513a5f05aa448453d814dd83  _tos-databridge-x64.lib.asc
-75dcf177fec94d351dd203b4106422daa06d6e8726f09bbf2979bae55d8dfbc6  _tos-databridge-x86.dll.asc
-898463031bad3e1db8e97ee0006b92e909de37632189ec155edd2de303393fd0  _tos-databridge-x86.exp.asc
-58551e9c605899d9a35b7cd5de13164e4fb6bc7e303e6a52af550165a7fba387  _tos-databridge-x86.lib.asc
+4ee3911b667d508f525939baafab86498e251aa28a5dab4248b128ee601ed600  _tos-databridge-x64.dll.asc
+c4c67d43644ffaafb6075cbb5cc570d05f5e2ecc365921ea3739cddff684d8fa  _tos-databridge-x64.exp.asc
+70c4d47eb803d09efa2eea8ecfb2b3d855729cf47cd40b77c180e8dc326ae8a7  _tos-databridge-x64.lib.asc
+899ab66cfe8cb8079fff1f27401a8a88a7686a75b9b7a22bed5423d67cc5311d  _tos-databridge-x86.dll.asc
+53c357aac151839a9a9ebc1c5104517bff3a8e18ef36f7eb8975d3ed9358adcc  _tos-databridge-x86.exp.asc
+40f24b8b51e2bf112fa028dafe2762d875a17610d07df7ff4764797b53957a57  _tos-databridge-x86.lib.asc
+dacf651fe74b91b0924c56d8f1aeae4ac1ed5fb173e052fa9adddceefd08a34d  tos-databridge-0.5-x64.dll.asc
+16a12e5e7d75d240a6b96883a6b0ba3dc9ee989554803519628acccf2af2580f  tos-databridge-0.5-x64.exp.asc
+2ef2af445d2682565431331b738c163669e0a094ec852fcebdbd85a2728eb8e9  tos-databridge-0.5-x64.lib.asc
+ef446b99c20cde197a8de1d78b6d3244dbcba1aef9af8ed206d36c1bbfdb9f28  tos-databridge-0.5-x86.dll.asc
+839b4c95099a92ff14454b5d811fdeada00645698c15c648220bc806f10e002d  tos-databridge-0.5-x86.exp.asc
+132c56dd12021ac5471e1258d631259007e1998c7002d2c23aa5bcea6b21d060  tos-databridge-0.5-x86.lib.asc
+3fa109504e8cbcf3bc7841a8702f2da60ea13b3317897bc54bd508134082e554  tos-databridge-engine-x64.exe.asc
+3153a336e301b60d381809659074d80c0648ee04916ebaa55fb3236363fcf3b8  tos-databridge-engine-x86.exe.asc
+cd7c04176d64d99a62a64465b580535ee116c063f792b40baa6ee08f9baa0857  tos-databridge-serv-x64.exe.asc
+83e4d118d7e6e1ecac70055d673ea8d9772b090d40eda76ece521a845ea26ea2  tos-databridge-serv-x86.exe.asc
+dd4718ce9c237a5e92462d03e41911852a7a1de00bf29f35738e151f02f7b036  tos-databridge-shell-x64.exe.asc
+4b75561b9d362221895b71b5cf146d963f5ce0bec86a91aee7a744e1a0faaf74  tos-databridge-shell-x86.exe.asc
 
-(THE ACTUAL BINARIES)
-24a534eb2de6b4434c6fa0a65d531e37492618cf93b30eee2bb459d77b2b8436  tos-databridge-0.5-x86.dll
-2c566f0b38201c93e0b437cc358f6ce5a13e0ec5a8b4f097724f8738256aea4c  tos-databridge-0.5-x86.exp
-047ce54b021f27c84ec1b1da7f2b6d771c42d9f8741390736f8be2e62751c6dd  tos-databridge-0.5-x86.lib
-22d234743b0378543507eb5181a3a54ee9a0b382c53c2845761768a5a7369a03  tos-databridge-engine-x86.exe
-7999fe95313491d566d5f5c50e3fb8520b603a647d96915c493aefcff417bbfb  tos-databridge-serv-x86.exe
-5c61a2ba4d90a2099fb3e7d35c357ec4b479a7b77b5b9ad04217def7042f19e8  tos-databridge-shell-x86.exe
-448f3396f045675c6dfb78f95becb68b81c74e0452eb1e13c4b6b38f6c2e0c45  _tos-databridge-x86.dll
-27b9cb76f398011cb9d01f55d35a28365ef70064662357829a1f388c856e6de0  _tos-databridge-x86.exp
-259a6626e4d891b9e9ad9e60a226813e133f09238e7b20f4ff2dbea8c20d69a3  _tos-databridge-x86.lib
-c673d353bab23359d8a98dbe94f04ac5af153b772bcf9519220d8fea5468a37c  tos-databridge-0.5-x64.dll
-868c4ead9391b0cf4a7aa951e8fd5ff1899eeb23aea3001c23ea3c453ba0afa3  tos-databridge-0.5-x64.exp
-dd7ebfdbab75a9320b75c89ec17fbde0e81e76e6554e6839d157b1ad55143f1d  tos-databridge-0.5-x64.lib
-1facb80ab5ccd80625258f85b9dadde8294a4101aacd81a77707e261212b5fca  tos-databridge-engine-x64.exe
-3295539cbb6d81fb1a6b17a31ba7e18f3387ecda1644dedbe6b6577b36881d58  tos-databridge-serv-x64.exe
-9a8e0cb07de0c284b281d6bc07a819c8b077089261cefdb42e4dfc36e3d30ef5  tos-databridge-shell-x64.exe
-599b86bd4cf2fc680bb2f65932d35b695513bdbaa85c10152d32fb06382a28a7  _tos-databridge-x64.dll
-a785f38c738caacb809aaacf49cdb8a789eb51d6be84bd2976697ba1e154ee65  _tos-databridge-x64.exp
-a0fd30aca756ab62fda8a23210ef0608a1b6a239de53226577d61f4495814db1  _tos-databridge-x64.lib
+(THE ACTUAL BINARIES) 
+b5641d17dc92362efd6a6358e4dadd1889e3c717f616718e98770a1e0fd45e7e  _tos-databridge-x86.dll
+555a1c5aea1ecb9542c335f530a95666cf268ddef1506d706b4b706e28589f0a  _tos-databridge-x86.exp
+1d06257f1a7f87ea758183a688bf578794727f10afcdaae7b16a3bf8d7b2c5c6  _tos-databridge-x86.lib
+105a1b5ec231ad5946d6a9f7a5ebcceb169dd785f75a1a75a42e473623e1c42d  tos-databridge-0.5-x86.dll
+8350b188311bb7f43701a5dabe254f51db302434df0ccbae0712a5181ffd411b  tos-databridge-0.5-x86.exp
+a38cf176c211fea43f43e341f8ad18ef55a8aade35309bf1ca4d878e0743e691  tos-databridge-0.5-x86.lib
+dbca8d672b34ffa7ca5585507773908e4db6b8eff9eb047f491dc1a99bca0bad  tos-databridge-engine-x86.exe
+002a4b44f1474881dbd1cba878de2afd9431076ffcc8e796ff0d95a7efa37e1a  tos-databridge-serv-x86.exe
+84ec8cfac680b46137531dd570501ba041f6913c1a9b73373fdd35a8369380a7  tos-databridge-shell-x86.exe
+84858b283c8d0ab55de1837b2bd31f97f220c35dd2ea3f1dc2ac1bc3f56580fb  _tos-databridge-x64.dll
+a290c8eb8e8f0b02785ed81efc11b3d31a95cbd9026f0ebfcc24d7ae29ba563c  _tos-databridge-x64.exp
+6b65b5880dc391ae343730a966a5a7df42bd373c8f0f1e2d7670ab37525cf1d8  _tos-databridge-x64.lib
+4eea80cdb681f0ea64d570ab3cfff08d06f451aa18c104f31c9322f722407c3f  tos-databridge-0.5-x64.dll
+9e5e0ed546190ad94829a95d1318d8fb6e57d02c4f08b2bda98baed85958f340  tos-databridge-0.5-x64.exp
+ded7187c470cf964c4227bccd39dba19a5ff07d124b800d0aff9672244746548  tos-databridge-0.5-x64.lib
+80683cb8d69b7a4887b80c868396da0de0962fdcd0fa2ad8f1547bce0961d317  tos-databridge-engine-x64.exe
+c0d9338c47fe5e6d5ba54ab77bddf649d87ef006a420d07bda2a4fdb36c12c71  tos-databridge-serv-x64.exe
+ec192a5213c4f99f4f10447e10f126017c6e2aa675125341c943548b9c892ef1  tos-databridge-shell-x64.exe

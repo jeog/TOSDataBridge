@@ -93,9 +93,24 @@ along with this program.  If not, see http://www.gnu.org/licenses.
    will run in session #1 (or higher) we, in most cases, need to use the 
    global namespace for mutexes and file-mapping kernel objects  
    
-   In rare cases(debugging service in same session) we should
-   define NO_KERNEL_GLOBAL_NAMESPACE to use the local namespace        */
+   in rare cases(debugging service in same session) we should
+   define NO_KERNEL_GLOBAL_NAMESPACE to use the local namespace */
 #define NO_KGBLNS
+/***CRASH WARNING *** 
+
+   if you try to run tos-databridge-engine directly (not recommended)
+   without elevated privileges you will probably crash from an uncaught
+   exception in the DynamicIPCSlave constructor caused by an attempt to 
+   create kernel objects in the global namespace w/o the appropriate 
+   privileges.
+
+   1) you probably should only run the engine via the service 
+
+   2) if for some reason you absolutley have to, recompile with 
+      NO_KERNEL_GLOBAL_NAMESPACE defined or use eleveated privileges
+      to run the .exe
+
+ ***CRASH WARNING ***/
 #endif
 
 /* the core types implemented by the data engine: engine-core.cpp 
@@ -185,6 +200,9 @@ BuildLogPath(std::string name);
 
 DLL_SPEC_IMPL std::string 
 SysTimeString();
+
+DLL_SPEC_IMPL void 
+ParseArgs(std::vector<std::string>& vec, std::string str);
 
 #endif /*__cplusplus */
 

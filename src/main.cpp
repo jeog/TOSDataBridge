@@ -155,3 +155,23 @@ CheckIDLength(LPCSTR id)
 
   return 1;
 }
+
+
+void 
+ParseArgs(std::vector<std::string>& vec, std::string str)
+{
+    std::string::size_type i = str.find_first_of(' '); 
+
+    if( str.empty() ){ /* done */
+        return;
+    }else if(i == std::string::npos){ /* only 1 str */
+        vec.push_back(str);
+        return;
+    }else if(i == 0){ /* trim initial space(s) */
+        ParseArgs(vec, str.substr(1,-1));
+        return;
+    }else{ /* atleast 2 strings */
+        vec.push_back(str.substr(0,i));
+        ParseArgs(vec, str.substr(i+1,str.size()));
+    }
+}

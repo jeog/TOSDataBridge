@@ -154,14 +154,17 @@ public:
 private:
     typedef std::tuple<std::string, commands_func_ty, std::string> _myInitChainBaseArgTy;
 
-    static base_type::value_type
-    _init(_myInitChainBaseArgTy t)
-    {
-        CommandCtx c = {std::get<0>(t), std::get<2>(t), std::get<1>(t), false};
-        return base_type::value_type(std::get<0>(t), std::move(c));
-    }   
+    template<typename RetTy, typename ArgTy>
+    struct _init{
+        RetTy
+        operator()(ArgTy t)
+        {
+            CommandCtx c = {std::get<0>(t), std::get<2>(t), std::get<1>(t), false};
+            return RetTy(std::get<0>(t), std::move(c));
+        }  
+    };
 
-    typedef InitializerChain<base_type, _myInitChainBaseArgTy, _init> _myInitChainBaseTy;
+    typedef InitializerChain<base_type, _init> _myInitChainBaseTy;
 
 public:
     class InitChain
