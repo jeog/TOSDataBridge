@@ -1,22 +1,13 @@
 * All the binaries are signed with the jeog.dev.key.asc (jeog.dev@gmail.com) 
-
 public key. It should be available on public key servers. 
 
-
-
 * Being in a seprate 'sigs' folder you'll have to point the verifier to the 
-
 corresponding binary file for each signature, or use verify.sh on linux. 
 
-
+**** WARNING *** the current sig file checksums are incorrect because of new-line 
+issues between windows and linux. 
 
 SHA256 checksums:
-
-
-
-
-
-
 
 (THE SIGNATURE FILES)
 4ee3911b667d508f525939baafab86498e251aa28a5dab4248b128ee601ed600  _tos-databridge-x64.dll.asc
@@ -57,3 +48,4 @@ ded7187c470cf964c4227bccd39dba19a5ff07d124b800d0aff9672244746548  tos-databridge
 80683cb8d69b7a4887b80c868396da0de0962fdcd0fa2ad8f1547bce0961d317  tos-databridge-engine-x64.exe
 c0d9338c47fe5e6d5ba54ab77bddf649d87ef006a420d07bda2a4fdb36c12c71  tos-databridge-serv-x64.exe
 ec192a5213c4f99f4f10447e10f126017c6e2aa675125341c943548b9c892ef1  tos-databridge-shell-x64.exe
+
