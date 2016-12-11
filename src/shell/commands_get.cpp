@@ -45,7 +45,7 @@ void GetGeneric(CommandCtx *ctx);
 
 }; /* namespace */
 
-const CommandsMap commands_get(
+CommandsMap commands_get(
     CommandsMap::InitChain("GetDouble",GetDouble)
                           ("GetFloat",GetFloat)
                           ("GetLongLong",GetLongLong)

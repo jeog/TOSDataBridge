@@ -33,7 +33,7 @@ void GetTotalFrame(CommandCtx *ctx);
 
 }; /* namespace */
 
-const CommandsMap commands_frame(
+CommandsMap commands_frame(
     CommandsMap::InitChain("GetItemFrame",GetItemFrame) 
                           ("GetItemFrameStrings",GetItemFrameStrings) 
                           ("GetItemFrameDoubles",GetItemFrameDoubles) 

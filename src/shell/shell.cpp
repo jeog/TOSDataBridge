@@ -23,26 +23,21 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 stream_prompt prompt("[-->");
 stream_prompt_basic prompt_b("[-->");
 
-
-namespace{
-
-commands_map_of_maps_ty
-_build_commands_map_of_maps();
-
-std::unordered_map<language, std::pair<std::string,std::string>>
-_build_language_strings();
-
-}; /* namespace */
-
-
-/* note: *when* these global externs are 'built' could be an issue 
-         if we're relying on other global object instantiations */
-
+/* to avoid compile-time ordinality issues we pass the commands groups by 
+   reference (pair<string,CommandsMapRef>) */
 commands_map_of_maps_ty 
-commands = _build_commands_map_of_maps();
+commands = InitializerChain<commands_map_of_maps_ty>
+    ( "admin", command_display_pair("ADMINISTRATIVE",commands_admin) )
+    ( "get", command_display_pair("GET",commands_get) )
+    ( "stream", command_display_pair("STREAM-SNAPSHOT",commands_stream) )
+    ( "frame", command_display_pair("FRAME",commands_frame) )
+    ( "local", command_display_pair("LOCAL",commands_local) );
 
-std::unordered_map<language, std::pair<std::string,std::string>> 
-language_strings = _build_language_strings();
+language_strings_ty 
+language_strings = InitializerChain<language_strings_ty>
+    ( language::none, "NONE", "no default; ask user during call")
+    ( language::c, "C", "use C version of call(if available)")
+    ( language::cpp, "C++", "use C++ version of call(if available)");
 
 
 namespace{
@@ -247,36 +242,6 @@ prompt_for_block_item_topic_index(std::string *pblock,
 
 
 namespace{
-  
-commands_map_of_maps_ty
-_build_commands_map_of_maps()
-{
-    typedef commands_map_of_maps_ty::value_type elem_ty;
-
-    commands_map_of_maps_ty m;
-
-    m.insert( elem_ty("admin", command_display_pair("ADMINISTRATIVE",commands_admin)) );
-    m.insert( elem_ty("get", command_display_pair("GET",commands_get)) );
-    m.insert( elem_ty("stream", command_display_pair("STREAM-SNAPSHOT",commands_stream)) );
-    m.insert( elem_ty("frame", command_display_pair("FRAME",commands_frame)) );
-    m.insert( elem_ty("local", command_display_pair("LOCAL",commands_local)) );
-
-    return m;
-}
-
-
-std::unordered_map<language, std::pair<std::string,std::string>>
-_build_language_strings()
-{
-    std::unordered_map<language, std::pair<std::string,std::string>> m;
-
-    m.insert( std::make_pair(language::none, std::make_pair("NONE", "no default; ask user during call")) );
-    m.insert( std::make_pair(language::c, std::make_pair("C", "use C version of call(if available)")) );
-    m.insert( std::make_pair(language::cpp, std::make_pair("C++", "use C++ version of call(if available)")) );
-
-    return m; 
-}
-
 
 template<int W, const char FILL>
 void

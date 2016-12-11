@@ -60,7 +60,7 @@ void DumpBufferStatus(CommandCtx *ctx);
 
 }; /* namespace */
 
-const CommandsMap commands_admin(
+CommandsMap commands_admin(
     CommandsMap::InitChain("Connect",Connect,"connect to the library")
                           ("Disconnect",Disconnect)                              
                           ("IsConnected",IsConnected)                              

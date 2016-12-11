@@ -29,7 +29,7 @@ void local_language(CommandCtx *ctx);
 
 }; /* namespace */
 
-const CommandsMap commands_local(
+CommandsMap commands_local(
     CommandsMap::InitChain("topics",local_topics,"list TOPICS that TOS accepts") 
                           ("commands",local_commands, "list commands for this shell")
                           ("language",local_language, "set default language(C/C++/none)") 

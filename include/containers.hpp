@@ -310,7 +310,6 @@ public:
     /* Dec 8 2016, for initializer_chain compatability */
     typedef typename map1_type::value_type value_type;
 
-
     typedef typename map1_type::value_type pair1_type; 
     typedef typename map2_type::value_type pair2_type;
         
@@ -348,83 +347,90 @@ public:
         }
 
     inline void 
-    insert(T1 val1, T2 val2)
+    insert(T1 k, T2 v)
     { 
-         this->_insert(pair1_type(val1, val2));
+         this->_insert(pair1_type(k, v));
     }
 
     template<size_t sz>
     void 
-    insert(const pair1_type(&arr)[sz]) 
+    insert(const pair1_type(&arr)[sz])
     {
         for(size_t i = 0; i <sz; ++i)
             this->_insert(arr[i]); 
     }
 
     inline void 
-    insert(const pair1_type keyVal) 
+    insert(const pair1_type p) 
     {
-        this->_insert(keyVal); 
+        this->_insert(p); 
+    }
+
+    /* Dec 8 2016, for initializer_chain compatability */
+    inline void 
+    insert(iterator1_type dummy, const pair1_type p) 
+    {
+        this->_insert(p); 
     }
 
     void 
-    remove(T1 key)
+    remove(T1 k)
     {
-        T2 tmp = this->operator[](key);
-        this->_map1.erase(key); 
+        T2 tmp = this->operator[](k);
+        this->_map1.erase(k); 
         this->_map2.erase(tmp); 
     }
 
     void 
-    remove(T2 key)
+    remove(T2 k)
     {        
-        T1 tmp = this->operator[](key);
-        this->_map2.erase(key); 
+        T1 tmp = this->operator[](k);
+        this->_map2.erase(k); 
         this->_map1.erase(tmp); 
     }
 
     T2 
-    operator[](const T1 key) const
+    operator[](const T1 k) const
     {
         try{ 
-            return this->_map1.at(key); 
+            return this->_map1.at(k); 
         }catch(const std::out_of_range){ 
             return (T2)NULL; 
         }
     }
 
     T1 
-    operator[](const T2 key) const 
+    operator[](const T2 k) const 
     {
         try{            
-            return this->_map2.at(key);                 
+            return this->_map2.at(k);                 
         }catch(const std::out_of_range){            
             return (T1)NULL;
         }
     }
 
     inline const_iterator1_type 
-    find(const T1& key) const 
+    find(const T1& k) const 
     { 
-        return this->_map1.find(key); 
+        return this->_map1.find(k); 
     }
 
     inline const_iterator2_type 
-    find(const T2& key) const 
+    find(const T2& k) const 
     { 
-        return this->_map2.find(key); 
+        return this->_map2.find(k); 
     }
 
     inline iterator1_type             
-    find(const T1& key) 
+    find(const T1& k) 
     { 
-        return this->_map1.find(key); 
+        return this->_map1.find(k); 
     }
 
     inline iterator2_type             
-    find(const T2& key) 
+    find(const T2& k) 
     { 
-        return this->_map2.find(key); 
+        return this->_map2.find(k); 
     }
 
     inline iterator1_type             
@@ -477,12 +483,12 @@ private:
      map2_type _map2;
 
     void 
-    _insert(pair1_type keyVal)
+    _insert(pair1_type p)
     {    
-        this->_map1.erase(keyVal.first);
-        this->_map2.erase(keyVal.second);
-        this->_map1.insert(keyVal); 
-        this->_map2.insert(pair2_type(keyVal.second, keyVal.first)); 
+        this->_map1.erase(p.first);
+        this->_map2.erase(p.second);
+        this->_map1.insert(p); 
+        this->_map2.insert(pair2_type(p.second, p.first)); 
     }
 };
 
@@ -509,13 +515,13 @@ public:
         }
 
     template<size_t sz>
-    TwoWayHashMap(const typename _my_base_ty::pair1_type(&arr)[sz])
+    TwoWayHashMap(const pair1_type(&arr)[sz])
         : 
             _my_base_ty(arr)
         {                
         }
 
-    TwoWayHashMap(const typename _my_base_ty::map1_type& map)
+    TwoWayHashMap(const map1_type& map)
         : 
             _my_base_ty(map)
         {        
@@ -528,105 +534,113 @@ public:
         }
 
     void 
-    insert(T1 keyVal1, T2 keyVal2)
+    insert(T1 k, T2 v)
     { 
         _my_lock_guard_type lock(this->_mtx);
-        _my_base_ty::insert(keyVal1, keyVal2);
+        _my_base_ty::insert(k, v);
     }
 
     void 
-    insert(const typename _my_base_ty::pair1_type keyVal) 
+    insert(const pair1_type p) 
     {
         _my_lock_guard_type lock(this->_mtx);
-        _my_base_ty::insert(keyVal);
+        _my_base_ty::insert(p);
+    }
+
+    /* Dec 8 2016, for initializer_chain compatability */
+    void 
+    insert(iterator1_type dummy, const pair1_type p) 
+    {
+        _my_lock_guard_type lock(this->_mtx);
+        _my_base_ty::insert(dummy, p);
     }
 
     template<size_t sz>
     void 
-    insert(const typename _my_base_ty::pair1_type(&arr)[sz]) 
+    insert(const pair1_type(&arr)[sz]) 
     {
         _my_lock_guard_type lock(this->_mtx);
         _my_base_ty::insert(arr);
     }
 
     void 
-    remove(T1 key)
+    remove(T1 k)
     {
         _my_lock_guard_type lock(this->_mtx);
-        _my_base_ty::remove(key);
+        _my_base_ty::remove(k);
     }
 
     void 
-    remove(T2 key)
+    remove(T2 k)
     {        
         _my_lock_guard_type lock(this->_mtx);
-        _my_base_ty::remove(key);
+        _my_base_ty::remove(k);
     }
 
     T2 
-    operator[](const T1 key) 
+    operator[](const T1 k) 
     {
         _my_lock_guard_type lock(this->_mtx);
-        return _my_base_ty::operator[](key);
+        return _my_base_ty::operator[](k);
     }
 
     T1 
-    operator[](const T2 key)    
+    operator[](const T2 k)    
     {
         _my_lock_guard_type lock(this->_mtx);
-        return _my_base_ty::operator[](key);
+        return _my_base_ty::operator[](k);
     }
 
-    typename _my_base_ty::const_iterator1_type 
-    find(const T1& key) const
+    const_iterator1_type 
+    find(const T1& k) const
     {
         _my_lock_guard_type lock(this->_mtx);
-        return _my_base_ty::find(key);
+        return _my_base_ty::find(k);
     }
 
-    typename _my_base_ty::const_iterator2_type 
-    find(const T2& key) const
+    const_iterator2_type 
+    find(const T2& k) const
     {
         _my_lock_guard_type lock(this->_mtx);
-        return _my_base_ty::find(key);
+        return _my_base_ty::find(k);
     }
 
-    typename _my_base_ty::iterator1_type 
-    find(const T1& key) 
+    iterator1_type 
+    find(const T1& k) 
     {
         _my_lock_guard_type lock(this->_mtx);
-        return _my_base_ty::find(key);
+        return _my_base_ty::find(k);
     }
 
-    typename _my_base_ty::iterator2_type 
-    find(const T2& key) 
+    iterator2_type 
+    find(const T2& k) 
     {
         _my_lock_guard_type lock(this->_mtx);
-        return _my_base_ty::find(key);
+        return _my_base_ty::find(k);
     }
 
-    typename _my_base_ty::iterator1_type 
+    iterator1_type 
     begin()
     {
         _my_lock_guard_type lock(this->_mtx);
         return _my_base_ty::begin();
     }
 
-    typename _my_base_ty::iterator1_type 
+    iterator1_type 
     end()
     {
         _my_lock_guard_type lock(this->_mtx);
         return _my_base_ty::end();
     }
 
-    typename _my_base_ty::const_iterator1_type 
+    const_iterator1_type 
     cbegin() const
     {
         _my_lock_guard_type lock(this->_mtx);
         return _my_base_ty::cbegin();
     }
 
-    typename _my_base_ty::const_iterator1_type 
+    const_iterator1_type 
     cend() const
     {
         _my_lock_guard_type lock(this->_mtx);

@@ -148,39 +148,35 @@ class CommandsMap
     since we have no initlist, wrap map and provide our own InitChain functor that 
     derives from a 'chaining' mechanism for inline global construction of a const map 
  */
-public:
-    typedef std::map<std::string, CommandCtx> base_type;
+private: 
+    typedef std::tuple<std::string, commands_func_ty, std::string> _myICBaseArg;
 
-private:
-    typedef std::tuple<std::string, commands_func_ty, std::string> _myInitChainBaseArgTy;
+    static void 
+    _command_ctx_insert(std::map<std::string, CommandCtx>& t, _myICBaseArg a)
+    {
+        CommandCtx c = {std::get<0>(a), std::get<2>(a), std::get<1>(a), false};
+        std::inserter(t, t.end()) = std::make_pair(std::get<0>(a), std::move(c));
+    }      
 
-    template<typename RetTy, typename ArgTy>
-    struct _init{
-        RetTy
-        operator()(ArgTy t)
-        {
-            CommandCtx c = {std::get<0>(t), std::get<2>(t), std::get<1>(t), false};
-            return RetTy(std::get<0>(t), std::move(c));
-        }  
-    };
-
-    typedef InitializerChain<base_type, _init> _myInitChainBaseTy;
+    typedef InitializerChain<std::map<std::string, CommandCtx>, 
+                             _myICBaseArg, 
+                             _command_ctx_insert> _myICBase;   
 
 public:
     class InitChain
-            : public _myInitChainBaseTy {   
+            : public _myICBase {   
     public:
         explicit 
-        InitChain(std::string name, commands_func_ty func, std::string doc="")                             
+        InitChain(std::string name, commands_func_ty func, std::string doc="")
             :
-                _myInitChainBaseTy(_myInitChainBaseArgTy(name,func,doc))
-            {
+                _myICBase(_myICBaseArg(name,func,doc))
+            { 
             }
 
         InitChain& 
         operator()(std::string name, commands_func_ty func, std::string doc="") 
         {
-            _myInitChainBaseTy::operator()(_myInitChainBaseArgTy(name,func,doc)); 
+            _myICBase::operator()(_myICBaseArg(name,func,doc)); 
             return *this;
         }      
     };
@@ -191,19 +187,43 @@ public:
 
     CommandsMap(const InitChain& i)
         :
-            base_type(i)
+             std::map<std::string, CommandCtx>(i)
         {   
         }
 };
 
-extern const CommandsMap commands_admin; 
-extern const CommandsMap commands_get; 
-extern const CommandsMap commands_stream;
-extern const CommandsMap commands_frame;
-extern const CommandsMap commands_local;
+extern CommandsMap commands_admin; 
+extern CommandsMap commands_get; 
+extern CommandsMap commands_stream;
+extern CommandsMap commands_frame;
+extern CommandsMap commands_local;
 
-typedef std::pair<std::string, CommandsMap> command_display_pair;
+/*wrap a reference so we can get around pair restrictions*/
+class CommandsMapRef{
+    CommandsMap& _m;
+public:
+    CommandsMapRef(CommandsMap& m)
+        :
+            _m(m)
+        {
+        }
+
+    CommandsMap::iterator
+    begin()
+    {
+        return _m.begin();
+    }
+
+    CommandsMap::iterator
+    end()
+    {
+        return _m.end();
+    }
+};
+
+typedef std::pair<std::string, CommandsMapRef> command_display_pair;
 typedef std::unordered_map<std::string, command_display_pair> commands_map_of_maps_ty;
+
 
 /* should be const but we can't use init lists so manually instantiate in util.cpp */
 extern commands_map_of_maps_ty commands;
@@ -215,7 +235,9 @@ enum class language
     cpp = 2    
 };
 
-extern std::unordered_map<language, std::pair<std::string,std::string>> language_strings;
+typedef std::unordered_map<language, std::pair<std::string,std::string>> language_strings_ty;
+
+extern language_strings_ty language_strings;
 
 language
 set_default_language(language l);

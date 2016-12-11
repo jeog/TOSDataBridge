@@ -33,7 +33,7 @@ void GetStreamSnapshotStringsFromMarker(CommandCtx *ctx);
 
 }; /* namespace */
 
-const CommandsMap commands_stream(
+CommandsMap commands_stream(
     CommandsMap::InitChain("GetStreamSnapshotDoubles",GetStreamSnapshotDoubles) 
                           ("GetStreamSnapshotFloats",GetStreamSnapshotFloats) 
                           ("GetStreamSnapshotLongLongs",GetStreamSnapshotLongLongs) 

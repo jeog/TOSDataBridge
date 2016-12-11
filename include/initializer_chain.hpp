@@ -20,78 +20,94 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 
 /* 
     InitializerChain is a 'chaining' mechanism for inline global construction of 
-    certain 'container' objects if initializer lists are not supported. It accepts a 
-    custom template class that returns a functor to transform each entry. It also also
-    accepts a template class that needs to overload assignment and should behave 
-    like (the default) insert iterator, controling over how each element is inserted.
+    certain 'container' objects if initializer lists are not supported. It accepts an 
+    optional custom functor for transforming/inserting each element.
     
     The 'container' MUST expose an appropriate public 'value_type' typedef 
 
     Ex. 
 
     std::map<std::string, int> my_map_type;
+    std::p<std::string, int, int> my_entry_type;
     
-    template<typename RetTy, typename ArgTy>
-    struct MyTransform{
-        RetTy
-        operator()(ArgTy i)
-        {
-            int p = std::get<1>(i) * std::get<2>(i) * std::get<3>(i);
-            return std::make_pair(std::get<0>(i), p);
-        }  
-    };
-
-};
+    void
+    MyInserter(std::map<std::string, int>& m, my_entry_type e)
+    {            
+        m[std::get<0>(e)] = std::get<1>(e) * std::get<2>(e);            
+    }   
 
     const my_map_type my_map = 
-        InitializerChain<my_map_type, MyTransform>('one',1,1,1)('two',2,2,2)('three',3,3,3);
+        InitializerChain<my_map_type,my_entry_type>(MyInserter)
+            my_entry_type("one",1,1)
+            my_entry_type("two",2,2)
+            my_entry_type("three",3,3);
 
     This is equivalent to:
 
-        const my_map_type my_map = { {'one',3}, {'two',8}, {'three',27} };  
+        const my_map_type my_map = { {"one",1}, {"two",4}, {"three",9} };   
 
-    * * *
 
-    A standard InitList like approach would just use the default template args:
+    - OR - (in certain cases, like this one) we can use the default version:
 
-    const my_map_type my_simple_map = 
-        InitializerChain<my_map_type>('one',3)('two',8)('three',27);
+    const my_map_type my_map = 
+        InitializerChain<my_map_type>()
+            ("one",1*1)
+            ("two",2*2)
+            ("three",3*3);
 
 */
 
+template<typename T, typename A>
+void
+DefaultInsert(T& t, A a)
+{
+    t.insert(t.end(), a);
+}
 
- 
-
-template<typename RetTy, typename ArgTy>
-struct NoTransform{
-    RetTy
-    operator()(ArgTy arg)
-    {
-        return arg;
-    }
-};   
-
-
-template<typename T, 
-         template<typename RetTy, typename ArgTy> class F = NoTransform,
-         template<typename ContainerTy> class I = std::insert_iterator>
+template<typename T, typename A = T::value_type, 
+         /* standard insert available to most containers */          
+         void(*func)(T&, A) = DefaultInsert<T,A> > 
 class InitializerChain {
-    T _t;  
+    T _t;   
 
-public:
-    template<typename Arg>
-    explicit 
-    InitializerChain(Arg arg)                                    
-        { 
-            I<T>(_t,_t.end()) = F<T::value_type,Arg>()(arg);            
+public:   
+   
+    InitializerChain(A arg)     
+        {  
+            operator()(arg);
         }
 
-    template<typename Arg>
+    template<typename First, typename Second>
+    InitializerChain(First f, Second s)     
+        {  
+            operator()(f, s);
+        }
+
+    template<typename First, typename Second, typename Third>
+    InitializerChain(First f, Second s, Third t)     
+        {  
+            operator()(f, s, t);
+        }
+
     InitializerChain& 
-    operator()(Arg arg) 
+    operator()(A arg)  
     {
-        I<T>(_t,_t.end()) = F<T::value_type,Arg>()(arg);
-        return *this;
+        func(_t, arg);
+        return *this;       
+    }  
+
+    template<typename First, typename Second>
+    InitializerChain& 
+    operator()(First f, Second s)  
+    {
+        return operator()(std::pair<First,Second>(f,s));        
+    }  
+
+    template<typename First, typename Second, typename Third>
+    InitializerChain& 
+    operator()(First f, Second s, Third t)  
+    {
+        return operator()(f, std::pair<Second,Third>(s,t));        
     }  
 
     operator T() const
