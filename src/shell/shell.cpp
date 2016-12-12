@@ -24,14 +24,14 @@ stream_prompt prompt("[-->");
 stream_prompt_basic prompt_b("[-->");
 
 /* to avoid compile-time ordinality issues we pass the commands groups by 
-   reference (pair<string,CommandsMapRef>) */
+   reference via CommandsMapRef */
 commands_map_of_maps_ty 
 commands = InitializerChain<commands_map_of_maps_ty>
-    ( "admin", command_display_pair("ADMINISTRATIVE",commands_admin) )
-    ( "get", command_display_pair("GET",commands_get) )
-    ( "stream", command_display_pair("STREAM-SNAPSHOT",commands_stream) )
-    ( "frame", command_display_pair("FRAME",commands_frame) )
-    ( "local", command_display_pair("LOCAL",commands_local) );
+    ( "admin", "ADMINISTRATIVE", CommandsMapRef(commands_admin) )
+    ( "get", "GET", CommandsMapRef(commands_get) )
+    ( "stream", "STREAM-SNAPSHOT", CommandsMapRef(commands_stream) )
+    ( "frame", "FRAME", CommandsMapRef(commands_frame) )
+    ( "local", "LOCAL", CommandsMapRef(commands_local) );
 
 language_strings_ty 
 language_strings = InitializerChain<language_strings_ty>

@@ -21,9 +21,14 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 /* 
     InitializerChain is a 'chaining' mechanism for inline global construction of 
     certain 'container' objects if initializer lists are not supported. It accepts an 
-    optional custom functor for transforming/inserting each element.
+    optional custom argument type and functor for transforming/inserting each element.
     
-    The 'container' MUST expose an appropriate public 'value_type' typedef 
+    If no custom argument type is passed the 'container' MUST expose an 
+    appropriate public 'value_type' typedef to default to.
+
+    Multiple arguments will be converted to std::pair<type,type>, 
+    std::pair<type,std::pair<type,type>> or std::tuple<type,type,type> depending on 
+    # of args and template argument paramater.
 
     Ex. 
 
@@ -37,10 +42,10 @@ along with this program.  If not, see http://www.gnu.org/licenses.
     }   
 
     const my_map_type my_map = 
-        InitializerChain<my_map_type,my_entry_type>(MyInserter)
-            my_entry_type("one",1,1)
-            my_entry_type("two",2,2)
-            my_entry_type("three",3,3);
+        InitializerChain<my_map_type, my_entry_type, MyInserter>
+            (my_entry_type("one",1,1))
+            (my_entry_type("two",2,2))
+            (my_entry_type("three",3,3));
 
     This is equivalent to:
 
@@ -50,7 +55,7 @@ along with this program.  If not, see http://www.gnu.org/licenses.
     - OR - (in certain cases, like this one) we can use the default version:
 
     const my_map_type my_map = 
-        InitializerChain<my_map_type>()
+        InitializerChain<my_map_type>
             ("one",1*1)
             ("two",2*2)
             ("three",3*3);
@@ -60,18 +65,28 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 template<typename T, typename A>
 void
 DefaultInsert(T& t, A a)
-{
+{   /* standard insert available to most containers */
     t.insert(t.end(), a);
 }
 
-template<typename T, typename A = T::value_type, 
-         /* standard insert available to most containers */          
+
+template<typename T, typename A = T::value_type,                    
          void(*func)(T&, A) = DefaultInsert<T,A> > 
 class InitializerChain {
     T _t;   
 
-public:   
-   
+    /* all the specializations are below */
+    template<typename First, typename Second, typename Third, typename Obj>
+    struct _p_t_branch{  
+        template<typename My>
+        InitializerChain&
+        operator()(First f, Second s, Third t, My *self)
+        {            
+            return self->operator()(Obj(f,s,t));
+        }
+    };
+
+public: 
     InitializerChain(A arg)     
         {  
             operator()(arg);
@@ -95,25 +110,106 @@ public:
         func(_t, arg);
         return *this;       
     }  
-
+    
     template<typename First, typename Second>
     InitializerChain& 
     operator()(First f, Second s)  
     {
-        return operator()(std::pair<First,Second>(f,s));        
+         return operator()(std::pair<First,Second>(f,s));        
     }  
 
     template<typename First, typename Second, typename Third>
     InitializerChain& 
     operator()(First f, Second s, Third t)  
     {
-        return operator()(f, std::pair<Second,Third>(s,t));        
+        return _p_t_branch<First,Second,Third,A>()(f,s,t,this);     
     }  
 
     operator T() const
     {
         return _t;
     }
+
+private:
+      /* 'general' specialization for pair< obj, pair<obj,obj> > arg type */
+      template<typename First, typename Second, typename Third> 
+      struct _p_t_branch<First, Second, Third, 
+                       std::pair<const First,std::pair<Second,Third>> > { 
+        template<typename My>
+        InitializerChain&
+        operator()(First f, Second s, Third t, My *self)
+        {
+            return self->operator()(f, std::pair<Second,Third>(s,t));
+        }
+    };
+
+    /* specialization for strings to deal with pair implicit coversion issues */
+    template<typename First, typename Second, typename Third> 
+    struct _p_t_branch<First, Second, Third, 
+                       std::pair<const First,std::pair<Second,std::string>> > { 
+        template<typename My>
+        InitializerChain&
+        operator()(First f, Second s, Third t, My *self)
+        {
+            return self->operator()(f, std::pair<Second,std::string>(s,t));
+        }
+    };
+
+    template<typename First, typename Second, typename Third> 
+    struct _p_t_branch<First, Second, Third, 
+                       std::pair<const First,std::pair<std::string,Third>> > { 
+        template<typename My>
+        InitializerChain&
+        operator()(First f, Second s, Third t, My *self)
+        {
+            return self->operator()(f, std::pair<std::string,Third>(s,t));
+        }
+    };
+
+    template<typename First, typename Second, typename Third> 
+    struct _p_t_branch<First, Second, Third, 
+                       std::pair<const First,std::pair<std::string, std::string>> > { 
+        template<typename My>
+        InitializerChain&
+        operator()(First f, Second s, Third t, My *self)
+        {
+            return self->operator()(f, std::pair<std::string, std::string>(s,t));
+        }
+    };
+          
+    template<typename First, typename Second, typename Third> 
+    struct _p_t_branch<First, Second, Third, 
+                       std::pair<const std::string, std::pair<Second,std::string>> > { 
+        template<typename My>
+        InitializerChain&
+        operator()(First f, Second s, Third t, My *self)
+        {
+            return self->operator()(f, std::pair<Second,std::string>(s,t));
+        }
+    };
+
+    template<typename First, typename Second, typename Third> 
+    struct _p_t_branch<First, Second, Third, 
+                       std::pair<const std::string, std::pair<std::string,Third>> > { 
+        template<typename My>
+        InitializerChain&
+        operator()(First f, Second s, Third t, My *self)
+        {
+            return self->operator()(f, std::pair<std::string,Third>(s,t));
+        }
+    };
+
+    template<typename First, typename Second, typename Third> 
+    struct _p_t_branch<First, Second, Third, 
+                       std::pair<const std::string, std::pair<std::string, std::string>> > { 
+        template<typename My>
+        InitializerChain&
+        operator()(First f, Second s, Third t, My *self)
+        {
+            return self->operator()(f, std::pair<std::string, std::string>(s,t));
+        }
+    };
+
 };
 
 

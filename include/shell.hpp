@@ -149,34 +149,33 @@ class CommandsMap
     derives from a 'chaining' mechanism for inline global construction of a const map 
  */
 private: 
-    typedef std::tuple<std::string, commands_func_ty, std::string> _myICBaseArg;
+    typedef public std::map<std::string, CommandCtx> _my_base_ty;
+    typedef std::tuple<std::string, commands_func_ty, std::string> _my_init_arg_ty;
 
     static void 
-    _command_ctx_insert(std::map<std::string, CommandCtx>& t, _myICBaseArg a)
+    _insert(_my_base_ty& t, _my_init_arg_ty a)
     {
         CommandCtx c = {std::get<0>(a), std::get<2>(a), std::get<1>(a), false};
         std::inserter(t, t.end()) = std::make_pair(std::get<0>(a), std::move(c));
     }      
 
-    typedef InitializerChain<std::map<std::string, CommandCtx>, 
-                             _myICBaseArg, 
-                             _command_ctx_insert> _myICBase;   
+    typedef InitializerChain<_my_base_ty, _my_init_arg_ty, _insert> _my_init_base_ty;
 
 public:
     class InitChain
-            : public _myICBase {   
+            : public _my_init_base_ty {   
     public:
         explicit 
         InitChain(std::string name, commands_func_ty func, std::string doc="")
             :
-                _myICBase(_myICBaseArg(name,func,doc))
+                _my_init_base_ty(_my_init_arg_ty(name,func,doc))
             { 
             }
 
         InitChain& 
         operator()(std::string name, commands_func_ty func, std::string doc="") 
         {
-            _myICBase::operator()(_myICBaseArg(name,func,doc)); 
+            _my_init_base_ty::operator()(_my_init_arg_ty(name,func,doc)); 
             return *this;
         }      
     };
@@ -187,7 +186,7 @@ public:
 
     CommandsMap(const InitChain& i)
         :
-             std::map<std::string, CommandCtx>(i)
+             _my_base_ty(i)
         {   
         }
 };

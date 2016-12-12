@@ -161,3 +161,8 @@ IF %ERRORLEVEL% NEQ 0 (
 ) else (
   echo + Success!
 )
+
+DEL *.exe
+DEL *.dll
+DEL *.pdb
+DEL *.obj
