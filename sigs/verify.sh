@@ -9,8 +9,8 @@ sigs_dir=$( cd "$( dirname "$0" )" && pwd )
 
 cd $sigs_dir
 
-x86_sig_files=($(ls | egrep '.*tos-databridge.+x86\..+asc'))
-x64_sig_files=($(ls | egrep '.*tos-databridge.+x64\..+asc'))
+x86_sig_files=($(ls | egrep '.*tos-databridge.+x86\..+sig'))
+x64_sig_files=($(ls | egrep '.*tos-databridge.+x64\..+sig'))
 
 check_return=0
 
