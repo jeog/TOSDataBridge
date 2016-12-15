@@ -40,10 +40,10 @@ typedef struct{
     void*        hmtx;  
 } StreamBuffer, *pStreamBuffer;
 
-typedef std::map<std::string, size_t>  refcount_ty;
-typedef std::pair<std::string, TOS_Topics::TOPICS>  id_ty;
-typedef std::map<TOS_Topics::TOPICS, refcount_ty>  topics_ref_ty;
-typedef std::map<id_ty, StreamBuffer>  buffers_ty;
+typedef std::map<std::string, size_t> refcount_ty;
+typedef std::pair<std::string, TOS_Topics::TOPICS> id_ty;
+typedef std::map<TOS_Topics::TOPICS, refcount_ty> topics_ref_ty;
+typedef std::map<id_ty, StreamBuffer> buffers_ty;
 
 typedef TwoWayHashMap<TOS_Topics::TOPICS, HWND, true,
                       std::hash<TOS_Topics::TOPICS>,
@@ -52,9 +52,9 @@ typedef TwoWayHashMap<TOS_Topics::TOPICS, HWND, true,
                       std::equal_to<HWND>>  convos_ty;
 
 
-LPCSTR  CLASS_NAME = "DDE_CLIENT_WINDOW";
-LPCSTR  LOG_NAME = "engine-log.log";  
-LPCSTR  APP_NAME = "TOS";
+LPCSTR CLASS_NAME = "DDE_CLIENT_WINDOW";
+LPCSTR LOG_NAME = "engine-log.log";  
+LPCSTR APP_NAME = "TOS";
   
 const system_clock_type  system_clock;
 
@@ -62,6 +62,8 @@ const unsigned int COMM_BUFFER_SIZE = 5; /* opcode + 3 args + {0,0} */
 const unsigned int ACL_SIZE = 96;
 const unsigned int UPDATE_PERIOD = 2000;
 const int NSECURABLE = 2;
+
+const DynamicIPCSlave::shem_chunk NULL_SHEM_CHUNK;
 
 /* our 'private' messages; OK between 0x0400 and 0x7fff */
 const unsigned int LINK_DDE_ITEM = 0x0500;
@@ -84,27 +86,24 @@ SmartBuffer<ACL> acls[] = {
     SmartBuffer<ACL>(ACL_SIZE) 
 };   
 
-buffers_ty    buffers;  
+buffers_ty buffers;  
 topics_ref_ty topic_refs; 
-convos_ty     convos; 
+convos_ty convos; 
 
 LightWeightMutex topic_mtx;
 LightWeightMutex buffer_mtx;
-SignalManager    ack_signals;
+SignalManager ack_signals;
 
 #define BUFFER_LOCK_GUARD WinLockGuard buffer_lock_guard_(buffer_mtx)
 #define TOPIC_LOCK_GUARD WinLockGuard topic_lock_guard_(topic_mtx)
 
 HANDLE init_event = NULL;
 HANDLE msg_thrd = NULL;
-HWND   msg_window = NULL;
-DWORD  msg_thrd_id = 0;
+HWND msg_window = NULL;
+DWORD msg_thrd_id = 0;
 LPCSTR msg_window_name = "TOSDB_ENGINE_MSG_WNDW";
-
-volatile bool shutdown_flag = false;  
+  
 volatile bool pause_flag = false;
-volatile bool is_service = false;
-volatile bool is_spawned = false;
 
 /* forward decl (see end of source) */
 template<typename T>
@@ -141,7 +140,7 @@ SetSecurityPolicy();
 int  
 AddStream(TOS_Topics::TOPICS tTopic,std::string sItem, unsigned long timeout);
 
-bool 
+int 
 RemoveStream(TOS_Topics::TOPICS tTopic,std::string sItem, unsigned long timeout);
   
 bool 
@@ -161,19 +160,28 @@ Threaded_Init(LPVOID lParam);
 LRESULT CALLBACK 
 WndProc(HWND, UINT, WPARAM, LPARAM);   
 
+int
+RunMainCommLoop(DynamicIPCSlave *pslave);
+
+bool
+ExtractShemBufArgs(DynamicIPCSlave *pslave, 
+                   DynamicIPCSlave::shem_chunk shem_buf[COMM_BUFFER_SIZE], 
+                   TOS_Topics::TOPICS *ptopic, 
+                   std::string *pitem,
+                   unsigned long *ptimeout);
+
 };
 
 
 int WINAPI 
 WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLn, int nShowCmd)
-{    
-    void *parg1;
-    void *parg2;
-    void *parg3;
-    int err;
-    size_t indx;    
+{   
+    int err;   
     std::stringstream ss_args;
     std::vector<std::string> args;
+
+    bool is_service = false;
+    bool is_spawned = false;
 
     /* start logging */
     std::string logpath(TOSDB_LOG_PATH);    
@@ -223,8 +231,7 @@ WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLn, int nShowCmd)
     TOSDB_Log("STARTUP", ss_args.str().c_str());
 
     /* the other side of our IPC channel (see client_admin.cpp) */
-    DynamicIPCSlave slave(TOSDB_COMM_CHANNEL, TOSDB_SHEM_BUF_SZ);
-    DynamicIPCSlave::shem_chunk shem_buf[COMM_BUFFER_SIZE];       
+    DynamicIPCSlave slave(TOSDB_COMM_CHANNEL, TOSDB_SHEM_BUF_SZ);         
 
     /* initialize our security objects */
     err = SetSecurityPolicy();
@@ -241,7 +248,6 @@ WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLn, int nShowCmd)
     clss.lpszClassName = CLASS_NAME; 
     RegisterClass(&clss); 
     
-
     /* spin-off the windows msg loop that we'll communicate w/ directly via 
        private messages in the main communication loop below; it will also 
        respond to return DDE messages from the TOS platform */
@@ -255,122 +261,154 @@ WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLn, int nShowCmd)
         return CleanUpMain(-1);
     }    
   
-    GetSystemInfo(&sys_info);    
+    GetSystemInfo(&sys_info);     
 
-    parg1 = nullptr;
-    parg2 = nullptr;
-    parg3 = nullptr;
-    indx = 0;
+    /* Start the main communciation loop that client code and service will 
+       use to communicate with the back-end; this will block until:
+           1) the slave's wait_for_master call returns false, OR
+           2) TOSDB_SIG_STOP signal is received from client/service  */
+    err = RunMainCommLoop(&slave);
 
-    /* main communication loop */
-    while(!shutdown_flag){     
-
-        /* BLOCK until master is ready */
-        if( !slave.wait_for_master() ){      
-            TOSDB_LogH("IPC", "wait_for_master failed");
-            return CleanUpMain(-1);
-        }
-
-        /* slave.recv() MUST follow evaluation of shutdown_flag; 
-           it will block until master sends a shem_chunk obj      */
-        while( !shutdown_flag && slave.recv(shem_buf[indx]) )
-        {      
-            /* 'tail' shem_buf needs to be {0,0} */
-            if(shem_buf[indx].sz == 0 && shem_buf[indx].offset == 0){  
-                long i;
-                switch(shem_buf[0].offset){
-                case TOSDB_SIG_ADD:
-                {                 
-                    parg1 = slave.shem_ptr(shem_buf[1]); 
-                    parg2 = slave.shem_ptr(shem_buf[2]); 
-                    parg3 = slave.shem_ptr(shem_buf[3]);
-                    if(!parg1 || !parg2 || !parg3){            
-                        TOSDB_LogH("IPC","invalid shem_chunk passed to slave");
-                        break;
-                    }         
-                    i = (long)AddStream( *(TOS_Topics::TOPICS*)parg1, 
-                                         std::string((char*)parg2), 
-                                         *(unsigned long*)parg3 );           
-                    slave.send(i);      
-                    break;
-                } 
-                case TOSDB_SIG_REMOVE:
-                {                  
-                    parg1 = slave.shem_ptr(shem_buf[1]); 
-                    parg2 = slave.shem_ptr(shem_buf[2]); 
-                    parg3 = slave.shem_ptr(shem_buf[3]);
-                    if(!parg1 || !parg2 || !parg3){ 
-                        TOSDB_LogH("IPC","invalid shem_chunk passed to slave");
-                        break;
-                    }
-                    i = RemoveStream( *(TOS_Topics::TOPICS*)parg1, 
-                                      std::string((char*)parg2), 
-                                      *(unsigned long*)parg3)  ?  0  :  1;
-                    slave.send(i);            
-                    break;
-                } 
-                case TOSDB_SIG_PAUSE:
-                {                    
-                    TOSDB_Log("SERVICE-MSG", "TOSDB_SIG_PAUSE message received");
-                    if(is_service){      
-                        pause_flag = true;
-                        slave.send(TOSDB_SIG_GOOD);              
-                    }            
-                    break;
-                } 
-                case TOSDB_SIG_CONTINUE:
-                {           
-                    TOSDB_Log("SERVICE-MSG", "TOSDB_SIG_CONTINUE message received");          
-                    if(is_service){
-                        pause_flag = false;              
-                        slave.send(TOSDB_SIG_GOOD);            
-                    }
-                    break;
-                } 
-                case TOSDB_SIG_STOP:
-                {           
-                    TOSDB_Log("SERVICE-MSG", "TOSDB_SIG_STOP message received");         
-                    if(is_service){
-                        shutdown_flag = true;
-                        TOSDB_Log("CONTROL", "shutdown flag set");
-                        slave.send(TOSDB_SIG_GOOD);
-                    }
-                    break;
-                } 
-                case TOSDB_SIG_DUMP:
-                {
-                    TOSDB_Log("SERVICE-MSG", "TOSDB_SIG_DUMP message received");
-                    DumpBufferStatus();
-                    slave.send(0);
-                    break;
-                } 
-                default:
-                    TOSDB_LogH("IPC","invalid opcode");
-                } /* switch(shem_buf[0].offset) */
-            
-                indx = 0;    
-                parg1 = nullptr;
-                parg2 = nullptr;
-                parg3 = nullptr;
-
-            /* if we overflow the message buffer: reset */
-            }else if(++indx >= COMM_BUFFER_SIZE){ /* <-- we're incrementing indx */
-                TOSDB_LogH("IPC","shem_chunk buffer full, reseting msg loop");
-                indx = 0;        
-            }  
-
-        }  
-    }  
-    TOSDB_LogH("CONTROL","out of run loop");
-    TOSDB_LogH("CONTROL","closing all streams");
+    TOSDB_LogH("CONTROL","out of run loop (closing streams)");    
     CloseAllStreams(TOSDB_DEF_TIMEOUT);
 	  StopLogging();
-    return CleanUpMain(0);      
+
+    return CleanUpMain(err);      
 }
+
 
 namespace {    
 
-  
+int
+RunMainCommLoop(DynamicIPCSlave *pslave)
+{
+    TOS_Topics::TOPICS cli_topic;
+    std::string cli_item;
+    unsigned long cli_timeout;  
+    int ret;
+    size_t indx;    
+
+    DynamicIPCSlave::shem_chunk shem_buf[COMM_BUFFER_SIZE];  
+
+    bool shutdown_flag = false;
+    
+    while(!shutdown_flag){     
+        /* BLOCK until master is ready */
+        if( !pslave->wait_for_master() ){      
+            TOSDB_LogH("IPC", "wait_for_master failed");
+            return -1;
+        }
+                
+        indx = 0;
+        while(!shutdown_flag){
+            /* slave.recv() MUST follow evaluation of shutdown_flag; 
+               it will block until master sends a shem_chunk obj      */
+            if( !pslave->recv(shem_buf[indx]) )
+                break;
+
+            /* 'tail' shem_buf needs to be {0,0} to indicate a good message */
+            if(shem_buf[indx] == NULL_SHEM_CHUNK){     
+
+                switch(shem_buf[0].offset){
+                case TOSDB_SIG_ADD:                                
+                    if( ExtractShemBufArgs(pslave, shem_buf, &cli_topic, &cli_item, &cli_timeout) ){
+                        ret = AddStream(cli_topic, cli_item, cli_timeout);
+                        pslave->send((long)ret);
+                    }                         
+                    break;
+                
+                case TOSDB_SIG_REMOVE:
+                    if( ExtractShemBufArgs(pslave, shem_buf, &cli_topic, &cli_item, &cli_timeout) ){
+                         ret = RemoveStream(cli_topic, cli_item, cli_timeout);
+                         pslave->send((long)ret);
+                    }                           
+                    break;
+                
+                case TOSDB_SIG_PAUSE:                                    
+                    TOSDB_Log("SERVICE-MSG", "TOSDB_SIG_PAUSE message received");                         
+                    pause_flag = true;
+                    pslave->send(TOSDB_SIG_GOOD);                                              
+                    break;
+                
+                case TOSDB_SIG_CONTINUE:                           
+                    TOSDB_Log("SERVICE-MSG", "TOSDB_SIG_CONTINUE message received");                              
+                    pause_flag = false;              
+                    pslave->send(TOSDB_SIG_GOOD);                                
+                    break;
+                
+                case TOSDB_SIG_STOP:                           
+                    TOSDB_Log("SERVICE-MSG", "TOSDB_SIG_STOP message received");        
+                    shutdown_flag = true;                    
+                    pslave->send(TOSDB_SIG_GOOD);                  
+                    break;
+                
+                case TOSDB_SIG_DUMP:               
+                    TOSDB_Log("SERVICE-MSG", "TOSDB_SIG_DUMP message received");
+                    DumpBufferStatus();
+                    pslave->send(0);
+                    break;
+              
+                default:
+                    TOSDB_LogH("IPC","invalid opcode");
+
+                } /* switch(shem_buf[0].offset) */
+            
+                indx = 0;           
+                            
+            }else if(indx >= COMM_BUFFER_SIZE - 1){ 
+                /* if we overflow the message buffer: reset */
+                TOSDB_LogH("IPC","shem_chunk buffer full, reseting msg loop");
+                indx = 0;        
+            }else{
+                ++indx;
+            }
+        }  
+    }  
+    return 0;
+}
+
+
+bool
+ExtractShemBufArgs(DynamicIPCSlave *pslave, 
+                   DynamicIPCSlave::shem_chunk shem_buf[COMM_BUFFER_SIZE], 
+                   TOS_Topics::TOPICS *ptopic, 
+                   std::string *pitem,
+                   unsigned long *ptimeout)
+{   
+    void *parg1 = pslave->shem_ptr(shem_buf[1]); 
+    void *parg2 = pslave->shem_ptr(shem_buf[2]); 
+    void *parg3 = pslave->shem_ptr(shem_buf[3]);
+
+    if(!parg1 || !parg2 || !parg3){            
+        TOSDB_LogH("IPC","invalid shem_chunk passed to slave");
+        return false;
+    }   
+
+    try{
+        *ptopic = *(TOS_Topics::TOPICS*)parg1;
+    }catch(...){
+        TOSDB_LogH("IPC","failed to cast arg1 to topic");
+        return false;
+    }
+
+    try{       
+        *pitem = std::string((char*)parg2);        
+    }catch(...){
+        TOSDB_LogH("IPC","failed to cast arg2 to item");
+        return false;
+    }
+
+    try{
+        *ptimeout = *(unsigned long*)parg3;
+    }catch(...){
+        TOSDB_LogH("IPC","failed to cast arg3 to timeout");
+        return false;
+    }
+
+    return true;
+}
+
+
 DWORD WINAPI 
 Threaded_Init(LPVOID lParam)
 {
@@ -497,25 +535,26 @@ AddStream(TOS_Topics::TOPICS tTopic,
 }
 
 
-bool 
+int 
 RemoveStream(TOS_Topics::TOPICS tTopic, 
              std::string sItem, 
              unsigned long timeout)
 {  
     if( !(TOS_Topics::enum_value_type)tTopic )
-        return false;
+        return -1;
 
     auto topic_iter = topic_refs.find(tTopic);  
-    if(topic_iter == topic_refs.end()) /* if topic is in our global mapping */    
-        return false;    
+    /* if topic is not in our global mapping */  
+    if(topic_iter == topic_refs.end())   
+        return -2;    
 
     auto item_iter = topic_iter->second.find(sItem);
-    if(item_iter != topic_iter->second.end()) /* if it has that item */   
-    {
-        if( !(--(item_iter->second)) ) /* if ref-count hits zero */
-        {
+    /* if it has that item */
+    if(item_iter != topic_iter->second.end()){
+        /* if ref-count hits zero */
+        if( !(--(item_iter->second)) ) {
             if( !PostCloseItem(sItem, tTopic, timeout) )
-                return false; 
+                return -3; 
             DestroyBuffer(tTopic, sItem);
             topic_iter->second.erase(item_iter);       
         }
@@ -524,7 +563,7 @@ RemoveStream(TOS_Topics::TOPICS tTopic,
     if( topic_iter->second.empty() ) /* if no items close the convo */      
          TearDownTopic(tTopic, timeout);  
     
-    return true;        
+    return 0;        
 }
 
 
@@ -603,8 +642,7 @@ SetSecurityPolicy()
         return -6;
 
     for(int i = 0; i < NSECURABLE; ++i){
-        ret = SetSecurityDescriptorDacl( &sec_desc[(Securable)i], TRUE, 
-                                         acls[(Securable)i].get(), FALSE );
+        ret = SetSecurityDescriptorDacl( &sec_desc[(Securable)i], TRUE, acls[(Securable)i].get(), FALSE);
         if(!ret)
             return -7;
     }

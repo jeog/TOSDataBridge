@@ -150,6 +150,12 @@ public:
         ~shem_chunk()
             {
             }
+
+        inline bool
+        operator==(const shem_chunk& right) const
+        {
+            return (offset == right.offset) && (sz == right.sz);
+        }
     };
 
 private:    
