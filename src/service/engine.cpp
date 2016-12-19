@@ -63,8 +63,6 @@ const unsigned int ACL_SIZE = 96;
 const unsigned int UPDATE_PERIOD = 2000;
 const int NSECURABLE = 2;
 
-const DynamicIPCSlave::shem_chunk NULL_SHEM_CHUNK;
-
 /* our 'private' messages; OK between 0x0400 and 0x7fff */
 const unsigned int LINK_DDE_ITEM = 0x0500;
 const unsigned int REQUEST_DDE_ITEM = 0x0501;
@@ -301,13 +299,13 @@ RunMainCommLoop(DynamicIPCSlave *pslave)
                 
         indx = 0;
         while(!shutdown_flag){
-            /* slave.recv() MUST follow evaluation of shutdown_flag; 
+            /* slave.recv() MUST *DIRECTLY* follow evaluation of shutdown_flag; 
                it will block until master sends a shem_chunk obj      */
             if( !pslave->recv(shem_buf[indx]) )
                 break;
 
-            /* 'tail' shem_buf needs to be {0,0} to indicate a good message */
-            if(shem_buf[indx] == NULL_SHEM_CHUNK){     
+            /* NULL chunk {0,0} indicates end of a good message */
+            if(shem_buf[indx] == DynamicIPCSlave::NULL_SHEM_CHUNK){     
 
                 switch(shem_buf[0].offset){
                 case TOSDB_SIG_ADD:                                
@@ -349,7 +347,8 @@ RunMainCommLoop(DynamicIPCSlave *pslave)
                     break;
               
                 default:
-                    TOSDB_LogH("IPC","invalid opcode");
+                    std::string err = "invalid opcode " + shem_buf[0].as_string();
+                    TOSDB_LogH("IPC", err.c_str());
 
                 } /* switch(shem_buf[0].offset) */
             
@@ -368,6 +367,39 @@ RunMainCommLoop(DynamicIPCSlave *pslave)
 }
 
 
+
+template<typename T>
+void
+CastShemBufArg(void* from, T* to)
+{   
+    *to = *(T*)from;
+}
+
+template<>
+void
+CastShemBufArg(void* from, std::string* to)
+{   
+    *to = std::string((char*)from);
+}
+
+template<typename T>
+void
+CastShemBufArgOrThrow(void* from, T* to, int n)
+{   
+    if(!from || !to)
+        throw std::invalid_argument("args in cast can't be NULL");     
+
+    try{
+        CastShemBufArg(from,to);
+    }catch(...){
+        std::stringstream err;
+        err << "failed to cast arg #" << n << " (" << std::hex << from << ")";
+        TOSDB_LogH("IPC", err.str().c_str());
+        throw;
+    }
+}
+
+
 bool
 ExtractShemBufArgs(DynamicIPCSlave *pslave, 
                    DynamicIPCSlave::shem_chunk shem_buf[COMM_BUFFER_SIZE], 
@@ -379,33 +411,25 @@ ExtractShemBufArgs(DynamicIPCSlave *pslave,
     void *parg2 = pslave->shem_ptr(shem_buf[2]); 
     void *parg3 = pslave->shem_ptr(shem_buf[3]);
 
-    if(!parg1 || !parg2 || !parg3){            
-        TOSDB_LogH("IPC","invalid shem_chunk passed to slave");
-        return false;
-    }   
-
     try{
-        *ptopic = *(TOS_Topics::TOPICS*)parg1;
+        CastShemBufArgOrThrow(parg1, ptopic, 1);
+        CastShemBufArgOrThrow(parg2, pitem, 2);
+        CastShemBufArgOrThrow(parg3, ptimeout, 3);
+        return true;
     }catch(...){
-        TOSDB_LogH("IPC","failed to cast arg1 to topic");
+        std::stringstream err_buf;
+        std::stringstream err_args;
+
+        err_buf<< "invalid shem_chunk passed to slave: ";        
+        for(int i = 0; i < COMM_BUFFER_SIZE; ++i)
+		        err_buf << shem_buf[i].as_string() << ' ';		
+
+        err_args << "pargs: " << parg1 << ' ' << parg2 << ' ' << parg3;
+
+        TOSDB_LogH("IPC", err_buf.str().c_str() );
+        TOSDB_LogH("IPC", err_args.str().c_str() );
         return false;
     }
-
-    try{       
-        *pitem = std::string((char*)parg2);        
-    }catch(...){
-        TOSDB_LogH("IPC","failed to cast arg2 to item");
-        return false;
-    }
-
-    try{
-        *ptimeout = *(unsigned long*)parg3;
-    }catch(...){
-        TOSDB_LogH("IPC","failed to cast arg3 to timeout");
-        return false;
-    }
-
-    return true;
 }
 
 
@@ -464,16 +488,13 @@ AddStream(TOS_Topics::TOPICS tTopic,
         return -1;
 
     auto topic_iter = topic_refs.find(tTopic);  
-    if(topic_iter == topic_refs.end()){ /* if topic isn't in our global mapping */ 
+    if(topic_iter == topic_refs.end()){ /* if topic isn't in our global mapping */    
 
-        ATOM topic_atom;
-        ATOM app_atom;
-        std::string sTopic;
+        init_event = CreateEvent(NULL, FALSE, FALSE, NULL);     
 
-        init_event = CreateEvent(NULL, FALSE, FALSE, NULL);          
-        sTopic = TOS_Topics::map[ tTopic ];  
-        topic_atom = GlobalAddAtom(sTopic.c_str());
-        app_atom = GlobalAddAtom(APP_NAME);
+        std::string sTopic = TOS_Topics::map[ tTopic ];  
+        ATOM topic_atom = GlobalAddAtom(sTopic.c_str());
+        ATOM app_atom = GlobalAddAtom(APP_NAME);
 
         ack_signals.set_signal_ID(TOS_Topics::map[ tTopic ]); 
 
@@ -1025,11 +1046,11 @@ public:
     DDE_Data& 
     operator=(DDE_Data<T>&& d)
     {
-        this->topic = d.topic;
-        this->item = d.item;
-        this->data = d.data;
-        this->valid_datetime = d.valid_datetime;
-        this->time = d.time;
+        topic = d.topic;
+        item = d.item;
+        data = d.data;
+        valid_datetime = d.valid_datetime;
+        time = d.time;
         d.time = nullptr;
 
         return *this;

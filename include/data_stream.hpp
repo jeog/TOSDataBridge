@@ -319,7 +319,7 @@ protected:
     inline void 
     _yld_to_push() const
     {  
-        if(!this->_push_has_priority)      
+        if(!_push_has_priority)      
             std::this_thread::yield();
     } 
 
@@ -353,13 +353,13 @@ public:
     inline bool      
     empty() const 
     { 
-        return this->_my_impl_obj.empty(); 
+        return _my_impl_obj.empty(); 
     }
 
     inline size_t    
     size() const 
     { 
-        return this->_q_count; 
+        return _q_count; 
     }
 
     inline bool      
@@ -371,19 +371,19 @@ public:
     inline bool      
     is_marker_dirty() const 
     { 
-        return *(this->_mark_is_dirty); 
+        return *_mark_is_dirty; 
     }
 
     inline long long 
     marker_position() const 
     { 
-        return *(this->_mark_count); 
+        return *_mark_count; 
     }   
 
     inline size_t    
     bound_size() const 
     { 
-        return this->_q_bound; 
+        return _q_bound; 
     }
      
     size_t 
@@ -392,15 +392,15 @@ public:
     inline void 
     push(const Ty val, secondary_ty sec = secondary_ty())
     {
-        this->_count = 0;    
-        this->_push(val);    
+        _count = 0;    
+        _push(val);    
     }
 
     inline void    
     push(const generic_ty& gen, secondary_ty sec = secondary_ty())
     {
-        this->_count = 0;
-        this->_push((Ty)gen);    
+        _count = 0;
+        _push((Ty)gen);    
     }
 
     long long 
@@ -481,15 +481,15 @@ public:
     inline void 
     push(const Ty val, secondary_ty sec = secondary_ty())
     {    
-        this->_count = 0;
-        this->_push(val, std::move(sec));     
+        _count = 0;
+        _push(val, std::move(sec));     
     }
 
     inline void 
     push(const generic_ty& gen, secondary_ty sec = secondary_ty())
     {
-        this->_count = 0;
-        this->_push((Ty)gen, std::move(sec));
+        _count = 0;
+        _push((Ty)gen, std::move(sec));
     }
     
     size_t 

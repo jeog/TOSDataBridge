@@ -333,7 +333,7 @@ public:
     //
     CALL_VOLUME_INDEX = 0x27,
     //
-    CLOSE = 0x2a | ADJ_QUAD_BIT,
+    //CLOSE = 0x2a | ADJ_QUAD_BIT,
     //
     DELTA = 0x46 | ADJ_QUAD_BIT,
     //
@@ -342,7 +342,7 @@ public:
     DIV = 0x4b,
     DIV_FREQ = 0x4c | ADJ_STRING_BIT,
     //
-    DT = 0x52 | ADJ_STRING_BIT,
+    //DT = 0x52 | ADJ_STRING_BIT,
     //
     EPS = 0x61,
     EXCHANGE = 0x62 | ADJ_STRING_BIT,

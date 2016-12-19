@@ -33,7 +33,7 @@ along with this program.  If not, see http://www.gnu.org/licenses.
     Ex. 
 
     std::map<std::string, int> my_map_type;
-    std::p<std::string, int, int> my_entry_type;
+    std::tuple<std::string, int, int> my_entry_type;
     
     void
     MyInserter(std::map<std::string, int>& m, my_entry_type e)

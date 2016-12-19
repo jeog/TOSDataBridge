@@ -26,10 +26,10 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 template<typename T, typename Eq = std::less<T>>
 class ILSet 
         : public std::set<T, Eq> {  
-public: 
     typedef ILSet<T,Eq> _my_ty;
     typedef std::set<T,Eq> _my_base_ty;  
-  
+
+public:   
     ILSet() 
         {
         }
@@ -40,12 +40,12 @@ public:
 
     ILSet(const T& item) 
         {
-            this->insert(item); 
+            insert(item); 
         }
 
     ILSet(T&& item)
         {
-            this->insert(std::move(item)); // do we need the move ?
+            insert(std::move(item)); // do we need the move ?
         }
 
     /* copy from same/base */
@@ -75,7 +75,7 @@ public:
     ILSet(const ILSet<T2,T3>& set, Func func)
         {
             for(auto & i : set) 
-                this->insert(func(i)); 
+                insert(func(i)); 
         }
 
     /*attempt to construct from like base w/ func obj*/
@@ -83,7 +83,7 @@ public:
     ILSet(const std::set<T2,T3>& set, Func func)
         {
             for(auto & i : set) 
-                this->insert(func(i)); 
+                insert(func(i)); 
         }
 
     /*attempt to construct from raw-array of like w/ func obj*/
@@ -91,7 +91,7 @@ public:
     ILSet(const T2* ptr, size_t sz, Func func)
         {
             while(sz--) 
-                this->insert(func(ptr[sz])); 
+                insert(func(ptr[sz])); 
         }
 
     /*attempt to construct from array of like w/ func obj*/
@@ -99,7 +99,7 @@ public:
     ILSet(const T2(&arr)[sz], Func func)
         {
             for(size_t i = 0; i <sz; ++i)
-                this->insert(func(arr[i])); 
+                insert(func(arr[i])); 
         }
 
     /*attempt to construct from raw-array of like*/
@@ -107,7 +107,7 @@ public:
     ILSet(const T2* ptr, size_t sz)
         {
             while(sz--) 
-                this->insert(ptr[sz]); 
+                insert(ptr[sz]); 
         }
 
     /*attempt to construct from array of like*/
@@ -115,7 +115,7 @@ public:
     ILSet(const T2(&arr)[sz])
         {
             for(size_t i = 0; i <sz; ++i)
-                this->insert(arr[i]); 
+                insert(arr[i]); 
         }
 
     /*attempt to construct from like*/
@@ -123,7 +123,7 @@ public:
     ILSet(const ILSet<T2, T3>& set)
         {  
             for(auto & item : set)
-                this->insert(item);   
+                insert(item);   
         }
 
     /*attempt to construct from like base*/
@@ -131,7 +131,7 @@ public:
     ILSet(const std::set<T2, T3>& set)
         {  
             for(auto & item : set)
-                this->insert(item);   
+                insert(item);   
         }
 
     /*move-assign from same 
@@ -166,9 +166,9 @@ public:
     _my_ty& 
     operator=(const std::set<T2,T3>& set)
     {
-        this->clear();
+        clear();
         for(auto & item : set)
-            this->insert(item);
+            insert(item);
         return *this;
     }
 
@@ -177,9 +177,9 @@ public:
     _my_ty& 
     operator=(const ILSet<T2,T3>& set)
     {
-        this->clear();
+        clear();
         for(auto & item : set)
-            this->insert(item);     
+            insert(item);     
         return *this;
     }
 
@@ -188,9 +188,9 @@ public:
     _my_ty& 
     operator=(const T2(&arr)[sz])
     {
-        this->clear();
+        clear();
         for(size_t i = 0; i <sz; ++i)
-            this->insert(arr[i]); 
+            insert(arr[i]); 
         return *this;
     }
 };
@@ -257,9 +257,9 @@ public:
     operator=(const SmartBuffer& right)
     {        
         if(*this != right){
-            this->_bytes = right._bytes;            
+            _bytes = right._bytes;            
             _my_base_ty::reset((T*)new char[_bytes], [](T* p){ delete[] (char*)p;});
-            memcpy(get(), right.get(), this->_bytes);
+            memcpy(get(), right.get(), _bytes);
         }
         return *this;
     }
@@ -269,14 +269,14 @@ public:
             _bytes(right._bytes),
             _my_base_ty((T*)new char[_bytes], [](T* p){ delete[] (char*)p; })
         {
-            memcpy(get(), right.get(), this->_bytes);
+            memcpy(get(), right.get(), _bytes);
         }
 
     _my_ty& 
     operator=(SmartBuffer&& right)
     {
         if(*this != right){
-            this->_bytes = right._bytes;
+            _bytes = right._bytes;
             _my_base_ty::operator=(std::move(right));        
         }
         return *this; 
@@ -331,25 +331,25 @@ public:
     TwoWayHashMap(const pair1_type(&arr)[sz])        
         {        
             for(size_t i = 0; i <sz; ++i) 
-                this->_insert(arr[i]);         
+                _insert(arr[i]);         
         }
 
     TwoWayHashMap(const map1_type& map)
         {
             for(auto & m : map)
-                this->_insert(m);
+                _insert(m);
         }
 
     TwoWayHashMap(const std::map<T1,T2>& map)
         {
             for(auto & m : map)
-                this->_insert(m);
+                _insert(m);
         }
 
     inline void 
     insert(T1 k, T2 v)
     { 
-         this->_insert(pair1_type(k, v));
+         _insert(pair1_type(k, v));
     }
 
     template<size_t sz>
@@ -357,43 +357,43 @@ public:
     insert(const pair1_type(&arr)[sz])
     {
         for(size_t i = 0; i <sz; ++i)
-            this->_insert(arr[i]); 
+            _insert(arr[i]); 
     }
 
     inline void 
     insert(const pair1_type p) 
     {
-        this->_insert(p); 
+        _insert(p); 
     }
 
     /* Dec 8 2016, for initializer_chain compatability */
     inline void 
     insert(iterator1_type dummy, const pair1_type p) 
     {
-        this->_insert(p); 
+        _insert(p); 
     }
 
     void 
     remove(T1 k)
     {
-        T2 tmp = this->operator[](k);
-        this->_map1.erase(k); 
-        this->_map2.erase(tmp); 
+        T2 tmp = operator[](k);
+        _map1.erase(k); 
+        _map2.erase(tmp); 
     }
 
     void 
     remove(T2 k)
     {        
-        T1 tmp = this->operator[](k);
-        this->_map2.erase(k); 
-        this->_map1.erase(tmp); 
+        T1 tmp = operator[](k);
+        _map2.erase(k); 
+        _map1.erase(tmp); 
     }
 
     T2 
     operator[](const T1 k) const
     {
         try{ 
-            return this->_map1.at(k); 
+            return _map1.at(k); 
         }catch(const std::out_of_range){ 
             return (T2)NULL; 
         }
@@ -403,7 +403,7 @@ public:
     operator[](const T2 k) const 
     {
         try{            
-            return this->_map2.at(k);                 
+            return _map2.at(k);                 
         }catch(const std::out_of_range){            
             return (T1)NULL;
         }
@@ -412,56 +412,56 @@ public:
     inline const_iterator1_type 
     find(const T1& k) const 
     { 
-        return this->_map1.find(k); 
+        return _map1.find(k); 
     }
 
     inline const_iterator2_type 
     find(const T2& k) const 
     { 
-        return this->_map2.find(k); 
+        return _map2.find(k); 
     }
 
     inline iterator1_type             
     find(const T1& k) 
     { 
-        return this->_map1.find(k); 
+        return _map1.find(k); 
     }
 
     inline iterator2_type             
     find(const T2& k) 
     { 
-        return this->_map2.find(k); 
+        return _map2.find(k); 
     }
 
     inline iterator1_type             
     begin() 
     { 
-        return this->_map1.begin(); 
+        return _map1.begin(); 
     }
 
     inline iterator1_type             
     end() 
     { 
-        return this->_map1.end(); 
+        return _map1.end(); 
     }
 
     inline const_iterator1_type 
     cbegin() const 
     { 
-        return this->_map1.cbegin(); 
+        return _map1.cbegin(); 
     }
 
     inline const_iterator1_type 
     cend() const 
     { 
-        return this->_map1.cend(); 
+        return _map1.cend(); 
     }
 
     size_t 
     size() const
     {
-        size_t s = this->_map1.size();
-        if(s != this->_map2.size())
+        size_t s = _map1.size();
+        if(s != _map2.size())
             throw std::out_of_range("hash map sizes are not equal");
         return s;
     }
@@ -469,7 +469,7 @@ public:
     inline bool 
     empty() const 
     { 
-        return (this->_map1.empty() && this->_map2.empty()); 
+        return (_map1.empty() && _map2.empty()); 
     }
 
     inline bool 
@@ -485,10 +485,10 @@ private:
     void 
     _insert(pair1_type p)
     {    
-        this->_map1.erase(p.first);
-        this->_map2.erase(p.second);
-        this->_map1.insert(p); 
-        this->_map2.insert(pair2_type(p.second, p.first)); 
+        _map1.erase(p.first);
+        _map2.erase(p.second);
+        _map1.insert(p); 
+        _map2.insert(pair2_type(p.second, p.first)); 
     }
 };
 
@@ -536,14 +536,14 @@ public:
     void 
     insert(T1 k, T2 v)
     { 
-        _my_lock_guard_type lock(this->_mtx);
+        _my_lock_guard_type lock(_mtx);
         _my_base_ty::insert(k, v);
     }
 
     void 
     insert(const pair1_type p) 
     {
-        _my_lock_guard_type lock(this->_mtx);
+        _my_lock_guard_type lock(_mtx);
         _my_base_ty::insert(p);
     }
 
@@ -551,7 +551,7 @@ public:
     void 
     insert(iterator1_type dummy, const pair1_type p) 
     {
-        _my_lock_guard_type lock(this->_mtx);
+        _my_lock_guard_type lock(_mtx);
         _my_base_ty::insert(dummy, p);
     }
 
@@ -559,105 +559,105 @@ public:
     void 
     insert(const pair1_type(&arr)[sz]) 
     {
-        _my_lock_guard_type lock(this->_mtx);
+        _my_lock_guard_type lock(_mtx);
         _my_base_ty::insert(arr);
     }
 
     void 
     remove(T1 k)
     {
-        _my_lock_guard_type lock(this->_mtx);
+        _my_lock_guard_type lock(_mtx);
         _my_base_ty::remove(k);
     }
 
     void 
     remove(T2 k)
     {        
-        _my_lock_guard_type lock(this->_mtx);
+        _my_lock_guard_type lock(_mtx);
         _my_base_ty::remove(k);
     }
 
     T2 
     operator[](const T1 k) 
     {
-        _my_lock_guard_type lock(this->_mtx);
+        _my_lock_guard_type lock(_mtx);
         return _my_base_ty::operator[](k);
     }
 
     T1 
     operator[](const T2 k)    
     {
-        _my_lock_guard_type lock(this->_mtx);
+        _my_lock_guard_type lock(_mtx);
         return _my_base_ty::operator[](k);
     }
 
     const_iterator1_type 
     find(const T1& k) const
     {
-        _my_lock_guard_type lock(this->_mtx);
+        _my_lock_guard_type lock(_mtx);
         return _my_base_ty::find(k);
     }
 
     const_iterator2_type 
     find(const T2& k) const
     {
-        _my_lock_guard_type lock(this->_mtx);
+        _my_lock_guard_type lock(_mtx);
         return _my_base_ty::find(k);
     }
 
     iterator1_type 
     find(const T1& k) 
     {
-        _my_lock_guard_type lock(this->_mtx);
+        _my_lock_guard_type lock(_mtx);
         return _my_base_ty::find(k);
     }
 
     iterator2_type 
     find(const T2& k) 
     {
-        _my_lock_guard_type lock(this->_mtx);
+        _my_lock_guard_type lock(_mtx);
         return _my_base_ty::find(k);
     }
 
     iterator1_type 
     begin()
     {
-        _my_lock_guard_type lock(this->_mtx);
+        _my_lock_guard_type lock(_mtx);
         return _my_base_ty::begin();
     }
 
     iterator1_type 
     end()
     {
-        _my_lock_guard_type lock(this->_mtx);
+        _my_lock_guard_type lock(_mtx);
         return _my_base_ty::end();
     }
 
     const_iterator1_type 
     cbegin() const
     {
-        _my_lock_guard_type lock(this->_mtx);
+        _my_lock_guard_type lock(_mtx);
         return _my_base_ty::cbegin();
     }
 
     const_iterator1_type 
     cend() const
     {
-        _my_lock_guard_type lock(this->_mtx);
+        _my_lock_guard_type lock(_mtx);
         return _my_base_ty::cend();
     }
 
     size_t 
     size() const
     {
-        _my_lock_guard_type lock(this->_mtx);
+        _my_lock_guard_type lock(_mtx);
         return _my_base_ty::size();
     }
 
     bool 
     empty() 
     {        
-        _my_lock_guard_type lock(this->_mtx);
+        _my_lock_guard_type lock(_mtx);
         return _my_base_ty::empty();
     }
 

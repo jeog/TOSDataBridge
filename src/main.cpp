@@ -45,7 +45,6 @@ DllMain(HINSTANCE mod, DWORD why, LPVOID res)
         std::string lp(TOSDB_LOG_PATH);
         std::string nlp(lp.begin(),lp.begin() + lp.find_last_of('\\'));
         nlp.append(LOCAL_LOG_PATH);
-        int i = sizeof(*TOSDB_LOG_PATH);
         memset(TOSDB_LOG_PATH,0,(MAX_PATH+40)* sizeof(*TOSDB_LOG_PATH));
         strcpy(TOSDB_LOG_PATH, nlp.c_str());    		
 #else

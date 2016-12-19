@@ -84,19 +84,7 @@ TOSDB_Log_(DWORD pid,
     /* --- CRITICAL SECTION */
     std::string now_str = SysTimeString();
 
-    if( !lout.is_open() ){
-
-        if(sevr > 0){
-            std::cerr << std::setw(log_col_width[0])<< std::left
-                      << now_str.substr(0,30)
-                      << std::setw(log_col_width[1])<< std::left<< pid
-                      << std::setw(log_col_width[2])<< std::left<< tid
-                      << std::setw(log_col_width[3])<< std::left
-                      << std::string(tag).substr(0,19)      
-                      << std::left<< description << std::endl;    
-        }
-
-    }else{
+    if( lout.is_open() ){
         lout << std::setw(log_col_width[0])<< std::left<< now_str.substr(0,30)
              << std::setw(log_col_width[1])<< std::left<< pid
              << std::setw(log_col_width[2])<< std::left<< tid
@@ -104,6 +92,15 @@ TOSDB_Log_(DWORD pid,
              << std::string(tag).substr(0,19)
              << std::setw(log_col_width[4])<< std::left<< severity_str[sevr]
                                            << std::left<< description << std::endl;
+    }else if(sevr > 0){
+        std::cerr << std::setw(log_col_width[0])<< std::left
+                  << now_str.substr(0,30)
+                  << std::setw(log_col_width[1])<< std::left<< pid
+                  << std::setw(log_col_width[2])<< std::left<< tid
+                  << std::setw(log_col_width[3])<< std::left
+                  << std::string(tag).substr(0,19)      
+                  << std::left<< description << std::endl;   
+
     }
   /* --- CRITICAL SECTION */
 }

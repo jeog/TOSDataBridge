@@ -86,15 +86,15 @@ class DLL_SPEC_IFACE TOSDB_Generic{
     _val_switch() const
     {
         try{
-            switch(this->_type_val){
+            switch(_type_val){
             case TYVAL_LONG:            
             case TYVAL_LONG_LONG: 
-                return (T)(*(long long*)(this->_sub)); 
+                return (T)(*(long long*)(_sub)); 
             case TYVAL_FLOAT:                
             case TYVAL_DOUBLE:    
-                return (T)(*(double*)(this->_sub)); 
+                return (T)(*(double*)(_sub)); 
             case TYVAL_STRING:    
-                return (T)CastGenericFromString<T>(**(std::string**)(this->_sub));                      
+                return (T)CastGenericFromString<T>(**(std::string**)(_sub));                      
             default: throw;
             }
         }catch(...){
@@ -124,7 +124,7 @@ public:
             _type_val( TYVAL_LONG )
         {      
           
-            *((long long*)this->_sub) = val;
+            *(long long*)_sub = val;
         }
 
     explicit TOSDB_Generic(long long val)
@@ -132,7 +132,7 @@ public:
             _type_val( TYVAL_LONG_LONG )
         {      
           
-            *((long long*)this->_sub) = val;
+            *(long long*)_sub = val;
         }
 
     explicit TOSDB_Generic(float val)
@@ -140,7 +140,7 @@ public:
             _type_val( TYVAL_FLOAT )
         {      
           
-            *((double*)this->_sub) = val;
+            *(double*)_sub = val;
         }
 
     explicit TOSDB_Generic(double val)
@@ -148,14 +148,14 @@ public:
             _type_val( TYVAL_DOUBLE )
         {      
           
-            *((double*)this->_sub) = val;
+            *(double*)_sub = val;
         }
 
     explicit TOSDB_Generic(std::string str)
         :   /* ! must be able to delete (std::string*)_sub at ANY TIME !*/                         
             _type_val( TYVAL_STRING )  
         {   /* let string do all the heavy lifting */            
-            *((std::string**)(this->_sub)) = new std::string(str.substr(0,STR_MAX)); 
+            *(std::string**)_sub = new std::string(str.substr(0,STR_MAX)); 
         } 
 
     TOSDB_Generic(const TOSDB_Generic& gen);
@@ -170,21 +170,20 @@ public:
 
     ~TOSDB_Generic() 
         { 
-            if( this->is_string() ) 
-                delete *(std::string**)(this->_sub); 
+            if( is_string() ) 
+                delete *(std::string**)_sub; 
         }
 
     inline bool /* same type AND value */
     operator==(const TOSDB_Generic& gen) const
     {
-        return ( this->_type_val == gen._type_val ) 
-               && ( this->as_string() == gen.as_string() );
+        return (_type_val == gen._type_val ) && ( as_string() == gen.as_string());
     }
 
     inline bool /* different type OR value */
     operator!=(const TOSDB_Generic& gen) const 
     {
-        return !(this->operator==(gen));
+        return !(operator==(gen));
     }
 
     size_t 
@@ -193,67 +192,67 @@ public:
     inline bool 
     is_float() const 
     { 
-        return (this->_type_val == TYVAL_FLOAT); 
+        return (_type_val == TYVAL_FLOAT); 
     }  
 
     inline bool 
     is_double() const 
     { 
-        return (this->_type_val == TYVAL_DOUBLE); 
+        return (_type_val == TYVAL_DOUBLE); 
     }  
 
     inline bool 
     is_long() const 
     { 
-        return (this->_type_val == TYVAL_LONG); 
+        return (_type_val == TYVAL_LONG); 
     }
 
     inline bool 
     is_long_long() const 
     { 
-        return (this->_type_val == TYVAL_LONG_LONG); 
+        return (_type_val == TYVAL_LONG_LONG); 
     }  
 
     inline bool 
     is_string() const 
     { 
-        return (this->_type_val == TYVAL_STRING); 
+        return (_type_val == TYVAL_STRING); 
     }
 
     inline bool 
     is_floating_point() const 
     { 
-        return (this->_type_val == TYVAL_FLOAT || this->_type_val == TYVAL_DOUBLE); 
+        return (_type_val == TYVAL_FLOAT || _type_val == TYVAL_DOUBLE); 
     }
 
     inline bool 
     is_integer() const 
     { 
-        return (this->_type_val == TYVAL_LONG || this->_type_val == TYVAL_LONG_LONG); 
+        return (_type_val == TYVAL_LONG || _type_val == TYVAL_LONG_LONG); 
     }
 
     inline long      
     as_long() const 
     { 
-        return this->_val_switch<long>(); 
+        return _val_switch<long>(); 
     }
 
     inline long long 
     as_long_long() const 
     { 
-        return this->_val_switch<long long>(); 
+        return _val_switch<long long>(); 
     }
 
     inline float     
     as_float() const 
     { 
-        return this->_val_switch<float>(); 
+        return _val_switch<float>(); 
     }
 
     inline double    
     as_double() const 
     { 
-        return this->_val_switch<double>(); 
+        return _val_switch<double>(); 
     }
 
     std::string      
@@ -262,31 +261,31 @@ public:
     inline operator  
     long() const 
     { 
-        return this->_val_switch<long>(); 
+        return _val_switch<long>(); 
     }
 
     inline operator  
     long long() const 
     { 
-        return this->_val_switch<long long>(); 
+        return _val_switch<long long>(); 
     }
 
     inline operator  
     float() const 
     { 
-        return this->_val_switch<float>(); 
+        return _val_switch<float>(); 
     }
 
     inline operator  
     double() const 
     { 
-        return this->_val_switch<double>(); 
+        return _val_switch<double>(); 
     }      
 
     inline operator  
     std::string() const 
     { 
-        return this->as_string(); 
+        return as_string(); 
     }
 };  
 

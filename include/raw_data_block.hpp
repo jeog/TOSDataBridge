@@ -141,19 +141,19 @@ public:
     inline size_type 
     block_size() const 
     { 
-        return this->_block_sz; 
+        return _block_sz; 
     }  
 
     inline size_type 
     item_count() const 
     { 
-        return (size_type)(this->_item_names.size()); 
+        return (size_type)(_item_names.size()); 
     }
 
     inline size_type 
     topic_count() const 
     { 
-        return (size_type)(this->_topic_enums.size()); 
+        return (size_type)(_topic_enums.size()); 
     }
 
     void 
@@ -220,7 +220,7 @@ public:
     inline bool 
     uses_dtstamp() const 
     { 
-        return this->_datetime; 
+        return _datetime; 
     }
 
     ~RawDataBlock() 

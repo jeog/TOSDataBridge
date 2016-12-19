@@ -47,10 +47,9 @@ SlowHeapManager::allocate(size_t size)
     rmndr = found->first - width;
     if(rmndr < 0 || rmndr > MAX_SZ) /* probably uncessary */
         throw std::out_of_range("invalid allocation remainder");
-    else if(rmndr > 0){ /* if we are not taking the whole block */
+    else if(rmndr > 0) /* if we are not taking the whole block */
         _free_heap.insert(_heap_pair_ty((size_t)rmndr, found->second + width));  
-    }
-
+    
     /* remove old block */
     _free_heap.erase(found); 
 
@@ -127,6 +126,8 @@ const char* DynamicIPCBase::KMUTEX_NAME =
   "Global\\DynamicIPC_Master_MUTEX1";
 #endif
 
+const DynamicIPCBase::shem_chunk DynamicIPCBase::NULL_SHEM_CHUNK;
+
 void* 
 DynamicIPCBase::_allocate(size_t sz) const
 {
@@ -135,10 +136,12 @@ DynamicIPCBase::_allocate(size_t sz) const
     size_t off = 0;
     size_t obuf[2] = {ALLOC, sz};     
   
-    ret = CallNamedPipe(this->_intrnl_pipe_str.c_str(), (void*)obuf, sizeof(obuf),
-                        (void*)&(off), sizeof(off), &read, TOSDB_DEF_TIMEOUT);
+    ret = CallNamedPipe(this->_intrnl_pipe_str.c_str(), 
+                        (void*)obuf, sizeof(obuf),
+                        (void*)&off, sizeof(off), 
+                        &read, TOSDB_DEF_TIMEOUT);
     
-    return ret ? this->ptr(off) : nullptr;    
+    return ret ? ptr(off) : nullptr;    
 }
 
 
@@ -148,10 +151,12 @@ DynamicIPCBase::_deallocate(void* start) const
     BOOL ret;
     DWORD read = 0;    
     size_t val = 0;
-    size_t obuf[2] = {DEALLOC, this->offset(start)};   
+    size_t obuf[2] = {DEALLOC, offset(start)};   
 
-    ret = CallNamedPipe(_intrnl_pipe_str.c_str(), (void*)obuf, sizeof(obuf),
-                       (void*)&(val), sizeof(val), &read, TOSDB_DEF_TIMEOUT);
+    ret = CallNamedPipe(_intrnl_pipe_str.c_str(), 
+                        (void*)obuf, sizeof(obuf),
+                        (void*)&val, sizeof(val), 
+                        &read, TOSDB_DEF_TIMEOUT);
 
     /* we are only comparing to '1' becase the listening loop casts
        the boolean return value of deallocate to an int */
@@ -163,8 +168,7 @@ bool
 DynamicIPCBase::_send(const shem_chunk& item) const
 {
     unsigned long d;  
-    return WriteFile(this->_xtrnl_pipe_hndl, (void*)&item, 
-                     sizeof(shem_chunk), &d, NULL);
+    return WriteFile(_xtrnl_pipe_hndl, (void*)&item, sizeof(shem_chunk), &d, NULL);
 }
  
 
@@ -172,16 +176,15 @@ bool
 DynamicIPCBase::_recv(shem_chunk& item) const 
 {
     unsigned long d;   
-    return ReadFile(this->_xtrnl_pipe_hndl, (void*)&item, 
-                    sizeof(shem_chunk), &d, NULL);
+    return ReadFile(_xtrnl_pipe_hndl, (void*)&item, sizeof(shem_chunk), &d, NULL);
 }
 
 
 const DynamicIPCBase& 
 DynamicIPCBase::remove(const shem_chunk&& chunk) const 
 {        
-    void* start = (void*)((size_t)(this->_mmap_addr) + chunk.offset);
-    this->_deallocate(start);
+    void* start = (void*)((size_t)(_mmap_addr) + chunk.offset);
+    _deallocate(start);
     return *this;
 }
     
@@ -190,22 +193,22 @@ void*
 DynamicIPCBase::shem_ptr(shem_chunk& chunk) const
 {  /* we check for overflow but NO GUARANTEE shem_chunk points at valid data */                
     if( chunk.sz <= 0 
-        || !(this->_mmap_addr)
-        || !((chunk.offset + chunk.sz) <= (size_t)(this->_mmap_sz)))
+        || !_mmap_addr
+        || !((chunk.offset + chunk.sz) <= (size_t)(_mmap_sz)))
     { /* if blck is 'abnormal', no mem-map, or a read will overflow it */
         return nullptr;        
     }    
-    return (void*)((size_t)(this->_mmap_addr) + chunk.offset);
+    return (void*)((size_t)(_mmap_addr) + chunk.offset);
 }
 
 
 void* 
 DynamicIPCBase::ptr(size_t offset) const
 {
-    if(offset > (size_t)(this->_mmap_sz) || !(this->_mmap_addr))
+    if(offset > (size_t)(_mmap_sz) || !_mmap_addr)
         return nullptr;
 
-    return (void*)((size_t)(this->_mmap_addr) + offset);
+    return (void*)((size_t)(_mmap_addr) + offset);
 }
 
 
@@ -214,11 +217,11 @@ DynamicIPCBase::ptr(size_t offset) const
 size_t 
 DynamicIPCBase::offset(void* start) const    
 {
-    size_t ub = (size_t)(this->_mmap_addr) + (size_t)(this->_mmap_sz);
-    if( start < (this->_mmap_addr) || (size_t)start >= ub )
+    size_t ub = (size_t)(_mmap_addr) + (size_t)(_mmap_sz);
+    if( start < _mmap_addr || (size_t)start >= ub )
         return 0;                
 
-    return ((size_t)start - (size_t)(this->_mmap_addr)); 
+    return ((size_t)start - (size_t)(_mmap_addr)); 
 }
 
 
@@ -227,7 +230,7 @@ DynamicIPCBase::recv(long& val) const
 {
     shem_chunk tmp;
 
-    bool res = this->_recv(tmp);
+    bool res = _recv(tmp);
     val = tmp.offset;
     return res;
 }
@@ -235,14 +238,14 @@ DynamicIPCBase::recv(long& val) const
 const DynamicIPCBase& 
 DynamicIPCBase::operator<<(const shem_chunk& chunk) const
 {
-    this->_send(chunk);
+    _send(chunk);
     return *this;
 }
 
 const DynamicIPCBase& 
 DynamicIPCBase::operator>>(shem_chunk& chunk) const 
 {
-    this->_recv(chunk);            
+    _recv(chunk);            
     return *this;
 } 
 
@@ -254,46 +257,46 @@ DynamicIPCMaster::grab_pipe()
 {
     long ret;
       
-    this->_mtx = OpenMutex(SYNCHRONIZE, FALSE, KMUTEX_NAME);
-    if( !this->_mtx ){
+    _mtx = OpenMutex(SYNCHRONIZE, FALSE, KMUTEX_NAME);
+    if(!_mtx){
         IPC_MASTER_ERROR("OpenMutex failed in grab_pipe"); 
         return -1; 
     }    
     
-    if( WaitForSingleObject(this->_mtx,TOSDB_DEF_TIMEOUT) == WAIT_TIMEOUT )
+    if( WaitForSingleObject(_mtx,TOSDB_DEF_TIMEOUT) == WAIT_TIMEOUT )
     {
         IPC_MASTER_ERROR("WaitForSingleObject timed out in grab_pipe"); 
-        CloseHandle(this->_mtx);
+        CloseHandle(_mtx);
         return -1;    
     }
     
     /* does this need timeout ?? */
-    if( !WaitNamedPipe(this->_xtrnl_pipe_str.c_str(),0) )
+    if( !WaitNamedPipe(_xtrnl_pipe_str.c_str(),0) )
     {    
         IPC_MASTER_ERROR("WaitNamedPipe failed in grab_pipe");
-        CloseHandle(this->_mtx);
+        ReleaseMutex(_mtx);
+        CloseHandle(_mtx);
         return -1;    
     }    
     
-    this->_xtrnl_pipe_hndl = CreateFile( this->_xtrnl_pipe_str.c_str(), 
-                                         GENERIC_READ | GENERIC_WRITE,
-                                         FILE_SHARE_READ | FILE_SHARE_WRITE, 
-                                         NULL, OPEN_EXISTING, 
-                                         FILE_ATTRIBUTE_NORMAL, NULL );    
+    _xtrnl_pipe_hndl = CreateFile( _xtrnl_pipe_str.c_str(), 
+                                   GENERIC_READ | GENERIC_WRITE,
+                                   FILE_SHARE_READ | FILE_SHARE_WRITE, 
+                                   NULL, OPEN_EXISTING, 
+                                   FILE_ATTRIBUTE_NORMAL, NULL );    
 
-    if( !this->_xtrnl_pipe_hndl 
-        || (this->_xtrnl_pipe_hndl == INVALID_HANDLE_VALUE) )
+    if(!_xtrnl_pipe_hndl || (_xtrnl_pipe_hndl == INVALID_HANDLE_VALUE))
     {
         IPC_MASTER_ERROR("No pipe handle(or CreateFile failed) in grab_pipe");
-        ReleaseMutex(this->_mtx);
-        CloseHandle(this->_mtx);
+        ReleaseMutex(_mtx);
+        CloseHandle(_mtx);
         return -1;
     }
 
-    if( ! this->recv(ret) )
+    if( !recv(ret) )
         IPC_MASTER_ERROR("recv failed in grab_pipe");
     
-    this->_pipe_held = true;
+    _pipe_held = true;
 
     return ret;
 }
@@ -302,14 +305,14 @@ DynamicIPCMaster::grab_pipe()
 void 
 DynamicIPCMaster::release_pipe()
 {
-    if(this->_pipe_held){
-        CloseHandle(this->_xtrnl_pipe_hndl);
-        this->_xtrnl_pipe_hndl = INVALID_HANDLE_VALUE;
-        ReleaseMutex(this->_mtx);
-        CloseHandle(this->_mtx);
+    if(_pipe_held){
+        CloseHandle(_xtrnl_pipe_hndl);
+        _xtrnl_pipe_hndl = INVALID_HANDLE_VALUE;
+        ReleaseMutex(_mtx);
+        CloseHandle(_mtx);
     }
 
-    this->_pipe_held = false;
+    _pipe_held = false;
 }
 
 
@@ -318,35 +321,35 @@ DynamicIPCMaster::try_for_slave()
 {    
     long pipe_ret;
 
-    this->disconnect(); 
+    disconnect(); 
      
-    pipe_ret = this->grab_pipe();
+    pipe_ret = grab_pipe();
     if(pipe_ret <= 0){             
         IPC_MASTER_ERROR("grab_pipe in try_for_slave failed");
-        this->disconnect(0);        
+        disconnect(0);        
         return false;
     }else{ /* grab_pipe will return slaves _mmap_sz on sucess */
-        this->_mmap_sz = pipe_ret;
+        _mmap_sz = pipe_ret;
     }
    
-    this->_fmap_hndl = OpenFileMapping(FILE_MAP_WRITE, 0, this->_shem_str.c_str()); 
-    if( !this->_fmap_hndl ){
+    _fmap_hndl = OpenFileMapping(FILE_MAP_WRITE, 0, _shem_str.c_str()); 
+    if(!_fmap_hndl){
         IPC_MASTER_ERROR("OpenFileMapping in try_for_slave failed");
-        this->release_pipe();
-        this->disconnect(1);         
+        release_pipe();
+        disconnect(1);         
         return false;
     }
 
-    this->_mmap_addr = MapViewOfFile(this->_fmap_hndl, FILE_MAP_WRITE, 0, 0, 0);
-    if( !this->_mmap_addr ){
+    _mmap_addr = MapViewOfFile(_fmap_hndl, FILE_MAP_WRITE, 0, 0, 0);
+    if(!_mmap_addr){
         IPC_MASTER_ERROR("MapViewOfFile in try_for_slave failed");
-        this->release_pipe();
-        this->disconnect(2);
+        release_pipe();
+        disconnect(2);
         return false;
     }    
 
     /* release connection AFTER FileMapping calls to avoid race with slave */
-    this->release_pipe();    
+    release_pipe();    
 
     return true;
 }
@@ -359,11 +362,12 @@ DynamicIPCMaster::connected() const
     DWORD read = 0;
     BOOL ret;
 
-    ret = CallNamedPipe( this->_intrnl_pipe_str.c_str(), (void*)obuf, sizeof(obuf),
-                         (void*)&(off), sizeof(off), &read, TOSDB_DEF_TIMEOUT );
-
-            /* overkill */
-    return (this->_mmap_addr && this->_fmap_hndl && ret && (off == obuf[1]));    
+    ret = CallNamedPipe(_intrnl_pipe_str.c_str(), 
+                        (void*)obuf, sizeof(obuf),
+                        (void*)&off, sizeof(off), 
+                        &read, TOSDB_DEF_TIMEOUT);
+                
+    return (_mmap_addr && _fmap_hndl && ret && (off == obuf[1]));    
 }
 
 
@@ -373,25 +377,31 @@ DynamicIPCMaster::disconnect(int level)
     switch(level){    
     case 3:
     {
-        if(this->_mmap_addr){                     
-            if( !UnmapViewOfFile(this->_mmap_addr) )
+        if(_mmap_addr){                     
+            if( !UnmapViewOfFile(_mmap_addr) )
                 IPC_MASTER_ERROR("UnmapViewOfFile in disconnect failed"); 
         }                
-        this->_mmap_addr = NULL;     
+        _mmap_addr = NULL;     
     }
     /* NO BREAK */
     case 2: 
-        CloseHandle(this->_fmap_hndl);        
-        this->_fmap_hndl = NULL;  
+        CloseHandle(_fmap_hndl);        
+        _fmap_hndl = NULL;  
     /* NO BREAK */
     case 1:
-        this->release_pipe();   
+        release_pipe();   
     }            
 }
 
 
 #define IPC_SLAVE_ERROR(msg) TOSDB_LogEx("IPC-Slave",msg,GetLastError())
 
+#define IPC_SLAVE_GOOD_RET_OR_THROW(r, msg) do{ \
+    if(!(r)){ \
+        IPC_SLAVE_ERROR("CreateMutex in slave constructor failed"); \
+        throw std::exception("DynamicIPCSlave failed to create mutex"); \
+    } \
+}while(0)
 
 DynamicIPCSlave::DynamicIPCSlave(std::string name, size_t sz)
     :     
@@ -400,66 +410,52 @@ DynamicIPCSlave::DynamicIPCSlave(std::string name, size_t sz)
     { 
         /* allocate underlying objects */
         for(int i = 0; i < NSECURABLE; ++i){ 
-            this->_sec_attr[(Securable)i] = SECURITY_ATTRIBUTES();
-            this->_sec_desc[(Securable)i] = SECURITY_DESCRIPTOR();    
-            this->_sids[(Securable)i] = SmartBuffer<void>(SECURITY_MAX_SID_SIZE);
-            this->_acls[(Securable)i] = SmartBuffer<ACL>(ACL_SIZE);        
+            _sec_attr[(Securable)i] = SECURITY_ATTRIBUTES();
+            _sec_desc[(Securable)i] = SECURITY_DESCRIPTOR();    
+            _sids[(Securable)i] = SmartBuffer<void>(SECURITY_MAX_SID_SIZE);
+            _acls[(Securable)i] = SmartBuffer<ACL>(ACL_SIZE);        
         }         
 
         /* initialize object security */
-        if( this->_set_security() )
-            throw std::exception("DynamicIPCSlave failed to initialize security");
+        int sec_ret = _set_security(); 
+        IPC_SLAVE_GOOD_RET_OR_THROW(sec_ret == 0, "DynamicIPCSlave failed to initialize security");
              
-        this->_mtx = CreateMutex(&(this->_sec_attr[MUTEX1]), FALSE, KMUTEX_NAME);
-        if( !this->_mtx ){
-            IPC_SLAVE_ERROR("CreateMutex in slave constructor failed");       
-            throw std::exception("DynamicIPCSlave failed to create mutex");
-        }
-           
-        this->_intrnl_pipe_hndl = CreateNamedPipe(this->_intrnl_pipe_str.c_str(), 
-                                                  PIPE_ACCESS_DUPLEX,
-                                                  PIPE_TYPE_MESSAGE 
-                                                      | PIPE_READMODE_BYTE 
-                                                      | PIPE_WAIT,
-                                                  PIPE_UNLIMITED_INSTANCES, 0, 0,
-                                                  INFINITE, &_sec_attr[PIPE1]);    
+        _mtx = CreateMutex(&(_sec_attr[MUTEX1]), FALSE, KMUTEX_NAME);
+        IPC_SLAVE_GOOD_RET_OR_THROW(_mtx, "DynamicIPCSlave failed to create mutex");
+               
+        _intrnl_pipe_hndl = CreateNamedPipe(_intrnl_pipe_str.c_str(), 
+                                            PIPE_ACCESS_DUPLEX,
+                                            PIPE_TYPE_MESSAGE 
+                                                | PIPE_READMODE_BYTE 
+                                                | PIPE_WAIT,
+                                            PIPE_UNLIMITED_INSTANCES, 0, 0,
+                                            INFINITE, &_sec_attr[PIPE1]);    
      
-        if( !this->_intrnl_pipe_hndl ){
-            IPC_SLAVE_ERROR("CreateNamedPipe in slave constructor failed");
-            throw std::exception("DynamicIPCSlave failed to create named pipe");
-        }        
+        IPC_SLAVE_GOOD_RET_OR_THROW(_intrnl_pipe_hndl,"DynamicIPCSlave failed to create named pipe");        
                 
         /* get handle to page file */
-        this->_fmap_hndl = CreateFileMapping( INVALID_HANDLE_VALUE, 
-                                              &(this->_sec_attr[SHEM1]), 
+        _fmap_hndl = CreateFileMapping( INVALID_HANDLE_VALUE, 
+                                              &(_sec_attr[SHEM1]), 
                                               PAGE_READWRITE, 
                                               (unsigned long long)
-                                                  (this->_mmap_sz) >> 32,
+                                                  (_mmap_sz) >> 32,
                                               ((unsigned long long)
-                                                  (this->_mmap_sz) << 32) >>32,
-                                              this->_shem_str.c_str() );    
+                                                  (_mmap_sz) << 32) >>32,
+                                              _shem_str.c_str() );    
 
-        if( !this->_fmap_hndl ){
-            IPC_SLAVE_ERROR("CreateFileMapping in slave constructor failed");
-            throw std::exception("DynamicIPCSlave failed to create file mapping");
-        }
-     
-        this->_mmap_addr = MapViewOfFile(this->_fmap_hndl, FILE_MAP_WRITE, 0, 0, 0);
-        if( !this->_mmap_addr ){
-            IPC_SLAVE_ERROR( "MapViewOfFile() in slave constructor failed" );
-            throw std::exception("DynamicIPCSlave failed to map view of file");
-        }
+        IPC_SLAVE_GOOD_RET_OR_THROW(_fmap_hndl, "DynamicIPCSlave failed to create file mapping");
+             
+        _mmap_addr = MapViewOfFile(_fmap_hndl, FILE_MAP_WRITE, 0, 0, 0);
+        IPC_SLAVE_GOOD_RET_OR_THROW(_mmap_addr, "DynamicIPCSlave failed to map view of file");        
     
         /* consturct our heap for managing the mappings allocatable space */
-        SlowHeapManager* ehp = new SlowHeapManager(this->_mmap_addr, this->_mmap_sz);
-        if(!ehp){
-            IPC_SLAVE_ERROR( "failed to allocate SlowHeapManager" );
-            throw std::exception("DynamicIPCSlave failed to allocate SlowHeapManager");
-        }
-        this->_uptr_heap =  _uptr_heap_ty(ehp);
+        SlowHeapManager* ehp = new SlowHeapManager(_mmap_addr, _mmap_sz);
+        IPC_SLAVE_GOOD_RET_OR_THROW(ehp, "DynamicIPCSlave failed to allocate SlowHeapManager");
+        
+        _uptr_heap =  _uptr_heap_ty(ehp);
         
         /* create a listener thread for allocs/deallocs */
-        std::async(std::launch::async, [this]{ this->_listen_for_alloc(); }); 
+        std::async(std::launch::async, [this]{ _listen_for_alloc(); }); 
     }    
 
 
@@ -467,22 +463,22 @@ DynamicIPCSlave::~DynamicIPCSlave()
     {   
         HANDLE tmp;
 
-        this->_alloc_flag = false;   
+        _alloc_flag = false;   
 
         /* can't remember why we are doing it this way ?? */
-        tmp = CreateFile( this->_intrnl_pipe_str.c_str(), 
-                          GENERIC_READ | GENERIC_WRITE,
-                          FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, 
-                          OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+        tmp = CreateFile(_intrnl_pipe_str.c_str(), 
+                         GENERIC_READ | GENERIC_WRITE,
+                         FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, 
+                         OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
         CloseHandle(tmp);  
-        CloseHandle(this->_mtx);     
+        CloseHandle(_mtx);     
     
-        if( !UnmapViewOfFile(this->_mmap_addr) )        
+        if( !UnmapViewOfFile(_mmap_addr) )        
             IPC_SLAVE_ERROR("UnmapViewOfFile in slave destructor failed");          
         
-        CloseHandle(this->_fmap_hndl);            
-        DisconnectNamedPipe(this->_xtrnl_pipe_hndl);
-        CloseHandle(this->_xtrnl_pipe_hndl);            
+        CloseHandle(_fmap_hndl);            
+        DisconnectNamedPipe(_xtrnl_pipe_hndl);
+        CloseHandle(_xtrnl_pipe_hndl);            
     }
 
 
@@ -493,79 +489,68 @@ DynamicIPCSlave::_listen_for_alloc()
     DWORD done = 0;    
     void* start = nullptr;                    
 
-    while(this->_alloc_flag){  
+    while(_alloc_flag){  
 
-        /* should check these */
-        ConnectNamedPipe(this->_intrnl_pipe_hndl, NULL);
-        ReadFile(this->_intrnl_pipe_hndl, (void*)&args, sizeof(args), &done, NULL);
+        if( !ConnectNamedPipe(_intrnl_pipe_hndl, NULL) )
+            TOSDB_LogH("IPC", "ConnectNamedPipe failed in _listen_for_alloc");
+
+        if( !ReadFile(_intrnl_pipe_hndl, (void*)&args, sizeof(args), &done, NULL) )
+            TOSDB_LogH("IPC", "ReadFile failed in _listen_for_alloc");
 
         switch(args[0]){
-        case ALLOC: /* ALLOCATE */
-        {                
-            start = this->_uptr_heap->allocate(args[1]);
-            args[1] = this->offset(start);
-            WriteFile(this->_intrnl_pipe_hndl, (void*)&args[1], sizeof(args[1]), &done, NULL);   
-            break;
-        } 
+        case ALLOC: /* ALLOCATE */                        
+            start = _uptr_heap->allocate(args[1]);
+            args[1] = offset(start);
+            WriteFile(_intrnl_pipe_hndl, (void*)&args[1], sizeof(args[1]), &done, NULL);   
+            break;        
 
-        case DEALLOC: /* DEALLOCATE */
-        {                
-            args[1] = (size_t)(_uptr_heap->deallocate(this->ptr(args[1])));
-            WriteFile(this->_intrnl_pipe_hndl, (void*)&args[1], sizeof(args[1]), &done, NULL);
-            break;
-        } 
+        case DEALLOC: /* DEALLOCATE */                        
+            args[1] = (size_t)(_uptr_heap->deallocate(ptr(args[1])));
+            WriteFile(_intrnl_pipe_hndl, (void*)&args[1], sizeof(args[1]), &done, NULL);
+            break;         
 
-        case PING:
-        {                
-            if( !(this->_mmap_addr) || !(this->_fmap_hndl) ){
-                /* no mem map, send back (any) different val */
+        case PING:          
+            /* no mem map, send back (any) different val */
+            if(!_mmap_addr || !_fmap_hndl)               
                 --(args[1]); 
-            }
-            WriteFile(this->_intrnl_pipe_hndl, (void*)&args[1], sizeof(args[1]), &done, NULL);
-            break;
-        }   
+            
+            WriteFile(_intrnl_pipe_hndl, (void*)&args[1], sizeof(args[1]), &done, NULL);
+            break;        
           
         default:
             TOSDB_LogH("IPC-Slave", "invalid opcode passed to _listen_for_alloc()");            
             break;
         } 
 
-        DisconnectNamedPipe(this->_intrnl_pipe_hndl);
+        DisconnectNamedPipe(_intrnl_pipe_hndl);
     }    
-
-    CloseHandle(this->_intrnl_pipe_hndl);
+    CloseHandle(_intrnl_pipe_hndl);
 }
 
 
 bool 
 DynamicIPCSlave::wait_for_master()
 {    
-    if( this->_xtrnl_pipe_hndl 
-        && this->_xtrnl_pipe_hndl != INVALID_HANDLE_VALUE )
-    {
-        DisconnectNamedPipe(this->_xtrnl_pipe_hndl);
+    if(_xtrnl_pipe_hndl && _xtrnl_pipe_hndl != INVALID_HANDLE_VALUE){
+        DisconnectNamedPipe(_xtrnl_pipe_hndl);    
+    }else{   
+        _xtrnl_pipe_hndl = CreateNamedPipe( _xtrnl_pipe_str.c_str(), 
+                                            PIPE_ACCESS_DUPLEX,
+                                            PIPE_TYPE_MESSAGE 
+                                                | PIPE_READMODE_MESSAGE 
+                                                | PIPE_WAIT,
+                                            1, 0, 0, INFINITE, 
+                                            &(_sec_attr[PIPE1]) );
     }
-    else
-    {
-        this->_xtrnl_pipe_hndl = CreateNamedPipe( this->_xtrnl_pipe_str.c_str(), 
-                                                  PIPE_ACCESS_DUPLEX,
-                                                  PIPE_TYPE_MESSAGE 
-                                                      | PIPE_READMODE_MESSAGE 
-                                                      | PIPE_WAIT,
-                                                  1, 0, 0, INFINITE, 
-                                                  &(this->_sec_attr[PIPE1]) );      
-    }    
 
-    if( !this->_xtrnl_pipe_hndl 
-        || this->_xtrnl_pipe_hndl == INVALID_HANDLE_VALUE )
-    {
+    if(!_xtrnl_pipe_hndl || _xtrnl_pipe_hndl == INVALID_HANDLE_VALUE){
         IPC_SLAVE_ERROR("CreateNamedPipe failed in wait_for_master");            
         return false;
     }    
 
-    ConnectNamedPipe(this->_xtrnl_pipe_hndl, NULL);    
+    ConnectNamedPipe(_xtrnl_pipe_hndl, NULL);    
 
-    if( !this->send((long)(this->_mmap_sz)) ) /* OK: _mmap_sz < LONG_MAX) */
+    if( !send((long)(_mmap_sz)) ) /* OK: _mmap_sz < LONG_MAX) */
         IPC_SLAVE_ERROR("send failed in wait_for_master");
 
     return true;
@@ -587,56 +572,48 @@ _set_security()
         return -1;
 
     for(int i = 0; i < NSECURABLE; ++i){ 
-        this->_sec_attr[(Securable)i].nLength = sizeof(SECURITY_ATTRIBUTES);
-        this->_sec_attr[(Securable)i].bInheritHandle = FALSE;
-        this->_sec_attr[(Securable)i].lpSecurityDescriptor = &(this->_sec_desc[(Securable)i]);
+        _sec_attr[(Securable)i].nLength = sizeof(SECURITY_ATTRIBUTES);
+        _sec_attr[(Securable)i].bInheritHandle = FALSE;
+        _sec_attr[(Securable)i].lpSecurityDescriptor = &(_sec_desc[(Securable)i]);
 
         /* memcpy 'TRUE' is error */
-        ret = memcpy_s( this->_sids[(Securable)i].get(), SECURITY_MAX_SID_SIZE, 
-                        sid.get(), SECURITY_MAX_SID_SIZE);
+        ret = memcpy_s(_sids[(Securable)i].get(), SECURITY_MAX_SID_SIZE, sid.get(), SECURITY_MAX_SID_SIZE);
         if(ret)
             return -2; 
 
-        ret = InitializeSecurityDescriptor( &(this->_sec_desc[(Securable)i]), 
-                                            SECURITY_DESCRIPTOR_REVISION);
+        ret = InitializeSecurityDescriptor(&(_sec_desc[(Securable)i]), SECURITY_DESCRIPTOR_REVISION);
         if(!ret)
             return -3;
 
-        ret = SetSecurityDescriptorGroup( &(this->_sec_desc[(Securable)i]), 
-                                          (this->_sids[(Securable)i]).get(), FALSE);
+        ret = SetSecurityDescriptorGroup(&(_sec_desc[(Securable)i]), _sids[(Securable)i].get(), FALSE);
         if(!ret)
             return -4;
 
-        ret = InitializeAcl((this->_acls[(Securable)i]).get(), ACL_SIZE, ACL_REVISION);
+        ret = InitializeAcl(_acls[(Securable)i].get(), ACL_SIZE, ACL_REVISION);
         if(!ret)
             return -5;
     }
                            
     /* add ACEs individually */
 
-    ret = AddAccessAllowedAce( (this->_acls[SHEM1]).get(), ACL_REVISION, 
-                               FILE_MAP_WRITE, (this->_sids[SHEM1]).get() ); 
+    ret = AddAccessAllowedAce(_acls[SHEM1].get(), ACL_REVISION, FILE_MAP_WRITE, _sids[SHEM1].get()); 
     if(!ret)
         return -6;
 
-    ret = AddAccessAllowedAce( (this->_acls[PIPE1]).get(), ACL_REVISION, 
-                               FILE_GENERIC_WRITE, (this->_sids[PIPE1]).get() );
+    ret = AddAccessAllowedAce(_acls[PIPE1].get(), ACL_REVISION, FILE_GENERIC_WRITE, _sids[PIPE1].get());
     if(!ret)
         return -6;
 
-    ret = AddAccessAllowedAce( (this->_acls[PIPE1]).get(), ACL_REVISION, 
-                               FILE_GENERIC_READ, (this->_sids[PIPE1]).get() ); 
+    ret = AddAccessAllowedAce(_acls[PIPE1].get(), ACL_REVISION, FILE_GENERIC_READ, _sids[PIPE1].get()); 
     if(!ret)
         return -6;
 
-    ret = AddAccessAllowedAce( (this->_acls[MUTEX1]).get(), ACL_REVISION, 
-                               SYNCHRONIZE, (this->_sids[MUTEX1]).get() );
+    ret = AddAccessAllowedAce(_acls[MUTEX1].get(), ACL_REVISION, SYNCHRONIZE, _sids[MUTEX1].get());
     if(!ret)
         return -6;
 
     for(int i = 0; i < NSECURABLE; ++i){
-        ret = SetSecurityDescriptorDacl( &(this->_sec_desc[(Securable)i]), TRUE,
-                                         (this->_acls[(Securable)i]).get(), FALSE );
+        ret = SetSecurityDescriptorDacl(&(_sec_desc[(Securable)i]), TRUE, _acls[(Securable)i].get(), FALSE);
         if(!ret)
             return -7;
     }

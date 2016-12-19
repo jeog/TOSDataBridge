@@ -94,7 +94,7 @@ class SlowHeapManager{
     inline bool 
     _valid_start(void* start)
     {     
-        return (this->_allocated_set.find((_ptr_ty)start) != this->_allocated_set.cend());
+        return (_allocated_set.find((_ptr_ty)start) != _allocated_set.cend());
     }
 
 public:     
@@ -103,7 +103,7 @@ public:
             if(sz > MAX_SZ)
                 throw std::invalid_argument("sz > SlowHeapManager::MAX_SZ");
 
-            this->_free_heap.insert(_heap_pair_ty(sz, (_ptr_ty)beg_addr)); 
+            _free_heap.insert(_heap_pair_ty(sz, (_ptr_ty)beg_addr)); 
         }        
 
     ~SlowHeapManager() 
@@ -156,7 +156,15 @@ public:
         {
             return (offset == right.offset) && (sz == right.sz);
         }
+
+        inline std::string
+        as_string() const
+        {
+            return "{" + std::to_string(offset) + "," + std::to_string(sz) + "}";
+        }
     };
+
+    static const shem_chunk NULL_SHEM_CHUNK;
 
 private:    
     bool    
@@ -227,7 +235,7 @@ public:
         if(!blk || memcpy_s(blk, sz, data, sz))
             return shem_chunk(0,0);
 
-		 /* cast to long OK; blk can't be > LONG_MAX from _mmap_addr */
+		    /* cast to long OK; blk can't be > LONG_MAX from _mmap_addr */
         return shem_chunk((long)((size_t)blk - (size_t)_mmap_addr), sz);        
     }
 
@@ -235,7 +243,7 @@ public:
     void 
     extract(shem_chunk& chunk, T* dest, size_t buf_len) const
     {
-        void* ptr = this->shem_ptr(chunk);
+        void* ptr = shem_ptr(chunk);
         if(!ptr){
             dest = nullptr;
             return; 
@@ -258,7 +266,7 @@ public:
     inline bool 
     send(const long val) const 
     { 
-        return this->_send(shem_chunk(val,0)); 
+        return _send(shem_chunk(val,0)); 
     }
 
     bool 
@@ -267,13 +275,13 @@ public:
     inline bool 
     send(const shem_chunk& chunk) const 
     { 
-        return this->_send(chunk); 
+        return _send(chunk); 
     }
 
     inline bool 
     recv(shem_chunk& chunk) const 
     { 
-        return this->_recv(chunk); 
+        return _recv(chunk); 
     }
 
     const DynamicIPCBase& 
@@ -319,7 +327,7 @@ public:
     inline bool 
     pipe_held() const 
     { 
-        return this->_pipe_held; 
+        return _pipe_held; 
     }    
 };
 

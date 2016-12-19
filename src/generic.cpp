@@ -23,10 +23,10 @@ TOSDB_Generic::TOSDB_Generic(const TOSDB_Generic& gen)
     : 
         _type_val( gen._type_val )
     {  
-        if( gen.is_string() )        
-            *(std::string**)this->_sub = new std::string(**(std::string**)(gen._sub));
+        if(gen.is_string())        
+            *(std::string**)_sub = new std::string(**(std::string**)(gen._sub));
         else            
-            memcpy(this->_sub, gen._sub, SUB_SZ);                      
+            memcpy(_sub, gen._sub, SUB_SZ);                      
     }  
 
 
@@ -36,7 +36,7 @@ TOSDB_Generic::TOSDB_Generic(TOSDB_Generic&& gen)
         _type_val( gen._type_val )
     {                
       /* we are stealing the scalar value OR the string pointer */           
-        memcpy(this->_sub, gen._sub, SUB_SZ);      
+        memcpy(_sub, gen._sub, SUB_SZ);      
 
       /* leave the pointer but set _type_val to VOID to avoid bad free; ptr is an 
          implementation detail of the moved object that we can safely ignore */
@@ -48,27 +48,22 @@ TOSDB_Generic::TOSDB_Generic(TOSDB_Generic&& gen)
 TOSDB_Generic& 
 TOSDB_Generic::operator=(const TOSDB_Generic& gen)
 {
-    if( *this == gen )
+    if(*this == gen)
         return *this;
 
-    if( gen.is_string() )
-    {          
-        if( this->is_string() ) 
-            /* if we're also a string simply assign */
-            **(std::string**)(this->_sub) = **(std::string**)(gen._sub);
-        else
-            /* otherwise allocate new */ 
-            *(std::string**)this->_sub = new std::string(**(std::string**)(gen._sub));
-    }
-    else
-    {
-        if( this->is_string() )
-            delete *(std::string**)this->_sub;  
+    if(gen.is_string()){          
+        if(is_string())  /* if we're also a string simply assign */
+            **(std::string**)_sub = **(std::string**)(gen._sub);
+        else /* otherwise allocate new */ 
+            *(std::string**)_sub = new std::string(**(std::string**)(gen._sub));
+    }else{
+        if(is_string())
+            delete *(std::string**)_sub;  
            
-        memcpy(this->_sub, gen._sub, SUB_SZ);    
+        memcpy(_sub, gen._sub, SUB_SZ);    
     }
 
-    this->_type_val = gen._type_val;        
+    _type_val = gen._type_val;        
     return *this;    
 }
 
@@ -82,13 +77,13 @@ TOSDB_Generic::operator=(TOSDB_Generic&& gen)
 
      although, this way is a lot cleaner than 2 nested conditionals*/
 
-    if(this->_type_val == TYVAL_STRING)
-        delete *(std::string**)this->_sub; 
+    if(_type_val == TYVAL_STRING)
+        delete *(std::string**)_sub; 
      
-    this->_type_val = gen._type_val;
+    _type_val = gen._type_val;
 
   /* we are stealing the scalar value OR the string pointer */           
-    memcpy(this->_sub, gen._sub, SUB_SZ);    
+    memcpy(_sub, gen._sub, SUB_SZ);    
        
   /* leave the pointer but set _type_val to VOID to avoid bad free; ptr is an 
      implementation detail of the moved object that we can safely ignore */
@@ -101,15 +96,15 @@ TOSDB_Generic::operator=(TOSDB_Generic&& gen)
 std::string 
 TOSDB_Generic::as_string() const
 {
-    switch(this->_type_val){
+    switch(_type_val){
     case(TYVAL_LONG):
     case(TYVAL_LONG_LONG):
-        return std::to_string(*((long long*)this->_sub));
+        return std::to_string(*(long long*)_sub);
     case(TYVAL_FLOAT):
     case(TYVAL_DOUBLE):
-        return std::to_string(*((double*)this->_sub));
+        return std::to_string(*(double*)_sub);
     case(TYVAL_STRING):
-        return **(std::string**)(this->_sub);
+        return **(std::string**)_sub;
     default:
         return std::string();
     };
@@ -118,7 +113,7 @@ TOSDB_Generic::as_string() const
 size_t 
 TOSDB_Generic::size() const
 {
-    switch(this->_type_val){
+    switch(_type_val){
     case(TYVAL_LONG):      
         return sizeof(long);
     case(TYVAL_LONG_LONG): 
@@ -128,7 +123,7 @@ TOSDB_Generic::size() const
     case(TYVAL_DOUBLE):    
         return sizeof(double);
     case(TYVAL_STRING):    
-        return (*(std::string**)(this->_sub))->size();
+        return (*(std::string**)_sub)->size();
     default:               
         return 0;
     };

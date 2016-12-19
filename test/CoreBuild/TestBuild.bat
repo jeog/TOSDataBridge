@@ -101,7 +101,7 @@ IF NOT EXIST "%VSINSTALLDIR%" (
 
 echo.
 echo Clearing Files...
-del *.exe *.obj *.dll *.lib *.pdb 2>NUL
+del *.exe *.obj *.dll *.lib *.pdb *.suo 2>NUL
 
 echo.
 echo Compiling...
@@ -168,7 +168,7 @@ IF %ERRORLEVEL% NEQ 0 (
 
 echo.
 echo Clearing Files...
-del *.exe *.obj *.dll *.lib *.pdb 2>NUL
+del *.exe *.obj *.dll *.lib *.pdb *.suo 2>NUL
 
 EXIT /B %ERRORLEVEL%
 

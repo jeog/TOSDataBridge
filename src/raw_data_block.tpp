@@ -19,7 +19,7 @@ RAW_DATA_BLOCK_CLASS::RawDataBlock(str_set_type sItems,
         _datetime(datetime),
         _mtx(new std::recursive_mutex)
     {      
-        this->_init();
+        _init();
         ++_block_count_;
     }
 
@@ -41,9 +41,9 @@ RAW_DATA_BLOCK_CLASS::_init()
 {
     _my_lock_guard_type lock(*_mtx);
     /* --- CRITICAL SECTION --- */
-    for(auto & i : this->_item_names) {
-        _my_row_uptr_ty tmp = this->_populate_tblock(_my_row_uptr_ty(new _my_row_ty));
-        this->_block.insert(_my_col_elem_ty(i, std::move(tmp)));   
+    for(auto & i : _item_names) {
+        _my_row_uptr_ty tmp = _populate_tblock(_my_row_uptr_ty(new _my_row_ty));
+        _block.insert(_my_col_elem_ty(i, std::move(tmp)));   
     }
     /* --- CRITICAL SECTION --- */
 }
@@ -55,32 +55,32 @@ RAW_DATA_BLOCK_CLASS::_insert_topic(typename RAW_DATA_BLOCK_CLASS::_my_row_ty* r
 {    
     _my_stream_ty *stream; /*
     stream = new DataStream<TOS_Topics::Type<topic>::type, 
-                            datetime_type, generic_type, this->_datetime>(_block_sz);
+                            datetime_type, generic_type, _datetime>(_block_sz);
 
     */
     switch(TOS_Topics::TypeBits(topic)){ 
     case TOSDB_STRING_BIT :
-        stream = this->_datetime 
+        stream = _datetime 
                ? new DataStream<std::string, datetime_type, generic_type, true>(_block_sz) 
                : new DataStream<std::string, datetime_type, generic_type, false>(_block_sz);
         break;
     case TOSDB_INTGR_BIT :
-        stream = this->_datetime 
+        stream = _datetime 
                ? new DataStream<def_size_type, datetime_type, generic_type, true>(_block_sz) 
                : new DataStream<def_size_type, datetime_type, generic_type, false>(_block_sz);
         break;
     case TOSDB_QUAD_BIT :
-        stream = this->_datetime 
+        stream = _datetime 
                ? new DataStream<ext_price_type, datetime_type, generic_type, true>(_block_sz) 
                : new DataStream<ext_price_type, datetime_type, generic_type, false>(_block_sz);
         break;
     case TOSDB_INTGR_BIT | TOSDB_QUAD_BIT :
-        stream = this->_datetime 
+        stream = _datetime 
                ? new DataStream<ext_size_type, datetime_type, generic_type, true>(_block_sz)
                : new DataStream<ext_size_type, datetime_type, generic_type, false>(_block_sz);
         break;
     default :
-        stream = this->_datetime 
+        stream = _datetime 
                ? new DataStream<def_price_type, datetime_type, generic_type, true>(_block_sz) 
                : new DataStream<def_price_type, datetime_type, generic_type, false>(_block_sz);
     } 
@@ -101,8 +101,8 @@ RAW_DATA_BLOCK_TEMPLATE
 typename RAW_DATA_BLOCK_CLASS::_my_row_uptr_ty 
 RAW_DATA_BLOCK_CLASS::_populate_tblock(typename RAW_DATA_BLOCK_CLASS::_my_row_uptr_ty tBlock)
 {    
-    for(auto elem : this->_topic_enums)
-        this->_insert_topic(tBlock.get(), elem);
+    for(auto elem : _topic_enums)
+        _insert_topic(tBlock.get(), elem);
 
     return tBlock;
 }
@@ -145,7 +145,7 @@ RAW_DATA_BLOCK_CLASS::block_size(size_type b)
     if(b > TOSDB_MAX_BLOCK_SZ)
         b = TOSDB_MAX_BLOCK_SZ; 
 
-    for(auto& col : this->_block){
+    for(auto& col : _block){
         for(auto& row : *(col.second))
             row.second->bound_size(b);
     }
@@ -169,7 +169,7 @@ RAW_DATA_BLOCK_CLASS::insert_data(TOS_Topics::TOPICS topic,
     _my_lock_guard_type lock(*_mtx);  
     /* --- CRITICAL SECTION --- */
     try{
-        topics = this->_block.at(item).get();
+        topics = _block.at(item).get();
         if (!topics)
             throw std::out_of_range("item not in block");
     }catch(const std::out_of_range& e){    
@@ -201,13 +201,13 @@ RAW_DATA_BLOCK_CLASS::add_item(std::string item)
     try{
         _my_lock_guard_type lock(*_mtx);
         /* --- CRITICAL SECTION --- */
-        if( !(this->_item_names.insert(item).second) )
+        if( !(_item_names.insert(item).second) )
             return;
         
-        this->_block.erase(item);
+        _block.erase(item);
 
-        _my_row_uptr_ty tmp = this->_populate_tblock(_my_row_uptr_ty(new _my_row_ty));
-        this->_block.insert(_my_col_elem_ty(item,std::move(tmp)));           
+        _my_row_uptr_ty tmp = _populate_tblock(_my_row_uptr_ty(new _my_row_ty));
+        _block.insert(_my_col_elem_ty(item,std::move(tmp)));           
         /* --- CRITICAL SECTION --- */
     }catch(const std::exception & e){
         throw TOSDB_DataBlockError(e, "add_item");
@@ -221,18 +221,18 @@ RAW_DATA_BLOCK_CLASS::remove_item(std::string item)
     try{
         _my_lock_guard_type lock(*_mtx);
         /* --- CRITICAL SECTION --- */
-        if( !(this->_item_names.erase(item)) )
+        if( !(_item_names.erase(item)) )
             return;
         
-        _my_row_ty *row = this->_block.at(item).get();
+        _my_row_ty *row = _block.at(item).get();
         if(!row)
             return;
 
         for(auto & elem : *row)
             elem.second.reset();                   
 
-        this->_block.at(item).reset();
-        this->_block.erase(item);   
+        _block.at(item).reset();
+        _block.erase(item);   
                    
         /* --- CRITICAL SECTION --- */
     }catch(const std::out_of_range& e){
@@ -250,11 +250,11 @@ RAW_DATA_BLOCK_CLASS::add_topic(TOS_Topics::TOPICS topic)
     try{
         _my_lock_guard_type lock(*_mtx);
         /* --- CRITICAL SECTION --- */
-        if( !(this->_topic_enums.insert(topic).second) )
+        if( !(_topic_enums.insert(topic).second) )
             return;
         
-        for(auto & elem : this->_block)
-            this->_insert_topic(elem.second.get(), topic);         
+        for(auto & elem : _block)
+            _insert_topic(elem.second.get(), topic);         
         /* --- CRITICAL SECTION --- */
     }catch(const std::exception & e){
         throw TOSDB_DataBlockError(e, "add_topic");
@@ -268,10 +268,10 @@ RAW_DATA_BLOCK_CLASS::remove_topic(TOS_Topics::TOPICS topic)
     try{
         _my_lock_guard_type lock(*_mtx);
         /* --- CRITICAL SECTION --- */
-        if( !(this->_topic_enums.erase(topic)) )
+        if( !(_topic_enums.erase(topic)) )
             return;
         
-        for(auto & elem : this->_block){
+        for(auto & elem : _block){
             _my_row_ty *row = elem.second.get();
             if(row){
                 (row->at(topic)).reset();
@@ -296,7 +296,7 @@ RAW_DATA_BLOCK_CLASS::raw_stream_ptr(std::string item,
     try{
         _my_lock_guard_type lock(*_mtx);
         /* --- CRITICAL SECTION --- */
-        _my_row_ty* row = this->_block.at(item).get();
+        _my_row_ty* row = _block.at(item).get();
         if(row)                    
             stream = (row->at(topic)).get();
         /* --- CRITICAL SECTION --- */
@@ -321,7 +321,7 @@ RAW_DATA_BLOCK_CLASS::map_of_frame_topics(std::string item) const
     try{
         _my_lock_guard_type lock(*_mtx);
         /* --- CRITICAL SECTION --- */
-        _my_row_ty * row = this->_block.at(item).get();    
+        _my_row_ty * row = _block.at(item).get();    
         if(!row)
             return map;
             
@@ -354,7 +354,7 @@ RAW_DATA_BLOCK_CLASS::map_of_frame_items(TOS_Topics::TOPICS topic) const
     try{
         _my_lock_guard_type lock(*_mtx);
         /* --- CRITICAL SECTION --- */
-        for(auto & elem : this->_block){
+        for(auto & elem : _block){
             map.insert( 
                 pair_type(elem.first, elem.second->at(topic)->operator[](0)) 
             );  
@@ -380,7 +380,7 @@ RAW_DATA_BLOCK_CLASS::pair_map_of_frame_topics(std::string item) const
     try{
         _my_lock_guard_type lock(*_mtx);
         /* --- CRITICAL SECTION --- */
-        _my_row_ty * row = this->_block.at(item).get(); 
+        _my_row_ty * row = _block.at(item).get(); 
         if(!row)
             return map;
 
@@ -413,7 +413,7 @@ RAW_DATA_BLOCK_CLASS::pair_map_of_frame_items(TOS_Topics::TOPICS topic) const
     try{
         _my_lock_guard_type lock(*_mtx);
         /* --- CRITICAL SECTION --- */
-        for(auto & elem : this->_block){
+        for(auto & elem : _block){
             map.insert( 
                 map_datetime_type::value_type(
                     elem.first, 
@@ -442,7 +442,7 @@ RAW_DATA_BLOCK_CLASS::matrix_of_frame() const
     try{
         _my_lock_guard_type lock(*_mtx);
         /* --- CRITICAL SECTION --- */
-        for(auto & items : this->_block){         
+        for(auto & items : _block){         
             map_type map; 
             for(auto & tops : *items.second){
                 map.insert( 
@@ -471,7 +471,7 @@ RAW_DATA_BLOCK_CLASS::pair_matrix_of_frame() const
     try{
         _my_lock_guard_type lock(*_mtx);
         /* --- CRITICAL SECTION --- */
-        for(auto & items : this->_block){      
+        for(auto & items : _block){      
             map_datetime_type map; 
             for(auto & tops : *items.second){
                 map.insert( 

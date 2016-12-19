@@ -126,7 +126,6 @@ public:
 
 class SignalManager {    
     std::multimap<std::string, volatile bool> _unq_flags; 
-
     LightWeightMutex _mtx;
     HANDLE _event;    
 
