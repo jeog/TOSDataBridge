@@ -30,9 +30,6 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 
 namespace { 
 
-/* !!! 'buffer_lock_guard_' is reserved inside this namespace !!! */
-/* !!! 'topic_lock_guard_' is reserved inside this namespace !!! */
-
 typedef struct{
     void*        hfile;    /* handle to mapping */
     void*        raw_addr; /* physical location in our process space */
@@ -40,17 +37,12 @@ typedef struct{
     void*        hmtx;  
 } StreamBuffer, *pStreamBuffer;
 
-typedef std::map<std::string, size_t> refcount_ty;
-typedef std::pair<std::string, TOS_Topics::TOPICS> id_ty;
-typedef std::map<TOS_Topics::TOPICS, refcount_ty> topics_ref_ty;
-typedef std::map<id_ty, StreamBuffer> buffers_ty;
+typedef std::map<std::string, size_t>  item_refcounts_ty;
+typedef std::pair<std::string, TOS_Topics::TOPICS>  buffer_id_ty;
 
 typedef TwoWayHashMap<TOS_Topics::TOPICS, HWND, true,
-                      std::hash<TOS_Topics::TOPICS>,
-                      std::hash<HWND>,
-                      std::equal_to<TOS_Topics::TOPICS>,
-                      std::equal_to<HWND>>  convos_ty;
-
+                      std::hash<TOS_Topics::TOPICS>, std::hash<HWND>,
+                      std::equal_to<TOS_Topics::TOPICS>, std::equal_to<HWND>>  convos_ty;
 
 LPCSTR CLASS_NAME = "DDE_CLIENT_WINDOW";
 LPCSTR LOG_NAME = "engine-log.log";  
@@ -84,15 +76,19 @@ SmartBuffer<ACL> acls[] = {
     SmartBuffer<ACL>(ACL_SIZE) 
 };   
 
-buffers_ty buffers;  
-topics_ref_ty topic_refs; 
+std::map<buffer_id_ty, StreamBuffer> buffers;  
+std::map<TOS_Topics::TOPICS, item_refcounts_ty> topic_refcounts; 
+
 convos_ty convos; 
 
 LightWeightMutex topic_mtx;
 LightWeightMutex buffer_mtx;
 SignalManager ack_signals;
 
+/* !!! 'buffer_lock_guard_' is reserved inside this namespace !!! */
 #define BUFFER_LOCK_GUARD WinLockGuard buffer_lock_guard_(buffer_mtx)
+
+/* !!! 'topic_lock_guard_' is reserved inside this namespace !!! */
 #define TOPIC_LOCK_GUARD WinLockGuard topic_lock_guard_(topic_mtx)
 
 HANDLE init_event = NULL;
@@ -137,6 +133,9 @@ SetSecurityPolicy();
 
 int  
 AddStream(TOS_Topics::TOPICS tTopic,std::string sItem, unsigned long timeout);
+
+int
+CreateNewTopicStream(TOS_Topics::TOPICS tTopic, std::string sItem, unsigned long timeout);
 
 int 
 RemoveStream(TOS_Topics::TOPICS tTopic,std::string sItem, unsigned long timeout);
@@ -367,36 +366,26 @@ RunMainCommLoop(DynamicIPCSlave *pslave)
 }
 
 
-
 template<typename T>
 void
-CastShemBufArg(void* from, T* to)
+ExtractShemBufArgOrThrow(DynamicIPCSlave *pslave, 
+                         const DynamicIPCSlave::shem_chunk& from, 
+                         T* to, 
+                         std::string arg_name="",
+                         size_t to_len=1)
 {   
-    *to = *(T*)from;
-}
+    if(from == DynamicIPCSlave::NULL_SHEM_CHUNK)
+        throw std::invalid_argument("ExtractShemBufArgOrThrow 'from' arg can't be NULL_SHEM_CHUNK");     
 
-template<>
-void
-CastShemBufArg(void* from, std::string* to)
-{   
-    *to = std::string((char*)from);
-}
+    if(!to)
+        throw std::invalid_argument("ExtractShemBufArgOrThrow 'to' arg can't be NULL");     
 
-template<typename T>
-void
-CastShemBufArgOrThrow(void* from, T* to, int n)
-{   
-    if(!from || !to)
-        throw std::invalid_argument("args in cast can't be NULL");     
-
-    try{
-        CastShemBufArg(from,to);
-    }catch(...){
+    if( !(pslave->extract(from, to, to_len)) ){
         std::stringstream err;
-        err << "failed to cast arg #" << n << " (" << std::hex << from << ")";
-        TOSDB_LogH("IPC", err.str().c_str());
-        throw;
-    }
+        arg_name = arg_name.empty() ? arg_name : " '" + arg_name + "'";
+        err << "failed to extract arg" << arg_name << " (" << std::hex << pslave->shem_ptr(from) << ")";    
+        throw std::runtime_error(err.str());
+    } 
 }
 
 
@@ -406,28 +395,33 @@ ExtractShemBufArgs(DynamicIPCSlave *pslave,
                    TOS_Topics::TOPICS *ptopic, 
                    std::string *pitem,
                    unsigned long *ptimeout)
-{   
-    void *parg1 = pslave->shem_ptr(shem_buf[1]); 
-    void *parg2 = pslave->shem_ptr(shem_buf[2]); 
-    void *parg3 = pslave->shem_ptr(shem_buf[3]);
-
+{  
     try{
-        CastShemBufArgOrThrow(parg1, ptopic, 1);
-        CastShemBufArgOrThrow(parg2, pitem, 2);
-        CastShemBufArgOrThrow(parg3, ptimeout, 3);
+        /* THE TOPIC */
+        ExtractShemBufArgOrThrow(pslave, shem_buf[1], ptopic, "ptopic");
+
+        /* THE STRING */
+        /* we insert a char* so need to be careful extracting */
+        if(shem_buf[2].sz > TOSDB_MAX_STR_SZ)
+            throw std::runtime_error("sz field of (string) shem_shunk > TOSDB_MAX_STR_SZ");
+
+        SmartBuffer<char> sbuf(shem_buf[2].sz);        
+        ExtractShemBufArgOrThrow(pslave, shem_buf[2], sbuf.get(), "pitem", shem_buf[2].sz);
+        *pitem = std::string(sbuf.get());
+
+        /* THE TIMEOUT */
+        ExtractShemBufArgOrThrow(pslave, shem_buf[3], ptimeout, "ptimeout");
         return true;
-    }catch(...){
+
+    }catch(std::exception& e){
         std::stringstream err_buf;
-        std::stringstream err_args;
 
         err_buf<< "invalid shem_chunk passed to slave: ";        
         for(int i = 0; i < COMM_BUFFER_SIZE; ++i)
-		        err_buf << shem_buf[i].as_string() << ' ';		
+		        err_buf << shem_buf[i].as_string() << ' ';	
 
-        err_args << "pargs: " << parg1 << ' ' << parg2 << ' ' << parg3;
-
-        TOSDB_LogH("IPC", err_buf.str().c_str() );
-        TOSDB_LogH("IPC", err_args.str().c_str() );
+        TOSDB_LogH("IPC", e.what());
+        TOSDB_LogH("IPC", err_buf.str().c_str());
         return false;
     }
 }
@@ -475,130 +469,182 @@ CleanUpMain(int ret_code)
     UnregisterClass(CLASS_NAME, hinstance);
     return ret_code;
 }
-  
+
+
+#define STREAM_CHECK_LOG_ERROR(e,call,topic,item,tout) do{ \
+    if(e){ \
+        std::stringstream err_s; \
+        err_s << "Error (" << std::to_string(e) << ") in " << call << " (" \
+              << TOS_Topics::map[topic] << ',' \
+              << item << ',' \
+              << std::to_string(tout) << ')'; \
+        TOSDB_LogH("STREAM-OP", err_s.str().c_str()); \
+    } \
+}while(0)
+
 
 int 
-AddStream(TOS_Topics::TOPICS tTopic, 
-          std::string sItem, 
-          unsigned long timeout)
+AddStream( TOS_Topics::TOPICS tTopic, 
+           std::string sItem, 
+           unsigned long timeout )
 {    
+    bool ret;
     int err = 0;
 
-    if( !(TOS_Topics::enum_value_type)tTopic )
+    if(tTopic == TOS_Topics::TOPICS::NULL_TOPIC)
         return -1;
 
-    auto topic_iter = topic_refs.find(tTopic);  
-    if(topic_iter == topic_refs.end()){ /* if topic isn't in our global mapping */    
-
-        init_event = CreateEvent(NULL, FALSE, FALSE, NULL);     
-
-        std::string sTopic = TOS_Topics::map[ tTopic ];  
-        ATOM topic_atom = GlobalAddAtom(sTopic.c_str());
-        ATOM app_atom = GlobalAddAtom(APP_NAME);
-
-        ack_signals.set_signal_ID(TOS_Topics::map[ tTopic ]); 
-
-        if(topic_atom){
-            SendMessageTimeout((HWND)HWND_BROADCAST, WM_DDE_INITIATE,
-                               (WPARAM)msg_window, MAKELONG(app_atom,topic_atom), 
-                               SMTO_NORMAL, 500, NULL);  
-        }
-
-        if(app_atom) 
-            GlobalDeleteAtom(app_atom);
-
-        if(topic_atom) 
-            GlobalDeleteAtom(topic_atom);
-
-        /* wait for ack from DDE server */
-        if( !ack_signals.wait_for(TOS_Topics::map[ tTopic ], timeout) )
-            err = -2;       
-     
-        if(!err){
-            topic_refs[tTopic] = refcount_ty();
-            if( PostItem(sItem, tTopic, timeout) ){
-                topic_refs[tTopic][sItem] = 1;
-                if(!CreateBuffer(tTopic, sItem))
-                    err = -4;     
-            }else{       
-                err = -3; 
-            }
-        }
-    }else{ /* if topic IS already in our global mapping */   
-
+    auto topic_iter = topic_refcounts.find(tTopic);  
+    if(topic_iter == topic_refcounts.end()) /* if topic isn't in our global mapping */
+    {     
+        err = CreateNewTopicStream(tTopic, sItem, timeout);
+    }
+    else /* if it already is */   
+    { 
         auto item_iter = topic_iter->second.find(sItem); 
-        if(item_iter == topic_iter->second.end()) /* and it doesn't have that item yet */
-        { 
-            if( PostItem(sItem, tTopic, timeout) ){
+        if(item_iter == topic_iter->second.end()){ /* and it doesn't have that item yet */        
+            ret = PostItem(sItem, tTopic, timeout);
+            if(ret){
                 topic_iter->second[sItem] = 1;
-                if( !CreateBuffer(tTopic, sItem) )
+                ret = CreateBuffer(tTopic, sItem);
+                if(!ret)
                     err = -4;      
-            }else{
-                err = -3;
-            }
-        }else{ /* if both already there, increment the ref-count */
-            item_iter->second++;    
-        }
+            }else
+                err = -3;            
+        }else /* if both already there simply increment the ref-count */
+            ++(item_iter->second);            
     }  
   
-    switch(err){ /* unwind if it fails during creation */   
+    /* unwind if it fails during creation */
+    switch(err){   
     case -4:    
         PostCloseItem(sItem, tTopic, timeout);
-        topic_refs[tTopic].erase(sItem);
+        topic_refcounts[tTopic].erase(sItem);
     case -3:
-        if( !topic_refs[tTopic].empty() ) 
+        if( !topic_refcounts[tTopic].empty() ) 
             break;        
     case -2:        
-        TearDownTopic(tTopic, timeout);      
+        TearDownTopic(tTopic, timeout);   
     }
 
-   return err;
+    STREAM_CHECK_LOG_ERROR(err,"AddStream",tTopic,sItem,timeout);
+
+    return err;
+}
+
+
+int
+CreateNewTopicStream( TOS_Topics::TOPICS tTopic, 
+                      std::string sItem, 
+                      unsigned long timeout )
+{     
+    std::string sTopic;
+    ATOM topic_atom;
+    ATOM app_atom;
+    bool ret;
+
+    init_event = CreateEvent(NULL, FALSE, FALSE, NULL);    
+
+    sTopic = TOS_Topics::map[tTopic];  
+    topic_atom = GlobalAddAtom(sTopic.c_str());
+    app_atom = GlobalAddAtom(APP_NAME);
+
+    ack_signals.set_signal_ID(TOS_Topics::map[tTopic]); 
+
+    if(topic_atom){
+        SendMessageTimeout( (HWND)HWND_BROADCAST, 
+                            WM_DDE_INITIATE,
+                            (WPARAM)msg_window, 
+                            MAKELONG(app_atom,topic_atom), 
+                            SMTO_NORMAL, 500, NULL );  
+    }
+
+    if(app_atom) 
+        GlobalDeleteAtom(app_atom);
+
+    if(topic_atom) 
+        GlobalDeleteAtom(topic_atom);
+
+    /* wait for ack from DDE server */
+    ret = ack_signals.wait_for(TOS_Topics::map[tTopic], timeout);
+    if(!ret){ /* are we sure about this? error unwind will call TearDownTopic 
+                   - whats the purpose if we never got the 'ack'? (maybe a late ack)
+                   - deadlock or corrupt 'convos' on sending WM_DDE_TERMINATE in this state?*/
+        return -2;       
+    }
+
+    /* once we get our ack set up/initialize our refcounts
+       we do it here because TearDownTopic will remove if we have error below */
+    topic_refcounts[tTopic] = item_refcounts_ty();
+
+    ret = PostItem(sItem, tTopic, timeout);
+    if(!ret)
+        return -3;    
+
+    /* because of how AddStream unwinds errors order is important; 
+       this MUST come after PostItem, before CreateBuffer */
+    topic_refcounts[tTopic][sItem] = 1;
+
+    ret = CreateBuffer(tTopic, sItem);
+    if(!ret)
+        return -4;             
+
+    return 0;
 }
 
 
 int 
-RemoveStream(TOS_Topics::TOPICS tTopic, 
-             std::string sItem, 
-             unsigned long timeout)
+RemoveStream( TOS_Topics::TOPICS tTopic, 
+              std::string sItem, 
+              unsigned long timeout )
 {  
-    if( !(TOS_Topics::enum_value_type)tTopic )
+    bool ret;    
+
+    int err = 0;
+
+    if(tTopic == TOS_Topics::TOPICS::NULL_TOPIC)
         return -1;
 
-    auto topic_iter = topic_refs.find(tTopic);  
-    /* if topic is not in our global mapping */  
-    if(topic_iter == topic_refs.end())   
+    auto topic_iter = topic_refcounts.find(tTopic);      
+    if(topic_iter == topic_refcounts.end()) /* if topic is not in our global mapping */  
         return -2;    
 
-    auto item_iter = topic_iter->second.find(sItem);
-    /* if it has that item */
-    if(item_iter != topic_iter->second.end()){
-        /* if ref-count hits zero */
-        if( !(--(item_iter->second)) ) {
-            if( !PostCloseItem(sItem, tTopic, timeout) )
-                return -3; 
+    auto item_iter = topic_iter->second.find(sItem);    
+    if(item_iter != topic_iter->second.end()){ /* if it has that item */
+        /* decr the ref count */
+        --(item_iter->second);
+        /* if ref-count hits zero post close msg and destroy the buffer*/
+        if(item_iter->second == 0){
+            ret = PostCloseItem(sItem, tTopic, timeout); 
+            /* if we return error continue with remove but log it (below) */
+            if(!ret)
+                err = -3;
             DestroyBuffer(tTopic, sItem);
-            topic_iter->second.erase(item_iter);       
+            topic_iter->second.erase(item_iter);                 
         }
     } 
 
-    if( topic_iter->second.empty() ) /* if no items close the convo */      
+    /* if no items close the convo */
+    if(topic_iter->second.empty())       
          TearDownTopic(tTopic, timeout);  
-    
-    return 0;        
+   
+    STREAM_CHECK_LOG_ERROR(err,"RemoveStream",tTopic,sItem,timeout);
+
+    return err;      
 }
 
 
 void 
 CloseAllStreams(unsigned long timeout)
 { /* need to iterate through copies */  
-    topics_ref_ty t_copy;
-    refcount_ty rc_copy;
-
-    std::insert_iterator<topics_ref_ty> tii(t_copy, t_copy.begin());
-    std::copy(topic_refs.begin(), topic_refs.end(), tii);
+    std::map<TOS_Topics::TOPICS, item_refcounts_ty> t_copy;
+    item_refcounts_ty rc_copy;
+        
+    auto tii = std::inserter(t_copy, t_copy.begin());
+    std::copy(topic_refcounts.begin(), topic_refcounts.end(), tii);
 
     for(const auto& topic: t_copy){
-        std::insert_iterator<refcount_ty> rii(rc_copy,rc_copy.begin());
+        auto rii = std::inserter(rc_copy,rc_copy.begin());
         std::copy(topic.second.begin(), topic.second.end(), rii);
         for(const auto& item : rc_copy){
             RemoveStream(topic.first, item.first, timeout);    
@@ -607,70 +653,6 @@ CloseAllStreams(unsigned long timeout)
     }
 }
 
-
-int 
-SetSecurityPolicy() 
-{    
-    SID_NAME_USE dummy;
-    BOOL ret; /* int */
-
-    DWORD dom_sz = 128;
-    DWORD sid_sz = SECURITY_MAX_SID_SIZE;
-
-    SmartBuffer<char>  dom_buf(dom_sz);
-    SmartBuffer<void>  sid(sid_sz);  
-
-    ret = LookupAccountName(NULL, "Everyone", sid.get(), &sid_sz, dom_buf.get(), &dom_sz, &dummy);
-    if(!ret)    
-        return -1;
-   
-    for(int i = 0; i < NSECURABLE; ++i){
-        sec_attr[(Securable)i].nLength = sizeof(SECURITY_ATTRIBUTES);
-        sec_attr[(Securable)i].bInheritHandle = FALSE;
-        sec_attr[(Securable)i].lpSecurityDescriptor = &sec_desc[(Securable)i];
-
-        /* memcpy 'TRUE' is error */
-        ret = memcpy_s( sids[(Securable)i].get(), SECURITY_MAX_SID_SIZE, 
-                        sid.get(), SECURITY_MAX_SID_SIZE );
-        if(ret)
-            return -2;
-
-        ret = InitializeSecurityDescriptor(&sec_desc[(Securable)i], SECURITY_DESCRIPTOR_REVISION);
-        if(!ret)
-            return -3;
-
-        ret = SetSecurityDescriptorGroup(&sec_desc[(Securable)i], sids[(Securable)i].get(), FALSE);
-        if(!ret)
-            return -4;     
-
-        ret = InitializeAcl(acls[(Securable)i].get(), ACL_SIZE, ACL_REVISION);
-        if(!ret)
-            return -5;
-    }
- 
-    /* add ACEs individually */
-
-    ret = AddAccessDeniedAce(acls[SHEM1].get(), ACL_REVISION, FILE_MAP_WRITE, sids[SHEM1].get());
-    if(!ret)
-        return -6;
-
-    ret = AddAccessAllowedAce(acls[SHEM1].get(), ACL_REVISION, FILE_MAP_READ, sids[SHEM1].get());
-    if(!ret)
-        return -6;
-
-    ret = AddAccessAllowedAce(acls[MUTEX1].get(), ACL_REVISION, SYNCHRONIZE, sids[MUTEX1].get());
-    if(!ret)
-        return -6;
-
-    for(int i = 0; i < NSECURABLE; ++i){
-        ret = SetSecurityDescriptorDacl( &sec_desc[(Securable)i], TRUE, acls[(Securable)i].get(), FALSE);
-        if(!ret)
-            return -7;
-    }
-
-    return 0;
-}
-  
 
 bool 
 PostItem(std::string sItem, 
@@ -682,11 +664,9 @@ PostItem(std::string sItem,
 
     ack_signals.set_signal_ID(sid_id);
     PostMessage(msg_window, REQUEST_DDE_ITEM, (WPARAM)convo, (LPARAM)(sItem.c_str())); 
-    /* 
-      for whatever reason a bad item gets a posive ack from an attempt 
-      to link it, so that message must post second to give the request 
-      a chance to preempt it 
-     */    
+    /* for whatever reason a bad item gets a posive ack from an attempt 
+       to link it, so that message must post second to give the request 
+       a chance to preempt it */    
     PostMessage(msg_window, LINK_DDE_ITEM, (WPARAM)convo, (LPARAM)(sItem.c_str()));    
 
     return ack_signals.wait_for(sid_id , timeout);
@@ -712,7 +692,7 @@ void
 TearDownTopic(TOS_Topics::TOPICS tTopic, unsigned long timeout)
 {  
     PostMessage(msg_window, CLOSE_CONVERSATION, (WPARAM)convos[tTopic], NULL);        
-    topic_refs.erase(tTopic); 
+    topic_refcounts.erase(tTopic); 
     convos.remove(tTopic);  
 }
 
@@ -725,7 +705,7 @@ CreateBuffer(TOS_Topics::TOPICS tTopic,
     StreamBuffer buf;
     std::string name;
 
-    id_ty id(sItem, tTopic);  
+    buffer_id_ty id(sItem, tTopic);  
 
     if(buffers.find(id) != buffers.end())
         return false;
@@ -734,8 +714,11 @@ CreateBuffer(TOS_Topics::TOPICS tTopic,
 
     buf.raw_sz = (buffer_sz < sys_info.dwPageSize) ? sys_info.dwPageSize : buffer_sz;
 
-    buf.hfile = CreateFileMapping(INVALID_HANDLE_VALUE, &sec_attr[SHEM1],
-                                  PAGE_READWRITE, 0, buf.raw_sz, name.c_str()); 
+    buf.hfile = CreateFileMapping( INVALID_HANDLE_VALUE, 
+                                   &sec_attr[SHEM1],
+                                   PAGE_READWRITE, 0, 
+                                   buf.raw_sz, 
+                                   name.c_str() ); 
     if(!buf.hfile)
         return false;
 
@@ -763,7 +746,7 @@ CreateBuffer(TOS_Topics::TOPICS tTopic,
                      + ((buf.raw_sz - ptmp->beg_offset) / ptmp->elem_size) 
                      * ptmp->elem_size ;
 
-    buffers.insert(buffers_ty::value_type(id,buf));
+    buffers.insert( std::make_pair(id,buf) );
     return true;
 }
 
@@ -774,7 +757,7 @@ DestroyBuffer(TOS_Topics::TOPICS tTopic, std::string sItem)
     BUFFER_LOCK_GUARD;
     /* ---CRITICAL SECTION --- */
     /* don't allow buffer to be destroyed while we're writing to it */
-    auto buf_iter = buffers.find(id_ty(sItem,tTopic));
+    auto buf_iter = buffers.find(buffer_id_ty(sItem,tTopic));
     if(buf_iter != buffers.end()){ 
         UnmapViewOfFile(buf_iter->second.raw_addr);
         CloseHandle(buf_iter->second.hfile);
@@ -810,7 +793,7 @@ RouteToBuffer(DDE_Data<T> data)
 
     BUFFER_LOCK_GUARD;
     /* ---(INTRA-PROCESS) CRITICAL SECTION --- */
-    auto buf_iter = buffers.find(id_ty(data.item,data.topic));
+    auto buf_iter = buffers.find(buffer_id_ty(data.item,data.topic));
     if(buf_iter == buffers.end())  
         return -1;
 
@@ -1177,17 +1160,85 @@ HandleData(UINT msg, WPARAM wparam, LPARAM lparam)
             break;
         }     
         };
-    }catch(const std::out_of_range& e){      
+    }catch(std::out_of_range& e){      
         TOSDB_Log("DDE", e.what());
-    }catch(const std::invalid_argument& e){    
+    }catch(std::invalid_argument& e){    
+        /* Dec 20 2016 - comment out, cluttering log file */
+        /*
         std::string serr(e.what());
-        TOSDB_Log("DDE", serr.append(" Value:: ").append(cp_data).c_str());
-    }catch(...){    
-        throw TOSDB_DDE_Error("unexpected error handling dde data");
+        TOSDB_Log("DDE", serr.append(" Value:: ").append(cp_data).c_str()); 
+        */
+    }catch(std::exception& e){    
+        throw TOSDB_DDE_Error(e, "error handling dde data");
     }  
 
     return /* 0 */; 
 }
+
+
+int 
+SetSecurityPolicy() 
+{    
+    SID_NAME_USE dummy;
+    BOOL ret; /* int */
+
+    DWORD dom_sz = 128;
+    DWORD sid_sz = SECURITY_MAX_SID_SIZE;
+
+    SmartBuffer<char>  dom_buf(dom_sz);
+    SmartBuffer<void>  sid(sid_sz);  
+
+    ret = LookupAccountName(NULL, "Everyone", sid.get(), &sid_sz, dom_buf.get(), &dom_sz, &dummy);
+    if(!ret)    
+        return -1;
+   
+    for(int i = 0; i < NSECURABLE; ++i){
+        sec_attr[(Securable)i].nLength = sizeof(SECURITY_ATTRIBUTES);
+        sec_attr[(Securable)i].bInheritHandle = FALSE;
+        sec_attr[(Securable)i].lpSecurityDescriptor = &sec_desc[(Securable)i];
+
+        /* memcpy 'TRUE' is error */
+        ret = memcpy_s( sids[(Securable)i].get(), SECURITY_MAX_SID_SIZE, 
+                        sid.get(), SECURITY_MAX_SID_SIZE );
+        if(ret)
+            return -2;
+
+        ret = InitializeSecurityDescriptor(&sec_desc[(Securable)i], SECURITY_DESCRIPTOR_REVISION);
+        if(!ret)
+            return -3;
+
+        ret = SetSecurityDescriptorGroup(&sec_desc[(Securable)i], sids[(Securable)i].get(), FALSE);
+        if(!ret)
+            return -4;     
+
+        ret = InitializeAcl(acls[(Securable)i].get(), ACL_SIZE, ACL_REVISION);
+        if(!ret)
+            return -5;
+    }
+ 
+    /* add ACEs individually */
+
+    ret = AddAccessDeniedAce(acls[SHEM1].get(), ACL_REVISION, FILE_MAP_WRITE, sids[SHEM1].get());
+    if(!ret)
+        return -6;
+
+    ret = AddAccessAllowedAce(acls[SHEM1].get(), ACL_REVISION, FILE_MAP_READ, sids[SHEM1].get());
+    if(!ret)
+        return -6;
+
+    ret = AddAccessAllowedAce(acls[MUTEX1].get(), ACL_REVISION, SYNCHRONIZE, sids[MUTEX1].get());
+    if(!ret)
+        return -6;
+
+    for(int i = 0; i < NSECURABLE; ++i){
+        ret = SetSecurityDescriptorDacl( &sec_desc[(Securable)i], TRUE, acls[(Securable)i].get(), FALSE);
+        if(!ret)
+            return -7;
+    }
+
+    return 0;
+}
+  
 
 void DumpBufferStatus()
 {  
@@ -1213,7 +1264,7 @@ void DumpBufferStatus()
     {
         TOPIC_LOCK_GUARD;
         /* --- CRITICAL SECTION --- */
-        for(const auto & t : topic_refs){
+        for(const auto & t : topic_refcounts){
             for(const auto & i : t.second){
                 lout << std::setw(log_col_width[0]) << std::left 
                      << TOS_Topics::map[t.first]

@@ -118,7 +118,7 @@ local_topics(CommandCtx *ctx)
     for(auto & t : topics){
         if(t == " ") /* exclude NULL Topic */
             continue;       
-        if(wc + t.size() > MAX_DISPLAY_WIDTH){ /* stay within maxw chars */
+        if(wc + t.size() >= MAX_DISPLAY_WIDTH){ /* stay within maxw chars */
             std::cout<< std::endl << std::string(TOPIC_HEAD.size(),' ');
             wc = TOPIC_HEAD.size();
         }

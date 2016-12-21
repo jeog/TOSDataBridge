@@ -37,8 +37,8 @@ public:
             _info(info),
             _threadID(GetCurrentThreadId()),
             _processID(GetCurrentProcessId())
-       {         
-       }
+        {         
+        }
 
     TOSDB_Error(const std::exception& e, const char* tag)
         : 
@@ -59,7 +59,8 @@ public:
         {        
         }
 
-    virtual ~TOSDB_Error() 
+    virtual 
+    ~TOSDB_Error() 
         {
         }
 

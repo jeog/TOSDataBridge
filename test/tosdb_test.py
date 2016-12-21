@@ -91,6 +91,11 @@ def test():
     else:
         admin_calls = {k:getattr(tosdb,k) for k in BASE_ADMIN_CALLS}
 
+    is_conn = admin_calls['connected']()
+    if not is_conn:
+        print("*** COULD NOT CONNECT... exiting ***\n")
+        exit(1)
+        
     print(_ladj("CONNECTED:"), admin_calls['connected']() )
 
     blim = admin_calls['get_block_limit']()  

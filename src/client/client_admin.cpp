@@ -31,30 +31,22 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 std::recursive_mutex global_rmutex;
 
 namespace { 
-  
-/* !!! 'buffers_lock_guard_' is reserved inside this namespace !!! */
 
 typedef std::tuple<unsigned int, unsigned int,  
-                   std::set<const TOSDBlock*>, HANDLE, HANDLE>  buf_info_ty;
+                   std::set<const TOSDBlock*>, HANDLE, HANDLE>  buffer_info_ty;
 
-typedef std::pair<TOS_Topics::TOPICS, std::string>  buf_id_ty;
-typedef std::map<buf_id_ty, buf_info_ty>  buffers_ty;
-
-typedef std::insert_iterator<str_set_type>  str_set_insert_iter_ty;
-typedef std::insert_iterator<topic_set_type>  topic_set_insert_iter_ty;
-
-typedef std::chrono::duration<long, std::milli>  milli_sec_ty;
-
-typedef DynamicIPCMaster::shem_chunk  shem_chunk_ty;
+typedef std::map<std::pair<TOS_Topics::TOPICS, std::string>, buffer_info_ty>  buffers_ty;
 
 LPCSTR LOG_NAME = "client-log.log";
 
-std::map<std::string,TOSDBlock*>  dde_blocks;
+/* blocks in *this* instance of the dll */
+std::map<std::string,TOSDBlock*> dde_blocks;
 
 /* buffers in shared mem */
 buffers_ty buffers;
 std::mutex buffers_mtx;
-  
+    
+/* !!! 'buffers_lock_guard_' is reserved inside this namespace !!! */
 #define LOCAL_BUFFERS_LOCK_GUARD \
     std::lock_guard<std::mutex> buffers_lock_guard_(buffers_mtx)
 
@@ -94,7 +86,7 @@ RequestStreamOP(TOS_Topics::TOPICS tTopic,
 {
     long ret;
     bool ret_stat;  
-    shem_chunk_ty arg1, arg2, arg3;
+    DynamicIPCMaster::shem_chunk arg1, arg2, arg3;
 
     if(opcode != TOSDB_SIG_ADD && opcode != TOSDB_SIG_REMOVE)
         return -1;              
@@ -108,9 +100,9 @@ RequestStreamOP(TOS_Topics::TOPICS tTopic,
     arg2 = master.insert(sItem.c_str(), sItem.size() + 1); 
     arg3 = master.insert(&timeout);
 
-    master << shem_chunk_ty(opcode, 0) 
+    master << DynamicIPCMaster::shem_chunk(opcode, 0) 
            << arg1 << arg2 << arg3 
-           << shem_chunk_ty(0,0);    
+           << DynamicIPCMaster::NULL_SHEM_CHUNK;    
 
     ret_stat = master.recv(ret); 
     /* don't remove until we get a response ! */
@@ -215,7 +207,7 @@ template<typename T>
 void 
 ExtractFromBuffer(TOS_Topics::TOPICS topic, 
                   std::string item, 
-                  buf_info_ty& buf_info)
+                  buffer_info_ty& buf_info)
 {
     /* some unecessary comp in here; cache some of the buffer params */ 
 
@@ -333,7 +325,7 @@ Threaded_Init(LPVOID lParam)
         } /* make sure we give up this lock each time through the buffers */
 
         tend = steady_clock.now();
-        tdiff = std::chrono::duration_cast<milli_sec_ty>(tend - tbeg).count();    
+        tdiff = std::chrono::duration_cast<std::chrono::duration<long, std::milli>>(tend - tbeg).count();    
         Sleep(std::min<long>(std::max<long>((buffer_latency - tdiff),0),Glacial)); 
     }
 
@@ -544,7 +536,7 @@ TOSDB_Add(std::string id, str_set_type sItems, topic_set_type tTopics)
        /* if we have pre-cached items, include them */
        std::set_union(sItems.cbegin(), sItems.cend(),
                       db->item_precache.cbegin(), db->item_precache.cend(),
-                      str_set_insert_iter_ty(tot_items,tot_items.begin())); 
+                      std::insert_iterator<str_set_type>(tot_items,tot_items.begin())); 
     else 
         tot_items = sItems; /* 'copy', keep sItems available for pre-caching */ 
    
@@ -553,7 +545,7 @@ TOSDB_Add(std::string id, str_set_type sItems, topic_set_type tTopics)
         /* if we have pre-cached topics, include them */
         std::set_union(tTopics.cbegin(), tTopics.cend(),
                        db->topic_precache.cbegin(), db->topic_precache.cend(),
-                       topic_set_insert_iter_ty(tot_topics,tot_topics.begin()),
+                       std::insert_iterator<topic_set_type>(tot_topics,tot_topics.begin()),
                        TOS_Topics::top_less()); 
     else 
         tot_topics = std::move(tTopics); /* move, don't need tTopics anymore */  
@@ -562,12 +554,12 @@ TOSDB_Add(std::string id, str_set_type sItems, topic_set_type tTopics)
     /* find new items and topics to add */
     std::set_difference(tot_topics.cbegin(), tot_topics.cend(),
                         old_topics.cbegin(), old_topics.cend(),
-                        topic_set_insert_iter_ty(tdiff,tdiff.begin()),
+                        std::insert_iterator<topic_set_type>(tdiff,tdiff.begin()),
                         TOS_Topics::top_less());
 
     std::set_difference(tot_items.cbegin(), tot_items.cend(),
                         old_items.cbegin(), old_items.cend(),
-                        str_set_insert_iter_ty(idiff, idiff.begin()));
+                        std::insert_iterator<str_set_type>(idiff, idiff.begin()));
 
 
     if( !tdiff.empty() ){
@@ -575,7 +567,7 @@ TOSDB_Add(std::string id, str_set_type sItems, topic_set_type tTopics)
            add ALL the items (new and old) for each */
         std::set_union(tot_items.cbegin(), tot_items.cend(),
                        old_items.cbegin(), old_items.cend(),
-                       str_set_insert_iter_ty(iunion, iunion.begin()));
+                       std::insert_iterator<str_set_type>(iunion, iunion.begin()));
         
         is_empty = iunion.empty();
 
@@ -933,7 +925,8 @@ TOSDB_DumpSharedBufferStatus()
                    "TOSDB_DumpSharedBufferStatus timeout trying to grab pipe",
                    -1);
   
-    master << shem_chunk_ty(TOSDB_SIG_DUMP, 0) << shem_chunk_ty(0,0);
+    master<< DynamicIPCMaster::shem_chunk(TOSDB_SIG_DUMP, 0) 
+          << DynamicIPCMaster::NULL_SHEM_CHUNK;
 
     if( !master.recv(ret) ){
         master.release_pipe();

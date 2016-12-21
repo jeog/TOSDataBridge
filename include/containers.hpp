@@ -373,22 +373,30 @@ public:
         _insert(p); 
     }
 
+    /* Dec 21 2016 - convert to at() and catch exceptions */
     void 
     remove(T1 k)
-    {
-        T2 tmp = operator[](k);
-        _map1.erase(k); 
-        _map2.erase(tmp); 
+    {        
+        try{
+            T2 tmp = _map1.at(k);
+            _map1.erase(k); 
+            _map2.erase(tmp); 
+        }catch(...){
+        }
     }
 
     void 
     remove(T2 k)
     {        
-        T1 tmp = operator[](k);
-        _map2.erase(k); 
-        _map1.erase(tmp); 
+        try{
+            T1 tmp = _map2.at(k);
+            _map2.erase(k); 
+            _map1.erase(tmp); 
+        }catch(...){
+        }
     }
 
+    /* behavior of operator[] can be problem with NULL elems */
     T2 
     operator[](const T1 k) const
     {
@@ -399,6 +407,7 @@ public:
         }
     }
 
+    /* behavior of operator[] can be problem with NULL elems */
     T1 
     operator[](const T2 k) const 
     {

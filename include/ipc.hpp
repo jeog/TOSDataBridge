@@ -46,9 +46,9 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 
    The sequence of calls by the master are:
    1) grab_pipe()
-   2) insert()  : pass raw buffers, sets or vectors of data
-   3) send()  : pass the shem_chunks returned by insert or, a long 
-   4) recv()  : populate a shem_chunk, or long, with what's passed to send
+   2) insert()  : pass raw buffers
+   3) send()  : pass the shem_chunks returned by insert or a long scalar
+   4) recv()  : populate a shem_chunk, or long scalar, with what's passed to send
    5) remove()  : 'deallocate' the shem_chunks created by insert
    6) release_pipe()
 
@@ -77,16 +77,13 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 }while(0)
 
 
+/* NOT NECESSARY TO BE OPTIMAL - VERY SMALL HEAP, VERY LOW USAGE */
 class SlowHeapManager{ 
-    /* NOT NECESSARY TO BE OPTIMAL - VERY SMALL HEAP, VERY LOW USAGE */
     typedef unsigned long  _head_ty;
     typedef unsigned char* _ptr_ty;    
     typedef std::pair<size_t, _ptr_ty> _heap_pair_ty;    
 
     static const unsigned int HEAD_SZ = sizeof(_head_ty);
-    /* make sure offset can fit in an unsigned 4 bytes 
-       AND won't overflow during addition of a 'width' */
-    static const unsigned long MAX_SZ = LONG_MAX;
 
     std::multimap<size_t, _ptr_ty> _free_heap;
     std::set<_ptr_ty> _allocated_set;
@@ -97,13 +94,17 @@ class SlowHeapManager{
         return (_allocated_set.find((_ptr_ty)start) != _allocated_set.cend());
     }
 
-public:     
+public:       
+    /* make sure offset can fit in an unsigned 4 bytes 
+       AND won't overflow during addition of a 'width' */
+    static const unsigned long MAX_SZ = ((65536 * 65536 / 2) - 1); /* 4 BYTE SIGNED MAX */
+
     SlowHeapManager(void* beg_addr, size_t sz)
         {
             if(sz > MAX_SZ)
                 throw std::invalid_argument("sz > SlowHeapManager::MAX_SZ");
 
-            _free_heap.insert(_heap_pair_ty(sz, (_ptr_ty)beg_addr)); 
+            _free_heap.insert( _heap_pair_ty(sz, (_ptr_ty)beg_addr) ); 
         }        
 
     ~SlowHeapManager() 
@@ -119,7 +120,7 @@ public:
     size_t     
     size(void* start);
 
-    inline void 
+    void 
     clear()
     {
         _free_heap.clear();
@@ -127,12 +128,24 @@ public:
     }
 };
 
+
+/* NOTE: size_t for msg passing creates all types of problems if someone mistakenly 
+         tries to use 32 bit and 64 builds simultanesouly
+
+         for instance, the master->connected() call from 32 bit will define a 4-byte 
+         size_t PING msg diffrently than _listen_for_alloc thread will an 8-byte one 
+         and generate bad op-codes; this will result in connected (rightly) returning 
+         false but it's not what we really want.
+   
+         TODO: protect IPC from build issues by either:
+               1) don't let client even get to IPC w/ different builds, or
+               2) make some cross-build guarantees: uint32_t args etc.              */
 class DynamicIPCBase {
 public:
     struct shem_chunk{
         long offset; /* should only be unsigned for an actual 'chunk' */                               
         size_t sz;
-
+        
         shem_chunk() 
             : 
                 offset(0), 
@@ -179,24 +192,24 @@ private:
     bool   
     _deallocate(void* start) const;
 
-protected:        
-    static const unsigned long MAX_SZ = LONG_MAX;
+protected:           
     static const unsigned int ALLOC = 1;
     static const unsigned int DEALLOC = 2;
-    static const unsigned int PING = 4;
-    static const int PAUSE = 1000;    
+    static const unsigned int PING = 4;      
     static const int ACL_SIZE = 144;
     static const char* KMUTEX_NAME;
     
     std::string _shem_str;
     std::string _xtrnl_pipe_str;
     std::string _intrnl_pipe_str;
+
     void *_fmap_hndl;
     void *_mmap_addr;
     void *_xtrnl_pipe_hndl;
     void *_intrnl_pipe_hndl;
     void *_mtx;    
-    size_t _mmap_sz; /* should be unsinged */
+
+    size_t _mmap_sz; 
 
     DynamicIPCBase(std::string name, size_t sz = 0)
         :
@@ -214,11 +227,12 @@ protected:
             _mmap_sz(sz),
             _mtx(NULL)
         {            
-            if(sz > MAX_SZ)
-                throw std::invalid_argument("sz > DynamicIPCBase::MAX_SZ");
+            if(sz > SlowHeapManager::MAX_SZ)
+                throw std::invalid_argument("sz > SlowHeapManager::MAX_SZ");
         }
 
-    virtual ~DynamicIPCBase() 
+    virtual 
+    ~DynamicIPCBase() 
         {
         }
 
@@ -227,35 +241,53 @@ public:
        the interface; it just seems more intuitive for what's actually happening */
     template<typename T>
     shem_chunk 
-    insert(T* data, size_t data_len = 1)
-    {        
+    insert(T* data, size_t data_len = 1) const
+    {       
         size_t sz = sizeof(T) * data_len;
 
         void* blk = _allocate(sz); 
-        if(!blk || memcpy_s(blk, sz, data, sz))
-            return shem_chunk(0,0);
+        if(!blk){
+            TOSDB_LogH("IPC", "_allocate failed in insert");
+            return NULL_SHEM_CHUNK;
+        }
 
-		    /* cast to long OK; blk can't be > LONG_MAX from _mmap_addr */
+        errno_t err = memcpy_s(blk, sz, data, sz);
+        if(err){
+            std::string err_str = "memcpy_s failed in insert (" + std::to_string(err) + ")";
+            TOSDB_LogH("IPC", err_str.c_str());
+            return NULL_SHEM_CHUNK;
+        }
+
+		    /* cast to long OK; blk can't be > (2**31 -1) from _mmap_addr */
         return shem_chunk((long)((size_t)blk - (size_t)_mmap_addr), sz);        
     }
 
     template<typename T>
-    void 
-    extract(shem_chunk& chunk, T* dest, size_t buf_len) const
-    {
+    bool 
+    extract(const shem_chunk& chunk, T* dest, size_t buf_len = 1) const
+    {      
         void* ptr = shem_ptr(chunk);
-        if(!ptr){
-            dest = nullptr;
-            return; 
-        }    
-        memcpy_s(dest, sizeof(T) * buf_len, ptr, chunk.sz);        
+        if(!ptr){  
+            TOSDB_LogH("IPC", "bad chunk passed to extract");
+            return false; 
+        }
+        
+        errno_t err = memcpy_s(dest, sizeof(T) * buf_len, ptr, chunk.sz);  
+        if(err){
+            std::string err_str = "memcpy_s failed in extract (" + std::to_string(err) + ")";
+            TOSDB_LogH("IPC", err_str.c_str());
+            return false;
+        }
+
+        return true;
     }
     
+    /* move is a unecessary but it signals the client */
     const DynamicIPCBase& 
-    remove(const shem_chunk&& chunk) const;
+    remove(shem_chunk&& chunk) const;
     
     void* 
-    shem_ptr(shem_chunk& chunk) const;
+    shem_ptr(const shem_chunk& chunk) const;
 
     void* 
     ptr(size_t offset) const;
@@ -285,10 +317,18 @@ public:
     }
 
     const DynamicIPCBase& 
-    operator<<(const shem_chunk& chunk) const;
+    operator<<(const shem_chunk& chunk) const
+    {
+        _send(chunk);
+        return *this;
+    }
 
     const DynamicIPCBase& 
-    operator>>(shem_chunk& chunk) const; 
+    operator>>(shem_chunk& chunk) const
+    {
+        _recv(chunk);            
+        return *this;
+    }
 };
 
 
@@ -304,7 +344,8 @@ public:
         {    
         }
 
-    virtual ~DynamicIPCMaster()
+    virtual 
+    ~DynamicIPCMaster()
         {
             disconnect();
         }
@@ -341,9 +382,7 @@ class DynamicIPCSlave
     std::unordered_map<Securable, SmartBuffer<void>> _sids; 
     std::unordered_map<Securable, SmartBuffer<ACL>> _acls;        
     
-    typedef std::unique_ptr<SlowHeapManager> _uptr_heap_ty;
-    
-    _uptr_heap_ty _uptr_heap;    
+    std::unique_ptr<SlowHeapManager> _uptr_heap;    
     volatile bool _alloc_flag;
 
     int    
@@ -354,7 +393,9 @@ class DynamicIPCSlave
 
 public:         
     DynamicIPCSlave(std::string name, size_t sz);
-    virtual ~DynamicIPCSlave();
+
+    virtual 
+    ~DynamicIPCSlave();
     
     bool    
     wait_for_master();    

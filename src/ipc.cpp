@@ -181,34 +181,45 @@ DynamicIPCBase::_recv(shem_chunk& item) const
 
 
 const DynamicIPCBase& 
-DynamicIPCBase::remove(const shem_chunk&& chunk) const 
+DynamicIPCBase::remove(shem_chunk&& chunk) const 
 {        
-    void* start = (void*)((size_t)(_mmap_addr) + chunk.offset);
+    void* start = (void*)((size_t)_mmap_addr + chunk.offset);
     _deallocate(start);
     return *this;
 }
     
 
+/* 
+    ***WARNING***
+
+         The following ptr/offset operations are poorly implemented.
+          
+         BE VERY CAREFUL CHANGING how fields are cast, compared etc.
+         You can create very subtle bugs in the IPC mechanisms.
+         
+    ***WARNING***                                                   
+*/
+
 void* 
-DynamicIPCBase::shem_ptr(shem_chunk& chunk) const
+DynamicIPCBase::shem_ptr(const shem_chunk& chunk) const
 {  /* we check for overflow but NO GUARANTEE shem_chunk points at valid data */                
     if( chunk.sz <= 0 
         || !_mmap_addr
-        || !((chunk.offset + chunk.sz) <= (size_t)(_mmap_sz)))
+        || !((chunk.offset + chunk.sz) <= (size_t)_mmap_sz))
     { /* if blck is 'abnormal', no mem-map, or a read will overflow it */
         return nullptr;        
     }    
-    return (void*)((size_t)(_mmap_addr) + chunk.offset);
+    return (void*)((size_t)_mmap_addr + chunk.offset);
 }
 
 
 void* 
 DynamicIPCBase::ptr(size_t offset) const
 {
-    if(offset > (size_t)(_mmap_sz) || !_mmap_addr)
+    if(offset > (size_t)_mmap_sz || !_mmap_addr)
         return nullptr;
 
-    return (void*)((size_t)(_mmap_addr) + offset);
+    return (void*)((size_t)_mmap_addr + offset);
 }
 
 
@@ -217,37 +228,24 @@ DynamicIPCBase::ptr(size_t offset) const
 size_t 
 DynamicIPCBase::offset(void* start) const    
 {
-    size_t ub = (size_t)(_mmap_addr) + (size_t)(_mmap_sz);
-    if( start < _mmap_addr || (size_t)start >= ub )
+    size_t ub = (size_t)_mmap_addr + (size_t)_mmap_sz;
+    if(start < _mmap_addr || (size_t)start >= ub)
         return 0;                
 
-    return ((size_t)start - (size_t)(_mmap_addr)); 
+    return ((size_t)start - (size_t)_mmap_addr); 
 }
 
 
 bool 
 DynamicIPCBase::recv(long& val) const
 {
-    shem_chunk tmp;
+    shem_chunk tmp(0,0);
 
     bool res = _recv(tmp);
     val = tmp.offset;
     return res;
 }
 
-const DynamicIPCBase& 
-DynamicIPCBase::operator<<(const shem_chunk& chunk) const
-{
-    _send(chunk);
-    return *this;
-}
-
-const DynamicIPCBase& 
-DynamicIPCBase::operator>>(shem_chunk& chunk) const 
-{
-    _recv(chunk);            
-    return *this;
-} 
 
 
 #define IPC_MASTER_ERROR(msg) TOSDB_LogEx("IPC-Master",msg,GetLastError())
@@ -435,13 +433,11 @@ DynamicIPCSlave::DynamicIPCSlave(std::string name, size_t sz)
                 
         /* get handle to page file */
         _fmap_hndl = CreateFileMapping( INVALID_HANDLE_VALUE, 
-                                              &(_sec_attr[SHEM1]), 
-                                              PAGE_READWRITE, 
-                                              (unsigned long long)
-                                                  (_mmap_sz) >> 32,
-                                              ((unsigned long long)
-                                                  (_mmap_sz) << 32) >>32,
-                                              _shem_str.c_str() );    
+                                        &(_sec_attr[SHEM1]), 
+                                        PAGE_READWRITE, 
+                                        (unsigned long long)_mmap_sz >> 32,
+                                        ((unsigned long long)_mmap_sz << 32) >>32,
+                                        _shem_str.c_str() );    
 
         IPC_SLAVE_GOOD_RET_OR_THROW(_fmap_hndl, "DynamicIPCSlave failed to create file mapping");
              
@@ -452,7 +448,7 @@ DynamicIPCSlave::DynamicIPCSlave(std::string name, size_t sz)
         SlowHeapManager* ehp = new SlowHeapManager(_mmap_addr, _mmap_sz);
         IPC_SLAVE_GOOD_RET_OR_THROW(ehp, "DynamicIPCSlave failed to allocate SlowHeapManager");
         
-        _uptr_heap =  _uptr_heap_ty(ehp);
+        _uptr_heap = std::unique_ptr<SlowHeapManager>(ehp);
         
         /* create a listener thread for allocs/deallocs */
         std::async(std::launch::async, [this]{ _listen_for_alloc(); }); 
@@ -522,7 +518,8 @@ DynamicIPCSlave::_listen_for_alloc()
             break;
         } 
 
-        DisconnectNamedPipe(_intrnl_pipe_hndl);
+        if( !DisconnectNamedPipe(_intrnl_pipe_hndl) )
+            TOSDB_LogH("IPC", "DisconnectNamedPipe failed in _listen_for_alloc");
     }    
     CloseHandle(_intrnl_pipe_hndl);
 }
@@ -536,9 +533,7 @@ DynamicIPCSlave::wait_for_master()
     }else{   
         _xtrnl_pipe_hndl = CreateNamedPipe( _xtrnl_pipe_str.c_str(), 
                                             PIPE_ACCESS_DUPLEX,
-                                            PIPE_TYPE_MESSAGE 
-                                                | PIPE_READMODE_MESSAGE 
-                                                | PIPE_WAIT,
+                                            PIPE_TYPE_MESSAGE | PIPE_READMODE_MESSAGE | PIPE_WAIT,
                                             1, 0, 0, INFINITE, 
                                             &(_sec_attr[PIPE1]) );
     }
@@ -550,7 +545,7 @@ DynamicIPCSlave::wait_for_master()
 
     ConnectNamedPipe(_xtrnl_pipe_hndl, NULL);    
 
-    if( !send((long)(_mmap_sz)) ) /* OK: _mmap_sz < LONG_MAX) */
+    if( !send((long)_mmap_sz) ) /* OK: _mmap_sz < 2**31 - 1) */
         IPC_SLAVE_ERROR("send failed in wait_for_master");
 
     return true;
