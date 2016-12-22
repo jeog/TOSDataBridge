@@ -234,6 +234,11 @@ A windows service works differently than a typical program but there a few usefu
 - ```(Admin) C:\> SC config TOSDataBridge ...``` - Adjust the service's configuration/properties.
 - ```(Admin) C:\> SC /?``` - Display help for the SC command.
 
+Once started the service spawns a child process(tos-databridge-engine) with lower/restricted privileges that does all the leg work. Occassionally(debuging, for instance) it can be useful to run the engine directly by calling the service binary with the --noservice switch. The engine binary will then be spawned with appropriate privileges and enter a 'detached' state, requiring the user will to manually kill the proces when done. 
+
+    Example 1: (Admin) C:\>TOSDataBridge\bin\Release\x64\> tos-databridge-serv-x64.exe --noservice
+    Example 2: (Admin) C:\>TOSDataBridge\bin\Release\Win32\> tos-databridge-serv-x86.exe --noservice --admin    
+
 
 ### C/C++ Interface ::: Administrative Calls
 - - -
