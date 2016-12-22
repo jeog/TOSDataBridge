@@ -156,7 +156,7 @@ Simply reporting bugs or questioning seemingly idiotic or unintuitive interface 
    
 4. Determine if your TOS platform runs under elevated privileges (does it ask for an admin password before starting?)
    
-5. Determine if you need to run under a custom Session. **MOST USERS SHOULDN'T WORRY ABOUT THIS** unless they plan to run in a non-standard environment (e.g an EC2 instance). The tos-databridge-engine.exe[] binary needs to run in the same session as the ThinkOrSwim platform.
+5. Determine if you need to run under a custom Session. The tos-databridge-engine.exe[] binary needs to run in the same session as the ThinkOrSwim platform. **MOST USERS SHOULDN'T WORRY ABOUT THIS** unless they plan to run in a non-standard environment (e.g an EC2 instance). 
   
 6. Open a command shell with Admin Privileges (right-click on cmd.exe and click 'run as administrator'). Navigate to the tos-databridge root directory and run the tosdb-setup.bat setup script with the info from steps #2, #4, and #5:
     
@@ -234,9 +234,9 @@ A windows service works differently than a typical program but there a few usefu
 - ```(Admin) C:\> SC config TOSDataBridge ...``` - Adjust the service's configuration/properties.
 - ```(Admin) C:\> SC /?``` - Display help for the SC command.
 
-Once started the service spawns a child process(tos-databridge-engine) with lower/restricted privileges that does all the leg work. Occassionally(debuging, for instance) it can be useful to run the engine directly by calling the service binary with the --noservice switch. The engine binary will then be spawned with appropriate privileges and enter a 'detached' state, requiring the user will to manually kill the proces when done. 
+Once started the service spawns a child process(tos-databridge-engine) with lower/restricted privileges that does all the leg work. Occassionally(debuging, for instance) it can be useful to run the engine directly by calling the service binary with the --noservice switch. The engine binary will then be spawned with appropriate privileges and enter a 'detached' state, requiring the user to manually kill the proces when done. 
 
-    Example 1: (Admin) C:\>TOSDataBridge\bin\Release\x64\> tos-databridge-serv-x64.exe --noservice
+    Example 1: (Admin) C:\>TOSDataBridge\bin\Debug\x64\> tos-databridge-serv-x64_d.exe --noservice
     Example 2: (Admin) C:\>TOSDataBridge\bin\Release\Win32\> tos-databridge-serv-x86.exe --noservice --admin    
 
 
