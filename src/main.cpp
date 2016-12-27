@@ -64,13 +64,13 @@ DllMain(HINSTANCE mod, DWORD why, LPVOID res)
 }
 
 std::string 
-CreateBufferName(std::string sTopic, std::string sItem)
+CreateBufferName(std::string topic_str, std::string item)
 {     /* 
       * name of mapping is of form: "TOSDB_[topic name]_[item_name]"  
       * only alpha-numeric characters (except under-score) 
       */
       std::string str("TOSDB_");
-      str.append( sTopic.append("_"+sItem) );
+      str.append( topic_str.append("_" + item) );
 
       auto f = [](char x){ return !isalnum(x) && x != '_'; };
       str.erase(std::remove_if(str.begin(), str.end(), f), str.end());

@@ -75,8 +75,8 @@ _getBlockPtr(std::string id)
 }
 
 long 
-RequestStreamOP(TOS_Topics::TOPICS tTopic, 
-                std::string sItem, 
+RequestStreamOP(TOS_Topics::TOPICS topic_t, 
+                std::string item, 
                 unsigned long timeout, 
                 unsigned int opcode)
 /* needs exclusivity but can't block; CALLING CODE MUST LOCK
@@ -96,8 +96,8 @@ RequestStreamOP(TOS_Topics::TOPICS tTopic,
                    -2);    
 
     /* need to stay alive until we can remove(below) */
-    arg1 = master.insert(&tTopic);
-    arg2 = master.insert(sItem.c_str(), sItem.size() + 1); 
+    arg1 = master.insert(&topic_t);
+    arg2 = master.insert(item.c_str(), item.size() + 1); 
     arg3 = master.insert(&timeout);
 
     master << DynamicIPCMaster::shem_chunk(opcode, 0) 
@@ -120,15 +120,15 @@ RequestStreamOP(TOS_Topics::TOPICS tTopic,
 
 
 void 
-CaptureBuffer(TOS_Topics::TOPICS tTopic, 
-              std::string sItem, 
+CaptureBuffer(TOS_Topics::TOPICS topic_t, 
+              std::string item, 
               const TOSDBlock* db)
 {
     std::string buf_name;
     void *fm_hndl;
     void *mem_addr;
     void *mtx_hndl;
-    buffers_ty::key_type buf_key(tTopic, sItem); 
+    buffers_ty::key_type buf_key(topic_t, item); 
 
     LOCAL_BUFFERS_LOCK_GUARD;
     /* --- CRITICAL SECTION --- */
@@ -137,7 +137,7 @@ CaptureBuffer(TOS_Topics::TOPICS tTopic,
     if( b_iter != buffers.end() ){  
         std::get<2>(b_iter->second).insert(db);     
     }else{ 
-        buf_name = CreateBufferName(TOS_Topics::map[tTopic], sItem);
+        buf_name = CreateBufferName(TOS_Topics::map[topic_t], item);
         fm_hndl = OpenFileMapping(FILE_MAP_READ, 0, buf_name.c_str());
 
         if( !fm_hndl || !(mem_addr = MapViewOfFile(fm_hndl,FILE_MAP_READ,0,0,0)) )
@@ -167,11 +167,11 @@ CaptureBuffer(TOS_Topics::TOPICS tTopic,
 }  
 
 void 
-ReleaseBuffer(TOS_Topics::TOPICS tTopic, 
-              std::string sItem, 
+ReleaseBuffer(TOS_Topics::TOPICS topic_t, 
+              std::string item, 
               const TOSDBlock* db)
 {
-    buffers_ty::key_type buf_key(tTopic, sItem);
+    buffers_ty::key_type buf_key(topic_t, item);
 
     LOCAL_BUFFERS_LOCK_GUARD;
     /* --- CRITICAL SECTION --- */
@@ -432,6 +432,17 @@ TOSDB_IsConnected()
 }
 
 
+#define RETURN_IF_NOT_CONNECTED(ret) do{ \
+    if( !aware_of_connection.load() ){ \
+        TOSDB_LogH("IPC", "not connected to slave (!aware_of_connection)"); \
+        return ret; \
+    } \
+    if( !master.connected() ){ \
+        TOSDB_LogH("IPC", "not connected to slave (!master.connected)"); \
+        return ret; \
+    } \
+}while(0)
+
 int 
 TOSDB_CreateBlock(LPCSTR id,
                   size_type sz,
@@ -440,15 +451,7 @@ TOSDB_CreateBlock(LPCSTR id,
 {  
     TOSDBlock* db;
 
-    if( !aware_of_connection.load() ){
-        TOSDB_LogH("IPC", "not connected to slave (!aware_of_connection)");
-        return -1;
-    }  
-
-    if( !master.connected() ){
-        TOSDB_LogH("IPC", "not connected to slave (!master.connected)");
-        return -1;
-    }
+    RETURN_IF_NOT_CONNECTED(-1);
 
     if( !CheckIDLength(id) )    
         return -2;
@@ -486,7 +489,7 @@ TOSDB_CreateBlock(LPCSTR id,
 
 
 int 
-TOSDB_Add(std::string id, str_set_type sItems, topic_set_type tTopics)
+TOSDB_Add(std::string id, str_set_type items, topic_set_type topics_t)
 /* adding sets of topics and strings, dealing with pre-cache; 
    all Add_ methods end up in here  */
 {
@@ -503,21 +506,15 @@ TOSDB_Add(std::string id, str_set_type sItems, topic_set_type tTopics)
     HWND hndl = NULL;
     int err = 0;
 
-    if( !master.connected() || !aware_of_connection.load() ){
-        TOSDB_LogH("IPC", "not connected to slave/server");
-        return -2;
-    }    
+    RETURN_IF_NOT_CONNECTED(-2);    
 	
     /* remove NULL topics */
-    auto is_null = [&](TOS_Topics::TOPICS t)
-                   { 
-                       return t == TOS_Topics::TOPICS::NULL_TOPIC; 
-                   };    
+    auto is_null = [&](TOS_Topics::TOPICS t){ return t == TOS_Topics::TOPICS::NULL_TOPIC; };    
 
-    tTopics.erase(std::remove_if(tTopics.begin(), tTopics.end(), is_null), tTopics.end());	
+    topics_t.erase(std::remove_if(topics_t.begin(), topics_t.end(), is_null), topics_t.end());	
 
     /* fail if both are empty - note: this could result from NULL topics */
-    if( sItems.empty() && tTopics.empty() )
+    if( items.empty() && topics_t.empty() )
         return -1; /* closer to bad param than anything else */
 
     GLOBAL_RLOCK_GUARD;
@@ -534,21 +531,21 @@ TOSDB_Add(std::string id, str_set_type sItems, topic_set_type tTopics)
   
     if( !db->item_precache.empty() ) 
        /* if we have pre-cached items, include them */
-       std::set_union(sItems.cbegin(), sItems.cend(),
+       std::set_union(items.cbegin(), items.cend(),
                       db->item_precache.cbegin(), db->item_precache.cend(),
                       std::insert_iterator<str_set_type>(tot_items,tot_items.begin())); 
     else 
-        tot_items = sItems; /* 'copy', keep sItems available for pre-caching */ 
+        tot_items = items; /* 'copy', keep items available for pre-caching */ 
    
   
     if( !db->topic_precache.empty() ) 
         /* if we have pre-cached topics, include them */
-        std::set_union(tTopics.cbegin(), tTopics.cend(),
+        std::set_union(topics_t.cbegin(), topics_t.cend(),
                        db->topic_precache.cbegin(), db->topic_precache.cend(),
                        std::insert_iterator<topic_set_type>(tot_topics,tot_topics.begin()),
                        TOS_Topics::top_less()); 
     else 
-        tot_topics = std::move(tTopics); /* move, don't need tTopics anymore */  
+        tot_topics = std::move(topics_t); /* move, don't need topics_t anymore */  
     
 
     /* find new items and topics to add */
@@ -589,7 +586,7 @@ TOSDB_Add(std::string id, str_set_type sItems, topic_set_type tTopics)
             }          
         }    
     }else if(old_topics.empty()){ /* don't ignore items if no topics yet.. */
-        for(auto & i : sItems)
+        for(auto & i : items)
             db->item_precache.insert(i); /* ...pre-cache them */     
     }
     
@@ -613,116 +610,113 @@ TOSDB_Add(std::string id, str_set_type sItems, topic_set_type tTopics)
 
 
 int 
-TOSDB_AddTopic(std::string id, TOS_Topics::TOPICS tTopic)
+TOSDB_AddTopic(std::string id, TOS_Topics::TOPICS topic_t)
 {
-    return TOSDB_Add(id, str_set_type(), tTopic);
+    return TOSDB_Add(id, str_set_type(), topic_t);
 }
 
 
 int   
-TOSDB_AddItem(std::string id, std::string sItem)
+TOSDB_AddItem(std::string id, std::string item)
 {
-    return TOSDB_Add(id, sItem, topic_set_type());
+    return TOSDB_Add(id, item, topic_set_type());
 }
 
 
 int 
-TOSDB_AddTopic(LPCSTR id, LPCSTR sTopic)
+TOSDB_AddTopic(LPCSTR id, LPCSTR topic_str)
 {
-    if( !CheckIDLength(id) || !CheckStringLength(sTopic) )
+    if( !CheckIDLength(id) || !CheckStringLength(topic_str) )
         return -1;
 
-    return TOSDB_AddTopic(id, GetTopicEnum(sTopic));
+    return TOSDB_AddTopic(id, GetTopicEnum(topic_str));
 }
 
 
 int 
-TOSDB_AddTopics(std::string id, topic_set_type tTopics)
+TOSDB_AddTopics(std::string id, topic_set_type topics_t)
 {  
-    return TOSDB_Add(id, str_set_type(), tTopics);
+    return TOSDB_Add(id, str_set_type(), topics_t);
 }
 
 
 int 
-TOSDB_AddTopics(LPCSTR id, LPCSTR* sTopics, size_type topics_len)
+TOSDB_AddTopics(LPCSTR id, LPCSTR* topics_str, size_type topics_len)
 {  
-    if( !CheckIDLength(id) || !CheckStringLengths(sTopics, topics_len) ) 
+    if( !CheckIDLength(id) || !CheckStringLengths(topics_str, topics_len) ) 
         return -1;  
 
     auto f =  [=](LPCSTR str){ return TOS_Topics::map[str]; };
-    topic_set_type tset(sTopics, topics_len, f);
+    topic_set_type tset(topics_str, topics_len, f);
 
     return TOSDB_Add(id, str_set_type(), std::move(tset));
 }
 
 
 int 
-TOSDB_AddItem(LPCSTR id, LPCSTR sItem)
+TOSDB_AddItem(LPCSTR id, LPCSTR item)
 {  
-    if( !CheckIDLength(id) || !CheckStringLength(sItem) )
+    if( !CheckIDLength(id) || !CheckStringLength(item) )
         return -1;
 
-    return TOSDB_Add(id, std::string(sItem), topic_set_type());
+    return TOSDB_Add(id, std::string(item), topic_set_type());
 }
 
 
 int 
-TOSDB_AddItems(std::string id, str_set_type sItems)
+TOSDB_AddItems(std::string id, str_set_type items)
 {
-    return TOSDB_Add(id, sItems, topic_set_type());
+    return TOSDB_Add(id, items, topic_set_type());
 }
 
 
 int 
-TOSDB_AddItems(LPCSTR id, LPCSTR* sItems, size_type items_len)
+TOSDB_AddItems(LPCSTR id, LPCSTR* items, size_type items_len)
 {  
-    if( !CheckIDLength(id) || !CheckStringLengths(sItems, items_len) ) 
+    if( !CheckIDLength(id) || !CheckStringLengths(items, items_len) ) 
         return -1; 
    
-    return TOSDB_Add(id, str_set_type(sItems,items_len), topic_set_type());  
+    return TOSDB_Add(id, str_set_type(items,items_len), topic_set_type());  
 }
 
 
 int 
 TOSDB_Add(LPCSTR id, 
-          LPCSTR* sItems, 
+          LPCSTR* items, 
           size_type items_len, 
-          LPCSTR* sTopics, 
+          LPCSTR* topics_str, 
           size_type topics_len)
 { 
     if( !CheckIDLength(id) 
-        || !CheckStringLengths(sItems, items_len) 
-        || !CheckStringLengths(sTopics, topics_len) ){  
+        || !CheckStringLengths(items, items_len) 
+        || !CheckStringLengths(topics_str, topics_len) ){  
         return -1;  
     }
 
     auto f = [=](LPCSTR str){ return TOS_Topics::map[str]; };
-    topic_set_type tset(sTopics, topics_len, f);
+    topic_set_type tset(topics_str, topics_len, f);
   
-    return TOSDB_Add(id, str_set_type(sItems,items_len), std::move(tset)); 
+    return TOSDB_Add(id, str_set_type(items,items_len), std::move(tset)); 
 }
 
 
 int 
-TOSDB_RemoveTopic(LPCSTR id, LPCSTR sTopic)
+TOSDB_RemoveTopic(LPCSTR id, LPCSTR topic_str)
 {
-    if( !CheckIDLength(id) || !CheckStringLength(sTopic) )
+    if( !CheckIDLength(id) || !CheckStringLength(topic_str) )
         return -1;
 
-    return TOSDB_RemoveTopic(id, TOS_Topics::map[sTopic]);
+    return TOSDB_RemoveTopic(id, TOS_Topics::map[topic_str]);
 }
 
 
 int 
-TOSDB_RemoveTopic(std::string id, TOS_Topics::TOPICS tTopic)
+TOSDB_RemoveTopic(std::string id, TOS_Topics::TOPICS topic_t)
 {  
     TOSDBlock* db;
     int err = 0;
 
-    if( !master.connected() || !aware_of_connection.load() ){
-        TOSDB_LogH("IPC", "not connected to slave/server");
-        return -2;
-    }
+    RETURN_IF_NOT_CONNECTED(-2);
   
     GLOBAL_RLOCK_GUARD;
     /* --- CRITICAL SECTION --- */
@@ -733,23 +727,23 @@ TOSDB_RemoveTopic(std::string id, TOS_Topics::TOPICS tTopic)
         return -3;
     }   
 
-    if( !(TOS_Topics::enum_value_type)(tTopic) ){
+    if( !(TOS_Topics::enum_value_type)(topic_t) ){
         TOSDB_LogH("TOPIC", "NULL topic");
         return -3;
     }   
 
     /* OCT 30 2016 --- if not in block, check if in pre-cache, before returning error */
-    if( db->block->has_topic(tTopic) ){
+    if( db->block->has_topic(topic_t) ){
         for(auto & item : db->block->items())
         {
-            ReleaseBuffer(tTopic, item, db); 
-            if( RequestStreamOP(tTopic, item, db->timeout, TOSDB_SIG_REMOVE) ){
+            ReleaseBuffer(topic_t, item, db); 
+            if( RequestStreamOP(topic_t, item, db->timeout, TOSDB_SIG_REMOVE) ){
                 ++err;
                 TOSDB_LogH("IPC","RequestStreamOP(REMOVE) failed, stream leaked");
             }
         }
 
-        db->block->remove_topic(tTopic);
+        db->block->remove_topic(topic_t);
 
         if( db->block->topics().empty() ){
             for(const std::string & item : db->block->items()){
@@ -757,34 +751,31 @@ TOSDB_RemoveTopic(std::string id, TOS_Topics::TOPICS tTopic)
                 db->block->remove_item(item); 
             }  
         }
-    }else if(db->topic_precache.find(tTopic) == db->topic_precache.end()){
+    }else if(db->topic_precache.find(topic_t) == db->topic_precache.end()){
         err = -4;  
     }
 
-    db->topic_precache.erase(tTopic);
+    db->topic_precache.erase(topic_t);
     return err;
     /* --- CRITICAL SECTION --- */
 }
 
 
 int   
-TOSDB_RemoveItem(std::string id, std::string sItem)
+TOSDB_RemoveItem(std::string id, std::string item)
 {
-    return TOSDB_RemoveItem(id.c_str(), sItem.c_str());
+    return TOSDB_RemoveItem(id.c_str(), item.c_str());
 
 }
 
 
 int 
-TOSDB_RemoveItem(LPCSTR id, LPCSTR sItem)
+TOSDB_RemoveItem(LPCSTR id, LPCSTR item)
 {  
     TOSDBlock* db;
     int err = 0;
 
-    if( !master.connected() || !aware_of_connection.load() ){
-        TOSDB_LogH("IPC", "not connected to slave/server");
-        return -1;
-    }
+    RETURN_IF_NOT_CONNECTED(-1);
   
     GLOBAL_RLOCK_GUARD;
     /* --- CRITICAL SECTION --- */
@@ -800,21 +791,21 @@ TOSDB_RemoveItem(LPCSTR id, LPCSTR sItem)
         return -2;
     }  
 
-    if( !CheckStringLength(sItem) )
+    if( !CheckStringLength(item) )
         return -3;
 
     /* OCT 30 2016 --- if not in block, check if in pre-cache, before returning error */
-    if( db->block->has_item(sItem) ){
+    if( db->block->has_item(item) ){
         for(auto topic : db->block->topics())
         {
-            ReleaseBuffer(topic, sItem, db); 
-            if( RequestStreamOP(topic, sItem, db->timeout, TOSDB_SIG_REMOVE) ){
+            ReleaseBuffer(topic, item, db); 
+            if( RequestStreamOP(topic, item, db->timeout, TOSDB_SIG_REMOVE) ){
                 ++err;
                 TOSDB_LogH("IPC","RequestStreamOP(REMOVE) failed, stream leaked");
             }
         }
 
-        db->block->remove_item(sItem);
+        db->block->remove_item(item);
 
         if( db->block->items().empty() ){
             for(const TOS_Topics::TOPICS topic : db->block->topics()){
@@ -822,11 +813,11 @@ TOSDB_RemoveItem(LPCSTR id, LPCSTR sItem)
                 db->block->remove_topic(topic);
             }
         }
-    }else if(db->item_precache.find(sItem) == db->item_precache.end()){
+    }else if(db->item_precache.find(item) == db->item_precache.end()){
         err = -4;  
     }
 
-    db->item_precache.erase(sItem);
+    db->item_precache.erase(item);
     return err;
   /* --- CRITICAL SECTION --- */
 }
@@ -841,10 +832,7 @@ TOSDB_CloseBlock(LPCSTR id)
 
     int err = 0;
 
-    if( !master.connected() || !aware_of_connection.load() ){
-        TOSDB_LogH("IPC", "not connected to slave/server");
-        return -1;
-    }
+    RETURN_IF_NOT_CONNECTED(-1);
 
     GLOBAL_RLOCK_GUARD;
     /* --- CRITICAL SECTION --- */
@@ -918,6 +906,8 @@ TOSDB_DumpSharedBufferStatus()
     long ret;  
     unsigned int lcount = 0;
 
+    RETURN_IF_NOT_CONNECTED(-1);
+
     GLOBAL_RLOCK_GUARD;
     /* --- CRITICAL SECTION --- */
 
@@ -938,6 +928,8 @@ TOSDB_DumpSharedBufferStatus()
     return (int)ret;
     /* --- CRITICAL SECTION --- */
 }
+
+
 
 int 
 TOSDB_GetBlockIDs(LPSTR* dest, size_type array_len, size_type str_len)
@@ -1048,9 +1040,9 @@ GetBlockOrThrow(std::string id)
 
 /*
 TOS_Topics::TOPICS 
-GetTopicEnum(std::string sTopic)
+GetTopicEnum(std::string topic_str)
 {
-    TOS_Topics::TOPICS t = TOS_Topics::map[sTopic];
+    TOS_Topics::TOPICS t = TOS_Topics::map[topic_str];
     /* why are we logging this ?? 
     if( !(TOS_Topics::enum_value_type)t )
         TOSDB_Log("TOS_Topic", "TOS_Topic has no corresponding enum type in map"); */ /*

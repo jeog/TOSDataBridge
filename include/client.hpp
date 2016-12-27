@@ -50,9 +50,9 @@ typedef struct {
 
 
 inline TOS_Topics::TOPICS 
-GetTopicEnum(std::string sTopic)
+GetTopicEnum(std::string topic_str)
 { 
-    return TOS_Topics::map[sTopic]; 
+    return TOS_Topics::map[topic_str]; 
 }
 
 const TOSDBlock*   

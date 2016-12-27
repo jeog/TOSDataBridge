@@ -281,14 +281,14 @@ TOSDB_GetPreCachedItemNames(LPCSTR id, LPSTR* dest, size_type array_len, size_ty
 
 
 int 
-TOSDB_GetTypeBits(LPCSTR sTopic, type_bits_type* type_bits)
+TOSDB_GetTypeBits(LPCSTR topic_str, type_bits_type* type_bits)
 {
     TOS_Topics::TOPICS t;
 
-    if(!CheckStringLength(sTopic))
+    if(!CheckStringLength(topic_str))
         return -1;
 
-    t = GetTopicEnum(sTopic);
+    t = GetTopicEnum(topic_str);
     if(t == TOS_Topics::TOPICS::NULL_TOPIC)
         return -2;
 
@@ -301,15 +301,15 @@ TOSDB_GetTypeBits(LPCSTR sTopic, type_bits_type* type_bits)
 }
 
 int 
-TOSDB_GetTypeString(LPCSTR sTopic, LPSTR dest, size_type str_len)
+TOSDB_GetTypeString(LPCSTR topic_str, LPSTR dest, size_type str_len)
 {
     TOS_Topics::TOPICS t;
     std::string str;
 
-    if(!CheckStringLength(sTopic))
+    if(!CheckStringLength(topic_str))
         return -1;
 
-    t = GetTopicEnum(sTopic);
+    t = GetTopicEnum(topic_str);
     if(t == TOS_Topics::TOPICS::NULL_TOPIC)
         return -2;
 
@@ -409,21 +409,21 @@ TOSDB_GetPreCachedItemNames(std::string id)
 }
 
 type_bits_type 
-TOSDB_GetTypeBits(TOS_Topics::TOPICS tTopic)
+TOSDB_GetTypeBits(TOS_Topics::TOPICS topic_t)
 {
-    if(tTopic == TOS_Topics::TOPICS::NULL_TOPIC)
+    if(topic_t == TOS_Topics::TOPICS::NULL_TOPIC)
         throw std::invalid_argument("NULL TOPIC");
 
-    return TOS_Topics::TypeBits(tTopic);          
+    return TOS_Topics::TypeBits(topic_t);          
 }
 
 std::string 
-TOSDB_GetTypeString(TOS_Topics::TOPICS tTopic)
+TOSDB_GetTypeString(TOS_Topics::TOPICS topic_t)
 {
-    if(tTopic == TOS_Topics::TOPICS::NULL_TOPIC)
+    if(topic_t == TOS_Topics::TOPICS::NULL_TOPIC)
         throw std::invalid_argument("NULL TOPIC");
 
-    return TOS_Topics::TypeString(tTopic);
+    return TOS_Topics::TypeString(topic_t);
 }
 
 size_type 
@@ -496,24 +496,24 @@ TOSDB_IsUsingDateTime(std::string id)
 }
 
 int 
-TOSDB_GetStreamOccupancy(LPCSTR id, LPCSTR sItem, LPCSTR sTopic, size_type* sz)
+TOSDB_GetStreamOccupancy(LPCSTR id, LPCSTR item, LPCSTR topic_str, size_type* sz)
 {
     const TOSDBlock *db;  
     TOSDB_RawDataBlock::stream_const_ptr_type dat;
     TOS_Topics::TOPICS t;
 
     if( !CheckIDLength(id) 
-        || !CheckStringLength(sItem) 
-        || !CheckStringLength(sTopic) ){
+        || !CheckStringLength(item) 
+        || !CheckStringLength(topic_str) ){
         return -1;  
     }
 
-    t = GetTopicEnum(sTopic);
+    t = GetTopicEnum(topic_str);
     try{
         GLOBAL_RLOCK_GUARD;
         /* --- CRITICAL SECTION --- */
         db = GetBlockOrThrow(id);
-        dat = db->block->raw_stream_ptr(sItem, t);
+        dat = db->block->raw_stream_ptr(item, t);
         *sz = (size_type)(dat->size());
         return 0;
         /* --- CRITICAL SECTION --- */
@@ -527,8 +527,8 @@ TOSDB_GetStreamOccupancy(LPCSTR id, LPCSTR sItem, LPCSTR sTopic, size_type* sz)
 
 size_type 
 TOSDB_GetStreamOccupancy(std::string id, 
-                         std::string sItem, 
-                         TOS_Topics::TOPICS tTopic)
+                         std::string item, 
+                         TOS_Topics::TOPICS topic_t)
 {
     const TOSDBlock *db;  
     TOSDB_RawDataBlock::stream_const_ptr_type dat;
@@ -536,7 +536,7 @@ TOSDB_GetStreamOccupancy(std::string id,
     GLOBAL_RLOCK_GUARD;
     /* --- CRITICAL SECTION --- */
     db = GetBlockOrThrow(id);
-    dat = db->block->raw_stream_ptr(sItem, tTopic);  
+    dat = db->block->raw_stream_ptr(item, topic_t);  
     
     try{
         return (size_type)(dat->size());
@@ -547,24 +547,24 @@ TOSDB_GetStreamOccupancy(std::string id,
 }
 
 int 
-TOSDB_GetMarkerPosition(LPCSTR id, LPCSTR sItem, LPCSTR sTopic, long long* pos)
+TOSDB_GetMarkerPosition(LPCSTR id, LPCSTR item, LPCSTR topic_str, long long* pos)
 {
     const TOSDBlock *db;
     TOSDB_RawDataBlock::stream_const_ptr_type dat;
     TOS_Topics::TOPICS t;
 
     if( !CheckIDLength(id) 
-        || !CheckStringLength(sItem)
-        || !CheckStringLength(sTopic) ){
+        || !CheckStringLength(item)
+        || !CheckStringLength(topic_str) ){
         return -1;  
     }
 
-    t = GetTopicEnum(sTopic);
+    t = GetTopicEnum(topic_str);
     try{
         GLOBAL_RLOCK_GUARD;
         /* --- CRITICAL SECTION --- */
         db = GetBlockOrThrow(id);
-        dat = db->block->raw_stream_ptr(sItem, t);
+        dat = db->block->raw_stream_ptr(item, t);
         *pos = (dat->marker_position());
         return 0;
         /* --- CRITICAL SECTION --- */
@@ -578,8 +578,8 @@ TOSDB_GetMarkerPosition(LPCSTR id, LPCSTR sItem, LPCSTR sTopic, long long* pos)
 
 long long 
 TOSDB_GetMarkerPosition(std::string id, 
-                        std::string sItem, 
-                        TOS_Topics::TOPICS tTopic)
+                        std::string item, 
+                        TOS_Topics::TOPICS topic_t)
 {
     const TOSDBlock *db;  
     TOSDB_RawDataBlock::stream_const_ptr_type dat;
@@ -587,7 +587,7 @@ TOSDB_GetMarkerPosition(std::string id,
     GLOBAL_RLOCK_GUARD;
     /* --- CRITICAL SECTION --- */
     db = GetBlockOrThrow(id);
-    dat = db->block->raw_stream_ptr(sItem, tTopic);      
+    dat = db->block->raw_stream_ptr(item, topic_t);      
     try{
         return dat->marker_position();
     }catch(const DataStreamError& e){
@@ -598,8 +598,8 @@ TOSDB_GetMarkerPosition(std::string id,
 
 int 
 TOSDB_IsMarkerDirty(LPCSTR id,
-                    LPCSTR sItem, 
-                    LPCSTR sTopic, 
+                    LPCSTR item, 
+                    LPCSTR topic_str, 
                     unsigned int* is_dirty)
 {
     const TOSDBlock *db;
@@ -607,17 +607,17 @@ TOSDB_IsMarkerDirty(LPCSTR id,
     TOS_Topics::TOPICS t;
 
     if( !CheckIDLength(id) 
-        || !CheckStringLength(sItem)
-        || !CheckStringLength(sTopic) ){ 
+        || !CheckStringLength(item)
+        || !CheckStringLength(topic_str) ){ 
         return -1;  
     }
 
-    t = GetTopicEnum(sTopic);
+    t = GetTopicEnum(topic_str);
     try{
         GLOBAL_RLOCK_GUARD;
         /* --- CRITICAL SECTION --- */
         db = GetBlockOrThrow(id);
-        dat = db->block->raw_stream_ptr(sItem, t);
+        dat = db->block->raw_stream_ptr(item, t);
         *is_dirty = (unsigned int)(dat->is_marker_dirty());
         return 0;
         /* --- CRITICAL SECTION --- */
@@ -631,8 +631,8 @@ TOSDB_IsMarkerDirty(LPCSTR id,
 
 bool 
 TOSDB_IsMarkerDirty(std::string id, 
-                    std::string sItem, 
-                    TOS_Topics::TOPICS tTopic)
+                    std::string item, 
+                    TOS_Topics::TOPICS topic_t)
 {
     const TOSDBlock *db;  
     TOSDB_RawDataBlock::stream_const_ptr_type dat;
@@ -640,7 +640,7 @@ TOSDB_IsMarkerDirty(std::string id,
     GLOBAL_RLOCK_GUARD;
     /* --- CRITICAL SECTION --- */
     db = GetBlockOrThrow(id);
-    dat = db->block->raw_stream_ptr(sItem, tTopic);  
+    dat = db->block->raw_stream_ptr(item, topic_t);  
     try{
         return dat->is_marker_dirty();
     }catch(const DataStreamError& e){
@@ -652,8 +652,8 @@ TOSDB_IsMarkerDirty(std::string id,
 template<> 
 generic_type 
 TOSDB_Get<generic_type, false>(std::string id, 
-                               std::string sItem, 
-                               TOS_Topics::TOPICS tTopic, 
+                               std::string item, 
+                               TOS_Topics::TOPICS topic_t, 
                                long indx)
 {  
     const TOSDBlock *db;  
@@ -662,7 +662,7 @@ TOSDB_Get<generic_type, false>(std::string id,
     GLOBAL_RLOCK_GUARD;
     /* --- CRITICAL SECTION --- */
     db = GetBlockOrThrow(id);
-    dat = db->block->raw_stream_ptr(sItem, tTopic);  
+    dat = db->block->raw_stream_ptr(item, topic_t);  
     try{
         return dat->operator[](indx);
     }catch(const DataStreamError& e){
@@ -674,8 +674,8 @@ TOSDB_Get<generic_type, false>(std::string id,
 template<> 
 generic_dts_type 
 TOSDB_Get<generic_type, true>(std::string id, 
-                              std::string sItem, 
-                              TOS_Topics::TOPICS tTopic, 
+                              std::string item, 
+                              TOS_Topics::TOPICS topic_t, 
                               long indx)
 {
     const TOSDBlock *db;
@@ -684,7 +684,7 @@ TOSDB_Get<generic_type, true>(std::string id,
     GLOBAL_RLOCK_GUARD;
     /* --- CRITICAL SECTION --- */
     db = GetBlockOrThrow(id);
-    dat = db->block->raw_stream_ptr(sItem, tTopic);
+    dat = db->block->raw_stream_ptr(item, topic_t);
     try{
         return dat->both(indx);
     }catch(const DataStreamError& e){
@@ -718,14 +718,14 @@ struct GRetType<T, false>{
 template<typename T, bool b> 
 auto 
 TOSDB_Get(std::string id, 
-          std::string sItem, 
-          TOS_Topics::TOPICS tTopic, 
+          std::string item, 
+          TOS_Topics::TOPICS topic_t, 
           long indx) -> typename std::conditional<b, std::pair<T, DateTimeStamp>, T>::type
 {
     T tmp;
     DateTimeStamp datetime;
 
-    if(TOSDB_Get_(id, sItem, tTopic, indx, &tmp, &datetime))    
+    if(TOSDB_Get_(id, item, topic_t, indx, &tmp, &datetime))    
         throw TOSDB_DataStreamError("TOSDB_Get_");
 
     return GRetType<T,b>()(tmp, std::move(datetime));  
@@ -734,8 +734,8 @@ TOSDB_Get(std::string id,
 template<typename T> 
 int 
 TOSDB_Get_(std::string id, 
-           std::string sItem, 
-           TOS_Topics::TOPICS tTopic, 
+           std::string item, 
+           TOS_Topics::TOPICS topic_t, 
            long indx, 
            T* dest, 
            pDateTimeStamp datetime)
@@ -747,7 +747,7 @@ TOSDB_Get_(std::string id,
         GLOBAL_RLOCK_GUARD;
         /* --- CRITICAL SECTION --- */
         db = GetBlockOrThrow(id);
-        dat = db->block->raw_stream_ptr(sItem, tTopic);  
+        dat = db->block->raw_stream_ptr(item, topic_t);  
         dat->copy(dest, 1,indx, indx, datetime);
         return 0;
         /* --- CRITICAL SECTION --- */
@@ -762,69 +762,69 @@ TOSDB_Get_(std::string id,
 template<typename T> 
 int 
 TOSDB_Get_(LPCSTR id, 
-           LPCSTR sItem, 
-           LPCSTR sTopic, 
+           LPCSTR item, 
+           LPCSTR topic_str, 
            long indx, 
            T* dest, 
            pDateTimeStamp datetime)
 { 
     if( !CheckIDLength(id) 
-        || !CheckStringLength(sItem)
-        || !CheckStringLength(sTopic) ){
+        || !CheckStringLength(item)
+        || !CheckStringLength(topic_str) ){
         return -1;  
     }
   
-    return TOSDB_Get_(id, sItem, GetTopicEnum(sTopic), indx, dest, datetime);
+    return TOSDB_Get_(id, item, GetTopicEnum(topic_str), indx, dest, datetime);
 }
 
 int 
 TOSDB_GetDouble(LPCSTR id, 
-                LPCSTR sItem, 
-                LPCSTR sTopic, 
+                LPCSTR item, 
+                LPCSTR topic_str, 
                 long indx, 
                 ext_price_type* dest, 
                 pDateTimeStamp datetime)
 {  
-    return TOSDB_Get_(id, sItem, sTopic , indx, dest, datetime);
+    return TOSDB_Get_(id, item, topic_str , indx, dest, datetime);
 }
 
 int 
 TOSDB_GetFloat(LPCSTR id, 
-               LPCSTR sItem, 
-               LPCSTR sTopic, 
+               LPCSTR item, 
+               LPCSTR topic_str, 
                long indx, 
                def_price_type* dest, 
                pDateTimeStamp datetime)
 {
-    return TOSDB_Get_(id, sItem, sTopic , indx, dest, datetime);
+    return TOSDB_Get_(id, item, topic_str , indx, dest, datetime);
 }
 
 int 
 TOSDB_GetLongLong(LPCSTR id, 
-                  LPCSTR sItem, 
-                  LPCSTR sTopic, 
+                  LPCSTR item, 
+                  LPCSTR topic_str, 
                   long indx, 
                   ext_size_type* dest, 
                   pDateTimeStamp datetime)
 {
-    return TOSDB_Get_(id, sItem, sTopic , indx, dest, datetime);
+    return TOSDB_Get_(id, item, topic_str , indx, dest, datetime);
 }
 
 int 
 TOSDB_GetLong(LPCSTR id, 
-              LPCSTR sItem, 
-              LPCSTR sTopic, 
+              LPCSTR item, 
+              LPCSTR topic_str, 
               long indx, 
               def_size_type* dest, 
               pDateTimeStamp datetime)
 {
-    return TOSDB_Get_(id, sItem, sTopic , indx, dest, datetime);
+    return TOSDB_Get_(id, item, topic_str , indx, dest, datetime);
 }
 
 int 
 TOSDB_GetString(LPCSTR id, 
-                LPCSTR sItem, 
-                LPCSTR sTopic, 
+                LPCSTR item, 
+                LPCSTR topic_str, 
                 long indx, 
                 LPSTR dest, 
                 size_type str_len, 
@@ -835,17 +835,17 @@ TOSDB_GetString(LPCSTR id,
     TOS_Topics::TOPICS t;
 
     if( !CheckIDLength(id) 
-        || !CheckStringLength(sItem)
-        || !CheckStringLength(sTopic) ){ 
+        || !CheckStringLength(item)
+        || !CheckStringLength(topic_str) ){ 
         return -1;  
     }
 
-    t = GetTopicEnum(sTopic);
+    t = GetTopicEnum(topic_str);
     try{
         GLOBAL_RLOCK_GUARD;
         /* --- CRITICAL SECTION --- */
         db = GetBlockOrThrow(id);
-        dat = db->block->raw_stream_ptr(sItem, t);
+        dat = db->block->raw_stream_ptr(item, t);
         dat->copy(&dest, 1, str_len, indx,indx,datetime);
         return 0;
         /* --- CRITICAL SECTION --- */
@@ -860,8 +860,8 @@ TOSDB_GetString(LPCSTR id,
 template<> 
 generic_vector_type 
 TOSDB_GetStreamSnapshot<generic_type, false>(std::string id, 
-                                             std::string sItem, 
-                                             TOS_Topics::TOPICS tTopic, 
+                                             std::string item, 
+                                             TOS_Topics::TOPICS topic_t, 
                                              long end, 
                                              long beg)
 {
@@ -871,7 +871,7 @@ TOSDB_GetStreamSnapshot<generic_type, false>(std::string id,
     GLOBAL_RLOCK_GUARD;
     /* --- CRITICAL SECTION --- */
     db = GetBlockOrThrow(id);  
-    dat = db->block->raw_stream_ptr(sItem, tTopic);  
+    dat = db->block->raw_stream_ptr(item, topic_t);  
     try{
         return dat->vector(end, beg); 
     }catch(const DataStreamError& e){
@@ -883,8 +883,8 @@ TOSDB_GetStreamSnapshot<generic_type, false>(std::string id,
 template<> 
 std::pair<std::vector<generic_type>,std::vector<DateTimeStamp>>     
 TOSDB_GetStreamSnapshot<generic_type, true>(std::string id, 
-                                            std::string sItem, 
-                                            TOS_Topics::TOPICS tTopic, 
+                                            std::string item, 
+                                            TOS_Topics::TOPICS topic_t, 
                                             long end, 
                                             long beg)
 {
@@ -894,7 +894,7 @@ TOSDB_GetStreamSnapshot<generic_type, true>(std::string id,
     GLOBAL_RLOCK_GUARD;
     /* --- CRITICAL SECTION --- */
     db = GetBlockOrThrow(id);  
-    dat = db->block->raw_stream_ptr(sItem, tTopic);
+    dat = db->block->raw_stream_ptr(item, topic_t);
     try{
         return std::pair<std::vector<generic_type>,
                          std::vector<DateTimeStamp>>(
@@ -953,8 +953,8 @@ struct GSSRetType<T, false>{
 template<typename T, bool b> 
 auto 
 TOSDB_GetStreamSnapshot(std::string id, 
-                        std::string sItem, 
-                        TOS_Topics::TOPICS tTopic, 
+                        std::string item, 
+                        TOS_Topics::TOPICS topic_t, 
                         long end, 
                         long beg) 
     -> typename std::conditional<b, 
@@ -970,7 +970,7 @@ TOSDB_GetStreamSnapshot(std::string id,
     GLOBAL_RLOCK_GUARD;
     /* --- CRITICAL SECTION --- */
     db = GetBlockOrThrow(id);  
-    dat = db->block->raw_stream_ptr(sItem, tTopic); /* get stream size */
+    dat = db->block->raw_stream_ptr(item, topic_t); /* get stream size */
     sz = (size_type)(dat->bound_size());
 
     if(end < 0) 
@@ -998,8 +998,8 @@ TOSDB_GetStreamSnapshot(std::string id,
 template<typename T> 
 int 
 TOSDB_GetStreamSnapshot_(LPCSTR id,
-                         LPCSTR sItem, 
-                         TOS_Topics::TOPICS tTopic, 
+                         LPCSTR item, 
+                         TOS_Topics::TOPICS topic_t, 
                          T* dest, 
                          size_type array_len, 
                          pDateTimeStamp datetime, 
@@ -1009,14 +1009,14 @@ TOSDB_GetStreamSnapshot_(LPCSTR id,
     const TOSDBlock *db;
     TOSDB_RawDataBlock::stream_const_ptr_type dat;
 
-    if(!CheckIDLength(id) || !CheckStringLength(sItem))
+    if(!CheckIDLength(id) || !CheckStringLength(item))
         return -1;
 
     try{
         GLOBAL_RLOCK_GUARD;
         /* --- CRITICAL SECTION --- */
         db = GetBlockOrThrow(id);
-        dat = db->block->raw_stream_ptr(sItem, tTopic);
+        dat = db->block->raw_stream_ptr(item, topic_t);
         dat->copy(dest,array_len,end,beg,datetime);
         return 0;
         /* --- CRITICAL SECTION --- */
@@ -1031,81 +1031,81 @@ TOSDB_GetStreamSnapshot_(LPCSTR id,
 template<typename T> 
 int 
 TOSDB_GetStreamSnapshot_(LPCSTR id,
-                         LPCSTR sItem, 
-                         LPCSTR sTopic, 
+                         LPCSTR item, 
+                         LPCSTR topic_str, 
                          T* dest, 
                          size_type array_len, 
                          pDateTimeStamp datetime, 
                          long end, 
                          long beg)
 {  
-    if(!CheckStringLength(sTopic)) /* let this go thru std::string ? */
+    if(!CheckStringLength(topic_str)) /* let this go thru std::string ? */
         return -1;   
    
-    return TOSDB_GetStreamSnapshot_(id, sItem, GetTopicEnum(sTopic), dest, 
+    return TOSDB_GetStreamSnapshot_(id, item, GetTopicEnum(topic_str), dest, 
                                     array_len, datetime, end, beg);
 }
 
 int 
 TOSDB_GetStreamSnapshotDoubles(LPCSTR id,
-                               LPCSTR sItem, 
-                               LPCSTR sTopic, 
+                               LPCSTR item, 
+                               LPCSTR topic_str, 
                                ext_price_type* dest, 
                                size_type array_len, 
                                pDateTimeStamp datetime, 
                                long end, 
                                long beg)
 {
-    return TOSDB_GetStreamSnapshot_(id, sItem, sTopic, dest, array_len, 
+    return TOSDB_GetStreamSnapshot_(id, item, topic_str, dest, array_len, 
                                     datetime, end, beg);
 }
 
 int 
 TOSDB_GetStreamSnapshotFloats(LPCSTR id, 
-                              LPCSTR sItem, 
-                              LPCSTR sTopic, 
+                              LPCSTR item, 
+                              LPCSTR topic_str, 
                               def_price_type* dest, 
                               size_type array_len, 
                               pDateTimeStamp datetime, 
                               long end, 
                               long beg)
 {
-    return TOSDB_GetStreamSnapshot_(id, sItem, sTopic, dest, array_len, 
+    return TOSDB_GetStreamSnapshot_(id, item, topic_str, dest, array_len, 
                                     datetime, end, beg);
 }
 
 int 
 TOSDB_GetStreamSnapshotLongLongs(LPCSTR id, 
-                                 LPCSTR sItem, 
-                                 LPCSTR sTopic, 
+                                 LPCSTR item, 
+                                 LPCSTR topic_str, 
                                  ext_size_type* dest, 
                                  size_type array_len, 
                                  pDateTimeStamp datetime, 
                                  long end, 
                                  long beg)
 {
-    return TOSDB_GetStreamSnapshot_(id, sItem, sTopic, dest, array_len, 
+    return TOSDB_GetStreamSnapshot_(id, item, topic_str, dest, array_len, 
                                     datetime, end, beg);  
 }
 
 int 
 TOSDB_GetStreamSnapshotLongs(LPCSTR id, 
-                             LPCSTR sItem, 
-                             LPCSTR sTopic, 
+                             LPCSTR item, 
+                             LPCSTR topic_str, 
                              def_size_type* dest, 
                              size_type array_len, 
                              pDateTimeStamp datetime, 
                              long end, 
                              long beg)
 { 
-    return TOSDB_GetStreamSnapshot_(id, sItem, sTopic, dest, array_len, 
+    return TOSDB_GetStreamSnapshot_(id, item, topic_str, dest, array_len, 
                                     datetime, end, beg);  
 }
 
 int 
 TOSDB_GetStreamSnapshotStrings(LPCSTR id, 
-                               LPCSTR sItem, 
-                               LPCSTR sTopic, 
+                               LPCSTR item, 
+                               LPCSTR topic_str, 
                                LPSTR* dest, 
                                size_type array_len, 
                                size_type str_len, 
@@ -1115,20 +1115,20 @@ TOSDB_GetStreamSnapshotStrings(LPCSTR id,
 {
     const TOSDBlock *db;
     TOSDB_RawDataBlock::stream_const_ptr_type dat;
-    TOS_Topics::TOPICS tTopic;
+    TOS_Topics::TOPICS topic_t;
 
     if( !CheckIDLength(id) 
-        || !CheckStringLength(sItem)
-        || !CheckStringLength(sTopic) ){
+        || !CheckStringLength(item)
+        || !CheckStringLength(topic_str) ){
         return -1;
     }
 
-    tTopic = GetTopicEnum(sTopic);    
+    topic_t = GetTopicEnum(topic_str);    
     try{
         GLOBAL_RLOCK_GUARD;
         /* --- CRITICAL SECTION --- */
         db = GetBlockOrThrow(id);
-        dat = db->block->raw_stream_ptr(sItem, tTopic);
+        dat = db->block->raw_stream_ptr(item, topic_t);
         dat->copy(dest,array_len,str_len,end,beg,datetime);
         return 0;
         /* --- CRITICAL SECTION --- */
@@ -1143,8 +1143,8 @@ TOSDB_GetStreamSnapshotStrings(LPCSTR id,
 template<typename T> 
 int 
 TOSDB_GetStreamSnapshotFromMarker_(LPCSTR id,
-                                   LPCSTR sItem, 
-                                   TOS_Topics::TOPICS tTopic, 
+                                   LPCSTR item, 
+                                   TOS_Topics::TOPICS topic_t, 
                                    T* dest, 
                                    size_type array_len, 
                                    pDateTimeStamp datetime,                     
@@ -1154,14 +1154,14 @@ TOSDB_GetStreamSnapshotFromMarker_(LPCSTR id,
     const TOSDBlock *db;
     TOSDB_RawDataBlock::stream_const_ptr_type dat;
 
-    if(!CheckIDLength(id) || !CheckStringLength(sItem))
+    if(!CheckIDLength(id) || !CheckStringLength(item))
         return -1;
 
     try{
         GLOBAL_RLOCK_GUARD;
         /* --- CRITICAL SECTION --- */
         db = GetBlockOrThrow(id);
-        dat = db->block->raw_stream_ptr(sItem, tTopic);
+        dat = db->block->raw_stream_ptr(item, topic_t);
                    /* O.K. as long as data_stream::MAX_BOUND_SIZE == INT_MAX */
         *get_size = (long)(dat->copy_from_marker(dest,array_len,beg,datetime));
         return 0;
@@ -1177,81 +1177,81 @@ TOSDB_GetStreamSnapshotFromMarker_(LPCSTR id,
 template<typename T> 
 int 
 TOSDB_GetStreamSnapshotFromMarker_(LPCSTR id,
-                                   LPCSTR sItem, 
-                                   LPCSTR sTopic, 
+                                   LPCSTR item, 
+                                   LPCSTR topic_str, 
                                    T* dest, 
                                    size_type array_len, 
                                    pDateTimeStamp datetime,               
                                    long beg,
                                    long *get_size)
 {  
-    if(!CheckStringLength(sTopic)) /* let this go thru std::string ? */
+    if(!CheckStringLength(topic_str)) /* let this go thru std::string ? */
         return 0;   
    
-    return TOSDB_GetStreamSnapshotFromMarker_(id,sItem,GetTopicEnum(sTopic),dest,
+    return TOSDB_GetStreamSnapshotFromMarker_(id,item,GetTopicEnum(topic_str),dest,
                                               array_len, datetime, beg, get_size);
 }
 
 int 
 TOSDB_GetStreamSnapshotDoublesFromMarker(LPCSTR id,
-                                         LPCSTR sItem, 
-                                         LPCSTR sTopic, 
+                                         LPCSTR item, 
+                                         LPCSTR topic_str, 
                                          ext_price_type* dest, 
                                          size_type array_len, 
                                          pDateTimeStamp datetime,                         
                                          long beg,
                                          long *get_size)
 {
-    return TOSDB_GetStreamSnapshotFromMarker_(id, sItem, sTopic, dest, array_len, 
+    return TOSDB_GetStreamSnapshotFromMarker_(id, item, topic_str, dest, array_len, 
                                               datetime, beg, get_size);
 }
 
 int 
 TOSDB_GetStreamSnapshotFloatsFromMarker(LPCSTR id, 
-                                        LPCSTR sItem, 
-                                        LPCSTR sTopic, 
+                                        LPCSTR item, 
+                                        LPCSTR topic_str, 
                                         def_price_type* dest, 
                                         size_type array_len, 
                                         pDateTimeStamp datetime,                        
                                         long beg,
                                         long *get_size)
 {
-    return TOSDB_GetStreamSnapshotFromMarker_(id, sItem, sTopic, dest, array_len, 
+    return TOSDB_GetStreamSnapshotFromMarker_(id, item, topic_str, dest, array_len, 
                                               datetime, beg, get_size);
 }
 
 int 
 TOSDB_GetStreamSnapshotLongLongsFromMarker(LPCSTR id, 
-                                           LPCSTR sItem, 
-                                           LPCSTR sTopic, 
+                                           LPCSTR item, 
+                                           LPCSTR topic_str, 
                                            ext_size_type* dest, 
                                            size_type array_len, 
                                            pDateTimeStamp datetime,                         
                                            long beg,
                                            long *get_size)
 {
-    return TOSDB_GetStreamSnapshotFromMarker_(id, sItem, sTopic, dest, array_len, 
+    return TOSDB_GetStreamSnapshotFromMarker_(id, item, topic_str, dest, array_len, 
                                               datetime, beg, get_size);  
 }
 
 int 
 TOSDB_GetStreamSnapshotLongsFromMarker(LPCSTR id, 
-                                       LPCSTR sItem, 
-                                       LPCSTR sTopic, 
+                                       LPCSTR item, 
+                                       LPCSTR topic_str, 
                                        def_size_type* dest, 
                                        size_type array_len, 
                                        pDateTimeStamp datetime,                        
                                        long beg,
                                        long *get_size)
 {
-    return TOSDB_GetStreamSnapshotFromMarker_(id, sItem, sTopic, dest, array_len, 
+    return TOSDB_GetStreamSnapshotFromMarker_(id, item, topic_str, dest, array_len, 
                                               datetime, beg, get_size);  
 }
 
 int 
 TOSDB_GetStreamSnapshotStringsFromMarker(LPCSTR id, 
-                                         LPCSTR sItem, 
-                                         LPCSTR sTopic, 
+                                         LPCSTR item, 
+                                         LPCSTR topic_str, 
                                          LPSTR* dest, 
                                          size_type array_len, 
                                          size_type str_len, 
@@ -1261,20 +1261,20 @@ TOSDB_GetStreamSnapshotStringsFromMarker(LPCSTR id,
 {
     const TOSDBlock *db;
     TOSDB_RawDataBlock::stream_const_ptr_type dat;
-    TOS_Topics::TOPICS tTopic;
+    TOS_Topics::TOPICS topic_t;
 
     if( !CheckIDLength(id) 
-        || !CheckStringLength(sItem)
-        || !CheckStringLength(sTopic) ){
+        || !CheckStringLength(item)
+        || !CheckStringLength(topic_str) ){
         return -1;
     }
 
-    tTopic = GetTopicEnum(sTopic);   
+    topic_t = GetTopicEnum(topic_str);   
     try{
         GLOBAL_RLOCK_GUARD;
         /* --- CRITICAL SECTION --- */
         db = GetBlockOrThrow(id);
-        dat = db->block->raw_stream_ptr(sItem, tTopic);
+        dat = db->block->raw_stream_ptr(item, topic_t);
                     /* O.K. as long as data_stream::MAX_BOUND_SIZE == INT_MAX */
         *get_size = (long)(dat->copy_from_marker(dest, array_len, str_len, beg, datetime));   
         return 0;
@@ -1289,34 +1289,34 @@ TOSDB_GetStreamSnapshotStringsFromMarker(LPCSTR id,
 
 template<> 
 generic_map_type 
-TOSDB_GetItemFrame<false>(std::string id, TOS_Topics::TOPICS tTopic)
+TOSDB_GetItemFrame<false>(std::string id, TOS_Topics::TOPICS topic_t)
 {
     const TOSDBlock *db; 
 
     GLOBAL_RLOCK_GUARD;
     /* --- CRITICAL SECTION --- */
     db = GetBlockOrThrow(id);
-    return db->block->map_of_frame_items(tTopic);
+    return db->block->map_of_frame_items(topic_t);
     /* --- CRITICAL SECTION --- */
 }
 
 template<> 
 generic_dts_map_type 
-TOSDB_GetItemFrame<true>(std::string id, TOS_Topics::TOPICS tTopic)
+TOSDB_GetItemFrame<true>(std::string id, TOS_Topics::TOPICS topic_t)
 {
     const TOSDBlock *db; 
 
     GLOBAL_RLOCK_GUARD;
     /* --- CRITICAL SECTION --- */
     db = GetBlockOrThrow(id);
-    return db->block->pair_map_of_frame_items(tTopic);
+    return db->block->pair_map_of_frame_items(topic_t);
     /* --- CRITICAL SECTION --- */
 }
 
 template<typename T> 
 int 
 TOSDB_GetItemFrame_(LPCSTR id, 
-                    TOS_Topics::TOPICS tTopic, 
+                    TOS_Topics::TOPICS topic_t, 
                     T* dest, 
                     size_type array_len, 
                     LPSTR* dest2, 
@@ -1335,7 +1335,7 @@ TOSDB_GetItemFrame_(LPCSTR id,
         db = GetBlockOrThrow(id);
 
         if(datetime){  
-            auto dtsm = db->block->pair_map_of_frame_items(tTopic);
+            auto dtsm = db->block->pair_map_of_frame_items(topic_t);
             auto b_iter = dtsm.cbegin();
             auto e_iter = dtsm.cend();
 
@@ -1353,7 +1353,7 @@ TOSDB_GetItemFrame_(LPCSTR id,
                 }
             }      
         }else{        
-            auto m = db->block->map_of_frame_items(tTopic);
+            auto m = db->block->map_of_frame_items(topic_t);
             auto b_iter = m.cbegin();
             auto e_iter = m.cend();   
            
@@ -1385,75 +1385,75 @@ TOSDB_GetItemFrame_(LPCSTR id,
 template<typename T> 
 int 
 TOSDB_GetItemFrame_(LPCSTR id, 
-                    LPCSTR sTopic, 
+                    LPCSTR topic_str, 
                     T* dest, 
                     size_type array_len, 
                     LPSTR* dest2, 
                     size_type str_len2, 
                     pDateTimeStamp datetime)
 {  
-    if(!CheckStringLength(sTopic))
+    if(!CheckStringLength(topic_str))
         return -1;   
    
-    return TOSDB_GetItemFrame_(id, GetTopicEnum(sTopic), dest, array_len, 
+    return TOSDB_GetItemFrame_(id, GetTopicEnum(topic_str), dest, array_len, 
                                dest2, str_len2, datetime);  
 }
 
 int 
 TOSDB_GetItemFrameDoubles(LPCSTR id, 
-                          LPCSTR sTopic, 
+                          LPCSTR topic_str, 
                           ext_price_type* dest, 
                           size_type array_len, 
                           LPSTR* label_dest, 
                           size_type label_str_len, 
                           pDateTimeStamp datetime)
 {
-    return TOSDB_GetItemFrame_(id, sTopic, dest, array_len, label_dest, 
+    return TOSDB_GetItemFrame_(id, topic_str, dest, array_len, label_dest, 
                                label_str_len, datetime);    
 }
 
 int 
 TOSDB_GetItemFrameFloats(LPCSTR id, 
-                         LPCSTR sTopic, 
+                         LPCSTR topic_str, 
                          def_price_type* dest, 
                          size_type array_len, 
                          LPSTR* label_dest, 
                          size_type label_str_len, 
                          pDateTimeStamp datetime)
 {
-    return TOSDB_GetItemFrame_(id, sTopic, dest, array_len, label_dest, 
+    return TOSDB_GetItemFrame_(id, topic_str, dest, array_len, label_dest, 
                                label_str_len, datetime);      
 }
 
 int 
 TOSDB_GetItemFrameLongLongs(LPCSTR id, 
-                            LPCSTR sTopic, 
+                            LPCSTR topic_str, 
                             ext_size_type* dest, 
                             size_type array_len, 
                             LPSTR* label_dest, 
                             size_type label_str_len, 
                             pDateTimeStamp datetime)
 {
-    return TOSDB_GetItemFrame_(id, sTopic, dest, array_len, label_dest, 
+    return TOSDB_GetItemFrame_(id, topic_str, dest, array_len, label_dest, 
                                label_str_len, datetime);      
 }
 
 int 
 TOSDB_GetItemFrameLongs(LPCSTR id, 
-                        LPCSTR sTopic, 
+                        LPCSTR topic_str, 
                         def_size_type* dest, 
                         size_type array_len,
                         LPSTR* label_dest, 
                         size_type label_str_len, 
                         pDateTimeStamp datetime)
 { 
-    return TOSDB_GetItemFrame_(id, sTopic, dest, array_len, label_dest, 
+    return TOSDB_GetItemFrame_(id, topic_str, dest, array_len, label_dest, 
                                label_str_len, datetime);      
 }
 
 int 
 TOSDB_GetItemFrameStrings(LPCSTR id, 
-                          LPCSTR sTopic, 
+                          LPCSTR topic_str, 
                           LPSTR* dest,  
                           size_type array_len, 
                           size_type str_len, 
@@ -1462,21 +1462,21 @@ TOSDB_GetItemFrameStrings(LPCSTR id,
                           pDateTimeStamp datetime)
 {  
     const TOSDBlock *db;
-    TOS_Topics::TOPICS tTopic;
+    TOS_Topics::TOPICS topic_t;
 
     int err = 0;
 
-    if(!CheckIDLength(id) || !CheckStringLength(sTopic))
+    if(!CheckIDLength(id) || !CheckStringLength(topic_str))
       return -1;
 
-    tTopic = GetTopicEnum(sTopic);   
+    topic_t = GetTopicEnum(topic_str);   
     try{
         GLOBAL_RLOCK_GUARD;
         /* --- CRITICAL SECTION --- */
         db = GetBlockOrThrow(id);
 
         if(datetime){      
-            auto dtsm = db->block->pair_map_of_frame_items(tTopic);
+            auto dtsm = db->block->pair_map_of_frame_items(topic_t);
             auto b_iter = dtsm.cbegin();
             auto e_iter = dtsm.cend();        
      
@@ -1497,7 +1497,7 @@ TOSDB_GetItemFrameStrings(LPCSTR id,
                 }
             }    
         }else{          
-            auto m = db->block->map_of_frame_items(tTopic);
+            auto m = db->block->map_of_frame_items(topic_t);
             auto b_iter = m.cbegin();
             auto e_iter = m.cend();   
          
@@ -1529,33 +1529,33 @@ TOSDB_GetItemFrameStrings(LPCSTR id,
 
 template<> 
 generic_map_type 
-TOSDB_GetTopicFrame<false>(std::string id, std::string sItem)
+TOSDB_GetTopicFrame<false>(std::string id, std::string item)
 {
     const TOSDBlock *db;
 
     GLOBAL_RLOCK_GUARD;
     /* --- CRITICAL SECTION --- */
     db = GetBlockOrThrow(id);
-    return db->block->map_of_frame_topics(sItem);
+    return db->block->map_of_frame_topics(item);
     /* --- CRITICAL SECTION --- */
 }
 
 template<> 
 generic_dts_map_type 
-TOSDB_GetTopicFrame<true>(std::string id,std::string sItem)
+TOSDB_GetTopicFrame<true>(std::string id,std::string item)
 {
     const TOSDBlock *db;
 
     GLOBAL_RLOCK_GUARD;
     /* --- CRITICAL SECTION --- */
     db = GetBlockOrThrow(id);
-    return db->block->pair_map_of_frame_topics(sItem);
+    return db->block->pair_map_of_frame_topics(item);
     /* --- CRITICAL SECTION --- */
 }
 
 int 
 TOSDB_GetTopicFrameStrings(LPCSTR id, 
-                           LPCSTR sItem, 
+                           LPCSTR item, 
                            LPSTR* dest, 
                            size_type array_len, 
                            size_type str_len, 
@@ -1566,7 +1566,7 @@ TOSDB_GetTopicFrameStrings(LPCSTR id,
     const TOSDBlock *db;
     int err = 0;
 
-    if(!CheckIDLength(id) || !CheckStringLength(sItem))
+    if(!CheckIDLength(id) || !CheckStringLength(item))
         return -1;  
 
     try{
@@ -1575,7 +1575,7 @@ TOSDB_GetTopicFrameStrings(LPCSTR id,
         db = GetBlockOrThrow(id);
 
         if(datetime){       
-            auto dtsm = db->block->pair_map_of_frame_topics(sItem);
+            auto dtsm = db->block->pair_map_of_frame_topics(item);
             auto b_iter = dtsm.cbegin();
             auto e_iter = dtsm.cend(); 
   
@@ -1596,7 +1596,7 @@ TOSDB_GetTopicFrameStrings(LPCSTR id,
                 }
             }    
         }else{    
-            auto m = db->block->map_of_frame_topics(sItem);
+            auto m = db->block->map_of_frame_topics(item);
             auto b_iter = m.cbegin();
             auto e_iter = m.cend();     
  

@@ -33,28 +33,21 @@ class RawDataBlock {
     static size_type _block_count_;
     static size_type _max_block_count_;
 
-    typedef DataStreamInterface<DateTimeTy, GenericTy> _my_stream_ty;  
-    typedef std::unique_ptr<_my_stream_ty> _my_stream_uptr_ty; 
-
     typedef std::map<const TOS_Topics::TOPICS, 
-                     _my_stream_uptr_ty, 
-                     TOS_Topics::top_less> _my_row_ty;
+                     std::unique_ptr<DataStreamInterface<DateTimeTy, GenericTy>>, 
+                     TOS_Topics::top_less> _my_row_ty;  
 
-    typedef std::pair<const TOS_Topics::TOPICS, _my_stream_uptr_ty> _my_row_elem_ty;
-    typedef std::unique_ptr<_my_row_ty> _my_row_uptr_ty;  
-    typedef std::pair<const std::string, _my_row_uptr_ty> _my_col_elem_ty;    
-    typedef std::lock_guard<std::recursive_mutex>  _my_lock_guard_type;
-
-    std::recursive_mutex* const _mtx;
-    std::unordered_map<std::string, _my_row_uptr_ty> _block;
-
+    typedef std::unordered_map<std::string, std::unique_ptr<_my_row_ty>> _my_block_ty;
+        
+    _my_block_ty _block;
     size_type _block_sz;
     str_set_type _item_names;  
     topic_set_type _topic_enums;
     bool _datetime;  
+    std::recursive_mutex *const _mtx;
 
-    RawDataBlock(str_set_type sItems, 
-                 topic_set_type tTopics, 
+    RawDataBlock(str_set_type items, 
+                 topic_set_type topics_t, 
                  const size_type sz, 
                  bool datetime);
 
@@ -86,14 +79,14 @@ class RawDataBlock {
     _my_row_ty*     
     _insert_topic(_my_row_ty*, TOS_Topics::TOPICS topic);
 
-    _my_row_uptr_ty 
-    _populate_tblock(_my_row_uptr_ty);
+    std::unique_ptr<_my_row_ty> 
+    _populate_tblock(std::unique_ptr<_my_row_ty> tblock);
 
 public:
     typedef GenericTy generic_type;
     typedef DateTimeTy datetime_type;
-    typedef _my_stream_ty stream_type;
-    typedef const _my_stream_ty* stream_const_ptr_type;
+    typedef DataStreamInterface<DateTimeTy, GenericTy> stream_type;
+    typedef const DataStreamInterface<DateTimeTy, GenericTy>* stream_const_ptr_type;
     
     typedef std::vector<generic_type> vector_type; 
     typedef std::pair<std::string, generic_type> pair_type; 
@@ -109,8 +102,8 @@ public:
     typedef std::map<std::string, map_datetime_type> matrix_datetime_type; 
 
     static RawDataBlock* const 
-    CreateBlock(const str_set_type sItems, 
-                const topic_set_type tTopics,               
+    CreateBlock(const str_set_type items, 
+                const topic_set_type topics_t,               
                 const size_type sz,
                 const bool datetime);
 
@@ -172,7 +165,7 @@ public:
     void 
     insert_data(TOS_Topics::TOPICS topic,std::string item,Val val,DT datetime); 
 
-    const _my_stream_ty* 
+    const DataStreamInterface<DateTimeTy, GenericTy>* 
     raw_stream_ptr(std::string item, TOS_Topics::TOPICS topic) const;
 
     map_type 

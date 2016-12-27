@@ -8,13 +8,13 @@ size_type RAW_DATA_BLOCK_CLASS::_max_block_count_ = MAX_BLOCK_COUNT;
 
 
 RAW_DATA_BLOCK_TEMPLATE
-RAW_DATA_BLOCK_CLASS::RawDataBlock(str_set_type sItems, 
-                                   topic_set_type tTopics, 
+RAW_DATA_BLOCK_CLASS::RawDataBlock(str_set_type items, 
+                                   topic_set_type topics_t, 
                                    const size_type sz, 
                                    bool datetime) 
     :
-        _item_names(sItems),
-        _topic_enums(tTopics),
+        _item_names(items),
+        _topic_enums(topics_t),
         _block_sz(sz),
         _datetime(datetime),
         _mtx(new std::recursive_mutex)
@@ -39,25 +39,22 @@ RAW_DATA_BLOCK_TEMPLATE
 void
 RAW_DATA_BLOCK_CLASS::_init() 
 {
-    _my_lock_guard_type lock(*_mtx);
+    std::lock_guard<std::recursive_mutex> lock(*_mtx);
     /* --- CRITICAL SECTION --- */
     for(auto & i : _item_names) {
-        _my_row_uptr_ty tmp = _populate_tblock(_my_row_uptr_ty(new _my_row_ty));
-        _block.insert(_my_col_elem_ty(i, std::move(tmp)));   
+        auto tmp = _populate_tblock( std::unique_ptr<_my_row_ty>(new _my_row_ty) );
+        _block.insert( _my_block_ty::value_type(i, std::move(tmp)) );   
     }
     /* --- CRITICAL SECTION --- */
 }
 
 RAW_DATA_BLOCK_TEMPLATE 
 typename RAW_DATA_BLOCK_CLASS::_my_row_ty* 
-RAW_DATA_BLOCK_CLASS::_insert_topic(typename RAW_DATA_BLOCK_CLASS::_my_row_ty* row, 
-                                   TOS_Topics::TOPICS topic)
+RAW_DATA_BLOCK_CLASS::_insert_topic( typename RAW_DATA_BLOCK_CLASS::_my_row_ty* row, 
+                                     TOS_Topics::TOPICS topic )
 {    
-    _my_stream_ty *stream; /*
-    stream = new DataStream<TOS_Topics::Type<topic>::type, 
-                            datetime_type, generic_type, _datetime>(_block_sz);
+    DataStreamInterface<DateTimeTy, GenericTy> *stream; 
 
-    */
     switch(TOS_Topics::TypeBits(topic)){ 
     case TOSDB_STRING_BIT :
         stream = _datetime 
@@ -87,7 +84,12 @@ RAW_DATA_BLOCK_CLASS::_insert_topic(typename RAW_DATA_BLOCK_CLASS::_my_row_ty* r
 
     try{
         row->erase(topic);
-        row->insert(_my_row_elem_ty(topic,_my_stream_uptr_ty(stream)));
+        row->insert( 
+            _my_row_ty::value_type(
+                topic, 
+                std::unique_ptr<DataStreamInterface<DateTimeTy, GenericTy>>(stream)
+             ) 
+        );
     }catch(...){
         TOSDB_LogH("RawDataBlock","problem inserting t-block");
         if(stream)
@@ -98,32 +100,32 @@ RAW_DATA_BLOCK_CLASS::_insert_topic(typename RAW_DATA_BLOCK_CLASS::_my_row_ty* r
 }
 
 RAW_DATA_BLOCK_TEMPLATE
-typename RAW_DATA_BLOCK_CLASS::_my_row_uptr_ty 
-RAW_DATA_BLOCK_CLASS::_populate_tblock(typename RAW_DATA_BLOCK_CLASS::_my_row_uptr_ty tBlock)
+std::unique_ptr<typename RAW_DATA_BLOCK_CLASS::_my_row_ty> 
+RAW_DATA_BLOCK_CLASS::_populate_tblock(std::unique_ptr<typename RAW_DATA_BLOCK_CLASS::_my_row_ty> tblock)
 {    
     for(auto elem : _topic_enums)
-        _insert_topic(tBlock.get(), elem);
+        _insert_topic(tblock.get(), elem);
 
-    return tBlock;
+    return tblock;
 }
 
 RAW_DATA_BLOCK_TEMPLATE
 RAW_DATA_BLOCK_CLASS* const
-RAW_DATA_BLOCK_CLASS::CreateBlock(const str_set_type sItems, 
-                                  const topic_set_type tTopics,               
+RAW_DATA_BLOCK_CLASS::CreateBlock(const str_set_type items, 
+                                  const topic_set_type topics_t,               
                                   const size_type sz,
                                   const bool datetime) 
 {
-    if(sItems.empty())
-        throw TOSDB_DataBlockError("sItems empty"); 
+    if(items.empty())
+        throw TOSDB_DataBlockError("items empty"); 
     
-    if(tTopics.empty())
-        throw TOSDB_DataBlockError("tTopics empty");       
+    if(topics_t.empty())
+        throw TOSDB_DataBlockError("topics_t empty");       
 
     if (_block_count_ >= _max_block_count_) 
         throw TOSDB_DataBlockLimitError(_max_block_count_); 
 
-    return new RawDataBlock(sItems, tTopics, sz, datetime) ;              
+    return new RawDataBlock(items, topics_t, sz, datetime) ;              
 }
 
 RAW_DATA_BLOCK_TEMPLATE
@@ -140,7 +142,7 @@ RAW_DATA_BLOCK_TEMPLATE
 size_type
 RAW_DATA_BLOCK_CLASS::block_size(size_type b)
 {
-    _my_lock_guard_type lock(*_mtx);
+    std::lock_guard<std::recursive_mutex> lock(*_mtx);
     /* --- CRITICAL SECTION --- */
     if(b > TOSDB_MAX_BLOCK_SZ)
         b = TOSDB_MAX_BLOCK_SZ; 
@@ -163,10 +165,10 @@ RAW_DATA_BLOCK_CLASS::insert_data(TOS_Topics::TOPICS topic,
                                   ValTy val, 
                                   DtTy datetime) 
 {
-    _my_stream_ty *stream; 
+    DataStreamInterface<DateTimeTy, GenericTy> *stream; 
     _my_row_ty  *topics; 
         
-    _my_lock_guard_type lock(*_mtx);  
+    std::lock_guard<std::recursive_mutex> lock(*_mtx);  
     /* --- CRITICAL SECTION --- */
     try{
         topics = _block.at(item).get();
@@ -199,15 +201,16 @@ void
 RAW_DATA_BLOCK_CLASS::add_item(std::string item) 
 {    
     try{
-        _my_lock_guard_type lock(*_mtx);
+        std::lock_guard<std::recursive_mutex> lock(*_mtx);
         /* --- CRITICAL SECTION --- */
         if( !(_item_names.insert(item).second) )
             return;
         
         _block.erase(item);
 
-        _my_row_uptr_ty tmp = _populate_tblock(_my_row_uptr_ty(new _my_row_ty));
-        _block.insert(_my_col_elem_ty(item,std::move(tmp)));           
+        auto tmp = _populate_tblock( std::unique_ptr<_my_row_ty>(new _my_row_ty) );
+
+        _block.insert( _my_block_ty::value_type(item,std::move(tmp)) );           
         /* --- CRITICAL SECTION --- */
     }catch(const std::exception & e){
         throw TOSDB_DataBlockError(e, "add_item");
@@ -219,7 +222,7 @@ void
 RAW_DATA_BLOCK_CLASS::remove_item(std::string item)
 {  
     try{
-        _my_lock_guard_type lock(*_mtx);
+        std::lock_guard<std::recursive_mutex> lock(*_mtx);
         /* --- CRITICAL SECTION --- */
         if( !(_item_names.erase(item)) )
             return;
@@ -248,7 +251,7 @@ void
 RAW_DATA_BLOCK_CLASS::add_topic(TOS_Topics::TOPICS topic) 
 {  
     try{
-        _my_lock_guard_type lock(*_mtx);
+        std::lock_guard<std::recursive_mutex> lock(*_mtx);
         /* --- CRITICAL SECTION --- */
         if( !(_topic_enums.insert(topic).second) )
             return;
@@ -266,7 +269,7 @@ void
 RAW_DATA_BLOCK_CLASS::remove_topic(TOS_Topics::TOPICS topic)
 {  
     try{
-        _my_lock_guard_type lock(*_mtx);
+        std::lock_guard<std::recursive_mutex> lock(*_mtx);
         /* --- CRITICAL SECTION --- */
         if( !(_topic_enums.erase(topic)) )
             return;
@@ -287,14 +290,14 @@ RAW_DATA_BLOCK_CLASS::remove_topic(TOS_Topics::TOPICS topic)
     }  
 }
 
-RAW_DATA_BLOCK_TEMPLATE
-const typename RAW_DATA_BLOCK_CLASS::_my_stream_ty*
+template<typename GenericTy, typename DateTimeTy>
+const DataStreamInterface<DateTimeTy, GenericTy>*
 RAW_DATA_BLOCK_CLASS::raw_stream_ptr(std::string item, 
                                      TOS_Topics::TOPICS topic) const 
 {
-    const _my_stream_ty * stream = nullptr;
+    const DataStreamInterface<DateTimeTy, GenericTy> * stream = nullptr;
     try{
-        _my_lock_guard_type lock(*_mtx);
+        std::lock_guard<std::recursive_mutex> lock(*_mtx);
         /* --- CRITICAL SECTION --- */
         _my_row_ty* row = _block.at(item).get();
         if(row)                    
@@ -319,7 +322,7 @@ RAW_DATA_BLOCK_CLASS::map_of_frame_topics(std::string item) const
 {
     map_type map;
     try{
-        _my_lock_guard_type lock(*_mtx);
+        std::lock_guard<std::recursive_mutex> lock(*_mtx);
         /* --- CRITICAL SECTION --- */
         _my_row_ty * row = _block.at(item).get();    
         if(!row)
@@ -352,7 +355,7 @@ RAW_DATA_BLOCK_CLASS::map_of_frame_items(TOS_Topics::TOPICS topic) const
 {
     map_type map; 
     try{
-        _my_lock_guard_type lock(*_mtx);
+        std::lock_guard<std::recursive_mutex> lock(*_mtx);
         /* --- CRITICAL SECTION --- */
         for(auto & elem : _block){
             map.insert( 
@@ -378,7 +381,7 @@ RAW_DATA_BLOCK_CLASS::pair_map_of_frame_topics(std::string item) const
 {
     map_datetime_type map;
     try{
-        _my_lock_guard_type lock(*_mtx);
+        std::lock_guard<std::recursive_mutex> lock(*_mtx);
         /* --- CRITICAL SECTION --- */
         _my_row_ty * row = _block.at(item).get(); 
         if(!row)
@@ -411,7 +414,7 @@ RAW_DATA_BLOCK_CLASS::pair_map_of_frame_items(TOS_Topics::TOPICS topic) const
 {
     map_datetime_type map; 
     try{
-        _my_lock_guard_type lock(*_mtx);
+        std::lock_guard<std::recursive_mutex> lock(*_mtx);
         /* --- CRITICAL SECTION --- */
         for(auto & elem : _block){
             map.insert( 
@@ -440,7 +443,7 @@ RAW_DATA_BLOCK_CLASS::matrix_of_frame() const
 {
     matrix_type matrix;
     try{
-        _my_lock_guard_type lock(*_mtx);
+        std::lock_guard<std::recursive_mutex> lock(*_mtx);
         /* --- CRITICAL SECTION --- */
         for(auto & items : _block){         
             map_type map; 
@@ -469,7 +472,7 @@ RAW_DATA_BLOCK_CLASS::pair_matrix_of_frame() const
 { 
     matrix_datetime_type matrix;
     try{
-        _my_lock_guard_type lock(*_mtx);
+        std::lock_guard<std::recursive_mutex> lock(*_mtx);
         /* --- CRITICAL SECTION --- */
         for(auto & items : _block){      
             map_datetime_type map; 

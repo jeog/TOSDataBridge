@@ -141,7 +141,6 @@ struct CommandCtx{
     bool exit;    
 };
 
-
 class CommandsMap
         : public std::map<std::string, CommandCtx> {
 /* 
@@ -223,12 +222,10 @@ public:
 typedef std::pair<std::string, CommandsMapRef> command_display_pair;
 typedef std::unordered_map<std::string, command_display_pair> commands_map_of_maps_ty;
 
-
-/* should be const but we can't use init lists so manually instantiate in util.cpp */
 extern commands_map_of_maps_ty commands;
 
-enum class language 
-    : int {
+enum class language      
+        : int {
     none = 0,
     c = 1,
     cpp = 2    

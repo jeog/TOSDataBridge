@@ -111,10 +111,10 @@ int
 MainCommLoop(); 
 
 void 
-TearDownTopic(TOS_Topics::TOPICS tTopic, unsigned long timeout);
+TearDownTopic(TOS_Topics::TOPICS topic_t, unsigned long timeout);
 
 bool 
-DestroyBuffer(TOS_Topics::TOPICS tTopic, std::string sItem);
+DestroyBuffer(TOS_Topics::TOPICS topic_t, std::string item);
 
 void 
 HandleData(UINT msg, WPARAM wparam, LPARAM lparam);
@@ -132,23 +132,23 @@ int
 SetSecurityPolicy();   
 
 int  
-AddStream(TOS_Topics::TOPICS tTopic,std::string sItem, unsigned long timeout);
+AddStream(TOS_Topics::TOPICS topic_t,std::string item, unsigned long timeout);
 
 int
-CreateNewTopicStream(TOS_Topics::TOPICS tTopic, std::string sItem, unsigned long timeout);
+CreateNewTopicStream(TOS_Topics::TOPICS topic_t, std::string item, unsigned long timeout);
 
 int 
-RemoveStream(TOS_Topics::TOPICS tTopic,std::string sItem, unsigned long timeout);
+RemoveStream(TOS_Topics::TOPICS topic_t,std::string item, unsigned long timeout);
   
 bool 
-PostItem(std::string sItem,TOS_Topics::TOPICS tTopic, unsigned long timeout);
+PostItem(std::string item,TOS_Topics::TOPICS topic_t, unsigned long timeout);
 
 bool 
-PostCloseItem(std::string sItem,TOS_Topics::TOPICS tTopic, unsigned long timeout);   
+PostCloseItem(std::string item,TOS_Topics::TOPICS topic_t, unsigned long timeout);   
 
 bool 
-CreateBuffer(TOS_Topics::TOPICS tTopic, 
-             std::string sItem, 
+CreateBuffer(TOS_Topics::TOPICS topic_t, 
+             std::string item, 
              unsigned int buffer_sz = TOSDB_SHEM_BUF_SZ);
 
 DWORD WINAPI     
@@ -484,29 +484,29 @@ CleanUpMain(int ret_code)
 
 
 int 
-AddStream( TOS_Topics::TOPICS tTopic, 
-           std::string sItem, 
+AddStream( TOS_Topics::TOPICS topic_t, 
+           std::string item, 
            unsigned long timeout )
 {    
     bool ret;
     int err = 0;
 
-    if(tTopic == TOS_Topics::TOPICS::NULL_TOPIC)
+    if(topic_t == TOS_Topics::TOPICS::NULL_TOPIC)
         return -1;
 
-    auto topic_iter = topic_refcounts.find(tTopic);  
+    auto topic_iter = topic_refcounts.find(topic_t);  
     if(topic_iter == topic_refcounts.end()) /* if topic isn't in our global mapping */
     {     
-        err = CreateNewTopicStream(tTopic, sItem, timeout);
+        err = CreateNewTopicStream(topic_t, item, timeout);
     }
     else /* if it already is */   
     { 
-        auto item_iter = topic_iter->second.find(sItem); 
+        auto item_iter = topic_iter->second.find(item); 
         if(item_iter == topic_iter->second.end()){ /* and it doesn't have that item yet */        
-            ret = PostItem(sItem, tTopic, timeout);
+            ret = PostItem(item, topic_t, timeout);
             if(ret){
-                topic_iter->second[sItem] = 1;
-                ret = CreateBuffer(tTopic, sItem);
+                topic_iter->second[item] = 1;
+                ret = CreateBuffer(topic_t, item);
                 if(!ret)
                     err = -4;      
             }else
@@ -518,38 +518,38 @@ AddStream( TOS_Topics::TOPICS tTopic,
     /* unwind if it fails during creation */
     switch(err){   
     case -4:    
-        PostCloseItem(sItem, tTopic, timeout);
-        topic_refcounts[tTopic].erase(sItem);
+        PostCloseItem(item, topic_t, timeout);
+        topic_refcounts[topic_t].erase(item);
     case -3:
-        if( !topic_refcounts[tTopic].empty() ) 
+        if( !topic_refcounts[topic_t].empty() ) 
             break;        
     case -2:        
-        TearDownTopic(tTopic, timeout);   
+        TearDownTopic(topic_t, timeout);   
     }
 
-    STREAM_CHECK_LOG_ERROR(err,"AddStream",tTopic,sItem,timeout);
+    STREAM_CHECK_LOG_ERROR(err,"AddStream",topic_t,item,timeout);
 
     return err;
 }
 
 
 int
-CreateNewTopicStream( TOS_Topics::TOPICS tTopic, 
-                      std::string sItem, 
+CreateNewTopicStream( TOS_Topics::TOPICS topic_t, 
+                      std::string item, 
                       unsigned long timeout )
 {     
-    std::string sTopic;
+    std::string topic_str;
     ATOM topic_atom;
     ATOM app_atom;
     bool ret;
 
     init_event = CreateEvent(NULL, FALSE, FALSE, NULL);    
 
-    sTopic = TOS_Topics::map[tTopic];  
-    topic_atom = GlobalAddAtom(sTopic.c_str());
+    topic_str = TOS_Topics::map[topic_t];  
+    topic_atom = GlobalAddAtom(topic_str.c_str());
     app_atom = GlobalAddAtom(APP_NAME);
 
-    ack_signals.set_signal_ID(TOS_Topics::map[tTopic]); 
+    ack_signals.set_signal_ID(TOS_Topics::map[topic_t]); 
 
     if(topic_atom){
         SendMessageTimeout( (HWND)HWND_BROADCAST, 
@@ -566,7 +566,7 @@ CreateNewTopicStream( TOS_Topics::TOPICS tTopic,
         GlobalDeleteAtom(topic_atom);
 
     /* wait for ack from DDE server */
-    ret = ack_signals.wait_for(TOS_Topics::map[tTopic], timeout);
+    ret = ack_signals.wait_for(TOS_Topics::map[topic_t], timeout);
     if(!ret){ /* are we sure about this? error unwind will call TearDownTopic 
                    - whats the purpose if we never got the 'ack'? (maybe a late ack)
                    - deadlock or corrupt 'convos' on sending WM_DDE_TERMINATE in this state?*/
@@ -575,17 +575,17 @@ CreateNewTopicStream( TOS_Topics::TOPICS tTopic,
 
     /* once we get our ack set up/initialize our refcounts
        we do it here because TearDownTopic will remove if we have error below */
-    topic_refcounts[tTopic] = item_refcounts_ty();
+    topic_refcounts[topic_t] = item_refcounts_ty();
 
-    ret = PostItem(sItem, tTopic, timeout);
+    ret = PostItem(item, topic_t, timeout);
     if(!ret)
         return -3;    
 
     /* because of how AddStream unwinds errors order is important; 
        this MUST come after PostItem, before CreateBuffer */
-    topic_refcounts[tTopic][sItem] = 1;
+    topic_refcounts[topic_t][item] = 1;
 
-    ret = CreateBuffer(tTopic, sItem);
+    ret = CreateBuffer(topic_t, item);
     if(!ret)
         return -4;             
 
@@ -594,41 +594,41 @@ CreateNewTopicStream( TOS_Topics::TOPICS tTopic,
 
 
 int 
-RemoveStream( TOS_Topics::TOPICS tTopic, 
-              std::string sItem, 
+RemoveStream( TOS_Topics::TOPICS topic_t, 
+              std::string item, 
               unsigned long timeout )
 {  
     bool ret;    
 
     int err = 0;
 
-    if(tTopic == TOS_Topics::TOPICS::NULL_TOPIC)
+    if(topic_t == TOS_Topics::TOPICS::NULL_TOPIC)
         return -1;
 
-    auto topic_iter = topic_refcounts.find(tTopic);      
+    auto topic_iter = topic_refcounts.find(topic_t);      
     if(topic_iter == topic_refcounts.end()) /* if topic is not in our global mapping */  
         return -2;    
 
-    auto item_iter = topic_iter->second.find(sItem);    
+    auto item_iter = topic_iter->second.find(item);    
     if(item_iter != topic_iter->second.end()){ /* if it has that item */
         /* decr the ref count */
         --(item_iter->second);
         /* if ref-count hits zero post close msg and destroy the buffer*/
         if(item_iter->second == 0){
-            ret = PostCloseItem(sItem, tTopic, timeout); 
+            ret = PostCloseItem(item, topic_t, timeout); 
             /* if we return error continue with remove but log it (below) */
             if(!ret)
                 err = -3;
-            DestroyBuffer(tTopic, sItem);
+            DestroyBuffer(topic_t, item);
             topic_iter->second.erase(item_iter);                 
         }
     } 
 
     /* if no items close the convo */
     if(topic_iter->second.empty())       
-         TearDownTopic(tTopic, timeout);  
+         TearDownTopic(topic_t, timeout);  
    
-    STREAM_CHECK_LOG_ERROR(err,"RemoveStream",tTopic,sItem,timeout);
+    STREAM_CHECK_LOG_ERROR(err,"RemoveStream",topic_t,item,timeout);
 
     return err;      
 }
@@ -655,62 +655,62 @@ CloseAllStreams(unsigned long timeout)
 
 
 bool 
-PostItem(std::string sItem, 
-         TOS_Topics::TOPICS tTopic, 
+PostItem(std::string item, 
+         TOS_Topics::TOPICS topic_t, 
          unsigned long timeout)
 {  
-    HWND convo = convos[tTopic];
-    std::string sid_id = std::to_string((size_t)convo) + sItem;
+    HWND convo = convos[topic_t];
+    std::string sid_id = std::to_string((size_t)convo) + item;
 
     ack_signals.set_signal_ID(sid_id);
-    PostMessage(msg_window, REQUEST_DDE_ITEM, (WPARAM)convo, (LPARAM)(sItem.c_str())); 
+    PostMessage(msg_window, REQUEST_DDE_ITEM, (WPARAM)convo, (LPARAM)(item.c_str())); 
     /* for whatever reason a bad item gets a posive ack from an attempt 
        to link it, so that message must post second to give the request 
        a chance to preempt it */    
-    PostMessage(msg_window, LINK_DDE_ITEM, (WPARAM)convo, (LPARAM)(sItem.c_str()));    
+    PostMessage(msg_window, LINK_DDE_ITEM, (WPARAM)convo, (LPARAM)(item.c_str()));    
 
     return ack_signals.wait_for(sid_id , timeout);
 }
 
 
 bool 
-PostCloseItem(std::string sItem, 
-              TOS_Topics::TOPICS tTopic, 
+PostCloseItem(std::string item, 
+              TOS_Topics::TOPICS topic_t, 
               unsigned long timeout)
 {  
-    HWND convo = convos[tTopic];
-    std::string sid_id = std::to_string((size_t)convo) + sItem;
+    HWND convo = convos[topic_t];
+    std::string sid_id = std::to_string((size_t)convo) + item;
 
     ack_signals.set_signal_ID(sid_id);
-    PostMessage(msg_window, DELINK_DDE_ITEM, (WPARAM)convo, (LPARAM)(sItem.c_str()));  
+    PostMessage(msg_window, DELINK_DDE_ITEM, (WPARAM)convo, (LPARAM)(item.c_str()));  
 
     return ack_signals.wait_for(sid_id, timeout);
 }
 
 
 void 
-TearDownTopic(TOS_Topics::TOPICS tTopic, unsigned long timeout)
+TearDownTopic(TOS_Topics::TOPICS topic_t, unsigned long timeout)
 {  
-    PostMessage(msg_window, CLOSE_CONVERSATION, (WPARAM)convos[tTopic], NULL);        
-    topic_refcounts.erase(tTopic); 
-    convos.remove(tTopic);  
+    PostMessage(msg_window, CLOSE_CONVERSATION, (WPARAM)convos[topic_t], NULL);        
+    topic_refcounts.erase(topic_t); 
+    convos.remove(topic_t);  
 }
 
 
 bool 
-CreateBuffer(TOS_Topics::TOPICS tTopic, 
-             std::string sItem, 
+CreateBuffer(TOS_Topics::TOPICS topic_t, 
+             std::string item, 
              unsigned int buffer_sz)
 {  
     StreamBuffer buf;
     std::string name;
 
-    buffer_id_ty id(sItem, tTopic);  
+    buffer_id_ty id(item, topic_t);  
 
     if(buffers.find(id) != buffers.end())
         return false;
 
-    name = CreateBufferName(TOS_Topics::map[tTopic], sItem);
+    name = CreateBufferName(TOS_Topics::map[topic_t], item);
 
     buf.raw_sz = (buffer_sz < sys_info.dwPageSize) ? sys_info.dwPageSize : buffer_sz;
 
@@ -741,7 +741,7 @@ CreateBuffer(TOS_Topics::TOPICS tTopic,
     pBufferHead ptmp = (pBufferHead)(buf.raw_addr); 
     ptmp->loop_seq = 0;
     ptmp->next_offset = ptmp->beg_offset = sizeof(BufferHead);
-    ptmp->elem_size = TOS_Topics::TypeSize(tTopic) + sizeof(DateTimeStamp);
+    ptmp->elem_size = TOS_Topics::TypeSize(topic_t) + sizeof(DateTimeStamp);
     ptmp->end_offset = ptmp->beg_offset 
                      + ((buf.raw_sz - ptmp->beg_offset) / ptmp->elem_size) 
                      * ptmp->elem_size ;
@@ -752,12 +752,12 @@ CreateBuffer(TOS_Topics::TOPICS tTopic,
 
 
 bool 
-DestroyBuffer(TOS_Topics::TOPICS tTopic, std::string sItem)
+DestroyBuffer(TOS_Topics::TOPICS topic_t, std::string item)
 {   
     BUFFER_LOCK_GUARD;
     /* ---CRITICAL SECTION --- */
     /* don't allow buffer to be destroyed while we're writing to it */
-    auto buf_iter = buffers.find(buffer_id_ty(sItem,tTopic));
+    auto buf_iter = buffers.find( buffer_id_ty(item,topic_t) );
     if(buf_iter != buffers.end()){ 
         UnmapViewOfFile(buf_iter->second.raw_addr);
         CloseHandle(buf_iter->second.hfile);
@@ -1117,18 +1117,18 @@ HandleData(UINT msg, WPARAM wparam, LPARAM lparam)
     /* need to free lParam, as well, or we leak (not documented well on MSDN) */  
     FreeDDElParam(WM_DDE_DATA, lparam);
 
-    TOS_Topics::TOPICS tTopic = convos[(HWND)(wparam)];
+    TOS_Topics::TOPICS topic_t = convos[(HWND)(wparam)];
 
     try{
         std::string str(cp_data); 
-        switch(TOS_Topics::TypeBits(tTopic)){
+        switch(TOS_Topics::TypeBits(topic_t)){
         case TOSDB_STRING_BIT : /* STRING */   
         {
             /* clean up problem chars */         
             auto f = [](char c){return c < 32;};
             auto r = std::remove_if(str.begin(),str.end(),f);
             str.erase(r, str.end());
-            RouteToBuffer(DDE_Data<std::string>(tTopic, item_atom, str, true));  
+            RouteToBuffer(DDE_Data<std::string>(topic_t, item_atom, str, true));  
             break;
         }     
         case TOSDB_INTGR_BIT : /* LONG */   
@@ -1137,12 +1137,12 @@ HandleData(UINT msg, WPARAM wparam, LPARAM lparam)
             auto f = [](char c){ return std::isdigit(c) == 0; };
             auto r = std::remove_if(str.begin(), str.end(), f);
             str.erase(r,str.end());
-            RouteToBuffer( DDE_Data<def_size_type>(tTopic, item_atom, std::stol(str), true) );  
+            RouteToBuffer( DDE_Data<def_size_type>(topic_t, item_atom, std::stol(str), true) );  
             break;
         }               
         case TOSDB_QUAD_BIT : /* DOUBLE */
         {
-            RouteToBuffer( DDE_Data<ext_price_type>(tTopic, item_atom, std::stod(str), true) ); 
+            RouteToBuffer( DDE_Data<ext_price_type>(topic_t, item_atom, std::stod(str), true) ); 
             break;
         }     
         case TOSDB_INTGR_BIT | TOSDB_QUAD_BIT :/* LONG LONG */
@@ -1151,12 +1151,12 @@ HandleData(UINT msg, WPARAM wparam, LPARAM lparam)
             auto f = [](char c){ return std::isdigit(c) == 0; };
             auto r = std::remove_if(str.begin(), str.end(), f);
             str.erase(r,str.end());
-            RouteToBuffer( DDE_Data<ext_size_type>(tTopic, item_atom, std::stoll(str), true) );  
+            RouteToBuffer( DDE_Data<ext_size_type>(topic_t, item_atom, std::stoll(str), true) );  
             break;
         }     
         case 0 : /* FLOAT */
         {
-            RouteToBuffer( DDE_Data<def_price_type>(tTopic, item_atom, std::stof(str), true) ); 
+            RouteToBuffer( DDE_Data<def_price_type>(topic_t, item_atom, std::stof(str), true) ); 
             break;
         }     
         };
