@@ -1072,7 +1072,7 @@ DDE_Data<T>::_init_datetime()
 void 
 HandleData(UINT msg, WPARAM wparam, LPARAM lparam)
 {  
-    DDEDATA FAR* dde_data;
+    DDEDATA FAR *dde_data;
     BOOL clnt_rel;
     PVOID data;  
     UINT_PTR atom;
@@ -1083,10 +1083,10 @@ HandleData(UINT msg, WPARAM wparam, LPARAM lparam)
     char item_atom[TOSDB_MAX_STR_SZ + 1];    
 
     UnpackDDElParam(msg, lparam, (PUINT_PTR)&data, &atom);   
-  
+      
+    dde_data = (DDEDATA FAR*)GlobalLock(data);
     /* if we can't lock the data or its not expected frmt */
-    if( !(dde_data = (DDEDATA FAR*) GlobalLock(data)) 
-        || (dde_data->cfFormat != CF_TEXT))
+    if(!dde_data || dde_data->cfFormat != CF_TEXT)
     {   
         /* SEND NEG ACK TO SERVER  - convo already destroyed if NULL */
         lpneg = PackDDElParam(WM_DDE_ACK, 0, (UINT_PTR)atom);         
@@ -1108,34 +1108,38 @@ HandleData(UINT msg, WPARAM wparam, LPARAM lparam)
                     PackDDElParam(WM_DDE_ACK, 0x8000, (UINT_PTR)atom)); 
     }
   
+    /* extract before we unlock and free */
     GlobalGetAtomName((WORD)atom, item_atom, TOSDB_MAX_STR_SZ + 1);
     clnt_rel = dde_data->fRelease;
     GlobalUnlock(data); 
+
     if(clnt_rel)
         GlobalFree(data);
+
     GlobalDeleteAtom((WORD)atom); 
+
     /* need to free lParam, as well, or we leak (not documented well on MSDN) */  
     FreeDDElParam(WM_DDE_DATA, lparam);
 
+    /* extract the topic from wparam */
     TOS_Topics::TOPICS topic_t = convos[(HWND)(wparam)];
 
     try{
         std::string str(cp_data); 
+
         switch(TOS_Topics::TypeBits(topic_t)){
         case TOSDB_STRING_BIT : /* STRING */   
         {
-            /* clean up problem chars */         
-            auto f = [](char c){return c < 32;};
-            auto r = std::remove_if(str.begin(),str.end(),f);
+            /* clean up problem chars */                     
+            auto r = std::remove_if(str.begin(), str.end(), [](char c){return c < 32;});
             str.erase(r, str.end());
-            RouteToBuffer(DDE_Data<std::string>(topic_t, item_atom, str, true));  
+            RouteToBuffer( DDE_Data<std::string>(topic_t, item_atom, str, true) );  
             break;
         }     
         case TOSDB_INTGR_BIT : /* LONG */   
         {
-            /* remove commas */
-            auto f = [](char c){ return std::isdigit(c) == 0; };
-            auto r = std::remove_if(str.begin(), str.end(), f);
+            /* remove commas */            
+            auto r = std::remove_if(str.begin(), str.end(), [](char c){return std::isdigit(c) == 0;});
             str.erase(r,str.end());
             RouteToBuffer( DDE_Data<def_size_type>(topic_t, item_atom, std::stol(str), true) );  
             break;
@@ -1147,9 +1151,8 @@ HandleData(UINT msg, WPARAM wparam, LPARAM lparam)
         }     
         case TOSDB_INTGR_BIT | TOSDB_QUAD_BIT :/* LONG LONG */
         {
-            /* remove commas */
-            auto f = [](char c){ return std::isdigit(c) == 0; };
-            auto r = std::remove_if(str.begin(), str.end(), f);
+            /* remove commas */           
+            auto r = std::remove_if(str.begin(), str.end(), [](char c){return std::isdigit(c) == 0;});
             str.erase(r,str.end());
             RouteToBuffer( DDE_Data<ext_size_type>(topic_t, item_atom, std::stoll(str), true) );  
             break;

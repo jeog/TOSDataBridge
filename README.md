@@ -16,9 +16,9 @@ The core implementation is not portable, but the python interface does provides 
 - - -
 Major changes will generally lead to a new version/branch, but not necessarily the label of 'stable'.  
 
-- **v0.4** (branch 'v0.4') - 'stable' version that guarantees up-to-date binaries/signatures (use the README from branch 'v0.4') 
+- **v0.5** (branch 'v0.5') - 'stable' version that guarantees up-to-date binaries/signatures (use the README from branch 'v0.5') 
 
-- **v0.5** (branch 'master') - pre-release development version that may not have up-to-date binaries/signatures
+- **v0.6** (branch 'master') - pre-release development version that may not have up-to-date binaries/signatures
     
 ### Quick Setup
 - - -
@@ -61,7 +61,7 @@ Major changes will generally lead to a new version/branch, but not necessarily t
 ##### For C/C++:
 - Include tos_databridge.h header in your code 
 - Use the library calls detailed in the [C/C++ Interface...](#cc-interface--administrative-calls) sections below
-- Link with *tos-databridge-0.5-[x86|x64].dll*
+- Link with *tos-databridge-0.6-[x86|x64].dll*
 - Build
 - Run
 
@@ -101,7 +101,7 @@ Simply reporting bugs or questioning seemingly idiotic or unintuitive interface 
     
     - *tos-databridge-engine-[x86|x64].exe* : The main engine - spawned from tos-databridge-serv.exe - that interacts with the TOS platform and our DLL(below). It runs with a lower(ed) integrity level and reduced privileges. 
     
-    - *tos-databridge-0.5-[x86|x64].dll* : The library/interface that client code uses to access TOSDB. Review tos-databridge.h, and the sections below, for all the necessary calls, types, and objects.
+    - *tos-databridge-0.6-[x86|x64].dll* : The library/interface that client code uses to access TOSDB. Review tos-databridge.h, and the sections below, for all the necessary calls, types, and objects.
     
     - *_tos-databridge-[x86|x64].dll* : A back-end library that provides custom concurrency and IPC objects; logging and utilities; as well as the Topic-String mapping. 
     
@@ -117,7 +117,7 @@ Simply reporting bugs or questioning seemingly idiotic or unintuitive interface 
 
     Files relevant to the python wrapper.
 
-    - **tosdb/** : A python package that serves as a wrapper around *tos-databridge-0.5-[x86|x64].dll*. It provides a more object oriented, simplified means of accessing the core functionality.
+    - **tosdb/** : A python package that serves as a wrapper around *tos-databridge-0.6-[x86|x64].dll*. It provides a more object oriented, simplified means of accessing the core functionality.
 
     - **tosdb/cli_scripts/** : Python scripts built on top of the python wrapper.
 
@@ -188,7 +188,7 @@ Simply reporting bugs or questioning seemingly idiotic or unintuitive interface 
     (note: some of the particulars in these (older) screen-shots may be different for newer versions)    
     ![](./res/SCss1.png)
 
-10. (***C/C++ ONLY***) Include the tos_databridge.h header in your code ( if its C++ make sure the compiler can find containers.hpp, generic.hpp, and exceptions.hpp.) and adjust the link settings to import the tos-databridge-0.5-[].lib stub. (If you run into trouble review the VisualStudio settings for tos-databridge-shell[].exe as they should resemble what you're trying to do.)
+10. (***C/C++ ONLY***) Include the tos_databridge.h header in your code ( if its C++ make sure the compiler can find containers.hpp, generic.hpp, and exceptions.hpp.) and adjust the link settings to import the tos-databridge-0.6-[].lib stub. (If you run into trouble review the VisualStudio settings for tos-databridge-shell[].exe as they should resemble what you're trying to do.)
    
 11. (***C/C++ ONLY***) Jump down to the [C/C++ Interface...](#cc-interface--administrative-calls) section for some of the basic library calls to add to your program.
    
