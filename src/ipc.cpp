@@ -396,8 +396,8 @@ DynamicIPCMaster::disconnect(int level)
 
 #define IPC_SLAVE_GOOD_RET_OR_THROW(r, msg) do{ \
     if(!(r)){ \
-        IPC_SLAVE_ERROR("CreateMutex in slave constructor failed"); \
-        throw std::exception("DynamicIPCSlave failed to create mutex"); \
+        IPC_SLAVE_ERROR(msg); \
+        throw std::runtime_error(msg); \
     } \
 }while(0)
 
