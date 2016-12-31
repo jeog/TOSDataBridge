@@ -97,7 +97,7 @@ class SlowHeapManager{
 public:       
     /* make sure offset can fit in an unsigned 4 bytes 
        AND won't overflow during addition of a 'width' */
-    static const unsigned long MAX_SZ = ((65536 * 65536 / 2) - 1); /* 4 BYTE SIGNED MAX */
+    static const unsigned long MAX_SZ = ((65536LL * 65536 / 2) - 1); /* 4 BYTE SIGNED MAX */
 
     SlowHeapManager(void* beg_addr, size_t sz)
         {
