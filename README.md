@@ -2,9 +2,11 @@
 - - -
 TOSDataBridge (TOSDB) is an open-source collection of resources for 'scraping' real-time streaming data off of TDAmeritrade's ThinkOrSwim(TOS) platform, providing C, C++, and Python interfaces. 
 
-TOSDB uses TOS's antiquated, yet still useful, DDE feature, directly through the Windows API. The C / C++ interfaces are implemented as a shared library(DLL) that communicates with a back-end Windows Service. The Python interface wraps this library in a more object-oriented, user-friendly format.
+TOSDB uses TOS's antiquated, yet still useful, DDE feature, directly through the Windows API. The C / C++ interfaces are implemented as a shared library that communicates with a backend Windows Service. The Python interface wraps this library in a more object-oriented, user-friendly format.
 
 The core implementation is not portable, but the python interface does provides a thin virtualization layer over TCP. A user running Windows in a Virtual Machine, for instance, can expose the exact same python interface to a different host system running python3. 
+
+![](./res/main_diagram.png)
 
 ### Requirements
 - - -
@@ -68,16 +70,13 @@ Major changes will generally lead to a new version/branch, but not necessarily t
 ##### For Python:
 - import tosdb
 
+
 ### Contributions
 ---
 This project grew out of personal need and is maintained by a single developer. Contributions - testing, bug fixes, suggestions, extensions, whatever - are always welcome. If you want to contribute something non-trivial it's recommended you communicate the intention first to avoid unnecessary and/or conflicting work.
 
 Simply reporting bugs or questioning seemingly idiotic or unintuitive interface design can be very helpful.
 
-### Upcoming Changes
-- - -
-- simplify the C/C++ API 
-- consider an 'intermediate' API between client lib and engine, allowing users to inject their own callbacks/hooks for handling raw data from the engine
 
 ### Contents
 - - -
@@ -195,7 +194,7 @@ Simply reporting bugs or questioning seemingly idiotic or unintuitive interface 
 12. Make sure the TOS Platform is running, execute your program or start the python wrapper(see below).
 
 
-### Python Wrapper
+### Python Wrapper (tosdb/)
 - - -
 The python wrapper is a simpler, yet still robust, way to get started with the underlying library. To use it you'll still need all the underlying modules mentioned above. 
 
