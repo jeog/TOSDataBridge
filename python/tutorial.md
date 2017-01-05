@@ -13,7 +13,7 @@ There are a number of comments inside the screen-shots that help explain what we
 
 - import tosdb and experiment with two different ways to initialize
 
-**IMPORTANT:** Before you can successfully connect you must have the underlying TOSDataBridge Service and TOS platform running, with the correct privileges, using the appropriate build(x86 vs x64) for your version of python. Refer to [Installation Details](../README.md#installation-details) for more details.
+**IMPORTANT:** Before you can successfully connect you must have the underlying TOSDataBridge Service and TOS platform running, with the correct privileges, using the appropriate build(x86 vs x64) for your version of python. Refer to [Installation Details](../README_INSTALL.md) for more details.
 
 **NOTE:** Be sure to use the correct version of the tos-databridge DLL; these screen-shots use older versions of the library. (e.x if you are using branch/version v0.4 you should be using tos-databridge-0.4-x86.dll or tos-databridge-0.4-x64.dll)
 
