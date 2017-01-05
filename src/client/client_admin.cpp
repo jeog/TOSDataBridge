@@ -47,8 +47,7 @@ buffers_ty buffers;
 std::mutex buffers_mtx;
     
 /* !!! 'buffers_lock_guard_' is reserved inside this namespace !!! */
-#define LOCAL_BUFFERS_LOCK_GUARD \
-    std::lock_guard<std::mutex> buffers_lock_guard_(buffers_mtx)
+#define LOCAL_BUFFERS_LOCK_GUARD std::lock_guard<std::mutex> buffers_lock_guard_(buffers_mtx)
 
 /* for 'scheduling' buffer reads */
 steady_clock_type steady_clock;

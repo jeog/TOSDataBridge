@@ -110,20 +110,19 @@ class DLL_SPEC_IFACE TOSDB_Generic{
 
 public:  
     template<typename T>
-    struct Type_Check {
-        static const bool 
-        value = std::is_same<T, float>::value 
-                || std::is_same<T, long>::value 
-                || std::is_same<T, double>::value 
-                || std::is_same<T, long long>::value 
-                || std::is_same<T, std::string>::value;
+    struct TypeCheck {
+        static const bool value = 
+            std::is_same<T, float>::value ||
+            std::is_same<T, long>::value ||
+            std::is_same<T, double>::value ||
+            std::is_same<T, long long>::value ||
+            std::is_same<T, std::string>::value;
     };
 
     explicit TOSDB_Generic(long val)
         :           
             _type_val( TYVAL_LONG )
-        {      
-          
+        {     
             *(long long*)_sub = val;
         }
 
@@ -131,7 +130,6 @@ public:
         :
             _type_val( TYVAL_LONG_LONG )
         {      
-          
             *(long long*)_sub = val;
         }
 
@@ -139,7 +137,6 @@ public:
         :
             _type_val( TYVAL_FLOAT )
         {      
-          
             *(double*)_sub = val;
         }
 
@@ -147,14 +144,13 @@ public:
         :
             _type_val( TYVAL_DOUBLE )
         {      
-          
             *(double*)_sub = val;
         }
 
     explicit TOSDB_Generic(std::string str)
-        :   /* ! must be able to delete (std::string*)_sub at ANY TIME !*/                         
+        : /* ! must be able to delete (std::string*)_sub at ANY TIME !*/                         
             _type_val( TYVAL_STRING )  
-        {   /* let string do all the heavy lifting */            
+        { /* let string do all the heavy lifting */            
             *(std::string**)_sub = new std::string(str.substr(0,STR_MAX)); 
         } 
 
@@ -294,7 +290,7 @@ template<typename T>
 inline T
 CastGenericFromString(std::string& str) 
 { 
-    static_assert(TOSDB_Generic::Type_Check<T>::value,
+    static_assert(TOSDB_Generic::TypeCheck<T>::value,
                   "don't know how to cast to this type"); 
 }  
 

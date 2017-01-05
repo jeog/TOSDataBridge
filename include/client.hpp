@@ -25,29 +25,23 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 /* sync access to blocks in client_get/client_admin */
 extern std::recursive_mutex global_rmutex;
 
-#define GLOBAL_RLOCK_GUARD \
-    std::lock_guard<std::recursive_mutex> global_rlock_guard_(global_rmutex);
-
+#define GLOBAL_RLOCK_GUARD std::lock_guard<std::recursive_mutex> global_rlock_guard_(global_rmutex)
 
 /* forward decl - raw_data_block.hpp / raw_data_block.tpp */
 template<typename T,typename T2> class RawDataBlock; 
 
 typedef RawDataBlock<generic_type, DateTimeStamp> TOSDB_RawDataBlock;
 
-
 typedef struct {
-   /* 
-       TOSDB's main organizational unit - functionally and conceptually. It's 
-       how client_admin and client_get handle 'blocks' that client code creates.
+/*  TOSDB's main organizational unit - functionally and conceptually. It's 
+    how client_admin and client_get handle 'blocks' that client code creates.
   
-       TOSDB_RawDataBlock manages all the active items/topics/data 
-    */
+    TOSDB_RawDataBlock manages all the active items/topics/data */
     TOSDB_RawDataBlock* block;
     str_set_type        item_precache;
     topic_set_type      topic_precache;  
     unsigned long       timeout;
 } TOSDBlock; /* no ptr or const typedefs; force code to state explicitly */
-
 
 inline TOS_Topics::TOPICS 
 GetTopicEnum(std::string topic_str)
