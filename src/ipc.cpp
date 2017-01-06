@@ -118,14 +118,6 @@ SlowHeapManager::size(void* start)
     return *(_head_ty*)(p); 
 }
 
-
-const char* DynamicIPCBase::KMUTEX_NAME =   
-#ifdef NO_KGBLNS
-  "DynamicIPC_Master_MUTEX1";
-#else
-  "Global\\DynamicIPC_Master_MUTEX1";
-#endif
-
 const DynamicIPCBase::shem_chunk DynamicIPCBase::NULL_SHEM_CHUNK;
 
 void* 
@@ -255,7 +247,7 @@ DynamicIPCMaster::grab_pipe()
 {
     long ret;
       
-    _mtx = OpenMutex(SYNCHRONIZE, FALSE, KMUTEX_NAME);
+    _mtx = OpenMutex(SYNCHRONIZE, FALSE, _mtx_str.c_str());
     if(!_mtx){
         IPC_MASTER_ERROR("OpenMutex failed in grab_pipe"); 
         return -1; 
@@ -418,8 +410,19 @@ DynamicIPCSlave::DynamicIPCSlave(std::string name, size_t sz)
         int sec_ret = _set_security(); 
         IPC_SLAVE_GOOD_RET_OR_THROW(sec_ret == 0, "DynamicIPCSlave failed to initialize security");
              
-        _mtx = CreateMutex(&(_sec_attr[MUTEX1]), FALSE, KMUTEX_NAME);
-        IPC_SLAVE_GOOD_RET_OR_THROW(_mtx, "DynamicIPCSlave failed to create mutex");
+        _mtx = CreateMutex(&(_sec_attr[MUTEX1]), FALSE, _mtx_str.c_str());
+        if(!_mtx){
+            DWORD err = GetLastError();
+            std::string msg = "DynamicIPCSlave failed to create mutex: "  + _mtx_str;
+            TOSDB_LogEx("IPC-Slave", msg.c_str(), err);
+            if(err = ERROR_ACCESS_DENIED){
+                TOSDB_LogH("IPC-Slave", "  Likely causes of this error:");
+                TOSDB_LogH("IPC-Slave", "    1) The mutex has already been created by another running process");
+                TOSDB_LogH("IPC-Slave", "    2) Trying to create a global mutex (Global\\) without adequate privileges");
+
+            }
+            throw std::runtime_error(msg);
+        }       
                
         _intrnl_pipe_hndl = CreateNamedPipe(_intrnl_pipe_str.c_str(), 
                                             PIPE_ACCESS_DUPLEX,

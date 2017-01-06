@@ -113,6 +113,22 @@ along with this program.  If not, see http://www.gnu.org/licenses.
  ***CRASH WARNING ***/
 #endif
 
+#ifdef CUSTOM_COMM_CHANNEL
+/* generally we want a single, static comm channel so client can't accidentaly run 
+   multiple instances of the engine and/or break the underlying IPC mechanism
+   
+   If a user tries to create a second DynamicIPCSlave (maybe forgeting to close an old
+   engine before starting a new one) it will crash during construction as it tries
+   to create kernel objects that already exist, causing a runtime_exception to be thrown.
+   (this will generate log messages w/ the IPC-Slave tag in log/engine.log)
+
+   Defining CUSTOM_COMM_CHANNEL with the name of the channel to use allows us to override 
+   this behavior. Obviously YOU SHOULD BE VERY CAREFUL DOING THIS. */
+#define TOSDB_COMM_CHANNEL CUSTOM_COMM_CHANNEL
+#else
+#define TOSDB_COMM_CHANNEL "TOSDB_channel_1"
+#endif
+
 /* the core types implemented by the data engine: engine-core.cpp 
 
    when using large blocks the size difference between 
@@ -205,8 +221,6 @@ DLL_SPEC_IMPL void
 ParseArgs(std::vector<std::string>& vec, std::string str);
 
 #endif /*__cplusplus */
-
-#define TOSDB_COMM_CHANNEL "TOSDB_channel_1"
 
 #define TOSDB_SIG_ADD 1
 #define TOSDB_SIG_REMOVE 2

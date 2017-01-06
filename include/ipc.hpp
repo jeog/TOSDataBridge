@@ -197,9 +197,9 @@ protected:
     static const unsigned int DEALLOC = 2;
     static const unsigned int PING = 4;      
     static const int ACL_SIZE = 144;
-    static const char* KMUTEX_NAME;
-    
+
     std::string _shem_str;
+    std::string _mtx_str;
     std::string _xtrnl_pipe_str;
     std::string _intrnl_pipe_str;
 
@@ -215,8 +215,10 @@ protected:
         :
 #ifdef NO_KGBLNS
             _shem_str(std::string(name).append("_shem")),
+            _mtx_str(std::string(name).append("_mtx")),  
 #else
             _shem_str(std::string("Global\\").append(name).append("_shem")),            
+            _mtx_str(std::string("Global\\").append(name).append("_mtx")),
 #endif
             _xtrnl_pipe_str(std::string("\\\\.\\pipe\\").append(name).append("_pipe")),
             _intrnl_pipe_str(std::string("\\\\.\\pipe\\").append(name).append("_pipe_intrnl")), 
