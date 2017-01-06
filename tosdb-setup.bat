@@ -87,6 +87,7 @@ IF ERRORLEVEL 1 (
     echo -     SC stop TOSDataBridge
     echo -     SC delete TOSDataBridge
     echo - Then run the setup script again.    
+    echo - (If that fails please report the issue @ github.com/jeog/TOSDataBridge/issues)
     EXIT /B 1
 )   
 
