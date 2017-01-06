@@ -68,6 +68,7 @@ The core implementation is not portable, but the python interface does provides 
 
 ##### For Python:
 - import tosdb
+- [(view tutorial)](python/tutorial.md)
 
 
 ### Build (optional)
