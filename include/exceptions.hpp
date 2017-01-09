@@ -88,25 +88,14 @@ public:
         return _info; 
     }
 };
-  
-
-class TOSDB_IPC_Error 
-        : public TOSDB_Error{
-public:
-    TOSDB_IPC_Error(const char* info, const char* tag = "IPC")
-        : 
-            TOSDB_Error(info, tag) 
-        {
-        }
-};
 
 
 class TOSDB_BufferError 
-        : public TOSDB_IPC_Error{
+        : public TOSDB_Error{
 public:
     TOSDB_BufferError(const char* info, const char* tag = "DataBuffer")
         : 
-            TOSDB_IPC_Error(info, tag) 
+            TOSDB_Error(info, tag) 
         {
         }
 };
@@ -160,9 +149,10 @@ public:
 };            
 
 
+/* TOSDB_DataStreamError is the 'external' version of DataStreamError (data_stream.hpp/tpp)
+   The latter is caught 'internally' and passed to TOSDB_DataStreamError cstr */
 class TOSDB_DataStreamError 
         : public TOSDB_DataBlockError{
-
 public:
     TOSDB_DataStreamError(const char* info, const char* tag = "DataStream")
         : 

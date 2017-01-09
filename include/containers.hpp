@@ -34,7 +34,8 @@ public:
         {
         }
 
-    virtual ~ILSet() 
+    virtual 
+    ~ILSet() 
         {
         }
 

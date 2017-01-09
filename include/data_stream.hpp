@@ -108,9 +108,10 @@ protected:
         }
 
 public:
-    virtual ~DataStreamInterface() 
-      {
-      }
+    virtual 
+    ~DataStreamInterface() 
+        {
+        }
 
     virtual size_t      
     bound_size() const = 0;
@@ -363,7 +364,8 @@ public:
     DataStream(const _my_ty & stream);
     DataStream(_my_ty && stream);
 
-    virtual ~DataStream();
+    virtual 
+    ~DataStream();
 
     inline bool      
     empty() const 
@@ -529,6 +531,11 @@ public:
             std::exception(info) 
         {
         }
+
+    virtual
+    ~DataStreamError()
+        {
+        }
 };
 
 class DataStreamTypeError 
@@ -544,13 +551,14 @@ public:
 class DataStreamSizeViolation 
         : public DataStreamError{
 public:
-    const size_t bound_size, deque_size;  
+    const size_t bound_size;
+    const size_t deque_size;  
      
-    DataStreamSizeViolation(const char* msg, size_t bsz, size_t dsz)
+    DataStreamSizeViolation(const char* msg, size_t bound_size, size_t deque_size)
         : 
             DataStreamError(msg),
-            bound_size(bsz),
-            deque_size(dsz)        
+            bound_size(bound_size),
+            deque_size(deque_size)        
         {        
         }
 };
@@ -558,7 +566,9 @@ public:
 class DataStreamOutOfRange 
         : public DataStreamError{      
 public:
-    const int size, beg, end;
+    const int size;
+    const int beg;
+    const int end;
 
     DataStreamOutOfRange(const char* msg, int sz, int beg, int end)
         : 
