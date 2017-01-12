@@ -140,6 +140,9 @@ CreateNewTopicStream(TOS_Topics::TOPICS topic_t, std::string item, unsigned long
 int 
 RemoveStream(TOS_Topics::TOPICS topic_t,std::string item, unsigned long timeout);
   
+int 
+TestStream(TOS_Topics::TOPICS topic_t,std::string item, unsigned long timeout);
+
 bool 
 PostItem(std::string item,TOS_Topics::TOPICS topic_t, unsigned long timeout);
 
@@ -274,7 +277,19 @@ WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLn, int nShowCmd)
 }
 
 
-namespace {    
+namespace {        
+
+#define STREAM_CHECK_LOG_ERROR(e,call,topic,item,tout) do{ \
+    if(e){ \
+        std::stringstream err_s; \
+        err_s << "Error (" << std::to_string(e) << ") in " << call << " (" \
+              << TOS_Topics::map[topic] << ',' \
+              << item << ',' \
+              << std::to_string(tout) << ')'; \
+        TOSDB_LogH("STREAM-OP", err_s.str().c_str()); \
+    } \
+}while(0)
+
 
 int
 RunMainCommLoop(DynamicIPCSlave *pslave)
@@ -310,6 +325,7 @@ RunMainCommLoop(DynamicIPCSlave *pslave)
                 case TOSDB_SIG_ADD:                                
                     if( ExtractShemBufArgs(pslave, shem_buf, &cli_topic, &cli_item, &cli_timeout) ){
                         ret = AddStream(cli_topic, cli_item, cli_timeout);
+                        STREAM_CHECK_LOG_ERROR(ret, "AddStream", cli_topic, cli_item, cli_timeout);
                         pslave->send((long)ret);
                     }                         
                     break;
@@ -317,10 +333,18 @@ RunMainCommLoop(DynamicIPCSlave *pslave)
                 case TOSDB_SIG_REMOVE:
                     if( ExtractShemBufArgs(pslave, shem_buf, &cli_topic, &cli_item, &cli_timeout) ){
                          ret = RemoveStream(cli_topic, cli_item, cli_timeout);
+                         STREAM_CHECK_LOG_ERROR(ret, "RemoveStream", cli_topic, cli_item, cli_timeout);
                          pslave->send((long)ret);
                     }                           
                     break;
                 
+                case TOSDB_SIG_TEST:
+                    if( ExtractShemBufArgs(pslave, shem_buf, &cli_topic, &cli_item, &cli_timeout) ){
+                        ret = TestStream(cli_topic, cli_item, cli_timeout);                        
+                        pslave->send((long)ret);
+                    }  
+                    break;
+
                 case TOSDB_SIG_PAUSE:                                    
                     TOSDB_Log("SERVICE-MSG", "TOSDB_SIG_PAUSE message received");                         
                     pause_flag = true;
@@ -471,16 +495,24 @@ CleanUpMain(int ret_code)
 }
 
 
-#define STREAM_CHECK_LOG_ERROR(e,call,topic,item,tout) do{ \
-    if(e){ \
-        std::stringstream err_s; \
-        err_s << "Error (" << std::to_string(e) << ") in " << call << " (" \
-              << TOS_Topics::map[topic] << ',' \
-              << item << ',' \
-              << std::to_string(tout) << ')'; \
-        TOSDB_LogH("STREAM-OP", err_s.str().c_str()); \
-    } \
-}while(0)
+int 
+TestStream(TOS_Topics::TOPICS topic_t,std::string item, unsigned long timeout)
+{
+    int a;
+    int r;
+    
+    a = AddStream(topic_t, item, timeout);
+    if(a)
+        return -1;
+
+    r = RemoveStream(topic_t, item, timeout);
+    if(r){
+        TOSDB_LogEx("STREAM-OP", "failed to remove stream added during TestStream (stream leaked)", r);
+        return -2;
+    }
+
+    return 0;
+}
 
 
 int 
@@ -525,9 +557,7 @@ AddStream( TOS_Topics::TOPICS topic_t,
             break;        
     case -2:        
         TearDownTopic(topic_t, timeout);   
-    }
-
-    STREAM_CHECK_LOG_ERROR(err,"AddStream",topic_t,item,timeout);
+    }    
 
     return err;
 }

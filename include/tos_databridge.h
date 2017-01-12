@@ -167,6 +167,14 @@ typedef struct{
     long       micro_second;
 } DateTimeStamp, *pDateTimeStamp;
 
+/* reserve a block name for the implementation */
+#define TOSDB_RESERVED_BLOCK_NAME "___RESERVED_BLOCK_NAME___"
+
+/* the connected states we can be in; see TOSDB_ConnectedState() */
+#define TOSDB_CONN_NONE 0
+#define TOSDB_CONN_ENGINE 1
+#define TOSDB_CONN_ENGINE_TOS 2
+
 /* NEED for tosdb/setup.py !!! DO NOT REMOVE !!! */
 #define TOSDB_INTGR_BIT ((type_bits_type)0x80)
 #define TOSDB_QUAD_BIT ((type_bits_type)0x40)
@@ -230,6 +238,7 @@ ParseArgs(std::vector<std::string>& vec, std::string str);
 #define TOSDB_SIG_DUMP 6
 #define TOSDB_SIG_GOOD 7 
 #define TOSDB_SIG_BAD 8 
+#define TOSDB_SIG_TEST 9
 
 typedef const enum{ 
     SHEM1 = 0, 
@@ -539,8 +548,21 @@ TOSDB_Connect();
 EXT_C_SPEC DLL_SPEC_IFACE NO_THROW int            
 TOSDB_Disconnect();
 
+/* DEPRECATED - Jan 10 2017 */
 EXT_C_SPEC DLL_SPEC_IFACE NO_THROW unsigned int   
 TOSDB_IsConnected();
+
+/* ... in favor of... */
+EXT_C_SPEC DLL_SPEC_IFACE NO_THROW unsigned int 
+TOSDB_IsConnectedToEngine();
+
+/* ... and... */
+EXT_C_SPEC DLL_SPEC_IFACE NO_THROW unsigned int 
+TOSDB_IsConnectedToEngineAndTOS();
+
+/* ... and... */
+EXT_C_SPEC DLL_SPEC_IFACE NO_THROW unsigned int   
+TOSDB_ConnectionState();
 
 EXT_C_SPEC DLL_SPEC_IFACE NO_THROW int            
 TOSDB_CreateBlock(LPCSTR id, size_type sz, BOOL is_datetime, size_type timeout) ;
@@ -1097,6 +1119,7 @@ TOSDB_Log_(GetCurrentProcessId(), GetCurrentThreadId(), high, tag, desc)
 #define TOSDB_Log(tag,desc) \
 TOSDB_Log_(GetCurrentProcessId(), GetCurrentThreadId(), low, tag, desc)
 
+/* DONT PASS GetLastError() INLINE to the macro as the Get...Id sys calls go first */
 #define TOSDB_LogEx(tag,desc,error) \
 TOSDB_LogEx_(GetCurrentProcessId(), GetCurrentThreadId(), high, tag, desc, error)
 

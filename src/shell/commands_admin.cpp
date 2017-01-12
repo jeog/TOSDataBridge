@@ -22,6 +22,9 @@ namespace{
 void Connect(CommandCtx *ctx); 
 void Disconnect(CommandCtx *ctx); 
 void IsConnected(CommandCtx *ctx);
+void IsConnectedToEngine(CommandCtx *ctx);
+void IsConnectedToEngineAndTOS(CommandCtx *ctx);
+void ConnectionState(CommandCtx *ctx);
 void CreateBlock(CommandCtx *ctx); 
 void CloseBlock(CommandCtx *ctx); 
 void CloseBlocks(CommandCtx *ctx);
@@ -63,7 +66,10 @@ void DumpBufferStatus(CommandCtx *ctx);
 CommandsMap commands_admin(
     CommandsMap::InitChain("Connect",Connect,"connect to the library")
                           ("Disconnect",Disconnect)                              
-                          ("IsConnected",IsConnected)                              
+                          ("IsConnected",IsConnected)       
+                          ("IsConnectedToEngine",IsConnectedToEngine)
+                          ("IsConnectedToEngineAndTOS",IsConnectedToEngineAndTOS)
+                          ("ConnectionState",ConnectionState)  
                           ("CreateBlock",CreateBlock)                              
                           ("CloseBlock",CloseBlock)                              
                           ("CloseBlocks",CloseBlocks)                              
@@ -168,7 +174,50 @@ void
 IsConnected(CommandCtx *ctx)
 {
     unsigned int ret = TOSDB_IsConnected();
+    std::cout<< std::endl << "*** DEPRECATED (jan 2017) ***" << std::endl
+             << std::endl << std::boolalpha << (ret == 1) << std::endl << std::endl;
+}
+
+
+void
+IsConnectedToEngine(CommandCtx *ctx)
+{
+    unsigned int ret = TOSDB_IsConnectedToEngine();
     std::cout<< std::endl << std::boolalpha << (ret == 1) << std::endl << std::endl;
+}
+
+
+void
+IsConnectedToEngineAndTOS(CommandCtx *ctx)
+{
+    unsigned int ret = TOSDB_IsConnectedToEngineAndTOS();
+    std::cout<< std::endl << std::boolalpha << (ret == 1) << std::endl << std::endl;
+}
+
+
+void
+ConnectionState(CommandCtx *ctx)
+{
+    unsigned int ret = TOSDB_ConnectionState();
+
+    std::cout<< std::endl;
+
+    switch(ret){
+    case TOSDB_CONN_NONE:
+        std::cout<< "TOSDB_CONN_NONE";
+        break;
+    case TOSDB_CONN_ENGINE:
+        std::cout<< "TOSDB_CONN_ENGINE";
+        break;
+    case TOSDB_CONN_ENGINE_TOS:
+        std::cout<< "TOSDB_CONN_ENGINE_TOS";
+        break; 
+    default:
+        std::cout<< "Invalid connection state returned.";
+        break;
+    }
+
+    std::cout<< std::endl << std::endl;
 }
 
 
