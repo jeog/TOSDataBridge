@@ -81,6 +81,10 @@ _REGEX_VER_SFFX = _compile('-' + _VER_SFFX + '-')
 _REGEX_DLL_NAME = _compile('^(' + DLL_BASE_NAME + '-)' \
                                 + _VER_SFFX + '-' \
                                 + SYS_ARCH_TYPE +'(.dll)$')
+
+_REGEX_DBG_DLL_PATH = _compile('^.+(' + DLL_BASE_NAME + '-)' \
+                                      + _VER_SFFX + '-' \
+                                      + SYS_ARCH_TYPE + '_d(.dll)$')
            
 _dll = None
 _dll_depend1 = None
@@ -108,9 +112,12 @@ def init(dllpath=None, root="C:\\", bypass_check=False):
         mtup_max = max(mtup)[0]
         rel = set(x[1] for x in mtup if x[0] == mtup_max)
 
-    def _get_depends1_dll_path(dllpath):
+    def _get_depends1_dll_path(dllpath):        
         d = _path.dirname(dllpath)
-        return d + "/" + DLL_DEPENDS1_NAME + "-" + SYS_ARCH_TYPE + ".dll"
+        dbg = _match(_REGEX_DBG_DLL_PATH, dllpath)
+        base = d + "/" + DLL_DEPENDS1_NAME + "-" + SYS_ARCH_TYPE
+        path = base + ("_d.dll" if dbg else ".dll")       
+        return path
     
     try:   
         if dllpath is None:
