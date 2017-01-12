@@ -98,7 +98,7 @@ _requestStreamOP(TOS_Topics::TOPICS topic_t,
         return -1;
     }          
 
-    IPC_TIMED_WAIT(master.grab_pipe() <= 0,
+    IPC_TIMED_WAIT(master.grab_pipe(timeout) <= 0,
                    "_requestStreamOP timed out trying to grab pipe", 
                    -2);    
 
@@ -473,7 +473,7 @@ TOSDB_Connect()
     if(_connected())
         return 0;
 
-    if(!master.try_for_slave()){
+    if(!master.try_for_slave(TOSDB_DEF_TIMEOUT)){
         TOSDB_LogH("IPC","TOSDB_Connect(): could not connect with slave");
         return -1;
     }  
@@ -1001,7 +1001,7 @@ TOSDB_DumpSharedBufferStatus()
     GLOBAL_RLOCK_GUARD;
     /* --- CRITICAL SECTION --- */
 
-    IPC_TIMED_WAIT(master.grab_pipe() <= 0,
+    IPC_TIMED_WAIT(master.grab_pipe(TOSDB_DEF_TIMEOUT) <= 0,
                    "TOSDB_DumpSharedBufferStatus timeout trying to grab pipe",
                    -1);
   

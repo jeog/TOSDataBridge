@@ -126,14 +126,28 @@ DynamicIPCBase::_allocate(size_t sz) const
     BOOL ret; 
     DWORD read = 0;
     size_t off = 0;
-    size_t obuf[2] = {ALLOC, sz};     
+    size_t obuf[2] = {ALLOC, sz};       
+
+
+    InterProcessMutex mtx(_intrnl_mtx_name, "_allocate", TOSDB_DEF_TIMEOUT);
+    if(!mtx.locked())
+        return false;  
   
-    ret = CallNamedPipe(this->_intrnl_pipe_str.c_str(), 
+    ret = CallNamedPipe(_intrnl_pipe_name.c_str(), 
                         (void*)obuf, sizeof(obuf),
                         (void*)&off, sizeof(off), 
-                        &read, TOSDB_DEF_TIMEOUT);
-    
-    return ret ? ptr(off) : nullptr;    
+                        &read, NMPWAIT_USE_DEFAULT_WAIT); //TOSDB_DEF_TIMEOUT);     
+        
+    if(ret == 0){ /* using NMPWAIT_USE_DEFAULT_WAIT (i.e INFINITE) we *should* not get 
+                      here unless the slave is destroyed (unless something really bad 
+                      happend, in which case return null anyway) */                
+        errno_t e = GetLastError();
+        TOSDB_LogEx("IPC", "CallNamedPipe failed in _allocate()", e);              
+    }else{         
+        return ptr(off);      
+    }
+
+    return nullptr;
 }
 
 
@@ -145,22 +159,43 @@ DynamicIPCBase::_deallocate(void* start) const
     size_t val = 0;
     size_t obuf[2] = {DEALLOC, offset(start)};   
 
-    ret = CallNamedPipe(_intrnl_pipe_str.c_str(), 
+    InterProcessMutex mtx(_intrnl_mtx_name, "_deallocate", TOSDB_DEF_TIMEOUT);
+    if(!mtx.locked())
+        return false; 
+  
+    ret = CallNamedPipe(_intrnl_pipe_name.c_str(), 
                         (void*)obuf, sizeof(obuf),
                         (void*)&val, sizeof(val), 
-                        &read, TOSDB_DEF_TIMEOUT);
+                        &read, NMPWAIT_USE_DEFAULT_WAIT); //TOSDB_DEF_TIMEOUT);
 
-    /* we are only comparing to '1' becase the listening loop casts
-       the boolean return value of deallocate to an int */
-    return ret ? val == 1 : false;                    
+    if(ret == 0){ /* using NMPWAIT_USE_DEFAULT_WAIT (i.e INFINITE) we *should* not get 
+                      here unless the slave is destroyed (unless something really bad 
+                      happend, in which case return false anyway) */         
+        errno_t e = GetLastError();
+        TOSDB_LogEx("IPC", "CallNamedPipe failed in _deallocate()", e);                
+    }else{        
+        /* we are only comparing to '1' becase the listening loop casts
+            the boolean return value of deallocate to an int */
+        return (val == 1);
+    }   
+  
+    return false;
 }
 
 
 bool 
 DynamicIPCBase::_send(const shem_chunk& item) const
 {
-    unsigned long d;  
-    return WriteFile(_xtrnl_pipe_hndl, (void*)&item, sizeof(shem_chunk), &d, NULL);
+    unsigned long d; 
+
+    BOOL ret = WriteFile(_xtrnl_pipe_hndl, (void*)&item, sizeof(shem_chunk), &d, NULL);
+    if(!ret){
+        errno_t e = GetLastError();      
+        if(e != ERROR_BROKEN_PIPE)            
+            TOSDB_LogEx("IPC", "WriteFile failed in _recv()", e);
+    }
+
+    return ret;
 }
  
 
@@ -168,12 +203,21 @@ bool
 DynamicIPCBase::_recv(shem_chunk& item) const 
 {
     unsigned long d;   
-    return ReadFile(_xtrnl_pipe_hndl, (void*)&item, sizeof(shem_chunk), &d, NULL);
+    
+    BOOL ret = ReadFile(_xtrnl_pipe_hndl, (void*)&item, sizeof(shem_chunk), &d, NULL);
+    if(!ret){
+        errno_t e = GetLastError();
+        /* we expect a broken pipe error */
+        if(e != ERROR_BROKEN_PIPE)            
+            TOSDB_LogEx("IPC", "ReadFile failed in _recv()", e);
+    }
+
+    return ret;
 }
 
 
 const DynamicIPCBase& 
-DynamicIPCBase::remove(shem_chunk&& chunk) const 
+DynamicIPCBase::remove(shem_chunk&& chunk) const
 {        
     void* start = (void*)((size_t)_mmap_addr + chunk.offset);
     _deallocate(start);
@@ -240,36 +284,40 @@ DynamicIPCBase::recv(long& val) const
 
 
 
-#define IPC_MASTER_ERROR(msg) TOSDB_LogEx("IPC-Master",msg,GetLastError())
+#define IPC_MASTER_ERROR(msg) do{\
+    errno_t e = GetLastError(); \
+    TOSDB_LogEx("IPC-Master",msg,e); \
+}while(0)
+
 
 long 
-DynamicIPCMaster::grab_pipe()
+DynamicIPCMaster::grab_pipe(unsigned long timeout)
 {
     long ret;
       
-    _mtx = OpenMutex(SYNCHRONIZE, FALSE, _mtx_str.c_str());
-    if(!_mtx){
+    _xtrnl_mtx = OpenMutex(SYNCHRONIZE, FALSE, _xtrnl_mtx_name.c_str());
+    if(!_xtrnl_mtx){
         IPC_MASTER_ERROR("OpenMutex failed in grab_pipe"); 
         return -1; 
     }    
     
-    if( WaitForSingleObject(_mtx,TOSDB_DEF_TIMEOUT) == WAIT_TIMEOUT )
+    if( WaitForSingleObject(_xtrnl_mtx,timeout) == WAIT_TIMEOUT )
     {
         IPC_MASTER_ERROR("WaitForSingleObject timed out in grab_pipe"); 
-        CloseHandle(_mtx);
+        CloseHandle(_xtrnl_mtx);
         return -1;    
     }
     
     /* does this need timeout ?? */
-    if( !WaitNamedPipe(_xtrnl_pipe_str.c_str(),0) )
+    if( !WaitNamedPipe(_xtrnl_pipe_name.c_str(),0) )
     {    
         IPC_MASTER_ERROR("WaitNamedPipe failed in grab_pipe");
-        ReleaseMutex(_mtx);
-        CloseHandle(_mtx);
+        ReleaseMutex(_xtrnl_mtx);
+        CloseHandle(_xtrnl_mtx);
         return -1;    
     }    
     
-    _xtrnl_pipe_hndl = CreateFile( _xtrnl_pipe_str.c_str(), 
+    _xtrnl_pipe_hndl = CreateFile( _xtrnl_pipe_name.c_str(), 
                                    GENERIC_READ | GENERIC_WRITE,
                                    FILE_SHARE_READ | FILE_SHARE_WRITE, 
                                    NULL, OPEN_EXISTING, 
@@ -278,8 +326,8 @@ DynamicIPCMaster::grab_pipe()
     if(!_xtrnl_pipe_hndl || (_xtrnl_pipe_hndl == INVALID_HANDLE_VALUE))
     {
         IPC_MASTER_ERROR("No pipe handle(or CreateFile failed) in grab_pipe");
-        ReleaseMutex(_mtx);
-        CloseHandle(_mtx);
+        ReleaseMutex(_xtrnl_mtx);
+        CloseHandle(_xtrnl_mtx);
         return -1;
     }
 
@@ -298,8 +346,8 @@ DynamicIPCMaster::release_pipe()
     if(_pipe_held){
         CloseHandle(_xtrnl_pipe_hndl);
         _xtrnl_pipe_hndl = INVALID_HANDLE_VALUE;
-        ReleaseMutex(_mtx);
-        CloseHandle(_mtx);
+        ReleaseMutex(_xtrnl_mtx);
+        CloseHandle(_xtrnl_mtx);
     }
 
     _pipe_held = false;
@@ -307,13 +355,13 @@ DynamicIPCMaster::release_pipe()
 
 
 bool 
-DynamicIPCMaster::try_for_slave()
+DynamicIPCMaster::try_for_slave(unsigned long timeout)
 {    
     long pipe_ret;
 
     disconnect(); 
      
-    pipe_ret = grab_pipe();
+    pipe_ret = grab_pipe(timeout);
     if(pipe_ret <= 0){             
         IPC_MASTER_ERROR("grab_pipe in try_for_slave failed");
         disconnect(0);        
@@ -322,7 +370,7 @@ DynamicIPCMaster::try_for_slave()
         _mmap_sz = pipe_ret;
     }
    
-    _fmap_hndl = OpenFileMapping(FILE_MAP_WRITE, 0, _shem_str.c_str()); 
+    _fmap_hndl = OpenFileMapping(FILE_MAP_WRITE, 0, _shem_name.c_str()); 
     if(!_fmap_hndl){
         IPC_MASTER_ERROR("OpenFileMapping in try_for_slave failed");
         release_pipe();
@@ -344,20 +392,37 @@ DynamicIPCMaster::try_for_slave()
     return true;
 }
 
+
+
 bool 
-DynamicIPCMaster::connected() const 
+DynamicIPCMaster::connected() 
 { 
     size_t obuf[2] = {PING, 999};
     size_t off = 0;
     DWORD read = 0;
     BOOL ret;
 
-    ret = CallNamedPipe(_intrnl_pipe_str.c_str(), 
+    InterProcessMutex mtx(_intrnl_mtx_name, "connected", TOSDB_DEF_TIMEOUT);
+    if(!mtx.locked())
+        return false;
+   
+    ret = CallNamedPipe(_intrnl_pipe_name.c_str(), 
                         (void*)obuf, sizeof(obuf),
                         (void*)&off, sizeof(off), 
-                        &read, TOSDB_DEF_TIMEOUT);
-                
-    return (_mmap_addr && _fmap_hndl && ret && (off == obuf[1]));    
+                        &read, NMPWAIT_USE_DEFAULT_WAIT);     
+        
+    if(ret == 0){ /* using NMPWAIT_USE_DEFAULT_WAIT (i.e INFINITE) we *should* not get 
+                      here unless the slave is destroyed (unless something really bad 
+                      happend, in which case return false anyway) */        
+        errno_t e = GetLastError();
+        /* if the slave hasn't created the pipe DONT log*/
+        if(e != ERROR_FILE_NOT_FOUND)
+            TOSDB_LogEx("IPC-MASTER", "CallNamedPipe failed in connected()", e);           
+    }else if(_mmap_addr && _fmap_hndl && (off == obuf[1])){           
+        return true;
+    }
+ 
+    return false;   
 }
 
 
@@ -365,26 +430,31 @@ void
 DynamicIPCMaster::disconnect(int level)
 {    
     switch(level){    
-    case 3:
-    {
+    case 3:   
         if(_mmap_addr){                     
             if( !UnmapViewOfFile(_mmap_addr) )
                 IPC_MASTER_ERROR("UnmapViewOfFile in disconnect failed"); 
         }                
-        _mmap_addr = NULL;     
-    }
-    /* NO BREAK */
+        _mmap_addr = NULL;      
+        /* NO BREAK */
     case 2: 
         CloseHandle(_fmap_hndl);        
         _fmap_hndl = NULL;  
-    /* NO BREAK */
+        /* NO BREAK */
     case 1:
-        release_pipe();   
+        release_pipe();         
+        break;
+    default:
+        std::string msg = "invalid level passed to disconnect: " + std::to_string(level);
+        TOSDB_LogH("IPC-Master", msg.c_str());
     }            
 }
 
 
-#define IPC_SLAVE_ERROR(msg) TOSDB_LogEx("IPC-Slave",msg,GetLastError())
+#define IPC_SLAVE_ERROR(msg) do{ \
+    errno_t e = GetLastError(); \
+    TOSDB_LogEx("IPC-Slave", msg, e); \
+}while(0)
 
 #define IPC_SLAVE_GOOD_RET_OR_THROW(r, msg) do{ \
     if(!(r)){ \
@@ -410,10 +480,10 @@ DynamicIPCSlave::DynamicIPCSlave(std::string name, size_t sz)
         int sec_ret = _set_security(); 
         IPC_SLAVE_GOOD_RET_OR_THROW(sec_ret == 0, "DynamicIPCSlave failed to initialize security");
              
-        _mtx = CreateMutex(&(_sec_attr[MUTEX1]), FALSE, _mtx_str.c_str());
-        if(!_mtx){
+        _xtrnl_mtx = CreateMutex(&(_sec_attr[MUTEX1]), FALSE, _xtrnl_mtx_name.c_str());
+        if(!_xtrnl_mtx){
             DWORD err = GetLastError();
-            std::string msg = "DynamicIPCSlave failed to create mutex: "  + _mtx_str;
+            std::string msg = "DynamicIPCSlave failed to create 'xtrnl' mutex: "  + _xtrnl_mtx_name;
             TOSDB_LogEx("IPC-Slave", msg.c_str(), err);
             if(err = ERROR_ACCESS_DENIED){
                 TOSDB_LogH("IPC-Slave", "  Likely causes of this error:");
@@ -423,8 +493,22 @@ DynamicIPCSlave::DynamicIPCSlave(std::string name, size_t sz)
             }
             throw std::runtime_error(msg);
         }       
-               
-        _intrnl_pipe_hndl = CreateNamedPipe(_intrnl_pipe_str.c_str(), 
+ 
+        _intrnl_mtx = CreateMutex(&(_sec_attr[MUTEX1]), FALSE, _intrnl_mtx_name.c_str());
+        if(!_intrnl_mtx){
+            DWORD err = GetLastError();
+            std::string msg = "DynamicIPCSlave failed to create 'intrnl' mutex: "  + _intrnl_mtx_name;
+            TOSDB_LogEx("IPC-Slave", msg.c_str(), err);
+            if(err = ERROR_ACCESS_DENIED){
+                TOSDB_LogH("IPC-Slave", "  Likely causes of this error:");
+                TOSDB_LogH("IPC-Slave", "    1) The mutex has already been created by another running process");
+                TOSDB_LogH("IPC-Slave", "    2) Trying to create a global mutex (Global\\) without adequate privileges");
+
+            }
+            throw std::runtime_error(msg);
+        }  
+
+        _intrnl_pipe_hndl = CreateNamedPipe(_intrnl_pipe_name.c_str(), 
                                             PIPE_ACCESS_DUPLEX,
                                             PIPE_TYPE_MESSAGE 
                                                 | PIPE_READMODE_BYTE 
@@ -440,7 +524,7 @@ DynamicIPCSlave::DynamicIPCSlave(std::string name, size_t sz)
                                         PAGE_READWRITE, 
                                         (unsigned long long)_mmap_sz >> 32,
                                         ((unsigned long long)_mmap_sz << 32) >>32,
-                                        _shem_str.c_str() );    
+                                        _shem_name.c_str() );    
 
         IPC_SLAVE_GOOD_RET_OR_THROW(_fmap_hndl, "DynamicIPCSlave failed to create file mapping");
              
@@ -465,12 +549,12 @@ DynamicIPCSlave::~DynamicIPCSlave()
         _alloc_flag = false;   
 
         /* can't remember why we are doing it this way ?? */
-        tmp = CreateFile(_intrnl_pipe_str.c_str(), 
+        tmp = CreateFile(_intrnl_pipe_name.c_str(), 
                          GENERIC_READ | GENERIC_WRITE,
                          FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, 
                          OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
         CloseHandle(tmp);  
-        CloseHandle(_mtx);     
+        CloseHandle(_xtrnl_mtx);     
     
         if( !UnmapViewOfFile(_mmap_addr) )        
             IPC_SLAVE_ERROR("UnmapViewOfFile in slave destructor failed");          
@@ -490,11 +574,18 @@ DynamicIPCSlave::_listen_for_alloc()
 
     while(_alloc_flag){  
 
-        if( !ConnectNamedPipe(_intrnl_pipe_hndl, NULL) )
-            TOSDB_LogH("IPC", "ConnectNamedPipe failed in _listen_for_alloc");
+        if( ConnectNamedPipe(_intrnl_pipe_hndl, NULL) == 0 )
+        {
+            errno_t e = GetLastError();
+            /* incase client connects first */
+            if(e != ERROR_PIPE_CONNECTED)
+                TOSDB_LogEx("IPC", "ConnectNamedPipe failed in _listen_for_alloc", e);
+        }
 
-        if( !ReadFile(_intrnl_pipe_hndl, (void*)&args, sizeof(args), &done, NULL) )
-            TOSDB_LogH("IPC", "ReadFile failed in _listen_for_alloc");
+        if( !ReadFile(_intrnl_pipe_hndl, (void*)&args, sizeof(args), &done, NULL) ){
+            errno_t e = GetLastError();
+            TOSDB_LogEx("IPC", "ReadFile failed in _listen_for_alloc", e);
+        }
 
         switch(args[0]){
         case ALLOC: /* ALLOCATE */                        
@@ -521,8 +612,10 @@ DynamicIPCSlave::_listen_for_alloc()
             break;
         } 
 
-        if( !DisconnectNamedPipe(_intrnl_pipe_hndl) )
-            TOSDB_LogH("IPC", "DisconnectNamedPipe failed in _listen_for_alloc");
+        if( !DisconnectNamedPipe(_intrnl_pipe_hndl) ){
+            errno_t e = GetLastError();
+            TOSDB_LogEx("IPC", "DisconnectNamedPipe failed in _listen_for_alloc", e);
+        }
     }    
     CloseHandle(_intrnl_pipe_hndl);
 }
@@ -534,7 +627,7 @@ DynamicIPCSlave::wait_for_master()
     if(_xtrnl_pipe_hndl && _xtrnl_pipe_hndl != INVALID_HANDLE_VALUE){
         DisconnectNamedPipe(_xtrnl_pipe_hndl);    
     }else{   
-        _xtrnl_pipe_hndl = CreateNamedPipe( _xtrnl_pipe_str.c_str(), 
+        _xtrnl_pipe_hndl = CreateNamedPipe( _xtrnl_pipe_name.c_str(), 
                                             PIPE_ACCESS_DUPLEX,
                                             PIPE_TYPE_MESSAGE | PIPE_READMODE_MESSAGE | PIPE_WAIT,
                                             1, 0, 0, INFINITE, 

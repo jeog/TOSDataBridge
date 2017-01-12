@@ -94,9 +94,9 @@ SendMsgWaitForResponse(long msg)
 
     if(!master){
         master = std::unique_ptr<DynamicIPCMaster>( new DynamicIPCMaster(TOSDB_COMM_CHANNEL) );
-        master->try_for_slave();
+        master->try_for_slave(TOSDB_DEF_TIMEOUT);
         // ERROR CHECK
-        IPC_TIMED_WAIT( master->grab_pipe() <= 0,
+        IPC_TIMED_WAIT( master->grab_pipe(TOSDB_DEF_TIMEOUT) <= 0,
                         "SendMsgWaitForResponse timed out",
                         -1 );     
     }    
@@ -185,10 +185,10 @@ ServiceController(DWORD cntrl)
 }
 
 
-#define SPAWN_ERROR_CHECK(ret, msg) \
-do{ \
+#define SPAWN_ERROR_CHECK(ret, msg) do{ \
     if(!ret){ \
-        TOSDB_LogEx("SPAWN", msg, GetLastError()); \
+        errno_t e = GetLastError(); \
+        TOSDB_LogEx("SPAWN", msg, e); \
         goto cleanup_and_exit; \
     } \
 }while(0)    

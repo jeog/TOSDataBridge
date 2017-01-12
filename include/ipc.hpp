@@ -142,6 +142,58 @@ public:
                2) make some cross-build guarantees: uint32_t args etc.              */
 class DynamicIPCBase {
 public:
+    class InterProcessMutex{
+        HANDLE _mtx;  
+
+        InterProcessMutex(const InterProcessMutex&);
+        InterProcessMutex(InterProcessMutex&&);
+        InterProcessMutex& operator=(InterProcessMutex& ipm);
+
+    public:
+        InterProcessMutex(std::string name, std::string func_name, unsigned long wait_for)                                     
+            {
+                  _mtx = OpenMutex(SYNCHRONIZE, FALSE, name.c_str());
+                  if(!_mtx){
+                      errno_t e = GetLastError();
+                      if(e != ERROR_FILE_NOT_FOUND)
+                          TOSDB_LogEx("IPC", ("OpenMutex failed in " + func_name).c_str(), e);                      
+                      return;
+                  }
+                  
+                  errno_t err = 0;
+                  DWORD wstate = WaitForSingleObject(_mtx, wait_for);
+                  switch(wstate){
+                  case WAIT_TIMEOUT:
+                      TOSDB_LogH("IPC", ("WaitForSingleObject timed out in InterProcessMutex, in:" + func_name).c_str()); 
+                      break;
+                  case WAIT_FAILED:                  
+                      err = GetLastError();
+                      TOSDB_LogEx("IPC", ("WaitForSingleObject failed in InterProcessMutex, in:" + func_name).c_str(), err);                  
+                      break;
+                  default:
+                      return;
+                  }
+
+                  CloseHandle(_mtx);   
+                  _mtx = NULL;
+            }
+
+        inline bool
+        locked()
+        {
+            return (_mtx != NULL);
+        }
+
+        ~InterProcessMutex()
+        {
+            if(locked()){
+                ReleaseMutex(_mtx);
+                CloseHandle(_mtx);           
+            }
+        }
+
+    };
+
     struct shem_chunk{
         long offset; /* should only be unsigned for an actual 'chunk' */                               
         size_t sz;
@@ -198,36 +250,41 @@ protected:
     static const unsigned int PING = 4;      
     static const int ACL_SIZE = 144;
 
-    std::string _shem_str;
-    std::string _mtx_str;
-    std::string _xtrnl_pipe_str;
-    std::string _intrnl_pipe_str;
+    std::string _shem_name;
+    std::string _xtrnl_mtx_name;
+    std::string _xtrnl_pipe_name;
+    std::string _intrnl_mtx_name;
+    std::string _intrnl_pipe_name;
 
     void *_fmap_hndl;
     void *_mmap_addr;
     void *_xtrnl_pipe_hndl;
     void *_intrnl_pipe_hndl;
-    void *_mtx;    
+    void *_xtrnl_mtx;        
+    void *_intrnl_mtx;
 
     size_t _mmap_sz; 
 
     DynamicIPCBase(std::string name, size_t sz = 0)
         :
 #ifdef NO_KGBLNS
-            _shem_str(std::string(name).append("_shem")),
-            _mtx_str(std::string(name).append("_mtx")),  
+            _shem_name(std::string(name).append("_shem")),
+            _xtrnl_mtx_name(std::string(name).append("_mtx_xtrnl")),  
+            _intrnl_mtx_name(std::string(name).append("_mtx_intrnl")),
 #else
-            _shem_str(std::string("Global\\").append(name).append("_shem")),            
-            _mtx_str(std::string("Global\\").append(name).append("_mtx")),
+            _shem_name(std::string("Global\\").append(name).append("_shem")),            
+            _xtrnl_mtx_name(std::string("Global\\").append(name).append("_mtx_xtrnl")),
+            _intrnl_mtx_name(std::string("Global\\").append(name).append("_mtx_intrnl")),
 #endif
-            _xtrnl_pipe_str(std::string("\\\\.\\pipe\\").append(name).append("_pipe")),
-            _intrnl_pipe_str(std::string("\\\\.\\pipe\\").append(name).append("_pipe_intrnl")), 
+            _xtrnl_pipe_name(std::string("\\\\.\\pipe\\").append(name).append("_pipe")),
+            _intrnl_pipe_name(std::string("\\\\.\\pipe\\").append(name).append("_pipe_intrnl")), 
             _fmap_hndl(NULL),
             _mmap_addr(NULL),
             _xtrnl_pipe_hndl(INVALID_HANDLE_VALUE),
             _intrnl_pipe_hndl(INVALID_HANDLE_VALUE),
-            _mmap_sz(sz),
-            _mtx(NULL)
+            _mmap_sz(sz),            
+            _xtrnl_mtx(NULL),
+            _intrnl_mtx(NULL) /* we arent instantiated this in the master to maintaina const this ptr */
         {            
             if(sz > SlowHeapManager::MAX_SZ)
                 throw std::invalid_argument("sz > SlowHeapManager::MAX_SZ");
@@ -235,7 +292,7 @@ protected:
 
     virtual 
     ~DynamicIPCBase() 
-        {
+        {            
         }
 
 public:
@@ -336,7 +393,7 @@ public:
 
 class DynamicIPCMaster
         : public DynamicIPCBase {    
-    volatile bool _pipe_held;
+    volatile bool _pipe_held;   
 
 public:    
     DynamicIPCMaster(std::string name)
@@ -353,19 +410,19 @@ public:
         }
 
     bool 
-    try_for_slave();
+    try_for_slave(unsigned long timeout);
 
     void 
     disconnect(int level = 3);
 
     long
-    grab_pipe();
+    grab_pipe(unsigned long timeout);
 
     void 
     release_pipe();
 
     bool 
-    connected() const;
+    connected();
 
     inline bool 
     pipe_held() const 
