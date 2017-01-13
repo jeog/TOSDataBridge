@@ -100,7 +100,7 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 
    if you try to run tos-databridge-engine directly (not recommended)
    without elevated privileges you will probably crash from an uncaught
-   exception in the DynamicIPCSlave constructor caused by an attempt to 
+   exception in the IPCSlave constructor caused by an attempt to 
    create kernel objects in the global namespace w/o the appropriate 
    privileges.
 
@@ -117,7 +117,7 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 /* generally we want a single, static comm channel so client can't accidentaly run 
    multiple instances of the engine and/or break the underlying IPC mechanism
    
-   If a user tries to create a second DynamicIPCSlave (maybe forgeting to close an old
+   If a user tries to create a second IPCSlave (maybe forgeting to close an old
    engine before starting a new one) it will crash during construction as it tries
    to create kernel objects that already exist, causing a runtime_exception to be thrown.
    (this will generate log messages w/ the IPC-Slave tag in log/engine.log)
@@ -183,6 +183,7 @@ typedef struct{
 #define TOSDB_STR_DATA_SZ ((size_type)40)
 #define TOSDB_MAX_STR_SZ ((size_type)0xFF)
 #define TOSDB_DEF_TIMEOUT  2000
+#define TOSDB_DEF_PAUSE    (TOSDB_DEF_TIMEOUT / 10)
 #define TOSDB_MIN_TIMEOUT  1500
 #define TOSDB_SHEM_BUF_SZ  4096
 #define TOSDB_BLOCK_ID_SZ  63 
@@ -208,11 +209,12 @@ class DLL_SPEC_IMPL WinLockGuard;
 class DLL_SPEC_IMPL SignalManager;
 #endif  /* CPP_COND_VAR */
 
+class DLL_SPEC_IMPL InterProcessNamedMutex;
+
 /* IPC - ipc.cpp / ipc.hpp */
-class DLL_SPEC_IMPL SlowHeapManager;
-class DLL_SPEC_IMPL DynamicIPCBase;
-class DLL_SPEC_IMPL DynamicIPCMaster;
-class DLL_SPEC_IMPL DynamicIPCSlave;
+class DLL_SPEC_IMPL IPCBase;
+class DLL_SPEC_IMPL IPCMaster;
+class DLL_SPEC_IMPL IPCSlave;
 
 /* for C code: create a string of form: "TOSDB_[topic name]_[item name]"  
    only alpha-numerics */

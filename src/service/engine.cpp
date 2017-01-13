@@ -161,14 +161,14 @@ LRESULT CALLBACK
 WndProc(HWND, UINT, WPARAM, LPARAM);   
 
 int
-RunMainCommLoop(DynamicIPCSlave *pslave);
+RunMainCommLoop(IPCSlave *pslave);
 
-bool
-ExtractShemBufArgs(DynamicIPCSlave *pslave, 
-                   DynamicIPCSlave::shem_chunk shem_buf[COMM_BUFFER_SIZE], 
-                   TOS_Topics::TOPICS *ptopic, 
-                   std::string *pitem,
-                   unsigned long *ptimeout);
+int
+ParseIPCMessage(std::string msg, 
+                unsigned int *op, 
+                TOS_Topics::TOPICS *topic, 
+                std::string *item, 
+                unsigned long *timeout);
 
 };
 
@@ -231,7 +231,7 @@ WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLn, int nShowCmd)
     TOSDB_Log("STARTUP", ss_args.str().c_str());
 
     /* the other side of our IPC channel (see client_admin.cpp) */
-    DynamicIPCSlave slave(TOSDB_COMM_CHANNEL, TOSDB_SHEM_BUF_SZ);         
+    IPCSlave slave(TOSDB_COMM_CHANNEL);         
 
     /* initialize our security objects */
     err = SetSecurityPolicy();
@@ -292,162 +292,140 @@ namespace {
 
 
 int
-RunMainCommLoop(DynamicIPCSlave *pslave)
+RunMainCommLoop(IPCSlave *pslave)
 {
     TOS_Topics::TOPICS cli_topic;
     std::string cli_item;
-    unsigned long cli_timeout;  
+    unsigned long cli_timeout; 
+    unsigned int cli_op;  
     int ret;
-    size_t indx;    
 
-    DynamicIPCSlave::shem_chunk shem_buf[COMM_BUFFER_SIZE];  
+    std::string ipc_msg;  
 
     bool shutdown_flag = false;
     
     while(!shutdown_flag){     
+
         /* BLOCK until master is ready */
         if( !pslave->wait_for_master() ){      
             TOSDB_LogH("IPC", "wait_for_master failed");
             return -1;
-        }
-                
-        indx = 0;
+        }                
+        
         while(!shutdown_flag){
-            /* slave.recv() MUST *DIRECTLY* follow evaluation of shutdown_flag; 
-               it will block until master sends a shem_chunk obj      */
-            if( !pslave->recv(shem_buf[indx]) )
+
+            /* BLOCK until we get a message */
+            if( !pslave->recv(&ipc_msg) )
+                break;          
+
+            ret = ParseIPCMessage(ipc_msg, &cli_op, &cli_topic, &cli_item, &cli_timeout);
+            if(ret){
+                std::string emsg = "failed to parse message: " + ipc_msg;
+                TOSDB_LogH("IPC", emsg.c_str());
+                continue;
+            }
+
+            ret = TOSDB_SIG_BAD;
+
+            switch(cli_op){
+            case TOSDB_SIG_ADD:                              
+                ret = AddStream(cli_topic, cli_item, cli_timeout);
+                STREAM_CHECK_LOG_ERROR(ret, "AddStream", cli_topic, cli_item, cli_timeout);                                                  
+                break;
+                
+            case TOSDB_SIG_REMOVE:                
+                ret = RemoveStream(cli_topic, cli_item, cli_timeout);
+                STREAM_CHECK_LOG_ERROR(ret, "RemoveStream", cli_topic, cli_item, cli_timeout);                             
+                break;
+                
+            case TOSDB_SIG_TEST:
+                ret = TestStream(cli_topic, cli_item, cli_timeout);                                                      
                 break;
 
-            /* NULL chunk {0,0} indicates end of a good message */
-            if(shem_buf[indx] == DynamicIPCSlave::NULL_SHEM_CHUNK){     
-
-                switch(shem_buf[0].offset){
-                case TOSDB_SIG_ADD:                                
-                    if( ExtractShemBufArgs(pslave, shem_buf, &cli_topic, &cli_item, &cli_timeout) ){
-                        ret = AddStream(cli_topic, cli_item, cli_timeout);
-                        STREAM_CHECK_LOG_ERROR(ret, "AddStream", cli_topic, cli_item, cli_timeout);
-                        pslave->send((long)ret);
-                    }                         
-                    break;
+            case TOSDB_SIG_PAUSE:                                    
+                TOSDB_Log("SERVICE-MSG", "TOSDB_SIG_PAUSE message received");                         
+                pause_flag = true;
+                ret = TOSDB_SIG_GOOD;                                              
+                break;
                 
-                case TOSDB_SIG_REMOVE:
-                    if( ExtractShemBufArgs(pslave, shem_buf, &cli_topic, &cli_item, &cli_timeout) ){
-                         ret = RemoveStream(cli_topic, cli_item, cli_timeout);
-                         STREAM_CHECK_LOG_ERROR(ret, "RemoveStream", cli_topic, cli_item, cli_timeout);
-                         pslave->send((long)ret);
-                    }                           
-                    break;
+            case TOSDB_SIG_CONTINUE:                           
+                TOSDB_Log("SERVICE-MSG", "TOSDB_SIG_CONTINUE message received");                              
+                pause_flag = false;              
+                ret = TOSDB_SIG_GOOD;                                
+                break;
                 
-                case TOSDB_SIG_TEST:
-                    if( ExtractShemBufArgs(pslave, shem_buf, &cli_topic, &cli_item, &cli_timeout) ){
-                        ret = TestStream(cli_topic, cli_item, cli_timeout);                        
-                        pslave->send((long)ret);
-                    }  
-                    break;
-
-                case TOSDB_SIG_PAUSE:                                    
-                    TOSDB_Log("SERVICE-MSG", "TOSDB_SIG_PAUSE message received");                         
-                    pause_flag = true;
-                    pslave->send(TOSDB_SIG_GOOD);                                              
-                    break;
+            case TOSDB_SIG_STOP:                           
+                TOSDB_Log("SERVICE-MSG", "TOSDB_SIG_STOP message received");        
+                shutdown_flag = true;                    
+                ret = TOSDB_SIG_GOOD;                  
+                break;
                 
-                case TOSDB_SIG_CONTINUE:                           
-                    TOSDB_Log("SERVICE-MSG", "TOSDB_SIG_CONTINUE message received");                              
-                    pause_flag = false;              
-                    pslave->send(TOSDB_SIG_GOOD);                                
-                    break;
-                
-                case TOSDB_SIG_STOP:                           
-                    TOSDB_Log("SERVICE-MSG", "TOSDB_SIG_STOP message received");        
-                    shutdown_flag = true;                    
-                    pslave->send(TOSDB_SIG_GOOD);                  
-                    break;
-                
-                case TOSDB_SIG_DUMP:               
-                    TOSDB_Log("SERVICE-MSG", "TOSDB_SIG_DUMP message received");
-                    DumpBufferStatus();
-                    pslave->send(0);
-                    break;
+            case TOSDB_SIG_DUMP:               
+                TOSDB_Log("SERVICE-MSG", "TOSDB_SIG_DUMP message received");
+                DumpBufferStatus();                
+                break;
               
-                default:
-                    std::string err = "invalid opcode " + shem_buf[0].as_string();
-                    TOSDB_LogH("IPC", err.c_str());
+            default:                
+                TOSDB_LogH("IPC", ("invalid opcode/message: " + ipc_msg).c_str());
+            }       
 
-                } /* switch(shem_buf[0].offset) */
-            
-                indx = 0;           
-                            
-            }else if(indx >= COMM_BUFFER_SIZE - 1){ 
-                /* if we overflow the message buffer: reset */
-                TOSDB_LogH("IPC","shem_chunk buffer full, reseting msg loop");
-                indx = 0;        
-            }else{
-                ++indx;
-            }
+            /* return msg to MASTER */
+            pslave->send(std::to_string(ret));
         }  
     }  
     return 0;
 }
 
-
-template<typename T>
-void
-ExtractShemBufArgOrThrow(DynamicIPCSlave *pslave, 
-                         const DynamicIPCSlave::shem_chunk& from, 
-                         T* to, 
-                         std::string arg_name="",
-                         size_t to_len=1)
-{   
-    if(from == DynamicIPCSlave::NULL_SHEM_CHUNK)
-        throw std::invalid_argument("ExtractShemBufArgOrThrow 'from' arg can't be NULL_SHEM_CHUNK");     
-
-    if(!to)
-        throw std::invalid_argument("ExtractShemBufArgOrThrow 'to' arg can't be NULL");     
-
-    if( !(pslave->extract(from, to, to_len)) ){
-        std::stringstream err;
-        arg_name = arg_name.empty() ? arg_name : " '" + arg_name + "'";
-        err << "failed to extract arg" << arg_name << " (" << std::hex << pslave->shem_ptr(from) << ")";    
-        throw std::runtime_error(err.str());
-    } 
-}
-
-
-bool
-ExtractShemBufArgs(DynamicIPCSlave *pslave, 
-                   DynamicIPCSlave::shem_chunk shem_buf[COMM_BUFFER_SIZE], 
-                   TOS_Topics::TOPICS *ptopic, 
-                   std::string *pitem,
-                   unsigned long *ptimeout)
+int
+ParseIPCMessage(std::string msg, 
+                unsigned int *op, 
+                TOS_Topics::TOPICS *topic, 
+                std::string *item, 
+                unsigned long *timeout)
 {  
-    try{
-        /* THE TOPIC */
-        ExtractShemBufArgOrThrow(pslave, shem_buf[1], ptopic, "ptopic");
+    size_t mlen = msg.length();
 
-        /* THE STRING */
-        /* we insert a char* so need to be careful extracting */
-        if(shem_buf[2].sz > TOSDB_MAX_STR_SZ)
-            throw std::runtime_error("sz field of (string) shem_shunk > TOSDB_MAX_STR_SZ");
-
-        SmartBuffer<char> sbuf(shem_buf[2].sz);        
-        ExtractShemBufArgOrThrow(pslave, shem_buf[2], sbuf.get(), "pitem", shem_buf[2].sz);
-        *pitem = std::string(sbuf.get());
-
-        /* THE TIMEOUT */
-        ExtractShemBufArgOrThrow(pslave, shem_buf[3], ptimeout, "ptimeout");
-        return true;
-
-    }catch(std::exception& e){
-        std::stringstream err_buf;
-
-        err_buf<< "invalid shem_chunk passed to slave: ";        
-        for(int i = 0; i < COMM_BUFFER_SIZE; ++i)
-		        err_buf << shem_buf[i].as_string() << ' ';	
-
-        TOSDB_LogH("IPC", e.what());
-        TOSDB_LogH("IPC", err_buf.str().c_str());
-        return false;
+    if(mlen > IPCBase::MAX_MESSAGE_SZ){
+        std::string emsg = "message length (" + std::to_string(mlen) + ") > " 
+                         + "MAX_MESSAGE_SZ (" + std::to_string(IPCBase::MAX_MESSAGE_SZ) + ')';
+        TOSDB_LogH("IPC", emsg.c_str());
+        return -1;
     }
+     
+    std::vector<std::string> args;
+    ParseArgs(args, msg);
+
+    if(args.size() != 4){
+        std::string emsg = "ParseArgs didn't return 4 args (" + std::to_string(args.size()) 
+                         + "), msg: " + msg;
+        TOSDB_LogH("IPC", emsg.c_str());
+        return -2;
+    }
+
+    try{
+        *op = (unsigned int)std::stoul(args[0]); 
+    }catch(...){
+        TOSDB_LogH("IPC", ("failed to get 'op' arg from msg, args[0]: " + args[0]).c_str() );
+        return -3;
+    }
+
+    try{
+        *topic = TOS_Topics::MAP()[args[1]];
+    }catch(...){
+        TOSDB_LogH("IPC", ("failed to get 'topic' arg from msg, args[1]: " + args[1]).c_str() );
+        return -3;
+    }
+
+    *item = args[2];
+
+    try{
+        *timeout = std::stoul(args[3]);
+    }catch(...){
+        TOSDB_LogH("IPC", ("failed to get 'timeout' arg from msg, args[3]: " + args[3]).c_str() );
+        return -3;
+    }
+
+    return 0;
 }
 
 

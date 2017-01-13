@@ -57,7 +57,7 @@ HANDLE buffer_thread = NULL;
 DWORD buffer_thread_id = 0;   
 
 /* our IPC mechanism */
-DynamicIPCMaster master(TOSDB_COMM_CHANNEL);
+IPCMaster master(TOSDB_COMM_CHANNEL);
 
 /* atomic flag that supports IPC connectivity */
 std::atomic<bool> aware_of_connection(false);  
@@ -86,8 +86,7 @@ _requestStreamOP(TOS_Topics::TOPICS topic_t,
          = 1 if the engine fails to do what is requested */
 {
     long ret;
-    bool ret_stat;  
-    DynamicIPCMaster::shem_chunk arg1, arg2, arg3;
+    bool ret_stat;      
 
     switch(opcode){
     case TOSDB_SIG_ADD:
@@ -98,31 +97,23 @@ _requestStreamOP(TOS_Topics::TOPICS topic_t,
         return -1;
     }          
 
-    IPC_TIMED_WAIT(master.grab_pipe(timeout) <= 0,
-                   "_requestStreamOP timed out trying to grab pipe", 
-                   -2);    
+    std::string msg = std::to_string(opcode) + ' '
+                    + TOS_Topics::MAP()[topic_t] + ' '
+                    + item + ' '
+                    + std::to_string(timeout);   
 
-    /* need to stay alive until we can remove(below) */
-    arg1 = master.insert(&topic_t);
-    arg2 = master.insert(item.c_str(), item.size() + 1); 
-    arg3 = master.insert(&timeout);
-
-    master << DynamicIPCMaster::shem_chunk(opcode, 0) 
-           << arg1 << arg2 << arg3 
-           << DynamicIPCMaster::NULL_SHEM_CHUNK;    
-
-    ret_stat = master.recv(ret); 
-    /* don't remove until we get a response ! */
-    master.remove(std::move(arg1)).remove(std::move(arg2)).remove(std::move(arg3));
-
-    if(!ret_stat){
-        master.release_pipe(); /* switch to non-blocking(raw) logging */
-        TOSDB_Log_Raw("IPC; recv failed; problem with connection");        
-        return -3;
+    if(master.call(&msg,timeout)){
+        TOSDB_LogH("IPC",("master.call failled, msg:" + msg).c_str());
+        return -2;
     }
-    master.release_pipe();
 
-    return ret;
+    try{
+        ret = std::stol(msg);
+        return ret;
+    }catch(...){
+        TOSDB_LogH("IPC", ("failed to convert return message to long, msg:" + msg).c_str());
+        return -3;
+    }    
 }
 
 
@@ -301,7 +292,7 @@ _connected(bool log_if_not_connected=false,
            bool throw_if_conflicting_state=true,
            bool log_if_conflicting_state=true)
 {
-    bool conn = master.connected();
+    bool conn = master.connected(TOSDB_DEF_TIMEOUT);
     bool aware = aware_of_connection.load();
 
     if(log_if_not_connected){
@@ -443,7 +434,7 @@ DllMain(HANDLE mod, DWORD why, LPVOID res) /* ENTRY POINT */
         break;
     case DLL_PROCESS_DETACH:  
         {
-            if( master.connected() ){
+            if( master.connected(TOSDB_DEF_TIMEOUT) ){
                 aware_of_connection.store(false);        
                 for(const auto & buffer : buffers)
                 {/* signal the service and close the handles */        
@@ -486,13 +477,17 @@ TOSDB_Connect()
         TOSDB_LogH("IPC","TOSDB_Connect(): error initializing communication thread");        
         return -2;  
     }
-
-    /* we need a timed wait on aware_of_connection to avoid situations 
-       where a lib call is made before _threadedExtractLoop sets it to true   */    
-    IPC_TIMED_WAIT(!aware_of_connection.load(),
-                   "timed out waiting for aware_of_connection", 
-                   -3);
-    return 0;
+        
+    for(int msec = TOSDB_DEF_PAUSE; msec <= TOSDB_DEF_TIMEOUT; msec += TOSDB_DEF_PAUSE){
+        /* we need a timed wait on aware_of_connection to avoid situations 
+           where a lib call is made before _threadedExtractLoop sets it to true   */ 
+        if(aware_of_connection.load())
+            return 0;
+        Sleep(TOSDB_DEF_PAUSE);
+    }
+    
+    TOSDB_LogH("IPC", "timed out waiting for aware_of_connection");                   
+    return -3;
 }
 
 int 
@@ -992,8 +987,7 @@ TOSDB_CloseBlocks()
 int
 TOSDB_DumpSharedBufferStatus()
 {
-    long ret;  
-    unsigned int lcount = 0;
+    long ret;
 
     if( !_connected(true,false) )
         return -1;;
@@ -1001,21 +995,20 @@ TOSDB_DumpSharedBufferStatus()
     GLOBAL_RLOCK_GUARD;
     /* --- CRITICAL SECTION --- */
 
-    IPC_TIMED_WAIT(master.grab_pipe(TOSDB_DEF_TIMEOUT) <= 0,
-                   "TOSDB_DumpSharedBufferStatus timeout trying to grab pipe",
-                   -1);
-  
-    master<< DynamicIPCMaster::shem_chunk(TOSDB_SIG_DUMP, 0) 
-          << DynamicIPCMaster::NULL_SHEM_CHUNK;
+    std::string msg = std::to_string(TOSDB_SIG_DUMP);
 
-    if( !master.recv(ret) ){
-        master.release_pipe();
-        TOSDB_LogH("IPC","recv failed; problem with connection");
+    if( !master.call(&msg, TOSDB_DEF_TIMEOUT) ){
+        TOSDB_LogH("IPC",("master.call failled, msg:" + msg).c_str());
         return -2;
     }
-    master.release_pipe();
 
-    return (int)ret;
+    try{
+        ret = std::stol(msg);
+        return (ret == TOSDB_SIG_GOOD) ? 0 : 1;
+    }catch(...){
+        TOSDB_LogH("IPC", "failed to convert return message to long");
+        return -3;
+    }      
     /* --- CRITICAL SECTION --- */
 }
 

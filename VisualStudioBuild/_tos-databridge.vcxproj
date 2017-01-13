@@ -175,8 +175,8 @@
     <ClInclude Include="..\include\concurrency.hpp" />
     <ClInclude Include="..\include\containers.hpp" />
     <ClInclude Include="..\include\initializer_chain.hpp" />
-    <ClInclude Include="..\include\ipc.hpp" />
     <ClInclude Include="..\include\exceptions.hpp" />
+    <ClInclude Include="..\include\ipc.hpp" />
     <ClInclude Include="..\include\tos_databridge.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

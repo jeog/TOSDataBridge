@@ -39,7 +39,7 @@ LPCSTR ENGINE_BASE_NAME = "tos-databridge-engine";
 std::string engine_path;
 std::string integrity_level; 
 
-std::unique_ptr<DynamicIPCMaster> master;
+std::unique_ptr<IPCMaster> master;
 
 PROCESS_INFORMATION engine_pinfo;      
 SYSTEM_INFO sys_info;
@@ -86,32 +86,37 @@ UpdateStatus(int status, int check_point)
 }
 
 
-long 
+bool 
 SendMsgWaitForResponse(long msg)
 {
-    long i;
-    unsigned int lcount = 0;
+    long ret;
+    
+    std::string ipc_msg = std::to_string(msg);
 
     if(!master){
-        master = std::unique_ptr<DynamicIPCMaster>( new DynamicIPCMaster(TOSDB_COMM_CHANNEL) );
+        master = std::unique_ptr<IPCMaster>( new IPCMaster(TOSDB_COMM_CHANNEL) );
         master->try_for_slave(TOSDB_DEF_TIMEOUT);
-        // ERROR CHECK
-        IPC_TIMED_WAIT( master->grab_pipe(TOSDB_DEF_TIMEOUT) <= 0,
-                        "SendMsgWaitForResponse timed out",
-                        -1 );     
+        // ERROR CHECK        
     }    
-    master->send(msg);
-    master->send(0); 
-    master->recv(i);
-    return i;
+
+    if( !master->call(&ipc_msg, TOSDB_DEF_TIMEOUT) ){
+         TOSDB_LogH("IPC",("master.call failled, msg:" + ipc_msg).c_str());
+         return false;
+    }
+
+    try{
+        ret = std::stol(ipc_msg);
+        return (ret == TOSDB_SIG_GOOD);
+    }catch(...){
+        TOSDB_LogH("IPC", "failed to convert return message to long");
+        return false;
+    }    
 }
 
 
 VOID WINAPI 
 ServiceController(DWORD cntrl)
 {
-    long ret;
-
     switch(cntrl){ 
     case SERVICE_CONTROL_SHUTDOWN:
     case SERVICE_CONTROL_STOP :
@@ -121,14 +126,12 @@ ServiceController(DWORD cntrl)
         TOSDB_Log("STATE","SERVICE_STOP_PENDING");
         UpdateStatus(SERVICE_STOP_PENDING, -1); 
 
-        if(pause_flag){ /* if we're paused... get it to continue silently */   
-            ret = SendMsgWaitForResponse(TOSDB_SIG_CONTINUE);
-            if(ret != TOSDB_SIG_GOOD)            
+        if(pause_flag){ /* if we're paused... get it to continue silently */              
+            if(!SendMsgWaitForResponse(TOSDB_SIG_CONTINUE))            
                 TOSDB_Log("ADMIN", "error resuming paused thread to stop it");              
         }
-
-        ret = SendMsgWaitForResponse(TOSDB_SIG_STOP);
-        if(ret != TOSDB_SIG_GOOD)        
+               
+        if(!SendMsgWaitForResponse(TOSDB_SIG_STOP))        
             TOSDB_Log("ADMIN","BAD_SIG returned from core process");   
 
         break;
@@ -141,10 +144,9 @@ ServiceController(DWORD cntrl)
         pause_flag = true;
 
         TOSDB_Log("STATE","SERVICE_PAUSE_PENDING");
-        UpdateStatus(SERVICE_PAUSE_PENDING, -1);
-           
-        ret = SendMsgWaitForResponse(TOSDB_SIG_PAUSE);
-        if(ret == TOSDB_SIG_GOOD){
+        UpdateStatus(SERVICE_PAUSE_PENDING, -1);    
+      
+        if(SendMsgWaitForResponse(TOSDB_SIG_PAUSE)){
             TOSDB_Log("STATE","SERVICE_PAUSED");
             UpdateStatus(SERVICE_PAUSED, -1);
         }else{            
@@ -165,9 +167,8 @@ ServiceController(DWORD cntrl)
             TOSDB_LogH("ADMIN","we don't own the slave");
             break;
         }            
-
-        ret = SendMsgWaitForResponse(TOSDB_SIG_CONTINUE);
-        if(ret == TOSDB_SIG_GOOD){
+              
+        if(SendMsgWaitForResponse(TOSDB_SIG_CONTINUE)){
             TOSDB_Log("STATE","SERVICE_RUNNING");
             UpdateStatus(SERVICE_RUNNING, -1);
             pause_flag = false;
@@ -175,8 +176,8 @@ ServiceController(DWORD cntrl)
             TOSDB_Log("ADMIN","BAD_SIG returned from core process");
         }
 
-        master->release_pipe();
-        master.reset();
+        //master->release_pipe();
+        //master.reset();
         break;
     }    
     default: 
@@ -329,8 +330,7 @@ ServiceMain(DWORD argc, LPSTR argv[])
         
     /* spin off the basic service update loop */
     std::async( std::launch::async, 
-                [&]
-                {
+                [&]{
                     while(!shutdown_flag){
                         Sleep(UPDATE_PERIOD);
                         UpdateStatus(-1, -1); 

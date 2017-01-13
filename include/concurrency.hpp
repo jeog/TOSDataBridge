@@ -124,6 +124,77 @@ public:
         }
 };
 
+
+class InterProcessNamedMutex{
+    HANDLE _mtx;   
+    bool _locked;
+
+    InterProcessNamedMutex(const InterProcessNamedMutex&);
+    InterProcessNamedMutex(InterProcessNamedMutex&&);
+    InterProcessNamedMutex& operator=(InterProcessNamedMutex& ipm);
+
+public:
+    InterProcessNamedMutex(std::string name) 
+        :
+            _mtx( OpenMutex(SYNCHRONIZE, FALSE, name.c_str()) ),
+            _locked(false)
+        {     
+           // SHOULD WE THROW IF CANT OPEN MUTEX ??? 
+        }
+
+
+    inline bool
+    try_lock(unsigned long timeout,
+             std::function<void(void)> timeout_cb = nullptr,
+             std::function<void(errno_t)> fail_cb = nullptr)
+    {
+          if(locked())
+              return true;
+
+          DWORD wstate = WaitForSingleObject(_mtx, timeout);
+          errno_t e = GetLastError();
+          switch(wstate){
+          case WAIT_TIMEOUT: 
+              CloseHandle(_mtx);   
+              _mtx = NULL;
+              if(timeout_cb)
+                  timeout_cb();
+              return false;
+          case WAIT_FAILED:                      
+              CloseHandle(_mtx);   
+              _mtx = NULL;     
+              if(fail_cb)
+                  fail_cb(e);
+              return false;
+          }
+
+          _locked = true;
+          return true;
+    }
+
+    inline void
+    unlock() const
+    {
+        if(locked())
+            ReleaseMutex(_mtx);                  
+    }
+
+    inline bool
+    locked() const
+    {
+        return _locked;
+    }
+
+    ~InterProcessNamedMutex()
+    {
+        if(locked()){
+            ReleaseMutex(_mtx);
+            CloseHandle(_mtx);           
+        }
+    }
+};
+
+
 class SignalManager {    
     std::multimap<std::string, volatile bool> _unq_flags; 
     LightWeightMutex _mtx;
