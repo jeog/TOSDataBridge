@@ -34,11 +34,11 @@ class IPCBase{
 protected:
     std::string _main_channel_mtx_name;
     std::string _main_channel_pipe_name;
-    void *_main_channel_pipe_hndl;
+    HANDLE _main_channel_pipe_hndl;
 
     std::string _probe_channel_mtx_name;
     std::string _probe_channel_pipe_name;    
-    void *_probe_channel_pipe_hndl;
+    HANDLE _probe_channel_pipe_hndl;
 
     bool
     send(std::string msg) const;
@@ -83,17 +83,17 @@ class IPCSlave
     std::unordered_map<Securable, SmartBuffer<void>> _sids; 
     std::unordered_map<Securable, SmartBuffer<ACL>> _acls; 
 
-    void *_main_channel_mtx;        
-    void *_probe_channel_mtx;
+    HANDLE _main_channel_mtx;        
+    HANDLE _probe_channel_mtx;
 
     int    
     _set_security(errno_t *e);
 
     void
-    _init_slave_objects();
+    _init_slave_mutex(std::string name, HANDLE *phndl);
 
     void
-    _launch_probe_server_loop();
+    _launch_probe_channel();
 
 public:
     IPCSlave::IPCSlave(std::string name)
@@ -110,11 +110,12 @@ public:
                 throw std::runtime_error(msg);
             }            
              
-            /* create our mutexs and pipes */
-            _init_slave_objects();
+            /* create our mutexs */
+            _init_slave_mutex(_main_channel_mtx_name, &_main_channel_mtx);
+            _init_slave_mutex(_probe_channel_mtx_name, &_probe_channel_mtx);
 
-            /* launch our async server loop so master can prob connection state */
-            _launch_probe_server_loop();
+            /* launch our probe channel so master can asynchronously check connection status*/
+            _launch_probe_channel();
         }    
 
 
@@ -138,9 +139,10 @@ public:
 class IPCMaster
         : public IPCBase{
     bool _pipe_held;
+    bool _connected;
 
-    InterProcessNamedMutex _probe_channel_mtx;
-    InterProcessNamedMutex _main_channel_mtx;
+    IPCNamedMutexClient _probe_channel_mtx;
+    IPCNamedMutexClient _main_channel_mtx;
 
     bool
     _grab_pipe(unsigned long timeout);
@@ -153,6 +155,7 @@ public:
         :
             IPCBase(name),
             _pipe_held(false),
+            _connected(false),
             _probe_channel_mtx(_probe_channel_mtx_name),
             _main_channel_mtx(_main_channel_mtx_name)
         {
@@ -167,6 +170,7 @@ public:
     disconnect()
     {
         _release_pipe();
+        _connected = false;
     }
 
     bool 

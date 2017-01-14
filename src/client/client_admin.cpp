@@ -455,12 +455,12 @@ DllMain(HANDLE mod, DWORD why, LPVOID res) /* ENTRY POINT */
     return TRUE;
 }
 
-/* Nov 1 2016: Change (non-blocking) raw log calls to regular (blocking) 
 
-   We should be able to block in here as long as this is not called from DllMain  */
 int 
 TOSDB_Connect() 
 {  
+    /* Nov 1 2016: Change (non-blocking) raw log calls to regular (blocking) 
+         We should be able to block in here as long as this is not called from DllMain  */
     if(_connected())
         return 0;
 
@@ -474,7 +474,7 @@ TOSDB_Connect()
 
     buffer_thread = CreateThread(0, 0, _threadedExtractLoop, 0, 0, &buffer_thread_id);
     if(!buffer_thread){
-        TOSDB_LogH("IPC","TOSDB_Connect(): error initializing communication thread");        
+        TOSDB_LogH("THREAD","TOSDB_Connect(): error initializing communication thread");        
         return -2;  
     }
         

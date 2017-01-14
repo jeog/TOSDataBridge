@@ -156,4 +156,55 @@ SignalManager::signal(std::string unq_id, bool secondary)
 }
 
 
+bool
+IPCNamedMutexClient::try_lock(unsigned long timeout,
+                              std::function<void(errno_t)> no_open_cb,
+                              std::function<void(void)> timeout_cb,
+                              std::function<void(errno_t)> fail_cb)
+{
+    if(_mtx)
+        return true;
+          
+    /* open late to be sure slave has already created */
+    HANDLE tmp = OpenMutex(SYNCHRONIZE, FALSE, _name.c_str());
+    if(!tmp){
+        no_open_cb( GetLastError() );
+        return false;
+    }
+
+    /* we use 'tmp' because technically the mutex has yet to be 
+        locked but locked() simply checks that _mtx != NULL */
+
+    DWORD wstate = WaitForSingleObject(tmp, timeout);
+    errno_t e = GetLastError();
+
+    switch(wstate){
+    case WAIT_TIMEOUT: 
+        CloseHandle(tmp);                 
+        if(timeout_cb)
+            timeout_cb();              
+        return false;
+    case WAIT_FAILED:    
+        CloseHandle(tmp);                 
+        if(fail_cb)
+            fail_cb(e);          
+        return false;          
+    }        
+
+    /* on success we pass the handle to _mtx */
+    _mtx = tmp;
+    return true;
+}
+
+
+void
+IPCNamedMutexClient::unlock()
+{
+    if(locked()){
+        ReleaseMutex(_mtx);                  
+        CloseHandle(_mtx);
+        _mtx = NULL;
+    }
+}
+
 #endif

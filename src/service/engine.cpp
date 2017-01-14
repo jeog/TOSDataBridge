@@ -307,16 +307,22 @@ RunMainCommLoop(IPCSlave *pslave)
     while(!shutdown_flag){     
 
         /* BLOCK until master is ready */
+        TOSDB_LogH("DEBUG", "WAIT FOR MASTER (IN)");
         if( !pslave->wait_for_master() ){      
             TOSDB_LogH("IPC", "wait_for_master failed");
             return -1;
-        }                
+        }
+        TOSDB_LogH("DEBUG", "WAIT FOR MASTER (OUT)");
         
         while(!shutdown_flag){
 
             /* BLOCK until we get a message */
-            if( !pslave->recv(&ipc_msg) )
+            TOSDB_LogH("DEBUG", "RECEIVE (IN)");
+            if( !pslave->recv(&ipc_msg) ){
+                TOSDB_LogH("DEBUG", "RECEIVE(FAIL)");
                 break;          
+            }
+            TOSDB_LogH("DEBUG", "RECEIVE(OUT)");
 
             ret = ParseIPCMessage(ipc_msg, &cli_op, &cli_topic, &cli_item, &cli_timeout);
             if(ret){
@@ -392,16 +398,17 @@ ParseIPCMessage(std::string msg,
         return -1;
     }
      
-    std::vector<std::string> args;
+    std::vector<std::string> args;    
     ParseArgs(args, msg);
+    size_t nargs = args.size();
 
-    if(args.size() != 4){
-        std::string emsg = "ParseArgs didn't return 4 args (" + std::to_string(args.size()) 
-                         + "), msg: " + msg;
+    if(nargs == 0){
+        std::string emsg = "ParseArgs returned 0 args, msg: " + msg;
         TOSDB_LogH("IPC", emsg.c_str());
         return -2;
     }
 
+    /* first, get the opcode */
     try{
         *op = (unsigned int)std::stoul(args[0]); 
     }catch(...){
@@ -409,6 +416,23 @@ ParseIPCMessage(std::string msg,
         return -3;
     }
 
+    /* break out if we just need an opcode */
+    switch(*op){     
+    case TOSDB_SIG_PAUSE: 
+    case TOSDB_SIG_CONTINUE: 
+    case TOSDB_SIG_STOP: 
+    case TOSDB_SIG_DUMP: 
+        return 0;        
+    };
+
+    /* if we we have a stream op check we have 4 args */
+    if(nargs != 4){
+        std::string emsg = "ParseArgs didn't return 4 args (" + std::to_string(nargs) + "), msg: " + msg;
+        TOSDB_LogH("IPC", emsg.c_str());
+        return -2;
+    }    
+
+    /* second, get the topic */
     try{
         *topic = TOS_Topics::MAP()[args[1]];
     }catch(...){
@@ -416,8 +440,10 @@ ParseIPCMessage(std::string msg,
         return -3;
     }
 
+    /* third, the item */
     *item = args[2];
 
+    /* fourth, the timeout */
     try{
         *timeout = std::stoul(args[3]);
     }catch(...){

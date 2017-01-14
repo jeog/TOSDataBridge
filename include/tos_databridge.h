@@ -209,7 +209,7 @@ class DLL_SPEC_IMPL WinLockGuard;
 class DLL_SPEC_IMPL SignalManager;
 #endif  /* CPP_COND_VAR */
 
-class DLL_SPEC_IMPL InterProcessNamedMutex;
+class DLL_SPEC_IMPL IPCNamedMutexClient;
 
 /* IPC - ipc.cpp / ipc.hpp */
 class DLL_SPEC_IMPL IPCBase;

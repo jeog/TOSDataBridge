@@ -124,73 +124,40 @@ public:
         }
 };
 
-
-class InterProcessNamedMutex{
+/* move impl to .cpp */
+class IPCNamedMutexClient{
     HANDLE _mtx;   
-    bool _locked;
+    std::string _name;
 
-    InterProcessNamedMutex(const InterProcessNamedMutex&);
-    InterProcessNamedMutex(InterProcessNamedMutex&&);
-    InterProcessNamedMutex& operator=(InterProcessNamedMutex& ipm);
+    IPCNamedMutexClient(const IPCNamedMutexClient&);
+    IPCNamedMutexClient(IPCNamedMutexClient&&);
+    IPCNamedMutexClient& operator=(IPCNamedMutexClient& ipm);
 
 public:
-    InterProcessNamedMutex(std::string name) 
-        :
-            _mtx( OpenMutex(SYNCHRONIZE, FALSE, name.c_str()) ),
-            _locked(false)
-        {     
-           // SHOULD WE THROW IF CANT OPEN MUTEX ??? 
+    IPCNamedMutexClient(std::string name) 
+        :            
+            _name(name)
+        {   
         }
 
-
-    inline bool
+    bool
     try_lock(unsigned long timeout,
+             std::function<void(errno_t)> no_open_cb = nullptr,
              std::function<void(void)> timeout_cb = nullptr,
-             std::function<void(errno_t)> fail_cb = nullptr)
-    {
-          if(locked())
-              return true;
+             std::function<void(errno_t)> fail_cb = nullptr);
 
-          DWORD wstate = WaitForSingleObject(_mtx, timeout);
-          errno_t e = GetLastError();
-          switch(wstate){
-          case WAIT_TIMEOUT: 
-              CloseHandle(_mtx);   
-              _mtx = NULL;
-              if(timeout_cb)
-                  timeout_cb();
-              return false;
-          case WAIT_FAILED:                      
-              CloseHandle(_mtx);   
-              _mtx = NULL;     
-              if(fail_cb)
-                  fail_cb(e);
-              return false;
-          }
-
-          _locked = true;
-          return true;
-    }
-
-    inline void
-    unlock() const
-    {
-        if(locked())
-            ReleaseMutex(_mtx);                  
-    }
+    void
+    unlock();
 
     inline bool
     locked() const
     {
-        return _locked;
+        return (_mtx != NULL);
     }
 
-    ~InterProcessNamedMutex()
+    ~IPCNamedMutexClient()
     {
-        if(locked()){
-            ReleaseMutex(_mtx);
-            CloseHandle(_mtx);           
-        }
+        unlock();
     }
 };
 

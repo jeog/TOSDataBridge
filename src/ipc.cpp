@@ -32,8 +32,10 @@ IPCBase::send(std::string msg) const
         throw std::runtime_error("msg length > MAX_MESSAGE_SZ");
 
     BOOL ret = WriteFile(_main_channel_pipe_hndl, (void*)msg.c_str(), msg.length() + 1, &d, NULL);
+
     if(!ret){
-        errno_t e = GetLastError();      
+        errno_t e = GetLastError();     
+        /* we should expect broken pipes because of how we implement connection/msg passing */
         if(e != ERROR_BROKEN_PIPE)            
             TOSDB_LogEx("IPC", "WriteFile failed in _recv()", e);
     }
@@ -46,17 +48,17 @@ bool
 IPCBase::recv(std::string *msg) const 
 {    
     DWORD d;   
-    char recv_buffer[MAX_MESSAGE_SZ];  
-
-    msg->clear();
     
-    BOOL ret = ReadFile(_main_channel_pipe_hndl, (void*)recv_buffer, MAX_MESSAGE_SZ + 1, &d, NULL);
+    msg->clear();
+    msg->resize(MAX_MESSAGE_SZ); 
+    
+    BOOL ret = ReadFile(_main_channel_pipe_hndl, (void*)msg->c_str(), MAX_MESSAGE_SZ + 1, &d, NULL);
+
     if(!ret){
-        errno_t e = GetLastError();        
-        if(e != ERROR_BROKEN_PIPE) /* we expect a broken pipe error */           
+        errno_t e = GetLastError();
+        /* we should expect broken pipes because of how we implement connection/msg passing */
+        if(e != ERROR_BROKEN_PIPE)            
             TOSDB_LogEx("IPC", "ReadFile failed in _recv()", e);
-    }else{        
-        msg->append(recv_buffer);
     }
 
     return ret;
@@ -90,15 +92,19 @@ IPCMaster::call(std::string *msg, unsigned long timeout)
 
 bool 
 IPCMaster::try_for_slave(unsigned long timeout)
-{      
-    if(_grab_pipe(timeout) <= 0)
+{   
+    _connected = false;
+
+    if( !_grab_pipe(timeout) )
     {              
         errno_t e = GetLastError(); 
         TOSDB_LogEx("IPC-Master", "grab_pipe in try_for_slave failed", e); 
         return false;
     }
 
+    _connected = true;
     _release_pipe();   
+
     return true;
 }
 
@@ -115,6 +121,7 @@ IPCMaster::connected(unsigned long timeout)
         bool is_locked = 
             _probe_channel_mtx.try_lock(
                 timeout,
+                [](errno_t e){ TOSDB_LogEx("IPC-MASTER", "failed to open mutex in connected", e); },
                 [](){ TOSDB_LogH("IPC-MASTER", "timed out waiting to lock mutex in connected"); },
                 [](errno_t e){ TOSDB_LogEx("IPC-MASTER", "failed to lock mutex in connected", e); }
             );
@@ -134,7 +141,7 @@ IPCMaster::connected(unsigned long timeout)
             return false;
         }
  
-        return (i == 0);
+        return (i == o) && _connected;
         /*** CRITICAL SECTION ***/
     }catch(...){
     }
@@ -153,6 +160,7 @@ IPCMaster::_grab_pipe(unsigned long timeout)
         bool is_locked = 
             _main_channel_mtx.try_lock(
                 timeout,
+                [](errno_t e){ TOSDB_LogEx("IPC-MASTER", "failed to open mutex in grab_pipe", e); },
                 [](){ TOSDB_LogH("IPC-MASTER", "timed out waiting to lock mutex in grab_pipe"); },
                 [](errno_t e){ TOSDB_LogEx("IPC-MASTER", "failed to lock mutex in grab_pipe", e); } 
             );
@@ -165,8 +173,7 @@ IPCMaster::_grab_pipe(unsigned long timeout)
         {    
             errno_t e = GetLastError(); 
             TOSDB_LogEx("IPC-Master", "WaitNamedPipe failed in grab_pipe", e);           
-            _main_channel_mtx.unlock();
-            //CloseHandle(_main_channel_mtx);
+            _main_channel_mtx.unlock();            
             return false;    
         }    
     
@@ -180,8 +187,7 @@ IPCMaster::_grab_pipe(unsigned long timeout)
         {
             errno_t e = GetLastError(); 
             TOSDB_LogEx("IPC-Master", "CreaetFile failed in grab_pipe", e);             
-            _main_channel_mtx.unlock();
-            //CloseHandle(_main_channel_mtx);
+            _main_channel_mtx.unlock();            
             return false;
         }
 
@@ -202,15 +208,11 @@ IPCMaster::_release_pipe()
         CloseHandle(_main_channel_pipe_hndl);
         _main_channel_pipe_hndl = INVALID_HANDLE_VALUE;
         _main_channel_mtx.unlock();
-        /*** CRITICAL SECTION (END) ***/
-        //CloseHandle(_main_channel_mtx);
+        /*** CRITICAL SECTION (END) ***/        
     }
 
     _pipe_held = false;
 }
-
-
-/**** SLAVE ****/
 
 
 bool 
@@ -245,30 +247,53 @@ IPCSlave::wait_for_master()
 
 
 void
-IPCSlave::_launch_probe_server_loop()
+IPCSlave::_launch_probe_channel()
 {    
+    _probe_channel_pipe_hndl = CreateNamedPipe( _probe_channel_pipe_name.c_str(), 
+                                                PIPE_ACCESS_DUPLEX,
+                                                PIPE_TYPE_MESSAGE 
+                                                    | PIPE_READMODE_BYTE 
+                                                    | PIPE_WAIT,
+                                                PIPE_UNLIMITED_INSTANCES, 0, 0,
+                                                INFINITE, &_sec_attr[PIPE1] );    
+     
+    if(!_probe_channel_pipe_hndl)
+    {
+        errno_t e = GetLastError(); 
+        TOSDB_LogEx("IPC-Slave", "IPCSlave failed to create named pipe", e);
+        throw std::runtime_error("IPCSlave failed to create named pipe");
+    }  
+
     std::async(std::launch::async, 
         [=](){
+            BOOL ret;
+            DWORD r;
+            uint8_t b;
+            errno_t e;          
             while(1){
-                if( ConnectNamedPipe(_probe_channel_pipe_hndl, NULL) == 0 )
-                {
-                    errno_t e = GetLastError();                               
+                ret = ConnectNamedPipe(_probe_channel_pipe_hndl, NULL);
+                if(!ret){
+                    e = GetLastError();                               
                     if(e != ERROR_PIPE_CONNECTED)  /* incase client connects first */
-                        TOSDB_LogEx("IPC", "ConnectNamedPipe failed in _listen_for_alloc", e);
+                        TOSDB_LogEx("IPC", "ConnectNamedPipe failed in probe_channel", e);
                 }
 
-                char b;
-                DWORD r;
-                if( !ReadFile(_probe_channel_pipe_hndl, (void*)&b, sizeof(b), &r, NULL) ){
-                    errno_t e = GetLastError();
-                    TOSDB_LogEx("IPC", "ReadFile failed in _listen_for_alloc", e);
+                ret = ReadFile(_probe_channel_pipe_hndl, (void*)&b, sizeof(b), &r, NULL);
+                if(!ret){
+                    e = GetLastError();
+                    TOSDB_LogEx("IPC", "ReadFile failed in probe_channel", e);
                 }                  
                                                      
-                WriteFile(_probe_channel_pipe_hndl, (void*)&b, sizeof(b), &r, NULL);
+                ret = WriteFile(_probe_channel_pipe_hndl, (void*)&b, sizeof(b), &r, NULL);
+                if(!ret){
+                    e = GetLastError();
+                    TOSDB_LogEx("IPC", "WriteFile failed in probe_channel", e);
+                }     
 
-                if( !DisconnectNamedPipe(_probe_channel_pipe_hndl) ){
-                    errno_t e = GetLastError();
-                    TOSDB_LogEx("IPC", "DisconnectNamedPipe failed in _listen_for_alloc", e);
+                ret = DisconnectNamedPipe(_probe_channel_pipe_hndl);
+                if(!ret){
+                    e = GetLastError();
+                    TOSDB_LogEx("IPC", "DisconnectNamedPipe failed in probe_channel", e);
                 }
             }    
             CloseHandle(_probe_channel_pipe_hndl);                       
@@ -276,52 +301,25 @@ IPCSlave::_launch_probe_server_loop()
     );
 }
 
-
-
 void
-IPCSlave::_init_slave_objects()
+IPCSlave::_init_slave_mutex(std::string name, HANDLE *phndl)
 {
-    _main_channel_mtx = CreateMutex(&(_sec_attr[MUTEX1]), FALSE, _main_channel_mtx_name.c_str());
-    if(!_main_channel_mtx){
-        DWORD err = GetLastError();
-        std::string msg = "IPCSlave failed to create 'xtrnl' mutex: "  + _main_channel_mtx_name;
-        TOSDB_LogEx("IPC-Slave", msg.c_str(), err);
-        if(err = ERROR_ACCESS_DENIED){
+    *phndl = CreateMutex(&(_sec_attr[MUTEX1]), FALSE, name.c_str());
+
+    if( !(*phndl) ){
+        DWORD e = GetLastError();
+        std::string msg = "IPCSlave failed to create mutex: "  + name;
+        TOSDB_LogEx("IPC-Slave", msg.c_str(), e);
+
+        if(e = ERROR_ACCESS_DENIED){
             TOSDB_LogH("IPC-Slave", "  Likely causes of this error:");
             TOSDB_LogH("IPC-Slave", "    1) The mutex has already been created by another running process");
             TOSDB_LogH("IPC-Slave", "    2) Trying to create a global mutex (Global\\) without adequate privileges");
         }
-        throw std::runtime_error(msg);
-    }       
- 
-    _probe_channel_mtx = CreateMutex(&(_sec_attr[MUTEX1]), FALSE, _probe_channel_mtx_name.c_str());
-    if(!_probe_channel_mtx){
-        DWORD err = GetLastError();
-        std::string msg = "IPCSlave failed to create 'intrnl' mutex: "  + _probe_channel_mtx_name;
-        TOSDB_LogEx("IPC-Slave", msg.c_str(), err);
-        if(err = ERROR_ACCESS_DENIED){
-            TOSDB_LogH("IPC-Slave", "  Likely causes of this error:");
-            TOSDB_LogH("IPC-Slave", "    1) The mutex has already been created by another running process");
-            TOSDB_LogH("IPC-Slave", "    2) Trying to create a global mutex (Global\\) without adequate privileges");
-        }
+
         throw std::runtime_error(msg);
     }  
-
-    _probe_channel_pipe_hndl = CreateNamedPipe(_probe_channel_pipe_name.c_str(), 
-                                        PIPE_ACCESS_DUPLEX,
-                                        PIPE_TYPE_MESSAGE 
-                                            | PIPE_READMODE_BYTE 
-                                            | PIPE_WAIT,
-                                        PIPE_UNLIMITED_INSTANCES, 0, 0,
-                                        INFINITE, &_sec_attr[PIPE1]);    
-     
-    if(!_probe_channel_pipe_hndl){
-        errno_t e = GetLastError(); 
-        TOSDB_LogEx("IPC-Slave", "IPCSlave failed to create named pipe", e);
-        throw std::runtime_error("IPCSlave failed to create named pipe");
-    }    
 }
-
 
 int 
 IPCSlave::_set_security(errno_t *e)
