@@ -124,7 +124,7 @@ public:
         }
 };
 
-/* move impl to .cpp */
+
 class IPCNamedMutexClient{
     HANDLE _mtx;   
     std::string _name;
@@ -159,6 +159,19 @@ public:
     {
         unlock();
     }
+};
+
+
+class NamedMutexLockGuard{
+    HANDLE _mtx;       
+
+    NamedMutexLockGuard(const NamedMutexLockGuard&);
+    NamedMutexLockGuard(NamedMutexLockGuard&&);
+    NamedMutexLockGuard& operator=(NamedMutexLockGuard& ipm);
+
+public:
+    NamedMutexLockGuard(std::string name);         
+    ~NamedMutexLockGuard();   
 };
 
 

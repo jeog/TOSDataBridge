@@ -108,7 +108,7 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 
    2) if for some reason you absolutley have to, recompile with 
       NO_KERNEL_GLOBAL_NAMESPACE defined or use eleveated privileges
-      to run the .exe
+      to run the tos-databridge-engine-[].exe
 
  ***CRASH WARNING ***/
 #endif
@@ -119,14 +119,21 @@ along with this program.  If not, see http://www.gnu.org/licenses.
    
    If a user tries to create a second IPCSlave (maybe forgeting to close an old
    engine before starting a new one) it will crash during construction as it tries
-   to create kernel objects that already exist, causing a runtime_exception to be thrown.
-   (this will generate log messages w/ the IPC-Slave tag in log/engine.log)
+   to create kernel objects that already exist, causing a runtime_exception to be 
+   thrown. (This will generate log messages w/ the IPC-Slave tag.)
 
-   Defining CUSTOM_COMM_CHANNEL with the name of the channel to use allows us to override 
-   this behavior. Obviously YOU SHOULD BE VERY CAREFUL DOING THIS. */
+   Defining CUSTOM_COMM_CHANNEL with the name of the channel to use allows us to 
+   override this behavior. OBVIOUSLY YOU SHOULD BE VERY CAREFUL DOING THIS. */
 #define TOSDB_COMM_CHANNEL CUSTOM_COMM_CHANNEL
 #else
 #define TOSDB_COMM_CHANNEL "TOSDB_channel_1"
+#endif
+
+/* combine engine-log.log and service-log.log for easier IPC debugging */
+#ifdef _DEBUG
+#define LOG_BACKEND_USE_SINGLE_FILE
+#define LOG_BACKEND_MUTEX_NAME "TOSDB_log_mutex_1"
+#define LOG_BACKEND_SINGLE_FILE_NAME "engine-service-log.log"
 #endif
 
 /* the core types implemented by the data engine: engine-core.cpp 
@@ -210,6 +217,7 @@ class DLL_SPEC_IMPL SignalManager;
 #endif  /* CPP_COND_VAR */
 
 class DLL_SPEC_IMPL IPCNamedMutexClient;
+class DLL_SPEC_IMPL NamedMutexLockGuard;
 
 /* IPC - ipc.cpp / ipc.hpp */
 class DLL_SPEC_IMPL IPCBase;
@@ -465,11 +473,16 @@ public:
     TypeSize(enum_type topic) /* type size at run-time */
     { 
         switch(TypeBits(topic)){
-        case TOSDB_STRING_BIT:                 return TOSDB_STR_DATA_SZ;
-        case TOSDB_INTGR_BIT:                  return sizeof(def_size_type);
-        case TOSDB_QUAD_BIT:                   return sizeof(ext_price_type);
-        case TOSDB_INTGR_BIT | TOSDB_QUAD_BIT: return sizeof(ext_size_type);
-        default :                              return sizeof(def_price_type);
+        case TOSDB_STRING_BIT:
+            return TOSDB_STR_DATA_SZ;
+        case TOSDB_INTGR_BIT:                  
+            return sizeof(def_size_type);
+        case TOSDB_QUAD_BIT:                   
+            return sizeof(ext_price_type);
+        case TOSDB_INTGR_BIT | TOSDB_QUAD_BIT: 
+            return sizeof(ext_size_type);
+        default :                              
+            return sizeof(def_price_type);
         }; 
     }
   
@@ -477,11 +490,16 @@ public:
     TypeString(enum_type topic) /* platform-dependent type strings at run-time */
     {     
         switch(TypeBits(topic)){
-        case TOSDB_STRING_BIT:                 return typeid(std::string).name();
-        case TOSDB_INTGR_BIT:                  return typeid(def_size_type).name();
-        case TOSDB_QUAD_BIT:                   return typeid(ext_price_type).name();
-        case TOSDB_INTGR_BIT | TOSDB_QUAD_BIT: return typeid(ext_size_type).name();
-        default :                              return typeid(def_price_type).name();
+        case TOSDB_STRING_BIT:                 
+            return typeid(std::string).name();
+        case TOSDB_INTGR_BIT:                  
+            return typeid(def_size_type).name();
+        case TOSDB_QUAD_BIT:                   
+            return typeid(ext_price_type).name();
+        case TOSDB_INTGR_BIT | TOSDB_QUAD_BIT: 
+            return typeid(ext_size_type).name();
+        default :                              
+            return typeid(def_price_type).name();
         }; 
     }
 
@@ -632,9 +650,6 @@ TOSDB_GetTopicNames(LPCSTR id, LPSTR* dest, size_type array_len, size_type str_l
 EXT_C_SPEC DLL_SPEC_IFACE NO_THROW int            
 TOSDB_GetItemNames(LPCSTR id, LPSTR* dest, size_type array_len, size_type str_len);
 
-
-/*** --- BEGIN --- Oct 30 2016 ***/
-
 EXT_C_SPEC DLL_SPEC_IFACE NO_THROW int           
 TOSDB_GetPreCachedItemCount(LPCSTR id, size_type* count);
 
@@ -646,9 +661,6 @@ TOSDB_GetPreCachedTopicNames(LPCSTR id, LPSTR* dest, size_type array_len, size_t
 
 EXT_C_SPEC DLL_SPEC_IFACE NO_THROW int          
 TOSDB_GetPreCachedItemNames(LPCSTR id, LPSTR* dest, size_type array_len, size_type str_len);
-
-/*** --- END --- Oct 30 2016 ***/
-
 
 EXT_C_SPEC DLL_SPEC_IFACE NO_THROW int            
 TOSDB_GetTypeBits(LPCSTR topic_str, type_bits_type* type_bits);
@@ -680,10 +692,8 @@ TOSDB_DumpSharedBufferStatus();
 DLL_SPEC_IFACE int   
 TOSDB_Add(std::string id, str_set_type items, topic_set_type topics_t);
 
-/* Nov 29 2016 */
 DLL_SPEC_IFACE  int   
 TOSDB_AddItem(std::string id, std::string item);
-/* Nov 29 2016 */
 
 DLL_SPEC_IFACE  int   
 TOSDB_AddTopic(std::string id, TOS_Topics::TOPICS topic_t);
@@ -727,15 +737,11 @@ TOSDB_GetTypeBits(TOS_Topics::TOPICS topic_t);
 DLL_SPEC_IFACE std::string     
 TOSDB_GetTypeString(TOS_Topics::TOPICS topic_t);
 
-/*** --- BEGIN --- Oct 30 2016 ***/
-
 DLL_SPEC_IFACE size_type       
 TOSDB_GetPreCachedItemCount(std::string id);
 
 DLL_SPEC_IFACE size_type       
 TOSDB_GetPreCachedTopicCount(std::string id);
-
-/*** --- END --- Oct 30 2016 ***/
 
 DLL_SPEC_IFACE size_type       
 TOSDB_GetItemCount(std::string id);
@@ -1011,10 +1017,8 @@ operator<<(std::ostream&, const generic_type&);
 DLL_SPEC_IFACE std::ostream& 
 operator<<(std::ostream&, const DateTimeStamp&); 
 
-/* Nov 30 2016 */
 DLL_SPEC_IFACE std::ostream& 
 operator<<(std::ostream&, const DateTimeStamp*); 
-/* Nov 30 2016 */
 
 DLL_SPEC_IFACE std::ostream& 
 operator<<(std::ostream&, const generic_matrix_type&); 
@@ -1124,6 +1128,12 @@ TOSDB_Log_(GetCurrentProcessId(), GetCurrentThreadId(), low, tag, desc)
 /* DONT PASS GetLastError() INLINE to the macro as the Get...Id sys calls go first */
 #define TOSDB_LogEx(tag,desc,error) \
 TOSDB_LogEx_(GetCurrentProcessId(), GetCurrentThreadId(), high, tag, desc, error)
+
+#ifdef _DEBUG
+#define TOSDB_LogDebug(desc) TOSDB_Log("DEBUG", desc)
+#else
+#define TOSDB_LogDebug(desc) do{}while(0)
+#endif
 
 EXT_C_SPEC DLL_SPEC_IMPL char**  
 NewStrings(size_t num_strs, size_t strs_len);

@@ -16,6 +16,8 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 */
 
 #include "tos_databridge.h"
+#include "concurrency.hpp"
+
 #include <iomanip>
 #include <fstream>
 #include <string>
@@ -27,6 +29,7 @@ namespace {
     std::mutex  fout_mtx;   
     std::ofstream  lout;  
 };
+
 
 std::string 
 SysTimeString()
@@ -41,9 +44,15 @@ SysTimeString()
     return tmp;
 }
 
+
 void 
 StartLogging(LPCSTR fname)
 {
+/* need to sync admin ops if we are sharing log between processes */
+#ifdef LOG_BACKEND_USE_SINGLE_FILE
+    NamedMutexLockGuard lock(LOG_BACKEND_MUTEX_NAME);
+#endif
+
     if(lout.is_open())
         return;
 
@@ -58,20 +67,31 @@ StartLogging(LPCSTR fname)
              << std::setw(log_col_width[4]) << std::left << "Severity"
                                            << std::left << "Description"
                                            << std::endl << std::endl;    
-    }
+    }    
 }
+
 
 inline void 
 StopLogging() 
 { 
+/* need to sync admin ops if we are sharing log between processes */
+#ifdef LOG_BACKEND_USE_SINGLE_FILE
+    NamedMutexLockGuard lock(LOG_BACKEND_MUTEX_NAME);
+#endif
     lout.close(); 
 }
+
 
 inline void 
 ClearLog() 
 { 
+/* need to sync admin ops if we are sharing log between processes */
+#ifdef LOG_BACKEND_USE_SINGLE_FILE
+    NamedMutexLockGuard lock(LOG_BACKEND_MUTEX_NAME);
+#endif
     lout.clear(); 
 }
+
 
 void 
 TOSDB_Log_(DWORD pid, 
@@ -79,9 +99,16 @@ TOSDB_Log_(DWORD pid,
            Severity sevr, 
            LPCSTR tag,  
            LPCSTR description) 
-{  
+{ 
+/* if we share back end logs we need to sync across processes 
+   if not just use a typical mutex to sync across intra-process threads  */
+#ifdef LOG_BACKEND_USE_SINGLE_FILE
+    NamedMutexLockGuard lock(LOG_BACKEND_MUTEX_NAME);
+#else 
     std::lock_guard<std::mutex> lock(fout_mtx);
-    /* --- CRITICAL SECTION */
+#endif
+
+    /* --- CRITICAL SECTION --- */
     std::string now_str = SysTimeString();
 
     if( lout.is_open() ){
@@ -102,8 +129,10 @@ TOSDB_Log_(DWORD pid,
                   << std::left<< description << std::endl;   
 
     }
-  /* --- CRITICAL SECTION */
+    
+  /* --- CRITICAL SECTION --- */
 }
+
 
 void 
 TOSDB_LogEx_(DWORD pid, 
@@ -118,6 +147,7 @@ TOSDB_LogEx_(DWORD pid,
     TOSDB_Log_(pid, tid, sevr, tag, desc.c_str());
 }
 
+
 void 
 TOSDB_Log_Raw(LPCSTR description) 
 {
@@ -125,6 +155,6 @@ TOSDB_Log_Raw(LPCSTR description)
         std::cerr<< SysTimeString() << '\t' << description << std::endl;
         return;
     }    
-    lout<< std::left << SysTimeString() << '\t' << description << std::endl;
+    lout<< std::left << SysTimeString() << '\t' << description << std::endl;    
 }
 

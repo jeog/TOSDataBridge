@@ -33,8 +33,13 @@ const unsigned int UPDATE_PERIOD = 2000;
 const unsigned int MAX_ARG_SIZE = 20;
     
 LPSTR SERVICE_NAME = "TOSDataBridge"; 
-LPCSTR LOG_NAME = "service-log.log";
 LPCSTR ENGINE_BASE_NAME = "tos-databridge-engine";
+
+#ifdef LOG_BACKEND_USE_SINGLE_FILE
+LPCSTR LOG_NAME = LOG_BACKEND_SINGLE_FILE_NAME;
+#else
+LPCSTR LOG_NAME = "service-log.log";
+#endif 
 
 std::string engine_path;
 std::string integrity_level; 
@@ -95,14 +100,20 @@ SendMsgWaitForResponse(long msg)
 
     if(!master){
         master = std::unique_ptr<IPCMaster>( new IPCMaster(TOSDB_COMM_CHANNEL) );
+        TOSDB_LogDebug("***IPC*** SERVICE - TRY FOR SLAVE (IN)");
         master->try_for_slave(TOSDB_DEF_TIMEOUT);
+        TOSDB_LogDebug("***IPC*** SERVICE - TRY FOR SLAVE (OUT)");
         // ERROR CHECK        
     }    
+
+    TOSDB_LogDebug("***IPC*** SERVICE - CALL (IN)");
 
     if( !master->call(&ipc_msg, TOSDB_DEF_TIMEOUT) ){
          TOSDB_LogH("IPC",("master.call failled, msg:" + ipc_msg).c_str());
          return false;
     }
+
+    TOSDB_LogDebug("***IPC*** SERVICE - CALL (OUT)");
 
     try{
         ret = std::stol(ipc_msg);
@@ -480,6 +491,7 @@ WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLn, int nShowCmd)
         }
     }
 
+    TOSDB_Log("SHUTDOWN","service exiting");
     StopLogging();
     return 0;
 }

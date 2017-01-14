@@ -44,15 +44,18 @@ typedef TwoWayHashMap<TOS_Topics::TOPICS, HWND, true,
                       std::hash<TOS_Topics::TOPICS>, std::hash<HWND>,
                       std::equal_to<TOS_Topics::TOPICS>, std::equal_to<HWND>>  convos_ty;
 
-LPCSTR CLASS_NAME = "DDE_CLIENT_WINDOW";
-LPCSTR LOG_NAME = "engine-log.log";  
+LPCSTR CLASS_NAME = "DDE_CLIENT_WINDOW"; 
 LPCSTR APP_NAME = "TOS";
+
+#ifdef LOG_BACKEND_USE_SINGLE_FILE
+LPCSTR LOG_NAME = LOG_BACKEND_SINGLE_FILE_NAME;
+#else
+LPCSTR LOG_NAME = "engine-log.log";
+#endif 
   
 const system_clock_type  system_clock;
 
-const unsigned int COMM_BUFFER_SIZE = 5; /* opcode + 3 args + {0,0} */
 const unsigned int ACL_SIZE = 96;
-const unsigned int UPDATE_PERIOD = 2000;
 const int NSECURABLE = 2;
 
 /* our 'private' messages; OK between 0x0400 and 0x7fff */
@@ -270,10 +273,16 @@ WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLn, int nShowCmd)
     err = RunMainCommLoop(&slave);
 
     TOSDB_LogH("CONTROL","out of run loop (closing streams)");    
-    CloseAllStreams(TOSDB_DEF_TIMEOUT);
-	  StopLogging();
+    CloseAllStreams(TOSDB_DEF_TIMEOUT);  
+    
+    err = CleanUpMain(err);      
 
-    return CleanUpMain(err);      
+#ifndef LOG_BACKEND_USE_SINGLE_FILE
+    /* if sharing backend logs the service should close the log file */
+    StopLogging();
+#endif
+
+    return err;
 }
 
 
@@ -305,24 +314,28 @@ RunMainCommLoop(IPCSlave *pslave)
     bool shutdown_flag = false;
     
     while(!shutdown_flag){     
+              
+        TOSDB_LogDebug("***IPC*** ENGINE - WAIT FOR MASTER (IN)");
 
         /* BLOCK until master is ready */
-        TOSDB_LogH("DEBUG", "WAIT FOR MASTER (IN)");
         if( !pslave->wait_for_master() ){      
             TOSDB_LogH("IPC", "wait_for_master failed");
             return -1;
         }
-        TOSDB_LogH("DEBUG", "WAIT FOR MASTER (OUT)");
+
+        TOSDB_LogDebug("***IPC*** ENGINE - WAIT FOR MASTER (OUT)");
         
         while(!shutdown_flag){
+                      
+            TOSDB_LogDebug("***IPC*** ENGINE - RECEIVE (IN)");
 
             /* BLOCK until we get a message */
-            TOSDB_LogH("DEBUG", "RECEIVE (IN)");
             if( !pslave->recv(&ipc_msg) ){
-                TOSDB_LogH("DEBUG", "RECEIVE(FAIL)");
+                TOSDB_LogDebug("***IPC*** ENGINE - RECEIVE (FAIL)");
                 break;          
             }
-            TOSDB_LogH("DEBUG", "RECEIVE(OUT)");
+
+            TOSDB_LogDebug("***IPC*** ENGINE - RECEIVE (OUT)");
 
             ret = ParseIPCMessage(ipc_msg, &cli_op, &cli_topic, &cli_item, &cli_timeout);
             if(ret){
@@ -375,8 +388,13 @@ RunMainCommLoop(IPCSlave *pslave)
                 TOSDB_LogH("IPC", ("invalid opcode/message: " + ipc_msg).c_str());
             }       
 
+            TOSDB_LogDebug("***IPC*** ENGINE - RETURN (IN)");
+
             /* return msg to MASTER */
-            pslave->send(std::to_string(ret));
+            if( !pslave->send(std::to_string(ret)) )
+                TOSDB_LogDebug("***IPC*** ENGINE - RETURN (FAIL)");           
+
+            TOSDB_LogDebug("***IPC*** ENGINE - RETURN (OUT)");
         }  
     }  
     return 0;

@@ -38,6 +38,8 @@ IPCBase::send(std::string msg) const
         /* we should expect broken pipes because of how we implement connection/msg passing */
         if(e != ERROR_BROKEN_PIPE)            
             TOSDB_LogEx("IPC", "WriteFile failed in _recv()", e);
+        else
+            TOSDB_LogDebug("***IPC*** SEND ( BROKEN_PIPE )");
     }
 
     return ret;
@@ -59,6 +61,8 @@ IPCBase::recv(std::string *msg) const
         /* we should expect broken pipes because of how we implement connection/msg passing */
         if(e != ERROR_BROKEN_PIPE)            
             TOSDB_LogEx("IPC", "ReadFile failed in _recv()", e);
+        else
+            TOSDB_LogDebug("***IPC*** RECEIVE ( BROKEN_PIPE )");
     }
 
     return ret;
@@ -167,9 +171,9 @@ IPCMaster::_grab_pipe(unsigned long timeout)
 
         if(!is_locked)
             return false;
- 
-        /*** CRITICAL SECTION (BEGIN) ***/    
-        if( !WaitNamedPipe(_main_channel_pipe_name.c_str(),0) ) /* does this need timeout ?? */
+    
+        /* does this need timeout ?? */
+        if( !WaitNamedPipe(_main_channel_pipe_name.c_str(),0) ) 
         {    
             errno_t e = GetLastError(); 
             TOSDB_LogEx("IPC-Master", "WaitNamedPipe failed in grab_pipe", e);           
@@ -178,10 +182,10 @@ IPCMaster::_grab_pipe(unsigned long timeout)
         }    
     
         _main_channel_pipe_hndl = CreateFile( _main_channel_pipe_name.c_str(), 
-                                       GENERIC_READ | GENERIC_WRITE,
-                                       FILE_SHARE_READ | FILE_SHARE_WRITE, 
-                                       NULL, OPEN_EXISTING, 
-                                       FILE_ATTRIBUTE_NORMAL, NULL );    
+                                              GENERIC_READ | GENERIC_WRITE,
+                                              FILE_SHARE_READ | FILE_SHARE_WRITE, 
+                                              NULL, OPEN_EXISTING, 
+                                              FILE_ATTRIBUTE_NORMAL, NULL );    
 
         if(!_main_channel_pipe_hndl || (_main_channel_pipe_hndl == INVALID_HANDLE_VALUE))
         {
@@ -207,10 +211,8 @@ IPCMaster::_release_pipe()
     if(_pipe_held){
         CloseHandle(_main_channel_pipe_hndl);
         _main_channel_pipe_hndl = INVALID_HANDLE_VALUE;
-        _main_channel_mtx.unlock();
-        /*** CRITICAL SECTION (END) ***/        
+        _main_channel_mtx.unlock();            
     }
-
     _pipe_held = false;
 }
 
