@@ -38,7 +38,7 @@ IPCBase::send(std::string msg) const
         errno_t e = GetLastError();     
         /* we should expect broken pipes */
         if(e == ERROR_BROKEN_PIPE)            
-            TOSDB_LogDebug("***IPC*** SEND ( BROKEN_PIPE )");
+            TOSDB_LogDebug("***IPC*** SEND - (BROKEN_PIPE)");
         else
             TOSDB_LogEx("IPC", "WriteFile failed in _recv()", e);      
     }
@@ -62,12 +62,55 @@ IPCBase::recv(std::string *msg) const
         errno_t e = GetLastError();
         /* we should expect broken pipes */
         if(e == ERROR_BROKEN_PIPE)            
-            TOSDB_LogDebug("***IPC*** RECEIVE (BROKEN_PIPE)");
+            TOSDB_LogDebug("***IPC*** RECEIVE - (BROKEN_PIPE)");
         else
             TOSDB_LogEx("IPC", "ReadFile failed in _recv()", e);   
     }
 
     return ret;
+}
+
+
+bool 
+IPCBase::connected(unsigned long timeout) 
+{ 
+    uint8_t i = PROBE_BYTE;
+    uint8_t o = 0;  
+    DWORD r = 0;
+    BOOL ret;
+
+    if( !_probe_channel_mtx.try_lock( /* do we always want to log this stuff ? */
+            timeout,
+            [](errno_t e){ TOSDB_LogEx("IPC", "failed to open mutex in connected", e); },
+            [](){ TOSDB_LogH("IPC", "timed out waiting to lock mutex in connected"); },
+            [](errno_t e){ TOSDB_LogEx("IPC", "failed to lock mutex in connected", e); } ))
+    {
+        return false;
+    }
+
+    /*** CRITICAL SECTION ***/   
+    try{        
+        ret = CallNamedPipe(_probe_channel_pipe_name.c_str(), 
+                            (void*)&i, sizeof(i), (void*)&o, sizeof(o), &r, timeout);     
+        
+        if(ret == 0){       
+            /* GetLastError needs to get called before we try to unlock */
+            errno_t e = GetLastError();      
+            _probe_channel_mtx.unlock();
+            /* if the slave hasn't created the pipe DONT log*/
+            if(e != ERROR_FILE_NOT_FOUND) 
+                TOSDB_LogEx("IPC", "CallNamedPipe failed in connected()", e);    
+            return false;
+        }        
+    }catch(std::exception& e){
+        _probe_channel_mtx.unlock();
+        TOSDB_LogH("IPC", ("exception caught in connected: " + std::string(e.what())).c_str());           
+        return false;
+    }    
+    /*** CRITICAL SECTION ***/
+
+    _probe_channel_mtx.unlock();    
+    return (o == PROBE_BYTE) && (r == 1); 
 }
 
 
@@ -99,86 +142,30 @@ IPCMaster::call(std::string *msg, unsigned long timeout)
 }
 
 
-bool 
-IPCMaster::connected(unsigned long timeout) 
-{ 
-    uint8_t i = 255;
-    uint8_t o = 0;  
-    DWORD r = 0;
-    BOOL ret;
-
-    try{
-        bool is_locked = 
-            _probe_channel_mtx.try_lock(
-                timeout,
-                [](errno_t e){ 
-                    TOSDB_LogEx("IPC-MASTER", "failed to open mutex in connected", e); 
-                },
-                [](){ 
-                    TOSDB_LogH("IPC-MASTER", "timed out waiting to lock mutex in connected"); 
-                },
-                [](errno_t e){ 
-                    TOSDB_LogEx("IPC-MASTER", "failed to lock mutex in connected", e); 
-                }
-            );
-
-        if(!is_locked)
-            return false;
-    
-        /*** CRITICAL SECTION ***/   
-        ret = CallNamedPipe(_probe_channel_pipe_name.c_str(), 
-                            (void*)&i, sizeof(i), (void*)&o, sizeof(o), &r, timeout);     
-        
-        if(ret == 0){       
-            errno_t e = GetLastError();        
-            if(e != ERROR_FILE_NOT_FOUND) /* if the slave hasn't created the pipe DONT log*/
-                TOSDB_LogEx("IPC-MASTER", "CallNamedPipe failed in connected()", e);   
-            return false;
-        }
- 
-        return (i == o); 
-        /*** CRITICAL SECTION ***/
-    }catch(...){
-    }
-
-    _probe_channel_mtx.unlock();
-}
-
-
 bool
 IPCMaster::_grab_pipe(unsigned long timeout)
 {   
     if(_pipe_held)
         return true;
-    
-    try{
-        bool is_locked = 
-            _main_channel_mtx.try_lock(
-                timeout,
-                [](errno_t e){ 
-                    TOSDB_LogEx("IPC-MASTER", "failed to open mutex in _grab_pipe", e); 
-                },
-                [](){ 
-                    TOSDB_LogH("IPC-MASTER", "timed out waiting to lock mutex in _grab_pipe"); 
-                },
-                [](errno_t e){ 
-                    TOSDB_LogEx("IPC-MASTER", "failed to lock mutex in _grab_pipe", e); 
-                } 
-            );
 
-        if(!is_locked)
-            return false;
-    
-        /* ADDED A TIMEOUT HERE */
-        if( !WaitNamedPipe(_main_channel_pipe_name.c_str(), timeout) ) 
+    if( !_main_channel_mtx.try_lock(
+            timeout,
+            [](errno_t e){ TOSDB_LogEx("IPC", "failed to open mutex in _grab_pipe", e); },
+            [](){ TOSDB_LogH("IPC", "timed out waiting to lock mutex in _grab_pipe"); },
+            [](errno_t e){ TOSDB_LogEx("IPC", "failed to lock mutex in _grab_pipe", e); } ))
+    {
+        return false;
+    }
+
+    try{  
+        if( !WaitNamedPipe(_main_channel_pipe_name.c_str(), timeout) )
         {    
             errno_t e = GetLastError(); 
+            _main_channel_mtx.unlock();   
             if(e == ERROR_SEM_TIMEOUT)
                 TOSDB_LogH("IPC-Master", "WaitNamedPipe timed out in _grab_pipe");
             else
-                TOSDB_LogEx("IPC-Master", "WaitNamedPipe failed in _grab_pipe", e); 
-
-            _main_channel_mtx.unlock();   
+                TOSDB_LogEx("IPC-Master", "WaitNamedPipe failed in _grab_pipe", e);             
             return false;    
         }    
     
@@ -190,17 +177,17 @@ IPCMaster::_grab_pipe(unsigned long timeout)
 
         if(_main_channel_pipe_hndl == INVALID_HANDLE_VALUE){
             errno_t e = GetLastError(); 
-            TOSDB_LogEx("IPC-Master", "CreaetFile failed in _grab_pipe", e);             
-            _main_channel_mtx.unlock();            
+            _main_channel_mtx.unlock(); 
+            TOSDB_LogEx("IPC-Master", "CreaetFile failed in _grab_pipe", e);                                    
             return false;
         }
+        _pipe_held = true;
 
-        _pipe_held = true;        
-    }catch(...){
-        _pipe_held = false;
-        _main_channel_mtx.unlock();        
+    }catch(std::exception& e){        
+        _release_pipe();        
+        TOSDB_LogH("IPC", ("exception caught in _grab_pipe: " + std::string(e.what())).c_str());        
     }   
-
+     
     return _pipe_held;
 }
 
@@ -208,13 +195,12 @@ IPCMaster::_grab_pipe(unsigned long timeout)
 void 
 IPCMaster::_release_pipe()
 {
-    if(_pipe_held){
-        if(_main_channel_pipe_hndl != INVALID_HANDLE_VALUE){
-            CloseHandle(_main_channel_pipe_hndl);
-            _main_channel_pipe_hndl = INVALID_HANDLE_VALUE;
-        }
-        _main_channel_mtx.unlock();            
+    if(_pipe_held && (_main_channel_pipe_hndl != INVALID_HANDLE_VALUE))
+    {        
+        CloseHandle(_main_channel_pipe_hndl);
+        _main_channel_pipe_hndl = INVALID_HANDLE_VALUE;     
     }
+    _main_channel_mtx.unlock();
     _pipe_held = false;
 }
 
@@ -241,7 +227,7 @@ IPCSlave::wait_for_master()
         DisconnectNamedPipe(_main_channel_pipe_hndl);
     }
 
-    /* BLOCK UNTIL MASTER CALLS try_for_slave() */
+    /* BLOCK until master calls _grab_pipe() */
     if( !ConnectNamedPipe(_main_channel_pipe_hndl, NULL) )
     {
         errno_t e = GetLastError(); 
@@ -291,7 +277,10 @@ IPCSlave::_launch_probe_channel()
                     TOSDB_LogEx("IPC", "ReadFile failed in probe_channel", e);
                 }                  
                                      
-                /* CHECK THE DATA WE RECEIVED */
+                if(b != PROBE_BYTE || r != 1){
+                    TOSDB_LogH("IPC", ("didn't receive PROBE_BYTE, b:" +std::to_string(b)).c_str());
+                    b = 0;
+                }
 
                 ret = WriteFile(_probe_channel_pipe_hndl, (void*)&b, sizeof(b), &r, NULL);
                 if(!ret){

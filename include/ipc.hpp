@@ -33,6 +33,10 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 class IPCBase{
 public:
     static const int MAX_MESSAGE_SZ = 255; 
+    static const uint8_t PROBE_BYTE = 0xff;
+
+    bool
+    connected(unsigned long timeout);
 
 protected:
     std::string _main_channel_mtx_name;
@@ -42,6 +46,7 @@ protected:
     std::string _probe_channel_mtx_name;
     std::string _probe_channel_pipe_name;    
     HANDLE _probe_channel_pipe_hndl;
+    IPCNamedMutexClient _probe_channel_mtx;
 
     bool
     send(std::string msg) const;
@@ -57,11 +62,12 @@ protected:
 #else                     
             _main_channel_mtx_name(std::string("Global\\").append(name).append("_main_channel_mtx")),
             _probe_channel_mtx_name(std::string("Global\\").append(name).append("_probe_channel_mtx")),
-#endif
+#endif            
             _main_channel_pipe_name(std::string("\\\\.\\pipe\\").append(name).append("_main_channel_pipe")),
             _probe_channel_pipe_name(std::string("\\\\.\\pipe\\").append(name).append("_probe_channel_pipe")),        
             _main_channel_pipe_hndl(INVALID_HANDLE_VALUE),
-            _probe_channel_pipe_hndl(INVALID_HANDLE_VALUE)
+            _probe_channel_pipe_hndl(INVALID_HANDLE_VALUE),
+            _probe_channel_mtx(_probe_channel_mtx_name)
         {
         }
 
@@ -132,13 +138,10 @@ public:
                 CloseHandle(_main_channel_pipe_hndl);            
             }
 
-            uint8_t b;
-            DWORD r;
             /* break out of the probe channel loop */
             _probe_channel_run_flag = false;
-            /* should we protect this (al la Master::connected()) ? */
-            CallNamedPipe( _probe_channel_pipe_name.c_str(), 
-                           (void*)&b, sizeof(b), (void*)&b, sizeof(b), &r, 1000);  
+            /* this will force evaluation of the run flag */
+            connected(TOSDB_DEF_TIMEOUT);  
         }
 
     bool
@@ -152,8 +155,7 @@ public:
 class IPCMaster
         : public IPCBase{
     bool _pipe_held;  
-
-    IPCNamedMutexClient _probe_channel_mtx;
+    
     IPCNamedMutexClient _main_channel_mtx;
 
     bool
@@ -166,8 +168,7 @@ public:
     IPCMaster(std::string name)
         :
             IPCBase(name),
-            _pipe_held(false),      
-            _probe_channel_mtx(_probe_channel_mtx_name),
+            _pipe_held(false),              
             _main_channel_mtx(_main_channel_mtx_name)
         {
         }
@@ -177,11 +178,7 @@ public:
         }
 
     bool
-    connected(unsigned long timeout);
-
-    bool
     call(std::string *msg, unsigned long timeout);
-
 };
 
 

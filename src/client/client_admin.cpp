@@ -97,13 +97,11 @@ _requestStreamOP(TOS_Topics::TOPICS topic_t,
         return -1;
     }          
 
-    std::string msg = std::to_string(opcode) + ' '
-                    + TOS_Topics::MAP()[topic_t] + ' '
-                    + item + ' '
-                    + std::to_string(timeout);   
+    std::string msg = std::to_string(opcode) + ' ' + TOS_Topics::MAP()[topic_t] + ' '
+                      + item + ' ' + std::to_string(timeout);   
 
-    if(master.call(&msg,timeout)){
-        TOSDB_LogH("IPC",("master.call failled, msg:" + msg).c_str());
+    if( !master.call(&msg,timeout) ){
+        TOSDB_LogH("IPC",("master.call failled in _requestStreamOP, msg:" + msg).c_str());
         return -2;
     }
 
@@ -443,7 +441,7 @@ TOSDB_Connect()
 {  
     /* Nov 1 2016: Change (non-blocking) raw log calls to regular (blocking) 
          We should be able to block in here as long as this is not called from DllMain  */
-    if(_connected())
+    if(_connected()) /* shouldnt this just check aware_of_connection ? */
         return 0;
  
     if(buffer_thread)
