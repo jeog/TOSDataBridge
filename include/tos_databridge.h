@@ -1117,7 +1117,7 @@ EXT_C_SPEC  DLL_SPEC_IMPL void
 TOSDB_Log_(DWORD , DWORD, Severity, LPCSTR, LPCSTR); 
 
 EXT_C_SPEC  DLL_SPEC_IMPL void  
-TOSDB_LogEx_(DWORD , DWORD, Severity, LPCSTR, LPCSTR, DWORD); 
+TOSDB_LogEx_(DWORD , DWORD, Severity, LPCSTR, LPCSTR, int); 
 
 #define TOSDB_LogH(tag,desc) \
 TOSDB_Log_(GetCurrentProcessId(), GetCurrentThreadId(), high, tag, desc)

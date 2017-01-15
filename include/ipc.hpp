@@ -31,6 +31,9 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 
 
 class IPCBase{
+public:
+    static const int MAX_MESSAGE_SZ = 255; 
+
 protected:
     std::string _main_channel_mtx_name;
     std::string _main_channel_pipe_name;
@@ -45,9 +48,6 @@ protected:
    
     bool
     recv(std::string *msg) const;
-
-public:
-    static const int MAX_MESSAGE_SZ = 255;
 
     IPCBase(std::string name)
         :
@@ -86,6 +86,8 @@ class IPCSlave
     HANDLE _main_channel_mtx;        
     HANDLE _probe_channel_mtx;
 
+    bool _probe_channel_run_flag;
+
     int    
     _set_security(errno_t *e);
 
@@ -100,7 +102,8 @@ public:
         :    
             IPCBase(name),                       
             _main_channel_mtx(NULL),
-            _probe_channel_mtx(NULL) 
+            _probe_channel_mtx(NULL),
+            _probe_channel_run_flag(true)
         { 
             /* initialize object security */  
             errno_t e = 0;
@@ -122,24 +125,33 @@ public:
     IPCSlave::~IPCSlave()
         {           
             CloseHandle(_main_channel_mtx);      
-            DisconnectNamedPipe(_main_channel_pipe_hndl);
-            CloseHandle(_main_channel_pipe_hndl);            
+            CloseHandle(_probe_channel_mtx);
+
+            if(_main_channel_pipe_hndl != INVALID_HANDLE_VALUE){
+                DisconnectNamedPipe(_main_channel_pipe_hndl);
+                CloseHandle(_main_channel_pipe_hndl);            
+            }
+
+            uint8_t b;
+            DWORD r;
+            /* break out of the probe channel loop */
+            _probe_channel_run_flag = false;
+            /* should we protect this (al la Master::connected()) ? */
+            CallNamedPipe( _probe_channel_pipe_name.c_str(), 
+                           (void*)&b, sizeof(b), (void*)&b, sizeof(b), &r, 1000);  
         }
 
     bool
     wait_for_master();
 
     using IPCBase::send;
-    using IPCBase::recv;
-    // RECV
-
+    using IPCBase::recv;  
 };
 
 
 class IPCMaster
         : public IPCBase{
-    bool _pipe_held;
-    bool _connected;
+    bool _pipe_held;  
 
     IPCNamedMutexClient _probe_channel_mtx;
     IPCNamedMutexClient _main_channel_mtx;
@@ -154,27 +166,15 @@ public:
     IPCMaster(std::string name)
         :
             IPCBase(name),
-            _pipe_held(false),
-            _connected(false),
+            _pipe_held(false),      
             _probe_channel_mtx(_probe_channel_mtx_name),
             _main_channel_mtx(_main_channel_mtx_name)
         {
         }
 
     ~IPCMaster()
-        {
-            disconnect();           
+        {                      
         }
-
-    inline void
-    disconnect()
-    {
-        _release_pipe();
-        _connected = false;
-    }
-
-    bool 
-    try_for_slave(unsigned long timeout);
 
     bool
     connected(unsigned long timeout);

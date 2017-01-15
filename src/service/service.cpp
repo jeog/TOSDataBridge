@@ -100,26 +100,26 @@ SendMsgWaitForResponse(long msg)
 
     if(!master){
         master = std::unique_ptr<IPCMaster>( new IPCMaster(TOSDB_COMM_CHANNEL) );
-        TOSDB_LogDebug("***IPC*** SERVICE - TRY FOR SLAVE (IN)");
-        master->try_for_slave(TOSDB_DEF_TIMEOUT);
-        TOSDB_LogDebug("***IPC*** SERVICE - TRY FOR SLAVE (OUT)");
-        // ERROR CHECK        
+        TOSDB_LogDebug("***IPC*** SERVICE - CHECK CONNECTED (IN)");
+        if( !master->connected(TOSDB_DEF_TIMEOUT) ){
+            TOSDB_LogH("IPC", "created IPCMaster is not connected");
+            return false;
+        }
+        TOSDB_LogDebug("***IPC*** SERVICE - CHECK CONNECTED (OUT)");
     }    
 
     TOSDB_LogDebug("***IPC*** SERVICE - CALL (IN)");
-
     if( !master->call(&ipc_msg, TOSDB_DEF_TIMEOUT) ){
-         TOSDB_LogH("IPC",("master.call failled, msg:" + ipc_msg).c_str());
+         TOSDB_LogH("IPC",("master.call failed in SendMsgWaitForResponse, msg:" + ipc_msg).c_str());
          return false;
     }
-
     TOSDB_LogDebug("***IPC*** SERVICE - CALL (OUT)");
 
     try{
         ret = std::stol(ipc_msg);
         return (ret == TOSDB_SIG_GOOD);
     }catch(...){
-        TOSDB_LogH("IPC", "failed to convert return message to long");
+        TOSDB_LogH("IPC", "failed to convert return message to long in SendMsgWaitForResponse");
         return false;
     }    
 }
@@ -130,25 +130,26 @@ ServiceController(DWORD cntrl)
 {
     switch(cntrl){ 
     case SERVICE_CONTROL_SHUTDOWN:
-    case SERVICE_CONTROL_STOP :
-    {     
+    case SERVICE_CONTROL_STOP:
+        
         shutdown_flag = true;
 
         TOSDB_Log("STATE","SERVICE_STOP_PENDING");
         UpdateStatus(SERVICE_STOP_PENDING, -1); 
 
-        if(pause_flag){ /* if we're paused... get it to continue silently */              
+        if(pause_flag){ 
+            /* if we're paused... get it to continue silently */              
             if(!SendMsgWaitForResponse(TOSDB_SIG_CONTINUE))            
-                TOSDB_Log("ADMIN", "error resuming paused thread to stop it");              
+                TOSDB_Log("ADMIN", "error resuming paused service stop it");              
         }
                
         if(!SendMsgWaitForResponse(TOSDB_SIG_STOP))        
-            TOSDB_Log("ADMIN","BAD_SIG returned from core process");   
+            TOSDB_Log("ADMIN","failed to send stop signal to engine");   
 
         break;
-    }     
-    case SERVICE_CONTROL_PAUSE:
-    {        
+       
+    case SERVICE_CONTROL_PAUSE: 
+
         if(pause_flag)
             break;
 
@@ -161,37 +162,27 @@ ServiceController(DWORD cntrl)
             TOSDB_Log("STATE","SERVICE_PAUSED");
             UpdateStatus(SERVICE_PAUSED, -1);
         }else{            
-            TOSDB_LogH("ADMIN", "engine failed to confirm pause msg");                        
+            TOSDB_LogH("ADMIN", "failed to send pause signal to engine");                        
         }
 
         break;
-    }     
-    case SERVICE_CONTROL_CONTINUE:
-    {
+         
+    case SERVICE_CONTROL_CONTINUE: 
+
         if(!pause_flag)
             break;    
         
         TOSDB_Log("STATE","SERVICE_CONTINUE_PENDING");
-        UpdateStatus(SERVICE_CONTINUE_PENDING, -1);
-
-        if(!master){
-            TOSDB_LogH("ADMIN","we don't own the slave");
-            break;
-        }            
+        UpdateStatus(SERVICE_CONTINUE_PENDING, -1);        
               
         if(SendMsgWaitForResponse(TOSDB_SIG_CONTINUE)){
             TOSDB_Log("STATE","SERVICE_RUNNING");
             UpdateStatus(SERVICE_RUNNING, -1);
             pause_flag = false;
         }else{
-            TOSDB_Log("ADMIN","BAD_SIG returned from core process");
+            TOSDB_Log("ADMIN","failed to send continue signal to engine");
         }
 
-        //master->release_pipe();
-        //master.reset();
-        break;
-    }    
-    default: 
         break;
     }    
 }

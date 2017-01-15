@@ -140,7 +140,7 @@ TOSDB_LogEx_(DWORD pid,
              Severity sevr, 
              LPCSTR tag,  
              LPCSTR description, 
-             DWORD error) 
+             int error) 
 {  
     std::string desc(description);
     desc.append(" ERROR# ").append(std::to_string(error));

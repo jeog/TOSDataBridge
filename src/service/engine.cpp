@@ -158,7 +158,7 @@ CreateBuffer(TOS_Topics::TOPICS topic_t,
              unsigned int buffer_sz = TOSDB_SHEM_BUF_SZ);
 
 DWORD WINAPI     
-Threaded_Init(LPVOID lParam);
+ThreadedWinInit(LPVOID lParam);
 
 LRESULT CALLBACK 
 WndProc(HWND, UINT, WPARAM, LPARAM);   
@@ -254,7 +254,7 @@ WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLn, int nShowCmd)
     /* spin-off the windows msg loop that we'll communicate w/ directly via 
        private messages in the main communication loop below; it will also 
        respond to return DDE messages from the TOS platform */
-    msg_thrd = CreateThread(NULL, 0, Threaded_Init, NULL, 0, &msg_thrd_id);
+    msg_thrd = CreateThread(NULL, 0, ThreadedWinInit, NULL, 0, &msg_thrd_id);
     if(!msg_thrd)
         return -1;  
 
@@ -300,6 +300,31 @@ namespace {
 }while(0)
 
 
+DWORD WINAPI 
+ThreadedWinInit(LPVOID lParam)
+{
+    if(!hinstance)
+        hinstance = GetModuleHandle(NULL);
+
+    msg_window = CreateWindow(CLASS_NAME, msg_window_name, WS_OVERLAPPEDWINDOW, 
+                              0, 0, 0, 0, NULL, NULL, hinstance, NULL);  
+
+    if(!msg_window) 
+        return 1; 
+
+    SetEvent(init_event);
+
+    MSG msg = {};   
+    while( GetMessage(&msg, NULL, 0, 0) )
+    {  
+        TranslateMessage(&msg);
+        DispatchMessage(&msg);    
+    }   
+     
+    return 0;
+}
+
+
 int
 RunMainCommLoop(IPCSlave *pslave)
 {
@@ -316,25 +341,21 @@ RunMainCommLoop(IPCSlave *pslave)
     while(!shutdown_flag){     
               
         TOSDB_LogDebug("***IPC*** ENGINE - WAIT FOR MASTER (IN)");
-
         /* BLOCK until master is ready */
         if( !pslave->wait_for_master() ){      
             TOSDB_LogH("IPC", "wait_for_master failed");
             return -1;
         }
-
         TOSDB_LogDebug("***IPC*** ENGINE - WAIT FOR MASTER (OUT)");
         
         while(!shutdown_flag){
                       
             TOSDB_LogDebug("***IPC*** ENGINE - RECEIVE (IN)");
-
             /* BLOCK until we get a message */
             if( !pslave->recv(&ipc_msg) ){
                 TOSDB_LogDebug("***IPC*** ENGINE - RECEIVE (FAIL)");
                 break;          
             }
-
             TOSDB_LogDebug("***IPC*** ENGINE - RECEIVE (OUT)");
 
             ret = ParseIPCMessage(ipc_msg, &cli_op, &cli_topic, &cli_item, &cli_timeout);
@@ -389,11 +410,10 @@ RunMainCommLoop(IPCSlave *pslave)
             }       
 
             TOSDB_LogDebug("***IPC*** ENGINE - RETURN (IN)");
-
             /* return msg to MASTER */
-            if( !pslave->send(std::to_string(ret)) )
-                TOSDB_LogDebug("***IPC*** ENGINE - RETURN (FAIL)");           
-
+            if( !pslave->send(std::to_string(ret)) ){
+                TOSDB_LogH("IPC", "send/return failed in main comm loop");                       
+            }
             TOSDB_LogDebug("***IPC*** ENGINE - RETURN (OUT)");
         }  
     }  
@@ -469,31 +489,6 @@ ParseIPCMessage(std::string msg,
         return -3;
     }
 
-    return 0;
-}
-
-
-DWORD WINAPI 
-Threaded_Init(LPVOID lParam)
-{
-    if(!hinstance)
-        hinstance = GetModuleHandle(NULL);
-
-    msg_window = CreateWindow(CLASS_NAME, msg_window_name, WS_OVERLAPPEDWINDOW, 
-                              0, 0, 0, 0, NULL, NULL, hinstance, NULL);  
-
-    if(!msg_window) 
-        return 1; 
-
-    SetEvent(init_event);
-
-    MSG msg = {};   
-    while( GetMessage(&msg, NULL, 0, 0) )
-    {  
-        TranslateMessage(&msg);
-        DispatchMessage(&msg);    
-    }   
-     
     return 0;
 }
 

@@ -212,14 +212,17 @@ NamedMutexLockGuard::NamedMutexLockGuard(std::string name)
 {
     _mtx = CreateMutex(NULL, FALSE, name.c_str());
     if(!_mtx){        
+        errno_t e = GetLastError();
         std::stringstream m;
-        m << "failed to create mutex: " << name << ", error: " << GetLastError();
+        m << "failed to create mutex: " << name << ", error: " << e;
         throw std::runtime_error(m.str());
     }
         
-    if( WaitForSingleObject(_mtx, INFINITE) == WAIT_FAILED ){
+    if( WaitForSingleObject(_mtx, INFINITE) == WAIT_FAILED )
+    {
+        errno_t e = GetLastError();
         std::stringstream m;
-        m << "failed to lock mutex: " << name << ", error: " << GetLastError();
+        m << "failed to lock mutex: " << name << ", error: " << e;
         throw std::runtime_error(m.str());
     }       
 }

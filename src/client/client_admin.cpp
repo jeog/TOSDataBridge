@@ -288,9 +288,7 @@ _cleanupBlock(LPVOID lParam)
 
 
 bool
-_connected(bool log_if_not_connected=false, 
-           bool throw_if_conflicting_state=true,
-           bool log_if_conflicting_state=true)
+_connected(bool log_if_not_connected=false)
 {
     bool conn = master.connected(TOSDB_DEF_TIMEOUT);
     bool aware = aware_of_connection.load();
@@ -300,18 +298,6 @@ _connected(bool log_if_not_connected=false,
             TOSDB_LogH("IPC", "not connected to slave (!aware_of_connection)");                 
         if(!conn)
             TOSDB_LogH("IPC", "not connected to slave (!master.connected)");            
-    }
-    
-    if(conn != aware){
-        std:: string msg = "illegal connection state --";
-        msg += " master:" + std::to_string(conn);
-        msg += " aware: " + std::to_string(aware);
-
-        if(log_if_conflicting_state)
-            TOSDB_LogH("IPC", msg.c_str());
-
-        if(throw_if_conflicting_state)            
-            throw TOSDB_Error(msg.c_str(), "IPC");        
     }
 
     return conn && aware;
@@ -324,13 +310,10 @@ _threadedExtractLoop(LPVOID lParam)
     steady_clock_type::time_point tbeg, tend;
     long tdiff;   
  
-    aware_of_connection.store(true);
-    /* NEED TO BE CAREFUL WITH HOW WE CHECK CONNECTED STATE HERE:
-          - its OK for us to (passively) go from connected -> not connected (i.e. DONT LOG THIS)
-          - this is the one spot where it's fine for master.connected not
-            to match aware_of_connection (i.e DONT LOG OR THROW IF THIS HAPPENS)
-          - if either is false, break out of while and reset both to indicate no connection */
-    while( _connected(false,false,false) ){ 
+    if( master.connected(TOSDB_DEF_TIMEOUT) )
+        aware_of_connection.store(true);
+
+    while( _connected() ){ 
         /* the concurrent read loop errs on the side of greedyness */
         tbeg = steady_clock.now(); /* include time waiting for lock */   
         {       
@@ -363,8 +346,7 @@ _threadedExtractLoop(LPVOID lParam)
         Sleep(std::min<long>(std::max<long>((buffer_latency - tdiff),0),Glacial)); 
     }
 
-    aware_of_connection.store(false);
-    master.disconnect();  
+    aware_of_connection.store(false);   
     buffer_thread = NULL;
     buffer_thread_id = 0;
     return 0;
@@ -434,7 +416,8 @@ DllMain(HANDLE mod, DWORD why, LPVOID res) /* ENTRY POINT */
         break;
     case DLL_PROCESS_DETACH:  
         {
-            if( master.connected(TOSDB_DEF_TIMEOUT) ){
+            if( master.connected(TOSDB_DEF_TIMEOUT) )
+            {
                 aware_of_connection.store(false);        
                 for(const auto & buffer : buffers)
                 {/* signal the service and close the handles */        
@@ -442,8 +425,7 @@ DllMain(HANDLE mod, DWORD why, LPVOID res) /* ENTRY POINT */
                                     TOSDB_DEF_TIMEOUT, TOSDB_SIG_REMOVE);
                     UnmapViewOfFile(std::get<3>(buffer.second));
                     CloseHandle(std::get<4>(buffer.second));
-                }
-                TOSDB_Disconnect();  
+                }                  
             }
             StopLogging();
         } 
@@ -463,12 +445,7 @@ TOSDB_Connect()
          We should be able to block in here as long as this is not called from DllMain  */
     if(_connected())
         return 0;
-
-    if(!master.try_for_slave(TOSDB_DEF_TIMEOUT)){
-        TOSDB_LogH("IPC","TOSDB_Connect(): could not connect with slave");
-        return -1;
-    }  
-
+ 
     if(buffer_thread)
         return 0;
 
@@ -493,7 +470,7 @@ TOSDB_Connect()
 int 
 TOSDB_Disconnect()
 {  
-    master.disconnect();
+    aware_of_connection.store(false);
     return 0;
 }
 
@@ -549,7 +526,7 @@ TOSDB_CreateBlock(LPCSTR id,
                   BOOL is_datetime,
                   size_type timeout)
 {   
-    if( !_connected(true,false) )
+    if( !_connected(true) )
         return -1;
 
     if(!CheckIDLength(id))    
@@ -582,7 +559,7 @@ TOSDB_Add(std::string id, str_set_type items, topic_set_type topics_t)
     HWND hndl = NULL;
     int err = 0;
 
-     if( !_connected(true,false) )
+     if( !_connected(true) )
         return -2;
 	
     /* remove NULL topics */
@@ -793,7 +770,7 @@ TOSDB_RemoveTopic(std::string id, TOS_Topics::TOPICS topic_t)
     TOSDBlock* db;
     int err = 0;
 
-    if( !_connected(true,false) )
+    if( !_connected(true) )
         return -2;
   
     GLOBAL_RLOCK_GUARD;
@@ -853,7 +830,7 @@ TOSDB_RemoveItem(LPCSTR id, LPCSTR item)
     TOSDBlock* db;
     int err = 0;
 
-    if( !_connected(true,false) )
+    if( !_connected(true) )
         return -1;
   
     GLOBAL_RLOCK_GUARD;
@@ -914,7 +891,7 @@ TOSDB_CloseBlock(LPCSTR id)
     /*     
     why do we need to be connected? we need to deal with the leaked streams !!
 
-    if( !_connected(true,false) )
+    if( !_connected(true) )
         return -1;     
     */
 
@@ -989,7 +966,7 @@ TOSDB_DumpSharedBufferStatus()
 {
     long ret;
 
-    if( !_connected(true,false) )
+    if( !_connected(true) )
         return -1;;
 
     GLOBAL_RLOCK_GUARD;
