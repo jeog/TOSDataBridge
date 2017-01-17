@@ -186,17 +186,18 @@ WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLn, int nShowCmd)
     bool is_service = false;
     bool is_spawned = false;
 
-    /* start logging */
     std::string logpath(TOSDB_LOG_PATH);    
     logpath.append(std::string(LOG_NAME));
-    StartLogging( logpath.c_str() );      
+    StartLogging( logpath.c_str() );
 
-    /* parse args, check whether we were spawned by service, warn if not */
+    /* parse args */ 
     ParseArgs(args, lpCmdLn);    
 
+    /* check whether we were spawned by service... */
     if(!args.empty() && args[0] == "--spawned")
-        is_spawned=true;
+        is_spawned=true; 
 
+    /* ...if not, warn */
     if(!is_spawned){
         std::string warn_msg("Running tos-databridge-engine directly is not recommended. "
             "Inadequate privileges can cause connection issues with TOS or fatal errors. \n\n"
@@ -257,12 +258,18 @@ WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLn, int nShowCmd)
     msg_thrd = CreateThread(NULL, 0, ThreadedWinInit, NULL, 0, &msg_thrd_id);
     if(!msg_thrd)
         return -1;  
-
+    
+    init_event = CreateEvent(NULL, FALSE, FALSE, NULL); 
+    
     /* block until its ready */
-    if(WaitForSingleObject(init_event,TOSDB_DEF_TIMEOUT) == WAIT_TIMEOUT){
-        TOSDB_LogH("STARTUP","core thread did not receive signal from msg thread");
-        return CleanUpMain(-1);
-    }    
+    switch( WaitForSingleObject(init_event,TOSDB_DEF_TIMEOUT) ){
+    case WAIT_TIMEOUT:
+       TOSDB_LogH("STARTUP","main thread timed out waiting for signal from msg thread");        
+       return CleanUpMain(-1);  
+    case WAIT_FAILED:
+       TOSDB_LogH("STARTUP","main thread failed to receive signal from msg thread");        
+       return CleanUpMain(-1); 
+    }  
   
     GetSystemInfo(&sys_info);     
 
@@ -277,10 +284,7 @@ WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLn, int nShowCmd)
     
     err = CleanUpMain(err);      
 
-#ifndef LOG_BACKEND_USE_SINGLE_FILE
-    /* if sharing backend logs the service should close the log file */
     StopLogging();
-#endif
 
     return err;
 }
@@ -588,9 +592,7 @@ CreateNewTopicStream( TOS_Topics::TOPICS topic_t,
     std::string topic_str;
     ATOM topic_atom;
     ATOM app_atom;
-    bool ret;
-
-    init_event = CreateEvent(NULL, FALSE, FALSE, NULL);    
+    bool ret;         
 
     topic_str = TOS_Topics::map[topic_t];  
     topic_atom = GlobalAddAtom(topic_str.c_str());

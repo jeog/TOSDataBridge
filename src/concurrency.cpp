@@ -209,29 +209,30 @@ IPCNamedMutexClient::unlock()
 
 
 NamedMutexLockGuard::NamedMutexLockGuard(std::string name)
-{
+{    
     _mtx = CreateMutex(NULL, FALSE, name.c_str());
     if(!_mtx){        
         errno_t e = GetLastError();
         std::stringstream m;
-        m << "failed to create mutex: " << name << ", error: " << e;
+        m << "failed to create mutex: " << name << ", error: " << e;        
         throw std::runtime_error(m.str());
     }
         
     if( WaitForSingleObject(_mtx, INFINITE) == WAIT_FAILED )
     {
-        errno_t e = GetLastError();
+        errno_t e = GetLastError(); 
         std::stringstream m;
-        m << "failed to lock mutex: " << name << ", error: " << e;
+        m << "failed to lock mutex: " << name << ", error: " << e;        
         throw std::runtime_error(m.str());
-    }       
+    }      
 }
+
 
 NamedMutexLockGuard::~NamedMutexLockGuard()
 {
-    if(_mtx){
+    if(_mtx){     
         ReleaseMutex(_mtx);
-        CloseHandle(_mtx);        
+        CloseHandle(_mtx);             
     }
 }
 

@@ -132,7 +132,7 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 /* combine engine-log.log and service-log.log for easier IPC debugging */
 #ifdef _DEBUG
 #define LOG_BACKEND_USE_SINGLE_FILE
-#define LOG_BACKEND_MUTEX_NAME "TOSDB_log_mutex_1"
+#define LOG_BACKEND_MUTEX_NAME "Global\\TOSDB_log_mutex_1"
 #define LOG_BACKEND_SINGLE_FILE_NAME "engine-service-log.log"
 #endif
 
@@ -189,14 +189,19 @@ typedef struct{
 #define TOSDB_TOPIC_BITMASK ((type_bits_type)0xE0)
 #define TOSDB_STR_DATA_SZ ((size_type)40)
 #define TOSDB_MAX_STR_SZ ((size_type)0xFF)
-#define TOSDB_DEF_TIMEOUT  2000
-#define TOSDB_DEF_PAUSE    (TOSDB_DEF_TIMEOUT / 10)
-#define TOSDB_MIN_TIMEOUT  1500
-#define TOSDB_SHEM_BUF_SZ  4096
-#define TOSDB_BLOCK_ID_SZ  63 
+#define TOSDB_DEF_TIMEOUT 2000
+#define TOSDB_DEF_PAUSE (TOSDB_DEF_TIMEOUT / 10)
+#define TOSDB_MIN_TIMEOUT 1500
+#define TOSDB_SHEM_BUF_SZ 4096
+#define TOSDB_BLOCK_ID_SZ 63 
 #define TOSDB_MAX_BLOCK_SZ INT_MAX 
 #define TOSDB_DEF_LATENCY Fast
 /* NEED for tosdb/setup.py !!! DO NOT REMOVE !!! */ 
+
+typedef enum{ 
+    low = 0, 
+    high 
+}Severity;  
 
 /* following block will contain back-end stuff shared by various mods;
    to access you should define 'THIS_IMPORTS_IMPLEMENTATION'  */
@@ -233,7 +238,7 @@ DLL_SPEC_IMPL std::string
 BuildLogPath(std::string name);
 
 DLL_SPEC_IMPL std::string 
-SysTimeString();
+SysTimeString(bool use_msec=true);
 
 DLL_SPEC_IMPL void 
 ParseArgs(std::vector<std::string>& vec, std::string str);
@@ -275,19 +280,29 @@ extern char  DLL_SPEC_IMPL  TOSDB_LOG_PATH[ MAX_PATH+40 ];
    this will be relative to the back-end lib: _tos-databridge-[].dll */
 #define LOCAL_LOG_PATH "\\..\\..\\..\\log\\" /* needs to be < 40 char */
 
-/* LOGGING - logging.cpp */
+/* LOGGING - logging.cpp  - (also, see public Log functions at end of header) */
 
-DLL_SPEC_IMPL void    /* TODO make same frmt as all other log funcs */
-TOSDB_Log_Raw(LPCSTR); /* impl only (doesn't sync/block) */
+/* 'Raw' versions are implemenation only (they don't sync/block) */
+DLL_SPEC_IMPL void    
+TOSDB_LogRaw_(Severity, LPCSTR , LPCSTR); 
+
+#define TOSDB_LogRawH(tag,desc) TOSDB_LogRaw_(high, tag, desc)
+#define TOSDB_LogRaw(tag,desc) TOSDB_LogRaw_(low, tag, desc)
 
 EXT_C_SPEC  DLL_SPEC_IMPL  void  
-StartLogging(LPCSTR fname);
+StartLogging(LPCSTR path);
 
 EXT_C_SPEC  DLL_SPEC_IMPL  void  
 StopLogging();
 
 EXT_C_SPEC  DLL_SPEC_IMPL  void  
 ClearLog();
+
+#ifdef _DEBUG
+#define TOSDB_LogDebug(desc) TOSDB_LogH("DEBUG", desc)
+#else
+#define TOSDB_LogDebug(desc) do{}while(0)
+#endif
 
 #endif /* THIS_EXPORTS_IMPLEMENTATION || THIS_IMPORTS_IMPLEMENTATION */
 
@@ -1106,34 +1121,22 @@ operator<<(std::ostream&, const std::pair<std::vector<std::string>,dts_vector_ty
 
 #endif /* __cplusplus */
 
-typedef enum{ low = 0, high }Severity;  
-
 /* when building tos-databridge[].dll these calls need to be both imported( from _tosd-databridge-[].dll)
    and exported (from tos-databridge[].dll)  -  they must use /export:[func name] during link */ 
 /* if logging is not enabled high severity events will be sent to std::cerr */ 
 
 /* use the macros (below) instead */
 EXT_C_SPEC  DLL_SPEC_IMPL void  
-TOSDB_Log_(DWORD , DWORD, Severity, LPCSTR, LPCSTR); 
+TOSDB_Log_(Severity, LPCSTR, LPCSTR); 
 
 EXT_C_SPEC  DLL_SPEC_IMPL void  
-TOSDB_LogEx_(DWORD , DWORD, Severity, LPCSTR, LPCSTR, int); 
+TOSDB_LogEx_(Severity, LPCSTR, LPCSTR, int); 
 
-#define TOSDB_LogH(tag,desc) \
-TOSDB_Log_(GetCurrentProcessId(), GetCurrentThreadId(), high, tag, desc)
+#define TOSDB_LogH(tag,desc) TOSDB_Log_(high, tag, desc)
 
-#define TOSDB_Log(tag,desc) \
-TOSDB_Log_(GetCurrentProcessId(), GetCurrentThreadId(), low, tag, desc)
+#define TOSDB_Log(tag,desc) TOSDB_Log_(low, tag, desc)
 
-/* DONT PASS GetLastError() INLINE to the macro as the Get...Id sys calls go first */
-#define TOSDB_LogEx(tag,desc,error) \
-TOSDB_LogEx_(GetCurrentProcessId(), GetCurrentThreadId(), high, tag, desc, error)
-
-#ifdef _DEBUG
-#define TOSDB_LogDebug(desc) TOSDB_Log("DEBUG", desc)
-#else
-#define TOSDB_LogDebug(desc) do{}while(0)
-#endif
+#define TOSDB_LogEx(tag,desc,error) TOSDB_LogEx_(high, tag, desc, error)
 
 EXT_C_SPEC DLL_SPEC_IMPL char**  
 NewStrings(size_t num_strs, size_t strs_len);

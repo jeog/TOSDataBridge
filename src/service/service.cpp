@@ -52,6 +52,7 @@ SERVICE_STATUS service_status;
 SERVICE_STATUS_HANDLE service_status_hndl;
 
 HINSTANCE hinstance = NULL;
+HANDLE update_loop_done_event = NULL;
     
 volatile bool shutdown_flag = false;  
 volatile bool pause_flag = false;
@@ -81,12 +82,16 @@ UpdateStatus(int status, int check_point)
         service_status.dwServiceSpecificExitCode = 2;
         ++service_status.dwCheckPoint;
 
+        UpdateStatus(SERVICE_STOPPED, -1);
+        TerminateProcess(engine_pinfo.hProcess, EXIT_FAILURE);
+
+        /*
         ret = SetServiceStatus(service_status_hndl, &service_status);
         if(!ret){
             TOSDB_LogH("ADMIN", "fatal error handling service error");
             TerminateProcess(engine_pinfo.hProcess, EXIT_FAILURE);            
             ExitProcess(EXIT_FAILURE);
-        }
+        }*/
     }
 }
 
@@ -130,8 +135,8 @@ ServiceController(DWORD cntrl)
 {
     switch(cntrl){ 
     case SERVICE_CONTROL_SHUTDOWN:
-    case SERVICE_CONTROL_STOP:
-        
+    case SERVICE_CONTROL_STOP:     
+
         shutdown_flag = true;
 
         TOSDB_Log("STATE","SERVICE_STOP_PENDING");
@@ -143,17 +148,17 @@ ServiceController(DWORD cntrl)
                 TOSDB_Log("ADMIN", "error resuming paused service stop it");              
         }
                
-        if(!SendMsgWaitForResponse(TOSDB_SIG_STOP))        
-            TOSDB_Log("ADMIN","failed to send stop signal to engine");   
+        if(!SendMsgWaitForResponse(TOSDB_SIG_STOP)){        
+            TOSDB_Log("ADMIN","failed to send stop signal to engine");                  
+            TerminateProcess(engine_pinfo.hProcess, EXIT_FAILURE);
+        }        
 
         break;
        
     case SERVICE_CONTROL_PAUSE: 
 
         if(pause_flag)
-            break;
-
-        pause_flag = true;
+            break;       
 
         TOSDB_Log("STATE","SERVICE_PAUSE_PENDING");
         UpdateStatus(SERVICE_PAUSE_PENDING, -1);    
@@ -161,9 +166,10 @@ ServiceController(DWORD cntrl)
         if(SendMsgWaitForResponse(TOSDB_SIG_PAUSE)){
             TOSDB_Log("STATE","SERVICE_PAUSED");
             UpdateStatus(SERVICE_PAUSED, -1);
+            pause_flag = true;
         }else{            
             TOSDB_LogH("ADMIN", "failed to send pause signal to engine");                        
-        }
+        }        
 
         break;
          
@@ -300,6 +306,7 @@ SpawnRestrictedProcess(std::string engine_cmd, int session = -1)
 
 };
 
+
 void WINAPI 
 ServiceMain(DWORD argc, LPSTR argv[])
 {
@@ -330,13 +337,16 @@ ServiceMain(DWORD argc, LPSTR argv[])
     TOSDB_Log("STATE","SERVICE_START_PENDING");
     TOSDB_Log("ADMIN","starting service update loop on its own thread");
         
+    update_loop_done_event = CreateEvent(NULL, FALSE, FALSE, NULL);
+
     /* spin off the basic service update loop */
     std::async( std::launch::async, 
                 [&]{
                     while(!shutdown_flag){
                         Sleep(UPDATE_PERIOD);
                         UpdateStatus(-1, -1); 
-                    } 
+                    }
+                    SetEvent(update_loop_done_event);
                 } 
               );
                   
@@ -356,6 +366,17 @@ ServiceMain(DWORD argc, LPSTR argv[])
     }
 
     /*** IF WE GET HERE WE WILL SHUTDOWN ***/
+    shutdown_flag = true;
+
+    switch( WaitForSingleObject(update_loop_done_event, TOSDB_DEF_TIMEOUT) ){
+    case WAIT_TIMEOUT:
+       TOSDB_LogH("SHUTDOWN","main thread timed out waiting for signal from update loop");              
+       break;
+    case WAIT_FAILED:
+       TOSDB_LogH("SHUTDOWN","main thread failed to receive signal from update loop");        
+       break;
+    }  
+
     UpdateStatus(SERVICE_STOPPED, 0);
     
     TOSDB_Log("STATE","SERVICE_STOPPED");    
@@ -484,6 +505,7 @@ WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLn, int nShowCmd)
 
     TOSDB_Log("SHUTDOWN","service exiting");
     StopLogging();
+    
     return 0;
 }
     
