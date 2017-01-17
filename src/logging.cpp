@@ -32,7 +32,7 @@ namespace {
 
 const system_clock_type SYSTEM_CLOCK;
 const size_type COL_WIDTHS[5] = {36, 12, 12, 20, 12};
-const LPCSTR  SEVERITY[2] = {"low","high"};
+const LPCSTR  SEVERITY[2] = {"LOW","HIGH"};
 
 #ifndef LOG_BACKEND_USE_SINGLE_FILE
 std::mutex log_file_mtx;
@@ -52,7 +52,7 @@ _write_log(std::ofstream& fout,
          << std::setw(COL_WIDTHS[2]) << std::left << GetCurrentThreadId()
          << std::setw(COL_WIDTHS[3]) << std::left << std::string(tag).substr(0,COL_WIDTHS[3]-1)
          << std::setw(COL_WIDTHS[4]) << std::left << SEVERITY[sevr] 
-                                     << std::left << desc << std::endl;     
+                                     << std::left << desc << std::endl; 
 }
 
 void
@@ -170,21 +170,30 @@ SysTimeString(bool use_msec)
 {
     using namespace std::chrono;
 
+    time_t now;
+    long long ms_rem = 0;
     int madj = use_msec ? 10 : 0; // 2 + 6 + 1 + 1(pad) = 10 char
 
     SmartBuffer<char> buf(COL_WIDTHS[0] - madj);    
 
-    auto tp = SYSTEM_CLOCK.now();    
-    auto now = SYSTEM_CLOCK.to_time_t(tp);    
+    auto tp = SYSTEM_CLOCK.now();  
+
+    if(use_msec){
+        auto ms = duration_cast<microseconds>(tp.time_since_epoch());
+        ms_rem = ms.count() % 1000000; 
+        /* remove the msec so we don't accidentally round up */
+        now = SYSTEM_CLOCK.to_time_t(tp - microseconds(ms_rem));  
+    }else{
+        now = SYSTEM_CLOCK.to_time_t(tp);  
+    }
+  
     ctime_s(buf.get(), COL_WIDTHS[0] - madj, &now); 
 
     std::string tmp(buf.get());
     tmp.pop_back();
 
-    if(use_msec){
-        auto ms = duration_cast<microseconds>(tp.time_since_epoch()).count() % 1000000;
-        tmp += " [" + std::to_string(ms) + ']'; 
-    }
+    if(use_msec)        
+        tmp += " [" + std::to_string(ms_rem) + ']';     
 
     return tmp;
 }

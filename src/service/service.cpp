@@ -41,6 +41,10 @@ LPCSTR LOG_NAME = LOG_BACKEND_SINGLE_FILE_NAME;
 LPCSTR LOG_NAME = "service-log.log";
 #endif 
 
+#ifdef REDIRECT_STDERR_TO_LOG
+LPCSTR ERR_LOG_NAME = "service-stderr.log";
+#endif
+
 std::string engine_path;
 std::string integrity_level; 
 
@@ -52,7 +56,6 @@ SERVICE_STATUS service_status;
 SERVICE_STATUS_HANDLE service_status_hndl;
 
 HINSTANCE hinstance = NULL;
-HANDLE update_loop_done_event = NULL;
     
 volatile bool shutdown_flag = false;  
 volatile bool pause_flag = false;
@@ -76,22 +79,18 @@ UpdateStatus(int status, int check_point)
 
     ret = SetServiceStatus(service_status_hndl, &service_status);
     if(!ret){
-        TOSDB_LogH("ADMIN","error setting status");
+        TOSDB_LogH("ADMIN","error setting service status");
         service_status.dwCurrentState = SERVICE_STOPPED;
         service_status.dwWin32ExitCode = ERROR_SERVICE_SPECIFIC_ERROR;
         service_status.dwServiceSpecificExitCode = 2;
         ++service_status.dwCheckPoint;
 
-        UpdateStatus(SERVICE_STOPPED, -1);
+        shutdown_flag = true;
         TerminateProcess(engine_pinfo.hProcess, EXIT_FAILURE);
+        TOSDB_LogH("SHUTDOWN","UpdateStatus terminating engine"); 
 
-        /*
-        ret = SetServiceStatus(service_status_hndl, &service_status);
-        if(!ret){
-            TOSDB_LogH("ADMIN", "fatal error handling service error");
-            TerminateProcess(engine_pinfo.hProcess, EXIT_FAILURE);            
-            ExitProcess(EXIT_FAILURE);
-        }*/
+        UpdateStatus(SERVICE_STOPPED, -1);
+        TOSDB_Log("STATE","SERVICE_STOPPED"); 
     }
 }
 
@@ -335,50 +334,47 @@ ServiceMain(DWORD argc, LPSTR argv[])
 
     SetServiceStatus(service_status_hndl, &service_status);
     TOSDB_Log("STATE","SERVICE_START_PENDING");
-    TOSDB_Log("ADMIN","starting service update loop on its own thread");
-        
-    update_loop_done_event = CreateEvent(NULL, FALSE, FALSE, NULL);
+                      
+    TOSDB_Log("STARTUP", "try to start tos-databridge-engine.exe (AS A SERVICE)"); 
 
-    /* spin off the basic service update loop */
-    std::async( std::launch::async, 
-                [&]{
-                    while(!shutdown_flag){
-                        Sleep(UPDATE_PERIOD);
-                        UpdateStatus(-1, -1); 
-                    }
-                    SetEvent(update_loop_done_event);
-                } 
-              );
-                  
-    TOSDB_Log("STARTUP", "try to start tos-databridge-engine.exe (AS A SERVICE)");
-    
     /* create new process that can communicate with our interface */
     good_engine = SpawnRestrictedProcess("--spawned --service", custom_session);
-    if(!good_engine){      
+
+    if(!good_engine){
+        /* FAILURE */
+        shutdown_flag = true;
         std::string serr("failed to spawn ");
         serr.append(engine_path).append(" --spawned --service");
         TOSDB_LogH("STARTUP", serr.c_str());         
     }else{
-        /* on success, update and block */
+        /* SUCCESS */
         UpdateStatus(SERVICE_RUNNING, -1);
         TOSDB_Log("STATE","SERVICE_RUNNING");
-        WaitForSingleObject(engine_pinfo.hProcess, INFINITE);
-    }
 
-    /*** IF WE GET HERE WE WILL SHUTDOWN ***/
-    shutdown_flag = true;
+        /* MAIN UPDATE LOOP */           
+        do{
+            /* first check if engine is running */
+            if( WaitForSingleObject(engine_pinfo.hProcess, 0) != WAIT_TIMEOUT){
+                TOSDB_LogH("SHUTDOWN", "service believes engine closed unexpectedly");
+                shutdown_flag = true;
+                break;
+            }
+            Sleep(UPDATE_PERIOD);
+            UpdateStatus(-1, -1);            
+        }while(!shutdown_flag);
 
-    switch( WaitForSingleObject(update_loop_done_event, TOSDB_DEF_TIMEOUT) ){
-    case WAIT_TIMEOUT:
-       TOSDB_LogH("SHUTDOWN","main thread timed out waiting for signal from update loop");              
-       break;
-    case WAIT_FAILED:
-       TOSDB_LogH("SHUTDOWN","main thread failed to receive signal from update loop");        
-       break;
+        if( WaitForSingleObject(engine_pinfo.hProcess, TOSDB_DEF_TIMEOUT * 2) == WAIT_TIMEOUT){                    
+           /* forcefully close the engine */
+           TOSDB_LogH("SHUTDOWN", "engine took too long to shutdown, terminated");
+           TerminateProcess(engine_pinfo.hProcess, EXIT_FAILURE);     
+        }
+       
+        TOSDB_LogH("SHUTDOWN", "service believes engine has shutdown");
     }  
 
-    UpdateStatus(SERVICE_STOPPED, 0);
-    
+    /*** IF WE GET HERE WE WILL SHUTDOWN ***/
+
+    UpdateStatus(SERVICE_STOPPED, 0);    
     TOSDB_Log("STATE","SERVICE_STOPPED");    
 }
 
@@ -386,18 +382,23 @@ ServiceMain(DWORD argc, LPSTR argv[])
 int WINAPI 
 WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLn, int nShowCmd)
 {     
-    bool good_engine;
-    std::string cmd_str(lpCmdLn);
+    bool good_engine;    
     std::vector<std::string> args;    
+
+    std::string cmd_str(lpCmdLn);    
+    std::string logpath(TOSDB_LOG_PATH);
+
+#ifdef REDIRECT_STDERR_TO_LOG
+    freopen( (logpath + ERR_LOG_NAME).c_str(), "a", stderr);
+#endif
+
+    /* start  logging */
+    logpath.append(LOG_NAME);
+    StartLogging(logpath.c_str()); 
 
     /* get 'our' module name */
     SmartBuffer<CHAR> module_buf(MAX_PATH);
-    GetModuleFileName(NULL, module_buf.get(), MAX_PATH);
-
-    /* start  logging */
-    std::string logpath(TOSDB_LOG_PATH);
-    logpath.append(LOG_NAME);
-    StartLogging(logpath.c_str()); 
+    GetModuleFileName(NULL, module_buf.get(), MAX_PATH); 
 
     /* add the appropriate engine name to the module path */
     std::string path(module_buf.get()); 
@@ -505,7 +506,11 @@ WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLn, int nShowCmd)
 
     TOSDB_Log("SHUTDOWN","service exiting");
     StopLogging();
-    
+
+#ifdef REDIRECT_STDERR_TO_LOG
+    fclose(stderr);
+#endif
+
     return 0;
 }
     

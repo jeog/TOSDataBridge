@@ -53,6 +53,10 @@ LPCSTR LOG_NAME = LOG_BACKEND_SINGLE_FILE_NAME;
 LPCSTR LOG_NAME = "engine-log.log";
 #endif 
   
+#ifdef REDIRECT_STDERR_TO_LOG
+LPCSTR ERR_LOG_NAME = "engine-stderr.log";
+#endif
+
 const system_clock_type  system_clock;
 
 const unsigned int ACL_SIZE = 96;
@@ -183,12 +187,18 @@ WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLn, int nShowCmd)
     std::stringstream ss_args;
     std::vector<std::string> args;
 
-    bool is_service = false;
-    bool is_spawned = false;
+    std::string logpath(TOSDB_LOG_PATH); 
 
-    std::string logpath(TOSDB_LOG_PATH);    
+#ifdef REDIRECT_STDERR_TO_LOG
+    freopen( (logpath + ERR_LOG_NAME).c_str(), "a", stderr);
+#endif
+
+    /* start logging */
     logpath.append(std::string(LOG_NAME));
     StartLogging( logpath.c_str() );
+
+    bool is_service = false;
+    bool is_spawned = false;
 
     /* parse args */ 
     ParseArgs(args, lpCmdLn);    
@@ -284,7 +294,11 @@ WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLn, int nShowCmd)
     
     err = CleanUpMain(err);      
 
-    StopLogging();
+    StopLogging();  
+
+#ifdef REDIRECT_STDERR_TO_LOG
+    fclose(stderr);
+#endif
 
     return err;
 }

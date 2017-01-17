@@ -87,7 +87,6 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 
 #endif /* __cplusplus */
 
-
 #ifdef NO_KERNEL_GLOBAL_NAMESPACE
 /* because the service operates in session #0 and the engine/client code 
    will run in session #1 (or higher) we, in most cases, need to use the 
@@ -134,6 +133,8 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 #define LOG_BACKEND_USE_SINGLE_FILE
 #define LOG_BACKEND_MUTEX_NAME "Global\\TOSDB_log_mutex_1"
 #define LOG_BACKEND_SINGLE_FILE_NAME "engine-service-log.log"
+/* redirect stderr to files in /log or the service and engine */
+#define REDIRECT_STDERR_TO_LOG
 #endif
 
 /* the core types implemented by the data engine: engine-core.cpp 
