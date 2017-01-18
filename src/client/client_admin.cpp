@@ -269,7 +269,7 @@ _extractFromBuffer(TOS_Topics::TOPICS topic,
     /* adjust our buffer info to the present values */
     std::get<0>(buf_info) = head->next_offset - head->beg_offset;
     std::get<1>(buf_info) = head->loop_seq; 
-
+    
     ReleaseMutex(std::get<4>(buf_info));
 }
 
@@ -304,45 +304,59 @@ _connected(bool log_if_not_connected=false)
 
 DWORD WINAPI 
 _threadedExtractLoop(LPVOID lParam)
-{        
-    steady_clock_type::time_point tbeg, tend;
-    long tdiff;   
+{       
+    using namespace std::chrono;
+
+    steady_clock_type::time_point tbeg;
+    steady_clock_type::time_point tend;
+    long tdiff;  
+    long probe_waiting;    
  
     if( master.connected(TOSDB_DEF_TIMEOUT) )
         aware_of_connection.store(true);
 
-    while( _connected() ){ 
-        /* the concurrent read loop errs on the side of greedyness */
-        tbeg = steady_clock.now(); /* include time waiting for lock */   
-        {       
-            LOCAL_BUFFERS_LOCK_GUARD;  
-            /* --- CRITICAL SECTION --- */             
-            for(buffers_ty::value_type & buf : buffers)
-            {
-                switch(TOS_Topics::TypeBits(buf.first.first)){
-                case TOSDB_STRING_BIT :                  
-                    _extractFromBuffer<std::string>(buf.first.first, buf.first.second, buf.second); 
-                    break;
-                case TOSDB_INTGR_BIT :                  
-                    _extractFromBuffer<def_size_type>(buf.first.first, buf.first.second, buf.second); 
-                    break;                      
-                case TOSDB_QUAD_BIT :                   
-                    _extractFromBuffer<ext_price_type>(buf.first.first, buf.first.second, buf.second); 
-                    break;            
-                case TOSDB_INTGR_BIT | TOSDB_QUAD_BIT :                  
-                    _extractFromBuffer<ext_size_type>(buf.first.first, buf.first.second, buf.second); 
-                    break;              
-                default : 
-                    _extractFromBuffer<def_price_type>(buf.first.first, buf.first.second, buf.second);                         
-                };        
-            }
-            /* --- CRITICAL SECTION --- */
-        } /* make sure we give up this lock each time through the buffers */
-
-        tend = steady_clock.now();
-        tdiff = std::chrono::duration_cast<std::chrono::duration<long, std::milli>>(tend - tbeg).count();    
-        Sleep(std::min<long>(std::max<long>((buffer_latency - tdiff),0),Glacial)); 
+    TOSDB_Log("CONNECTION", "ENTER run loop in _threadedExtractLoop");
+    while( _connected() ){
+        /* [jan 2017] after changing the IPC mechanism - adding a named mutex to the underlying
+                CallNamedPipe call behind master.connected - we have to be more careful
+                about how often we call _connected (i.e every 30 msec is no good) */
+        probe_waiting = 0;
+        /* after waiting for (atleast) TOSDB_PROBE_WAIT msec break to check for connection */
+        while(probe_waiting < TOSDB_PROBE_WAIT && aware_of_connection.load()){                     
+            /* the concurrent read loop errs on the side of greedyness */
+            tbeg = steady_clock.now(); /* include time waiting for lock */   
+            {       
+                LOCAL_BUFFERS_LOCK_GUARD;  
+                /* --- CRITICAL SECTION --- */             
+                for(buffers_ty::value_type & buf : buffers)
+                {
+                    switch(TOS_Topics::TypeBits(buf.first.first)){
+                    case TOSDB_STRING_BIT :                  
+                        _extractFromBuffer<std::string>(buf.first.first, buf.first.second, buf.second); 
+                        break;
+                    case TOSDB_INTGR_BIT :                  
+                        _extractFromBuffer<def_size_type>(buf.first.first, buf.first.second, buf.second); 
+                        break;                      
+                    case TOSDB_QUAD_BIT :                   
+                        _extractFromBuffer<ext_price_type>(buf.first.first, buf.first.second, buf.second); 
+                        break;            
+                    case TOSDB_INTGR_BIT | TOSDB_QUAD_BIT :                  
+                        _extractFromBuffer<ext_size_type>(buf.first.first, buf.first.second, buf.second); 
+                        break;              
+                    default : 
+                        _extractFromBuffer<def_price_type>(buf.first.first, buf.first.second, buf.second);                         
+                    };        
+                }
+                /* --- CRITICAL SECTION --- */
+            } /* make sure we give up this lock each time through the buffers */
+            tend = steady_clock.now();
+            tdiff = duration_cast<duration<long, std::milli>>(tend - tbeg).count();  
+            /* 0 <= (buffer_latency - tdiff) <= Glacial */
+            Sleep(std::min<long>(std::max<long>((buffer_latency - tdiff),0),Glacial));
+            probe_waiting += buffer_latency;
+        }
     }
+    TOSDB_Log("CONNECTION", "EXIT run loop in _threadedExtractLoop");
 
     aware_of_connection.store(false);   
     buffer_thread = NULL;
@@ -884,14 +898,7 @@ TOSDB_CloseBlock(LPCSTR id)
     HANDLE del_thrd_hndl;
     DWORD del_thrd_id;
 
-    int err = 0;
-
-    /*     
-    why do we need to be connected? we need to deal with the leaked streams !!
-
-    if( !_connected(true) )
-        return -1;     
-    */
+    int err = 0;  
 
     GLOBAL_RLOCK_GUARD;
     /* --- CRITICAL SECTION --- */

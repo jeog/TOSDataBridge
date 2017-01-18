@@ -128,15 +128,13 @@ SendMsgWaitForResponse(long msg)
     
     std::string ipc_msg = std::to_string(msg);
 
-    if(!master){
-        master = std::unique_ptr<IPCMaster>( new IPCMaster(TOSDB_COMM_CHANNEL) );
-        TOSDB_LogDebug("***IPC*** SERVICE - CHECK CONNECTED (IN)");
-        if( !master->connected(TOSDB_DEF_TIMEOUT) ){
-            TOSDB_LogH("IPC", "created IPCMaster is not connected");
-            return false;
-        }
-        TOSDB_LogDebug("***IPC*** SERVICE - CHECK CONNECTED (OUT)");
-    }    
+    TOSDB_LogDebug("***IPC*** SERVICE - CHECK CONNECTED (IN)");
+    if( !master->connected(TOSDB_DEF_TIMEOUT) ){
+        TOSDB_LogH("IPC", "Service's IPCMaster is not connected");
+        return false;
+    }
+    TOSDB_LogDebug("***IPC*** SERVICE - CHECK CONNECTED (OUT)");
+
 
     TOSDB_LogDebug("***IPC*** SERVICE - CALL (IN)");
     if( !master->call(&ipc_msg, TOSDB_DEF_TIMEOUT) ){
@@ -364,6 +362,9 @@ ServiceMain(DWORD argc, LPSTR argv[])
         UpdateStatus(SERVICE_STOPPED, -1);
         return;
     }          
+
+    /* create 'master' to communicate with engine */
+    master = std::unique_ptr<IPCMaster>( new IPCMaster(TOSDB_COMM_CHANNEL) );
    
     UpdateStatus(SERVICE_RUNNING, -1);        
 

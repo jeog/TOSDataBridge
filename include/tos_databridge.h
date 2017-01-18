@@ -192,11 +192,12 @@ typedef struct{
 #define TOSDB_MAX_STR_SZ ((size_type)0xFF)
 #define TOSDB_DEF_TIMEOUT 2000
 #define TOSDB_DEF_PAUSE (TOSDB_DEF_TIMEOUT / 10)
+#define TOSDB_PROBE_WAIT ((int)Moderate * 10) /* DEBUG */
 #define TOSDB_MIN_TIMEOUT 1500
 #define TOSDB_SHEM_BUF_SZ 4096
 #define TOSDB_BLOCK_ID_SZ 63 
 #define TOSDB_MAX_BLOCK_SZ INT_MAX 
-#define TOSDB_DEF_LATENCY Fast
+#define TOSDB_DEF_LATENCY Moderate
 /* NEED for tosdb/setup.py !!! DO NOT REMOVE !!! */ 
 
 typedef enum{ 

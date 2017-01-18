@@ -90,7 +90,7 @@ IPCBase::connected(unsigned long timeout)
     }
 
     /*** CRITICAL SECTION ***/   
-    try{        
+    try{     
         ret = CallNamedPipe(_probe_channel_pipe_name.c_str(), 
                             (void*)&i, sizeof(i), (void*)&o, sizeof(o), &r, timeout);     
         

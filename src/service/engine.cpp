@@ -420,7 +420,8 @@ RunMainCommLoop(IPCSlave *pslave)
                 
             case TOSDB_SIG_DUMP:               
                 TOSDB_Log("SERVICE-MSG", "TOSDB_SIG_DUMP message received");
-                DumpBufferStatus();                
+                DumpBufferStatus();
+                ret = TOSDB_SIG_GOOD;
                 break;
               
             default:                

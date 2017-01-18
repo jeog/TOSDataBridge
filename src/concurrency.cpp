@@ -166,15 +166,15 @@ IPCNamedMutexClient::try_lock(unsigned long timeout,
         return true;
           
     /* open late to be sure slave has already created */
-    HANDLE tmp = OpenMutex(SYNCHRONIZE, FALSE, _name.c_str());
+    HANDLE tmp = OpenMutex(SYNCHRONIZE, FALSE, _name.c_str()); 
     if(!tmp){
-        no_open_cb( GetLastError() );
+        if(no_open_cb)
+            no_open_cb( GetLastError() );
         return false;
     }
 
     /* we use 'tmp' because technically the mutex has yet to be 
-        locked but locked() simply checks that _mtx != NULL */
-
+        locked but locked() simply checks that _mtx != NULL */    
     DWORD wstate = WaitForSingleObject(tmp, timeout);
     errno_t e = GetLastError();
 
