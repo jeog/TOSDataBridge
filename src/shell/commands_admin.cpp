@@ -980,7 +980,7 @@ IsMarkerDirty(CommandCtx *ctx)
 void
 DumpBufferStatus(CommandCtx *ctx)
 {
-    TOSDB_DumpSharedBufferStatus();
+    _check_display_ret( TOSDB_DumpSharedBufferStatus() );
 }
 
 

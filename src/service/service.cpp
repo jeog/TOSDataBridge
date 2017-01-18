@@ -21,9 +21,11 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 #include <future>
 #include <memory>
 #include <atomic>
+
 #include "tos_databridge.h"
 #include "ipc.hpp"
 #include "concurrency.hpp"
+#include "initializer_chain.hpp"
 
 namespace {
 
@@ -31,6 +33,16 @@ const unsigned int COMM_BUFFER_SIZE = 4;
 const unsigned int ACL_SIZE = 96;
 const unsigned int UPDATE_PERIOD = 2000;  
 const unsigned int MAX_ARG_SIZE = 20;
+
+const std::map<int,std::string> STATE_STRINGS = 
+    InitializerChain<std::map<int,std::string>>
+        (SERVICE_START_PENDING, "SERVICE_START_PENDING")
+        (SERVICE_STOP_PENDING, "SERVICE_STOP_PENDING")
+        (SERVICE_STOPPED, "SERVICE_STOPPED")
+        (SERVICE_RUNNING, "SERVICE_RUNNING")
+        (SERVICE_CONTINUE_PENDING, "SERVICE_CONTINUE_PENDING")
+        (SERVICE_PAUSE_PENDING, "SERVICE_PAUSE_PENDING")
+        (SERVICE_PAUSED, "SERVICE_PAUSED");
     
 LPSTR SERVICE_NAME = "TOSDataBridge"; 
 LPCSTR ENGINE_BASE_NAME = "tos-databridge-engine";
@@ -64,6 +76,20 @@ volatile bool is_service = true;
 int custom_session = -1; 
 
 
+void
+LogState(int state, std::string msg="")
+{   
+    if(state == -1)
+        return;
+
+    try{
+        TOSDB_Log("STATE", (STATE_STRINGS.at(state) + ' ' + msg).c_str());
+    }catch(std::out_of_range){
+        std::string msg = "invalid state (" + std::to_string(state) + ") passed to LogState";
+        TOSDB_LogH("LOG", msg.c_str());
+    }    
+}
+
 void 
 UpdateStatus(int status, int check_point)
 {
@@ -84,14 +110,14 @@ UpdateStatus(int status, int check_point)
         service_status.dwWin32ExitCode = ERROR_SERVICE_SPECIFIC_ERROR;
         service_status.dwServiceSpecificExitCode = 2;
         ++service_status.dwCheckPoint;
-
+                
+        TOSDB_LogH("SHUTDOWN","UpdateStatus terminating engine");
         shutdown_flag = true;
-        TerminateProcess(engine_pinfo.hProcess, EXIT_FAILURE);
-        TOSDB_LogH("SHUTDOWN","UpdateStatus terminating engine"); 
-
-        UpdateStatus(SERVICE_STOPPED, -1);
-        TOSDB_Log("STATE","SERVICE_STOPPED"); 
+        TerminateProcess(engine_pinfo.hProcess, EXIT_FAILURE);                 
+        UpdateStatus(SERVICE_STOPPED, -1);         
     }
+
+    LogState(status);
 }
 
 
@@ -136,9 +162,7 @@ ServiceController(DWORD cntrl)
     case SERVICE_CONTROL_SHUTDOWN:
     case SERVICE_CONTROL_STOP:     
 
-        shutdown_flag = true;
-
-        TOSDB_Log("STATE","SERVICE_STOP_PENDING");
+        shutdown_flag = true;                
         UpdateStatus(SERVICE_STOP_PENDING, -1); 
 
         if(pause_flag){ 
@@ -158,12 +182,10 @@ ServiceController(DWORD cntrl)
 
         if(pause_flag)
             break;       
-
-        TOSDB_Log("STATE","SERVICE_PAUSE_PENDING");
+                
         UpdateStatus(SERVICE_PAUSE_PENDING, -1);    
       
-        if(SendMsgWaitForResponse(TOSDB_SIG_PAUSE)){
-            TOSDB_Log("STATE","SERVICE_PAUSED");
+        if(SendMsgWaitForResponse(TOSDB_SIG_PAUSE)){            
             UpdateStatus(SERVICE_PAUSED, -1);
             pause_flag = true;
         }else{            
@@ -176,12 +198,10 @@ ServiceController(DWORD cntrl)
 
         if(!pause_flag)
             break;    
-        
-        TOSDB_Log("STATE","SERVICE_CONTINUE_PENDING");
+                
         UpdateStatus(SERVICE_CONTINUE_PENDING, -1);        
               
-        if(SendMsgWaitForResponse(TOSDB_SIG_CONTINUE)){
-            TOSDB_Log("STATE","SERVICE_RUNNING");
+        if(SendMsgWaitForResponse(TOSDB_SIG_CONTINUE)){            
             UpdateStatus(SERVICE_RUNNING, -1);
             pause_flag = false;
         }else{
@@ -306,6 +326,7 @@ SpawnRestrictedProcess(std::string engine_cmd, int session = -1)
 };
 
 
+
 void WINAPI 
 ServiceMain(DWORD argc, LPSTR argv[])
 {
@@ -333,49 +354,43 @@ ServiceMain(DWORD argc, LPSTR argv[])
     TOSDB_Log("ADMIN","successfully registered control handler");
 
     SetServiceStatus(service_status_hndl, &service_status);
-    TOSDB_Log("STATE","SERVICE_START_PENDING");
-                      
-    TOSDB_Log("STARTUP", "try to start tos-databridge-engine.exe (AS A SERVICE)"); 
+    LogState(SERVICE_START_PENDING);
+    UpdateStatus(-1, -1);
 
-    /* create new process that can communicate with our interface */
+    TOSDB_Log("STARTUP", "start tos-databridge-engine.exe (AS A SERVICE)");    
     good_engine = SpawnRestrictedProcess("--spawned --service", custom_session);
+    if(!good_engine){                
+        TOSDB_LogH("STARTUP", ("failed to spawn " + engine_path + " --spawned --service").c_str());         
+        UpdateStatus(SERVICE_STOPPED, -1);
+        return;
+    }          
+   
+    UpdateStatus(SERVICE_RUNNING, -1);        
 
-    if(!good_engine){
-        /* FAILURE */
-        shutdown_flag = true;
-        std::string serr("failed to spawn ");
-        serr.append(engine_path).append(" --spawned --service");
-        TOSDB_LogH("STARTUP", serr.c_str());         
-    }else{
-        /* SUCCESS */
-        UpdateStatus(SERVICE_RUNNING, -1);
-        TOSDB_Log("STATE","SERVICE_RUNNING");
-
-        /* MAIN UPDATE LOOP */           
-        do{
-            /* first check if engine is running */
-            if( WaitForSingleObject(engine_pinfo.hProcess, 0) != WAIT_TIMEOUT){
-                TOSDB_LogH("SHUTDOWN", "service believes engine closed unexpectedly");
-                shutdown_flag = true;
-                break;
-            }
-            Sleep(UPDATE_PERIOD);
-            UpdateStatus(-1, -1);            
-        }while(!shutdown_flag);
-
-        if( WaitForSingleObject(engine_pinfo.hProcess, TOSDB_DEF_TIMEOUT * 2) == WAIT_TIMEOUT){                    
-           /* forcefully close the engine */
-           TOSDB_LogH("SHUTDOWN", "engine took too long to shutdown, terminated");
-           TerminateProcess(engine_pinfo.hProcess, EXIT_FAILURE);     
+    /* MAIN UPDATE LOOP */           
+    do{
+        /* first check if engine is running */
+        if( WaitForSingleObject(engine_pinfo.hProcess, 0) != WAIT_TIMEOUT){
+            TOSDB_LogH("SHUTDOWN", "service believes engine closed unexpectedly");
+            shutdown_flag = true;
+            break;
         }
+        Sleep(UPDATE_PERIOD);
+        UpdateStatus(-1, -1);            
+    }while(!shutdown_flag);
+
+    /* wait on engine process to exit (if necessary), or timeout and force exit */
+    if( WaitForSingleObject(engine_pinfo.hProcess, TOSDB_DEF_TIMEOUT * 2) == WAIT_TIMEOUT){                    
+        /* forcefully close the engine */
+        TOSDB_LogH("SHUTDOWN", "engine took too long to shutdown, terminated");
+        TerminateProcess(engine_pinfo.hProcess, EXIT_FAILURE);     
+    }
        
-        TOSDB_LogH("SHUTDOWN", "service believes engine has shutdown");
-    }  
+    TOSDB_LogH("SHUTDOWN", "service believes engine has shutdown");   
 
     /*** IF WE GET HERE WE WILL SHUTDOWN ***/
-
-    UpdateStatus(SERVICE_STOPPED, 0);    
-    TOSDB_Log("STATE","SERVICE_STOPPED");    
+    UpdateStatus(SERVICE_STOPPED, 0);
+    /*** NO GUARANTEE ANYTHING AFTER THIS WILL STILL BE VALID ***/
 }
 
 
@@ -483,21 +498,14 @@ WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLn, int nShowCmd)
         is_service = false;
 
         TOSDB_Log("STARTUP", "starting tos-databridge-engine.exe directly(NOT A SERVICE)");
-
         good_engine = SpawnRestrictedProcess("--spawned --noservice", custom_session); 
-        if(!good_engine){      
-            std::string serr("failed to spawn ");
-            serr.append(engine_path).append(" --spawned --noservice");
-            TOSDB_LogH("STARTUP", serr.c_str());         
-        }
+        if(!good_engine)        
+            TOSDB_LogH("STARTUP", ("failed to spawn " + engine_path + " --spawned --noservice").c_str());                 
     }else{    
-        SERVICE_TABLE_ENTRY dTable[] = {
-            {SERVICE_NAME,ServiceMain},
-            {NULL,NULL}
-        };        
+        SERVICE_TABLE_ENTRY dtable[] = {{SERVICE_NAME,ServiceMain}, {NULL,NULL}};        
 
         /* START SERVICE */	
-        if( !StartServiceCtrlDispatcher(dTable) ){
+        if( !StartServiceCtrlDispatcher(dtable) ){
             TOSDB_LogH("STARTUP", "StartServiceCtrlDispatcher() failed. "  
                                   "(Be sure to use an appropriate Window's tool to start the service "
                                   "(e.g SC.exe, Services.msc) or pass '--noservice' to run directly.)");

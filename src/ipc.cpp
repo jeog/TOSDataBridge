@@ -81,7 +81,8 @@ IPCBase::connected(unsigned long timeout)
 
     if( !_probe_channel_mtx.try_lock( /* do we always want to log this stuff ? */
             timeout,
-            [](errno_t e){ TOSDB_LogEx("IPC", "failed to open mutex in connected", e); },
+            //[](errno_t e){ TOSDB_LogEx("IPC", "failed to open mutex in connected", e); },
+            nullptr,
             [](){ TOSDB_LogH("IPC", "timed out waiting to lock mutex in connected"); },
             [](errno_t e){ TOSDB_LogEx("IPC", "failed to lock mutex in connected", e); } ))
     {
@@ -185,7 +186,8 @@ IPCMaster::_grab_pipe(unsigned long timeout)
 
     }catch(std::exception& e){        
         _release_pipe();        
-        TOSDB_LogH("IPC", ("exception caught in _grab_pipe: " + std::string(e.what())).c_str());        
+        std::string msg = "exception caught in _grab_pipe: " + std::string(e.what());
+        TOSDB_LogH("IPC", msg.c_str());        
     }   
      
     return _pipe_held;
@@ -217,9 +219,8 @@ IPCSlave::wait_for_master()
                                                        | PIPE_WAIT,
                                                    1, 0, 0, INFINITE, &(_sec_attr[PIPE1]) );
         
-        if(_main_channel_pipe_hndl == INVALID_HANDLE_VALUE){
-            errno_t e = GetLastError(); 
-            TOSDB_LogEx("IPC-Slave", "CreateNamedPipe failed in wait_for_master", e);        
+        if(_main_channel_pipe_hndl == INVALID_HANDLE_VALUE){          
+            TOSDB_LogEx("IPC-Slave", "CreateNamedPipe failed in wait_for_master", GetLastError());        
             return false;
         }   
 
@@ -229,77 +230,74 @@ IPCSlave::wait_for_master()
 
     /* BLOCK until master calls _grab_pipe() */
     if( !ConnectNamedPipe(_main_channel_pipe_hndl, NULL) )
-    {
-        errno_t e = GetLastError(); 
-        TOSDB_LogEx("IPC-Slave", "ConnectNamedPipe failed in wait_for_master", e);        
+    {       
+        TOSDB_LogEx("IPC-Slave", "ConnectNamedPipe failed in wait_for_master", GetLastError());        
         return false;
     }
 
     return true;
 }
 
+HANDLE IPCSlave::_probe_channel::_pipe_hndl = INVALID_HANDLE_VALUE;
+
+bool IPCSlave::_probe_channel::_run_flag = false;
 
 void
-IPCSlave::_launch_probe_channel()
+IPCSlave::_probe_channel::launch(std::string pipe_name, SECURITY_ATTRIBUTES* sa)
 {    
-    _probe_channel_pipe_hndl = CreateNamedPipe( _probe_channel_pipe_name.c_str(), 
-                                                PIPE_ACCESS_DUPLEX,
-                                                PIPE_TYPE_MESSAGE 
-                                                    | PIPE_READMODE_BYTE 
-                                                    | PIPE_WAIT,
-                                                1, 0, 0, INFINITE, &_sec_attr[PIPE1] );    
+    _pipe_hndl = CreateNamedPipe( pipe_name.c_str(), PIPE_ACCESS_DUPLEX,
+                                  PIPE_TYPE_MESSAGE | PIPE_READMODE_BYTE | PIPE_WAIT,
+                                  1, 0, 0, INFINITE, sa );    
      
-    if(_probe_channel_pipe_hndl == INVALID_HANDLE_VALUE){
-        errno_t e = GetLastError(); 
-        TOSDB_LogEx("IPC-Slave", "IPCSlave failed to create named pipe", e);
+    if(_pipe_hndl == INVALID_HANDLE_VALUE){        
+        TOSDB_LogEx("IPC-Slave", "IPCSlave failed to create named pipe", GetLastError());
         throw std::runtime_error("IPCSlave failed to create named pipe");
     }  
 
-    std::async(std::launch::async, 
-        [=](){
-            BOOL ret;
-            DWORD r;
-            uint8_t b;
-            errno_t e;          
-
-            while(_probe_channel_run_flag){ 
-
-                ret = ConnectNamedPipe(_probe_channel_pipe_hndl, NULL);
-                if(!ret){
-                    e = GetLastError();                               
-                    if(e != ERROR_PIPE_CONNECTED)  /* incase client connects first */
-                        TOSDB_LogEx("IPC", "ConnectNamedPipe failed in probe_channel", e);
-                }
-
-                ret = ReadFile(_probe_channel_pipe_hndl, (void*)&b, sizeof(b), &r, NULL);
-                if(!ret){
-                    e = GetLastError();
-                    TOSDB_LogEx("IPC", "ReadFile failed in probe_channel", e);
-                }                  
-                                     
-                if(b != PROBE_BYTE || r != 1){
-                    TOSDB_LogH("IPC", ("didn't receive PROBE_BYTE, b:" +std::to_string(b)).c_str());
-                    b = 0;
-                }
-
-                ret = WriteFile(_probe_channel_pipe_hndl, (void*)&b, sizeof(b), &r, NULL);
-                if(!ret){
-                    e = GetLastError();
-                    TOSDB_LogEx("IPC", "WriteFile failed in probe_channel", e);
-                }     
-
-                ret = DisconnectNamedPipe(_probe_channel_pipe_hndl);
-                if(!ret){
-                    e = GetLastError();
-                    TOSDB_LogEx("IPC", "DisconnectNamedPipe failed in probe_channel", e);
-                }
-            }    
-
-            CloseHandle(_probe_channel_pipe_hndl); 
-            _probe_channel_pipe_hndl = INVALID_HANDLE_VALUE;
-        } 
-    );
+    _run_flag = true;
+    std::async(std::launch::async, _run);    
 }
+
+
+void
+IPCSlave::_probe_channel::_run()
+{
+    BOOL ret;
+    DWORD r;
+    uint8_t b;
+    errno_t e;          
+
+    while(_run_flag){ 
+        ret = ConnectNamedPipe(_pipe_hndl, NULL);
+        if(!ret){
+            e = GetLastError();                               
+            if(e != ERROR_PIPE_CONNECTED)  /* incase client connects first */
+                TOSDB_LogEx("IPC", "ConnectNamedPipe failed in probe_channel", e);
+        }
+
+        ret = ReadFile(_pipe_hndl, (void*)&b, sizeof(b), &r, NULL);
+        if(!ret)           
+            TOSDB_LogEx("IPC", "ReadFile failed in probe_channel", GetLastError());
+                          
+                                     
+        if(b != PROBE_BYTE || r != 1){
+            TOSDB_LogH("IPC", ("didn't receive PROBE_BYTE, b:" +std::to_string(b)).c_str());
+            b = 0;
+        }
+
+        ret = WriteFile(_pipe_hndl, (void*)&b, sizeof(b), &r, NULL);
+        if(!ret)
+            TOSDB_LogEx("IPC", "WriteFile failed in probe_channel", GetLastError());
+        
+        ret = DisconnectNamedPipe(_pipe_hndl);
+        if(!ret)            
+            TOSDB_LogEx("IPC", "DisconnectNamedPipe failed in probe_channel", GetLastError());        
+    }    
+
+    CloseHandle(_pipe_hndl); 
+    _pipe_hndl = INVALID_HANDLE_VALUE;       
+}
+
 
 void
 IPCSlave::_init_slave_mutex(std::string name, HANDLE *phndl)

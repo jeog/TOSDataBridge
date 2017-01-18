@@ -70,9 +70,7 @@ protected:
             _probe_channel_mtx(_probe_channel_mtx_name)
         {
         }
-
-    
-    virtual 
+     
     ~IPCBase() 
         {            
         }
@@ -92,24 +90,37 @@ class IPCSlave
     HANDLE _main_channel_mtx;        
     HANDLE _probe_channel_mtx;
 
-    bool _probe_channel_run_flag;
-
     int    
     _set_security(errno_t *e);
 
     void
     _init_slave_mutex(std::string name, HANDLE *phndl);
+        
+    class _probe_channel{
+        /* how we handle the connection probing mechanism:
+           ::launch() creates the pipe and asynchronously runs ::_run() 
+           ::_run() waits for master, reads, checks for PROBE_BYTE, writes, disconnects pipe
+           ::stop() sets the _run_flag to false to break out of the run loop */
+        static HANDLE _pipe_hndl;
+        static bool _run_flag;
 
-    void
-    _launch_probe_channel();
+        static void
+        _run();
+    public:
+        static void
+        launch(std::string pipe_name, SECURITY_ATTRIBUTES* sa);
+
+        static inline void
+        stop()
+        {
+            _run_flag = false;
+        }
+    };
 
 public:
     IPCSlave::IPCSlave(std::string name)
         :    
-            IPCBase(name),                       
-            _main_channel_mtx(NULL),
-            _probe_channel_mtx(NULL),
-            _probe_channel_run_flag(true)
+            IPCBase(name)                    
         { 
             /* initialize object security */  
             errno_t e = 0;
@@ -124,7 +135,7 @@ public:
             _init_slave_mutex(_probe_channel_mtx_name, &_probe_channel_mtx);
 
             /* launch our probe channel so master can asynchronously check connection status*/
-            _launch_probe_channel();
+            _probe_channel::launch(_probe_channel_pipe_name, &_sec_attr[PIPE1]);
         }    
 
 
@@ -137,9 +148,8 @@ public:
                 DisconnectNamedPipe(_main_channel_pipe_hndl);
                 CloseHandle(_main_channel_pipe_hndl);            
             }
-
-            /* break out of the probe channel loop */
-            _probe_channel_run_flag = false;
+                        
+            _probe_channel::stop();
             /* this will force evaluation of the run flag */
             connected(TOSDB_DEF_TIMEOUT);  
         }
