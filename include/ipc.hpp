@@ -54,11 +54,9 @@ protected:
     IPCBase(std::string name)
         :    
             _main_channel_pipe_name(std::string("\\\\.\\pipe\\")
-                .append(name)
-                .append("_main_channel_pipe")),
+                .append(name).append("_main_channel_pipe")),
             _probe_channel_pipe_name(std::string("\\\\.\\pipe\\")
-                .append(name)
-                .append("_probe_channel_pipe")),        
+                .append(name).append("_probe_channel_pipe")),        
             _main_channel_pipe_hndl(INVALID_HANDLE_VALUE),
             _probe_channel_pipe_hndl(INVALID_HANDLE_VALUE)          
         {
@@ -69,7 +67,7 @@ protected:
         }
 };
 
-/* adjust security for removed mutexs */
+
 class IPCSlave
         : public IPCBase{    
     static const int ACL_SIZE = 144;
@@ -77,12 +75,13 @@ class IPCSlave
     SECURITY_ATTRIBUTES _sec_attr;
     SECURITY_DESCRIPTOR _sec_desc;  
     SmartBuffer<SID> _sec_sid;      
-    SmartBuffer<ACL> _sec_acl;
+    SmartBuffer<ACL> _sec_acl;   
 
+    std::thread _probe_channel_thread;
     bool _probe_channel_run_flag;
 
-    int    
-    _set_security(errno_t *e);
+    void    
+    _init_security_objects();
 
     HANDLE
     _create_pipe(std::string name);
@@ -91,15 +90,46 @@ class IPCSlave
     _listen_for_probes();
 
 public:
-    IPCSlave(std::string name); 
-    
-    ~IPCSlave();
+    IPCSlave(std::string name)
+        :    
+            IPCBase(name),   
+            _sec_attr(SECURITY_ATTRIBUTES()),
+            _sec_desc(SECURITY_DESCRIPTOR()),
+            _sec_sid(SECURITY_MAX_SID_SIZE),
+            _sec_acl(ACL_SIZE),
+            _probe_channel_run_flag(true)
+        {           
+            _init_security_objects();    
+        
+            _main_channel_pipe_hndl = _create_pipe(_main_channel_pipe_name);
+            _probe_channel_pipe_hndl = _create_pipe(_probe_channel_pipe_name); 
 
-    bool
+            /* launch our probe channel so master can asynchronously check connection status*/
+            _probe_channel_thread = std::thread( std::bind(&IPCSlave::_listen_for_probes,this) );       
+        }    
+
+    ~IPCSlave()
+        {          
+            CloseHandle(_main_channel_pipe_hndl);         
+
+            _probe_channel_run_flag = false;            
+            connected(TOSDB_DEF_TIMEOUT); /* force evaluation of the run flag */
+
+            if(_probe_channel_thread.joinable())
+                _probe_channel_thread.join();
+
+            CloseHandle(_probe_channel_pipe_hndl);
+        }
+    
+    bool 
     wait_for_master();
 
     void 
-    drop_master();
+    drop_master()
+    {
+        FlushFileBuffers(_main_channel_pipe_hndl);
+        DisconnectNamedPipe(_main_channel_pipe_hndl);    
+    }
 
     using IPCBase::send;
     using IPCBase::recv;  

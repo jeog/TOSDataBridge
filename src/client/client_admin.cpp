@@ -315,11 +315,9 @@ _threadedExtractLoop(LPVOID lParam)
     if( master.connected(TOSDB_DEF_TIMEOUT) )
         aware_of_connection.store(true);
 
-    TOSDB_Log("CONNECTION", "ENTER run loop in _threadedExtractLoop");
     while( _connected() ){
-        /* [jan 2017] after changing the IPC mechanism - adding a named mutex to the underlying
-                CallNamedPipe call behind master.connected - we have to be more careful
-                about how often we call _connected (i.e every 30 msec is no good) */
+     /* [jan 2017] we should be more careful about how often we call _connected 
+                   (i.e every 30 msec is no good) */
         probe_waiting = 0;
         /* after waiting for (atleast) TOSDB_PROBE_WAIT msec break to check for connection */
         while(probe_waiting < TOSDB_PROBE_WAIT && aware_of_connection.load()){                     
@@ -356,8 +354,6 @@ _threadedExtractLoop(LPVOID lParam)
             probe_waiting += buffer_latency;
         }
     }
-    TOSDB_Log("CONNECTION", "EXIT run loop in _threadedExtractLoop");
-
     aware_of_connection.store(false);   
     buffer_thread = NULL;
     buffer_thread_id = 0;

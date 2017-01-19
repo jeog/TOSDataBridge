@@ -105,6 +105,7 @@ DWORD msg_thrd_id = 0;
 LPCSTR msg_window_name = "TOSDB_ENGINE_MSG_WNDW";
   
 volatile bool pause_flag = false;
+volatile bool shutdown_flag = false;
 
 /* forward decl (see end of source) */
 template<typename T>
@@ -177,6 +178,11 @@ ParseIPCMessage(std::string msg,
                 std::string *item, 
                 unsigned long *timeout);
 
+int
+HandleGoodIPCMessage(unsigned int op, 
+                     TOS_Topics::TOPICS topic, 
+                     std::string item, 
+                     unsigned long timeout);
 };
 
 
@@ -306,17 +312,6 @@ WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLn, int nShowCmd)
 
 namespace {        
 
-#define STREAM_CHECK_LOG_ERROR(e,call,topic,item,tout) do{ \
-    if(e){ \
-        std::stringstream err_s; \
-        err_s << "Error (" << std::to_string(e) << ") in " << call << " (" \
-              << TOS_Topics::map[topic] << ',' \
-              << item << ',' \
-              << std::to_string(tout) << ')'; \
-        TOSDB_LogH("STREAM-OP", err_s.str().c_str()); \
-    } \
-}while(0)
-
 
 DWORD WINAPI 
 ThreadedWinInit(LPVOID lParam)
@@ -348,97 +343,123 @@ RunMainCommLoop(IPCSlave *pslave)
 {
     TOS_Topics::TOPICS cli_topic;
     std::string cli_item;
+    std::string ipc_msg;
     unsigned long cli_timeout; 
     unsigned int cli_op;  
-    int ret;
-
-    std::string ipc_msg;  
-
-    bool shutdown_flag = false;
+    int resp;        
     
     while(!shutdown_flag){     
-              
-        TOSDB_LogDebug("***IPC*** ENGINE - WAIT FOR MASTER (IN)");
+
         /* BLOCK until master is ready */
-        if( !pslave->wait_for_master() ){      
+        TOSDB_LogDebug("***IPC*** ENGINE - WAIT FOR MASTER (IN)");        
+        if( !pslave->wait_for_master() )
+        {      
             TOSDB_LogH("IPC", "wait_for_master failed");
+            shutdown_flag = true;
             return -1;
         }
-        TOSDB_LogDebug("***IPC*** ENGINE - WAIT FOR MASTER (OUT)");
-        
-        while(!shutdown_flag){
-                      
-            TOSDB_LogDebug("***IPC*** ENGINE - RECEIVE (IN)");
-            /* BLOCK until we get a message */
-            if( !pslave->recv(&ipc_msg) ){
-                TOSDB_LogDebug("***IPC*** ENGINE - RECEIVE (FAIL)");
-                break;          
-            }
-            TOSDB_LogDebug("***IPC*** ENGINE - RECEIVE (OUT)");
+        TOSDB_LogDebug("***IPC*** ENGINE - WAIT FOR MASTER (OUT)");        
+                         
+        /* BLOCK until we get a message */
+        TOSDB_LogDebug("***IPC*** ENGINE - RECEIVE (IN)");        
+        if( !pslave->recv(&ipc_msg) )
+        {
+            TOSDB_LogDebug("***IPC*** ENGINE - RECEIVE (FAIL)");
+            pslave->drop_master();
+            continue;          
+        }
+        TOSDB_LogDebug("***IPC*** ENGINE - RECEIVE (OUT)");
 
-            ret = ParseIPCMessage(ipc_msg, &cli_op, &cli_topic, &cli_item, &cli_timeout);
-            if(ret){
-                std::string emsg = "failed to parse message: " + ipc_msg;
-                TOSDB_LogH("IPC", emsg.c_str());
-                continue;
-            }
+        /* parse the received msg */     
+        if( ParseIPCMessage(ipc_msg, &cli_op, &cli_topic, &cli_item, &cli_timeout) )
+        {            
+            TOSDB_LogH("IPC", ("failed to parse message: " + ipc_msg).c_str());
+            resp = TOSDB_SIG_BAD;
+        }
+        else{ /* if good message */
+            resp = HandleGoodIPCMessage(cli_op, cli_topic, cli_item, cli_timeout);   
+        }
 
-            ret = TOSDB_SIG_BAD;
-
-            switch(cli_op){
-            case TOSDB_SIG_ADD:                              
-                ret = AddStream(cli_topic, cli_item, cli_timeout);
-                STREAM_CHECK_LOG_ERROR(ret, "AddStream", cli_topic, cli_item, cli_timeout);                                                  
-                break;
-                
-            case TOSDB_SIG_REMOVE:                
-                ret = RemoveStream(cli_topic, cli_item, cli_timeout);
-                STREAM_CHECK_LOG_ERROR(ret, "RemoveStream", cli_topic, cli_item, cli_timeout);                             
-                break;
-                
-            case TOSDB_SIG_TEST:
-                ret = TestStream(cli_topic, cli_item, cli_timeout);                                                      
-                break;
-
-            case TOSDB_SIG_PAUSE:                                    
-                TOSDB_Log("SERVICE-MSG", "TOSDB_SIG_PAUSE message received");                         
-                pause_flag = true;
-                ret = TOSDB_SIG_GOOD;                                              
-                break;
-                
-            case TOSDB_SIG_CONTINUE:                           
-                TOSDB_Log("SERVICE-MSG", "TOSDB_SIG_CONTINUE message received");                              
-                pause_flag = false;              
-                ret = TOSDB_SIG_GOOD;                                
-                break;
-                
-            case TOSDB_SIG_STOP:                           
-                TOSDB_Log("SERVICE-MSG", "TOSDB_SIG_STOP message received");        
-                shutdown_flag = true;                    
-                ret = TOSDB_SIG_GOOD;                  
-                break;
-                
-            case TOSDB_SIG_DUMP:               
-                TOSDB_Log("SERVICE-MSG", "TOSDB_SIG_DUMP message received");
-                DumpBufferStatus();
-                ret = TOSDB_SIG_GOOD;
-                break;
-              
-            default:                
-                TOSDB_LogH("IPC", ("invalid opcode/message: " + ipc_msg).c_str());
-            }       
-
-            TOSDB_LogDebug("***IPC*** ENGINE - RETURN (IN)");
-            /* return msg to MASTER */
-            if( !pslave->send(std::to_string(ret)) ){
-                TOSDB_LogH("IPC", "send/return failed in main comm loop");                       
-            }
-            TOSDB_LogDebug("***IPC*** ENGINE - RETURN (OUT)");            
-        }  
+        /* reply to MASTER */
+        TOSDB_LogDebug("***IPC*** ENGINE - REPLY (IN)");        
+        if( !pslave->send( std::to_string(resp) ) ){
+            TOSDB_LogH("IPC", "send/reply failed in main comm loop");                       
+        }
+        TOSDB_LogDebug("***IPC*** ENGINE - REPLY (OUT)");            
+         
         pslave->drop_master();
     }  
+
     return 0;
 }
+
+
+#define STREAM_CHECK_LOG_ERROR(e,call,topic,item,tout) do{ \
+    if(e){ \
+        std::stringstream err_s; \
+        err_s << "Error (" << std::to_string(e) << ") in " << call << " (" \
+              << TOS_Topics::map[topic] << ',' \
+              << item << ',' \
+              << std::to_string(tout) << ')'; \
+        TOSDB_LogH("STREAM-OP", err_s.str().c_str()); \
+    } \
+}while(0)
+
+
+int
+HandleGoodIPCMessage(unsigned int op, 
+                     TOS_Topics::TOPICS topic, 
+                     std::string item, 
+                     unsigned long timeout)
+{
+    int ret = TOSDB_SIG_BAD;
+
+    switch(op){
+    case TOSDB_SIG_ADD:                              
+        ret = AddStream(topic, item, timeout);
+        STREAM_CHECK_LOG_ERROR(ret, "AddStream", topic, item, timeout);                                                  
+        break;
+                
+    case TOSDB_SIG_REMOVE:                
+        ret = RemoveStream(topic, item, timeout);
+        STREAM_CHECK_LOG_ERROR(ret, "RemoveStream", topic, item, timeout);                             
+        break;
+                
+    case TOSDB_SIG_TEST:
+        ret = TestStream(topic, item, timeout);                                                      
+        break;
+
+    case TOSDB_SIG_PAUSE:                                    
+        TOSDB_Log("SERVICE-MSG", "TOSDB_SIG_PAUSE message received");                         
+        pause_flag = true;
+        ret = TOSDB_SIG_GOOD;                                              
+        break;
+                
+    case TOSDB_SIG_CONTINUE:                           
+        TOSDB_Log("SERVICE-MSG", "TOSDB_SIG_CONTINUE message received");                              
+        pause_flag = false;              
+        ret = TOSDB_SIG_GOOD;                                
+        break;
+                
+    case TOSDB_SIG_STOP:                           
+        TOSDB_Log("SERVICE-MSG", "TOSDB_SIG_STOP message received");        
+        shutdown_flag = true;                    
+        ret = TOSDB_SIG_GOOD;                  
+        break;
+                
+    case TOSDB_SIG_DUMP:               
+        TOSDB_Log("SERVICE-MSG", "TOSDB_SIG_DUMP message received");
+        DumpBufferStatus();
+        ret = TOSDB_SIG_GOOD;
+        break;
+              
+    default:                
+        TOSDB_LogH("IPC", ("invalid opcode: " + std::to_string(op)).c_str());
+    }    
+
+    return ret;
+}
+
 
 int
 ParseIPCMessage(std::string msg, 
