@@ -433,8 +433,9 @@ RunMainCommLoop(IPCSlave *pslave)
             if( !pslave->send(std::to_string(ret)) ){
                 TOSDB_LogH("IPC", "send/return failed in main comm loop");                       
             }
-            TOSDB_LogDebug("***IPC*** ENGINE - RETURN (OUT)");
+            TOSDB_LogDebug("***IPC*** ENGINE - RETURN (OUT)");            
         }  
+        pslave->drop_master();
     }  
     return 0;
 }

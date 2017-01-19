@@ -61,10 +61,7 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 #endif /* IMPLEMENTATION */
 
 
-#include <windows.h> 
-/* C API uses Window's string typedefs:
-     typedef const char* LPCSTR
-     typedef char*       LPSTR          */
+#include <windows.h> /* C API uses Window's string typedefs (LPSTR/LPCSTR) */
 #include <time.h>
 #include <limits.h>
 #include <stdint.h>
@@ -78,11 +75,8 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 #include <thread>
 #include <memory>
 
-/* forward declaration for generic.hpp */
-//class DLL_SPEC_IFACE TOSDB_Generic;
-
 #include "containers.hpp"/*custom client-facing containers */
-#include "generic.hpp"  /* our 'generic' type */
+#include "generic.hpp" /* our 'generic' type */
 #include "exceptions.hpp" /* our global exceptions */
 
 #endif /* __cplusplus */
@@ -128,19 +122,16 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 #define TOSDB_COMM_CHANNEL "TOSDB_channel_1"
 #endif
 
-/* combine engine-log.log and service-log.log for easier IPC debugging */
+/* combine engine and service logs for easier IPC debugging */
 #ifdef _DEBUG
 #define LOG_BACKEND_USE_SINGLE_FILE
 #define LOG_BACKEND_MUTEX_NAME "Global\\TOSDB_log_mutex_1"
 #define LOG_BACKEND_SINGLE_FILE_NAME "engine-service-log.log"
-/* redirect stderr to files in /log or the service and engine */
+/* redirect stderr to files in /log for the service and engine */
 #define REDIRECT_STDERR_TO_LOG
 #endif
 
-/* the core types implemented by the data engine: engine-core.cpp 
-
-   when using large blocks the size difference between 
-   4 and 8 byte scalars can make a big difference */
+/* the core types implemented by the data engine: engine-core.cpp */
 typedef long       def_size_type; 
 typedef long long  ext_size_type;
 typedef float      def_price_type;
@@ -150,15 +141,14 @@ typedef double     ext_price_type;
 typedef uint32_t size_type;
 typedef uint8_t type_bits_type;
 
-struct TypeSizeAsserts_{ 
-    /* sanity checks */
+struct TypeSizeAsserts_{     
+    /* sanity checks */ 
     char ASSERT_def_size_type_atleast_4bytes[sizeof(def_size_type) >= 4 ? 1 : -1];
     char ASSERT_ext_size_type_is_8bytes[sizeof(ext_size_type) == 8 ? 1 : -1];
     char ASSERT_def_price_type_atleast_4bytes[sizeof(def_price_type) >= 4 ? 1 : -1];
     char ASSERT_ext_price_type_is_8bytes[sizeof(ext_price_type) == 8 ? 1 : -1];
     char ASSERT_size_type_is_4bytes[sizeof(size_type) == 4 ? 1 : -1];
-    char ASSERT_type_bits_type_is_1byte[sizeof(type_bits_type) == 1 ? 1 : -1];
-    /* sanity checks */
+    char ASSERT_type_bits_type_is_1byte[sizeof(type_bits_type) == 1 ? 1 : -1];  
 };
 
 typedef const enum{ /*milliseconds*/
@@ -170,6 +160,7 @@ typedef const enum{ /*milliseconds*/
     Glacial = 30000 /* <-- DEBUG ONLY */
 }UpdateLatency;
 
+/* custom time object */
 typedef struct{
     struct tm  ctime_struct;
     long       micro_second;
@@ -192,7 +183,7 @@ typedef struct{
 #define TOSDB_MAX_STR_SZ ((size_type)0xFF)
 #define TOSDB_DEF_TIMEOUT 2000
 #define TOSDB_DEF_PAUSE (TOSDB_DEF_TIMEOUT / 10)
-#define TOSDB_PROBE_WAIT ((int)Moderate * 10) /* DEBUG */
+#define TOSDB_PROBE_WAIT ((int)Moderate * 3) 
 #define TOSDB_MIN_TIMEOUT 1500
 #define TOSDB_SHEM_BUF_SZ 4096
 #define TOSDB_BLOCK_ID_SZ 63 
@@ -200,6 +191,7 @@ typedef struct{
 #define TOSDB_DEF_LATENCY Moderate
 /* NEED for tosdb/setup.py !!! DO NOT REMOVE !!! */ 
 
+/* severity of log events */
 typedef enum{ 
     low = 0, 
     high 
@@ -210,7 +202,6 @@ typedef enum{
 #if defined(THIS_EXPORTS_IMPLEMENTATION) || defined(THIS_IMPORTS_IMPLEMENTATION)
 
 #ifdef __cplusplus
-/* forward declarations for _tos-databridge.dll */
 
 /* CONCURRENCY - concurrency.cpp / concurrency.hpp - define CPP_COND_VAR to use 
    portable sync objects built on std::condition_variable. (doesn't work 
@@ -247,6 +238,7 @@ ParseArgs(std::vector<std::string>& vec, std::string str);
 
 #endif /*__cplusplus */
 
+/* signals used by the IPC mechanism */
 #define TOSDB_SIG_ADD 1
 #define TOSDB_SIG_REMOVE 2
 #define TOSDB_SIG_PAUSE 3
@@ -257,10 +249,10 @@ ParseArgs(std::vector<std::string>& vec, std::string str);
 #define TOSDB_SIG_BAD 8 
 #define TOSDB_SIG_TEST 9
 
+/* for securing shared memory buffers */
 typedef const enum{ 
     SHEM1 = 0, 
-    MUTEX1, 
-    PIPE1 
+    MUTEX1,    
 }Securable;
 
 typedef struct{ 
@@ -364,14 +356,11 @@ public:
     /* BEGIN TOPICS ksxaw9834hr84hf;esij?><  DO NOT EDIT !!! */
     NULL_TOPIC = 0x00, 
     HIGH52 = 0x1,
-    LOW52 = 0x2,
-    //
+    LOW52 = 0x2,  
     ASK = 0x6 | ADJ_QUAD_BIT,
     ASKX = 0x7 | ADJ_STRING_BIT,
-    ASK_SIZE = 0x8 | ADJ_INTGR_BIT,
-    //
-    AX = 0xa | ADJ_STRING_BIT,
-    //
+    ASK_SIZE = 0x8 | ADJ_INTGR_BIT,  
+    AX = 0xa | ADJ_STRING_BIT,   
     BACK_EX_MOVE = 0x15 | ADJ_QUAD_BIT,
     BACK_VOL = 0x16 | ADJ_QUAD_BIT,
     BA_SIZE = 0x17 | ADJ_STRING_BIT,
@@ -379,85 +368,56 @@ public:
     BID = 0x19 | ADJ_QUAD_BIT,
     BIDX = 0x1a | ADJ_STRING_BIT,
     BID_SIZE = 0x1b | ADJ_INTGR_BIT,
-    BX = 0x1c | ADJ_STRING_BIT,
-    //
-    CALL_VOLUME_INDEX = 0x27,
-    //
-    //CLOSE = 0x2a | ADJ_QUAD_BIT,
-    //
-    DELTA = 0x46 | ADJ_QUAD_BIT,
-    //
-    DESCRIPTION = 0x48 | ADJ_STRING_BIT,
-    //
+    BX = 0x1c | ADJ_STRING_BIT, 
+    CALL_VOLUME_INDEX = 0x27, 
+    DELTA = 0x46 | ADJ_QUAD_BIT,  
+    DESCRIPTION = 0x48 | ADJ_STRING_BIT, 
     DIV = 0x4b,
-    DIV_FREQ = 0x4c | ADJ_STRING_BIT,
-    //
-    //DT = 0x52 | ADJ_STRING_BIT,
-    //
+    DIV_FREQ = 0x4c | ADJ_STRING_BIT,   
     EPS = 0x61,
     EXCHANGE = 0x62 | ADJ_STRING_BIT,
     EXPIRATION = 0x63 | ADJ_STRING_BIT,
     EXTRINSIC = 0x64 | ADJ_QUAD_BIT,
     EX_DIV_DATE = 0x65 | ADJ_STRING_BIT,
-    EX_MOVE_DIFF = 0x66 | ADJ_QUAD_BIT,
-    //
+    EX_MOVE_DIFF = 0x66 | ADJ_QUAD_BIT,  
     FRONT_EX_MOVE = 0x73 | ADJ_QUAD_BIT,
-    FRONT_VOL = 0x74 | ADJ_QUAD_BIT,
-    //
-    FX_PAIR = 0x78 | ADJ_STRING_BIT,
-    //
-    GAMMA = 0x7d | ADJ_QUAD_BIT,
-    //
+    FRONT_VOL = 0x74 | ADJ_QUAD_BIT,   
+    FX_PAIR = 0x78 | ADJ_STRING_BIT,   
+    GAMMA = 0x7d | ADJ_QUAD_BIT,    
     HIGH = 0x7f | ADJ_QUAD_BIT,
-    HTB_ETB = 0x80 | ADJ_STRING_BIT,
-    //
+    HTB_ETB = 0x80 | ADJ_STRING_BIT,  
     IMPL_VOL = 0x8a | ADJ_QUAD_BIT,
-    INTRINSIC = 0x8b,
-    //
+    INTRINSIC = 0x8b,   
     LAST = 0x95 | ADJ_QUAD_BIT,
     LASTX = 0x96 | ADJ_STRING_BIT,
-    LAST_SIZE = 0x97 | ADJ_INTGR_BIT,
-    //
+    LAST_SIZE = 0x97 | ADJ_INTGR_BIT,   
     LOW = 0x9b | ADJ_QUAD_BIT,
-    LX = 0x9c | ADJ_STRING_BIT,
-    //
+    LX = 0x9c | ADJ_STRING_BIT,   
     MARK = 0xa9 | ADJ_QUAD_BIT,
     MARKET_CAP = 0xaa | ADJ_STRING_BIT,
     MARK_CHANGE = 0xab | ADJ_QUAD_BIT,
-    MARK_PERCENT_CHANGE = 0xac | ADJ_QUAD_BIT,
-    //
+    MARK_PERCENT_CHANGE = 0xac | ADJ_QUAD_BIT,   
     MRKT_MKR_MOVE = 0xaf,
-    MT_NEWS = 0xb0 | ADJ_STRING_BIT,
-    //
-    NET_CHANGE = 0xc9 | ADJ_QUAD_BIT,
-    //
+    MT_NEWS = 0xb0 | ADJ_STRING_BIT,    
+    NET_CHANGE = 0xc9 | ADJ_QUAD_BIT,   
     OPEN = 0xcb | ADJ_QUAD_BIT ,
     OPEN_INT = 0xcc | ADJ_INTGR_BIT,
-    OPTION_VOLUME_INDEX = 0xcd,
-    //
+    OPTION_VOLUME_INDEX = 0xcd,   
     PE = 0xd5,
-    PERCENT_CHANGE = 0xd6 | ADJ_QUAD_BIT,
-    //
+    PERCENT_CHANGE = 0xd6 | ADJ_QUAD_BIT,   
     PUT_CALL_RATIO = 0xda,
-    PUT_VOLUME_INDEX = 0xdb,
-    //
-    RHO = 0xed | ADJ_QUAD_BIT,
-    //
-    SHARES = 0xff | ADJ_INTGR_BIT | ADJ_QUAD_BIT,
-    //
+    PUT_VOLUME_INDEX = 0xdb,  
+    RHO = 0xed | ADJ_QUAD_BIT,  
+    SHARES = 0xff | ADJ_INTGR_BIT | ADJ_QUAD_BIT,    
     STRENGTH_METER = 0x102 | ADJ_STRING_BIT,
     STRIKE = 0x103,
-    SYMBOL = 0x104 | ADJ_STRING_BIT,
-    //
-    THETA = 0x11f | ADJ_QUAD_BIT,
-    //
+    SYMBOL = 0x104 | ADJ_STRING_BIT,    
+    THETA = 0x11f | ADJ_QUAD_BIT,   
     VEGA = 0x13c | ADJ_QUAD_BIT,
     VOLUME = 0x13d | ADJ_INTGR_BIT | ADJ_QUAD_BIT,
     VOL_DIFF = 0x13e | ADJ_QUAD_BIT,
-    VOL_INDEX = 0x13f | ADJ_QUAD_BIT,
-    //
-    WEIGHTED_BACK_VOL = 0x14b | ADJ_QUAD_BIT,
-    //
+    VOL_INDEX = 0x13f | ADJ_QUAD_BIT,    
+    WEIGHTED_BACK_VOL = 0x14b | ADJ_QUAD_BIT,   
     YIELD = 0x152  
     /* END TOPICS ksxaw9834hr84hf;esij?><  DO NOT EDIT !!! */
     };
@@ -465,9 +425,10 @@ public:
     typedef T enum_value_type; 
     typedef typename Topic_Enum_Wrapper<T>::TOPICS enum_type;
 
+    /* type at compile-time 
+       (e.g TOS_Topics::Type<TOS_Topics::LAST>::type == ext_price_type) */
     template<enum_type topic>
-    struct Type{ /* type at compile-time */
-        /* e.g TOS_Topics::Type<TOS_Topics::LAST>::type == ext_price_type */
+    struct Type{ 
         typedef typename std::conditional<
             ((T)topic & ADJ_STRING_BIT), std::string, 
             typename std::conditional<
@@ -479,15 +440,17 @@ public:
                         ext_price_type, def_price_type>::type>::type>::type  type;
     };
   
+    /* type bits at run-time */
     static inline type_bits_type 
-    TypeBits(enum_type topic) /* type bits at run-time */
+    TypeBits(enum_type topic) 
     { 
         return ((type_bits_type)(TOSDB_BIT_SHIFT_RIGHT(T, (T)topic)) 
                 & TOSDB_TOPIC_BITMASK); 
     }
 
+    /* type size at run-time */
     static size_type 
-    TypeSize(enum_type topic) /* type size at run-time */
+    TypeSize(enum_type topic) 
     { 
         switch(TypeBits(topic)){
         case TOSDB_STRING_BIT:
@@ -502,9 +465,10 @@ public:
             return sizeof(def_price_type);
         }; 
     }
-  
+
+    /* platform-dependent type strings at run-time */
     static std::string 
-    TypeString(enum_type topic) /* platform-dependent type strings at run-time */
+    TypeString(enum_type topic) 
     {     
         switch(TypeBits(topic)){
         case TOSDB_STRING_BIT:                 

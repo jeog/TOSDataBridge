@@ -259,7 +259,7 @@ public:
     {        
         if(*this != right){
             _bytes = right._bytes;            
-            _my_base_ty::reset((T*)new char[_bytes], [](T* p){ delete[] (char*)p;});
+            _my_base_ty::reset((T*)new char[_bytes]); //, [](T* p){ delete[] (char*)p;});
             memcpy(get(), right.get(), _bytes);
         }
         return *this;

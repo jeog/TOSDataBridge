@@ -77,205 +77,140 @@ IPCBase::connected(unsigned long timeout)
     uint8_t i = PROBE_BYTE;
     uint8_t o = 0;  
     DWORD r = 0;
-    BOOL ret;
-
-    if( !_probe_channel_mtx.try_lock( /* do we always want to log this stuff ? */
-            timeout,
-            //[](errno_t e){ TOSDB_LogEx("IPC", "failed to open mutex in connected", e); },
-            nullptr,
-            [](){ TOSDB_LogH("IPC", "timed out waiting to lock mutex in connected"); },
-            [](errno_t e){ TOSDB_LogEx("IPC", "failed to lock mutex in connected", e); } ))
-    {
-        return false;
-    }
-
-    /*** CRITICAL SECTION ***/   
-    try{     
-        ret = CallNamedPipe(_probe_channel_pipe_name.c_str(), 
-                            (void*)&i, sizeof(i), (void*)&o, sizeof(o), &r, timeout);     
+    BOOL ret;        
+      
+    ret = CallNamedPipe(_probe_channel_pipe_name.c_str(), 
+                        (void*)&i, sizeof(i), (void*)&o, sizeof(o), &r, timeout);     
         
-        if(ret == 0){       
-            /* GetLastError needs to get called before we try to unlock */
-            errno_t e = GetLastError();      
-            _probe_channel_mtx.unlock();
-            /* if the slave hasn't created the pipe DONT log*/
-            if(e != ERROR_FILE_NOT_FOUND) 
-                TOSDB_LogEx("IPC", "CallNamedPipe failed in connected()", e);    
-            return false;
-        }        
-    }catch(std::exception& e){
-        _probe_channel_mtx.unlock();
-        TOSDB_LogH("IPC", ("exception caught in connected: " + std::string(e.what())).c_str());           
+    if(ret == 0){       
+        /* GetLastError needs to get called before we try to unlock */
+        errno_t e = GetLastError();               
+        /* if the slave hasn't created the pipe DONT log*/
+        if(e != ERROR_FILE_NOT_FOUND) 
+            TOSDB_LogEx("IPC", "CallNamedPipe failed in connected()", e);    
         return false;
-    }    
-    /*** CRITICAL SECTION ***/
-
-    _probe_channel_mtx.unlock();    
+    }      
+    
     return (o == PROBE_BYTE) && (r == 1); 
 }
 
 
 bool
 IPCMaster::call(std::string *msg, unsigned long timeout)
-{
-    bool ret_stat;
+{    
+    DWORD r;
+    std::string recv(MAX_MESSAGE_SZ, '\0');    
 
-    if( !_grab_pipe(timeout) ){
-        TOSDB_LogH("IPC-MASTER", "_grab_pipe failed in call()");
+    BOOL ret = CallNamedPipe(_main_channel_pipe_name.c_str(), 
+                             (void*)msg->c_str(), msg->length() + 1 , 
+                             (void*)recv.c_str(), recv.length() + 1, &r, timeout);     
+        
+    if(ret == 0){       
+        /* GetLastError needs to get called before we try to unlock */
+        errno_t e = GetLastError();               
+        /* if the slave hasn't created the pipe DONT log*/
+        if(e != ERROR_FILE_NOT_FOUND) 
+            TOSDB_LogEx("IPC", "CallNamedPipe failed in call", e);    
         return false;
-    }
+    }     
 
-    ret_stat = send(*msg);
-    if(!ret_stat){       
-        TOSDB_LogH("IPC-Master", ("send() failed in call(), msg: " + *msg).c_str() );        
-        return false;
-    }
-
-    msg->clear();
-    ret_stat = recv(msg);
-    if(!ret_stat){
-        TOSDB_LogH("IPC-Master", ("recv() failed in call(), msg: " + *msg).c_str() );        
-        return false;
-    } 
-
-    _release_pipe();
+    *msg = recv;
     return true;
 }
 
 
-bool
-IPCMaster::_grab_pipe(unsigned long timeout)
-{   
-    if(_pipe_held)
-        return true;
+IPCSlave::IPCSlave(std::string name)
+    :    
+        IPCBase(name),   
+        _sec_attr(SECURITY_ATTRIBUTES()),
+        _sec_desc(SECURITY_DESCRIPTOR()),
+        _sec_sid(SECURITY_MAX_SID_SIZE),
+        _sec_acl(ACL_SIZE)
+    {             
+        /* initialize object security */  
+        errno_t e = 0;
+        if(_set_security(&e) != 0){
+            std::string msg = "failed to initialize object security (" + std::to_string(e) + ")";
+            TOSDB_LogEx("IPC-Slave", msg.c_str(), e); 
+            throw std::runtime_error(msg);
+        }                     
 
-    if( !_main_channel_mtx.try_lock(
-            timeout,
-            [](errno_t e){ TOSDB_LogEx("IPC", "failed to open mutex in _grab_pipe", e); },
-            [](){ TOSDB_LogH("IPC", "timed out waiting to lock mutex in _grab_pipe"); },
-            [](errno_t e){ TOSDB_LogEx("IPC", "failed to lock mutex in _grab_pipe", e); } ))
-    {
-        return false;
-    }
+        _main_channel_pipe_hndl = _create_pipe(_main_channel_pipe_name);
+        _probe_channel_pipe_hndl = _create_pipe(_probe_channel_pipe_name); 
 
-    try{  
-        if( !WaitNamedPipe(_main_channel_pipe_name.c_str(), timeout) )
-        {    
-            errno_t e = GetLastError(); 
-            _main_channel_mtx.unlock();   
-            if(e == ERROR_SEM_TIMEOUT)
-                TOSDB_LogH("IPC-Master", "WaitNamedPipe timed out in _grab_pipe");
-            else
-                TOSDB_LogEx("IPC-Master", "WaitNamedPipe failed in _grab_pipe", e);             
-            return false;    
-        }    
-    
-        _main_channel_pipe_hndl = CreateFile( _main_channel_pipe_name.c_str(), 
-                                              GENERIC_READ | GENERIC_WRITE,
-                                              FILE_SHARE_READ | FILE_SHARE_WRITE, 
-                                              NULL, OPEN_EXISTING, 
-                                              FILE_ATTRIBUTE_NORMAL, NULL );    
-
-        if(_main_channel_pipe_hndl == INVALID_HANDLE_VALUE){
-            errno_t e = GetLastError(); 
-            _main_channel_mtx.unlock(); 
-            TOSDB_LogEx("IPC-Master", "CreaetFile failed in _grab_pipe", e);                                    
-            return false;
-        }
-        _pipe_held = true;
-
-    }catch(std::exception& e){        
-        _release_pipe();        
-        std::string msg = "exception caught in _grab_pipe: " + std::string(e.what());
-        TOSDB_LogH("IPC", msg.c_str());        
-    }   
-     
-    return _pipe_held;
-}
+        _probe_channel_run_flag = true;
+        /* launch our probe channel so master can asynchronously check connection status*/
+        std::async(std::launch::async, [=]{_listen_for_probes();});       
+    }    
 
 
-void 
-IPCMaster::_release_pipe()
+HANDLE
+IPCSlave::_create_pipe(std::string name)
 {
-    if(_pipe_held && (_main_channel_pipe_hndl != INVALID_HANDLE_VALUE))
-    {        
-        CloseHandle(_main_channel_pipe_hndl);
-        _main_channel_pipe_hndl = INVALID_HANDLE_VALUE;     
+    HANDLE h = CreateNamedPipe(name.c_str(), PIPE_ACCESS_DUPLEX,
+                               PIPE_TYPE_MESSAGE | PIPE_READMODE_BYTE | PIPE_WAIT,
+                               PIPE_UNLIMITED_INSTANCES, 0, 0, INFINITE, &_sec_attr);    
+     
+    if(h == INVALID_HANDLE_VALUE){        
+        errno_t e = GetLastError();
+        std::string msg = "IPCSlave failed to create pipe: " + name + " ("  + std::to_string(e) + ")";
+        TOSDB_LogEx("IPC-Slave", msg.c_str(), e);        
+        throw std::runtime_error(msg);
     }
-    _main_channel_mtx.unlock();
-    _pipe_held = false;
+
+    return h;
 }
+
+
+IPCSlave::~IPCSlave()
+    {          
+        CloseHandle(_main_channel_pipe_hndl);              
+        _probe_channel_run_flag = false;
+        /* this will force evaluation of the run flag */
+        connected(TOSDB_DEF_TIMEOUT);  
+        /*_listen_for_probes will close _probe_channel_pipe_hndl */
+    }
 
 
 bool 
 IPCSlave::wait_for_master()
 {    
-    if(_main_channel_pipe_hndl == INVALID_HANDLE_VALUE){    
-        /* if first time here create the pipe */
-        _main_channel_pipe_hndl = CreateNamedPipe( _main_channel_pipe_name.c_str(), 
-                                                   PIPE_ACCESS_DUPLEX,
-                                                   PIPE_TYPE_MESSAGE 
-                                                       | PIPE_READMODE_MESSAGE 
-                                                       | PIPE_WAIT,
-                                                   1, 0, 0, INFINITE, &(_sec_attr[PIPE1]) );
-        
-        if(_main_channel_pipe_hndl == INVALID_HANDLE_VALUE){          
-            TOSDB_LogEx("IPC-Slave", "CreateNamedPipe failed in wait_for_master", GetLastError());        
-            return false;
-        }   
-
-    }else{ /* otherwise just disconnect */
-        DisconnectNamedPipe(_main_channel_pipe_hndl);
-    }
-
-    /* BLOCK until master calls _grab_pipe() */
     if( !ConnectNamedPipe(_main_channel_pipe_hndl, NULL) )
     {       
         TOSDB_LogEx("IPC-Slave", "ConnectNamedPipe failed in wait_for_master", GetLastError());        
         return false;
     }
-
     return true;
 }
 
-HANDLE IPCSlave::_probe_channel::_pipe_hndl = INVALID_HANDLE_VALUE;
 
-bool IPCSlave::_probe_channel::_run_flag = false;
-
-void
-IPCSlave::_probe_channel::launch(std::string pipe_name, SECURITY_ATTRIBUTES* sa)
-{    
-    _pipe_hndl = CreateNamedPipe( pipe_name.c_str(), PIPE_ACCESS_DUPLEX,
-                                  PIPE_TYPE_MESSAGE | PIPE_READMODE_BYTE | PIPE_WAIT,
-                                  1, 0, 0, INFINITE, sa );    
-     
-    if(_pipe_hndl == INVALID_HANDLE_VALUE){        
-        TOSDB_LogEx("IPC-Slave", "IPCSlave failed to create named pipe", GetLastError());
-        throw std::runtime_error("IPCSlave failed to create named pipe");
-    }  
-
-    _run_flag = true;
-    std::async(std::launch::async, _run);    
+void 
+IPCSlave::drop_master()
+{
+    if( !DisconnectNamedPipe(_main_channel_pipe_hndl) )
+    {
+        TOSDB_LogEx("IPC-Slave", "DisonnectNamedPipe failed in wait_for_master", GetLastError()); 
+    }
 }
 
 
 void
-IPCSlave::_probe_channel::_run()
+IPCSlave::_listen_for_probes()
 {
     BOOL ret;
     DWORD r;
     uint8_t b;
     errno_t e;          
 
-    while(_run_flag){ 
-        ret = ConnectNamedPipe(_pipe_hndl, NULL);
+    while(_probe_channel_run_flag){ 
+        ret = ConnectNamedPipe(_probe_channel_pipe_hndl, NULL);
         if(!ret){
             e = GetLastError();                               
             if(e != ERROR_PIPE_CONNECTED)  /* incase client connects first */
                 TOSDB_LogEx("IPC", "ConnectNamedPipe failed in probe_channel", e);
         }
 
-        ret = ReadFile(_pipe_hndl, (void*)&b, sizeof(b), &r, NULL);
+        ret = ReadFile(_probe_channel_pipe_hndl, (void*)&b, sizeof(b), &r, NULL);
         if(!ret)           
             TOSDB_LogEx("IPC", "ReadFile failed in probe_channel", GetLastError());
                           
@@ -285,129 +220,66 @@ IPCSlave::_probe_channel::_run()
             b = 0;
         }
 
-        ret = WriteFile(_pipe_hndl, (void*)&b, sizeof(b), &r, NULL);
+        ret = WriteFile(_probe_channel_pipe_hndl, (void*)&b, sizeof(b), &r, NULL);
         if(!ret)
             TOSDB_LogEx("IPC", "WriteFile failed in probe_channel", GetLastError());
         
-        ret = DisconnectNamedPipe(_pipe_hndl);
+        ret = DisconnectNamedPipe(_probe_channel_pipe_hndl);
         if(!ret)            
             TOSDB_LogEx("IPC", "DisconnectNamedPipe failed in probe_channel", GetLastError());        
-    }    
-
-    CloseHandle(_pipe_hndl); 
-    _pipe_hndl = INVALID_HANDLE_VALUE;       
+    }      
+    CloseHandle(_probe_channel_pipe_hndl);
 }
 
-
-void
-IPCSlave::_init_slave_mutex(std::string name, HANDLE *phndl)
-{
-    *phndl = CreateMutex(&(_sec_attr[MUTEX1]), FALSE, name.c_str());
-
-    if( !(*phndl) ){
-        DWORD e = GetLastError();
-        std::string msg = "IPCSlave failed to create mutex: "  + name;
-        TOSDB_LogEx("IPC-Slave", msg.c_str(), e);
-
-        if(e = ERROR_ACCESS_DENIED){
-            TOSDB_LogH("IPC-Slave", "  Likely causes of this error:");
-            TOSDB_LogH("IPC-Slave", "    1) The mutex has already been created by another running process");
-            TOSDB_LogH("IPC-Slave", "    2) Trying to create a global mutex (Global\\) without adequate privileges");
-        }
-
-        throw std::runtime_error(msg);
-    }  
-}
 
 int 
 IPCSlave::_set_security(errno_t *e)
 {    
-    SID_NAME_USE dummy;
-    BOOL ret; /* int */
+    SID_NAME_USE dummy; 
+
     DWORD dom_sz = 128;
     DWORD sid_sz = SECURITY_MAX_SID_SIZE;
 
     SmartBuffer<char> dom_buf(dom_sz);
-    SmartBuffer<void> sid(sid_sz);
 
-     /* allocate underlying security objects */
-    for(int i = 0; i < NSECURABLE; ++i){ 
-        _sec_attr[(Securable)i] = SECURITY_ATTRIBUTES();
-        _sec_desc[(Securable)i] = SECURITY_DESCRIPTOR();    
-        _sids[(Securable)i] = SmartBuffer<void>(SECURITY_MAX_SID_SIZE);
-        _acls[(Securable)i] = SmartBuffer<ACL>(ACL_SIZE);        
-    }   
-  
-    ret = LookupAccountName(NULL, "Everyone", sid.get(), &sid_sz, dom_buf.get(), &dom_sz, &dummy);
-    if(!ret){
-        *e = GetLastError();
+    if( !LookupAccountName(NULL, "Everyone", _sec_sid.get(), &sid_sz, dom_buf.get(), &dom_sz, &dummy) ){    
+        *e = GetLastError(); 
         return -1;
     }
+   
+    _sec_attr.nLength = sizeof(SECURITY_ATTRIBUTES);
+    _sec_attr.bInheritHandle = FALSE;
+    _sec_attr.lpSecurityDescriptor = &_sec_desc;
 
-    for(int i = 0; i < NSECURABLE; ++i){ 
-        _sec_attr[(Securable)i].nLength = sizeof(SECURITY_ATTRIBUTES);
-        _sec_attr[(Securable)i].bInheritHandle = FALSE;
-        _sec_attr[(Securable)i].lpSecurityDescriptor = &(_sec_desc[(Securable)i]);
-
-        /* memcpy 'TRUE' is error */
-        ret = memcpy_s(_sids[(Securable)i].get(), SECURITY_MAX_SID_SIZE, sid.get(), SECURITY_MAX_SID_SIZE);
-        if(ret){
-            *e = GetLastError();
-            return -2;
-        }
-
-        ret = InitializeSecurityDescriptor(&(_sec_desc[(Securable)i]), SECURITY_DESCRIPTOR_REVISION);
-        if(!ret){
-            *e = GetLastError();
-            return -3;
-        }
-
-        ret = SetSecurityDescriptorGroup(&(_sec_desc[(Securable)i]), _sids[(Securable)i].get(), FALSE);
-        if(!ret){
-            *e = GetLastError();
-            return -4;
-        }
-
-        ret = InitializeAcl(_acls[(Securable)i].get(), ACL_SIZE, ACL_REVISION);
-        if(!ret){
-            *e = GetLastError();
-            return -5;
-        }
+    if( !InitializeSecurityDescriptor(&_sec_desc, SECURITY_DESCRIPTOR_REVISION) ){    
+        *e = GetLastError();
+        return -2;
     }
-                           
-    /* add ACEs individually */
 
-    ret = AddAccessAllowedAce(_acls[SHEM1].get(), ACL_REVISION, FILE_MAP_WRITE, _sids[SHEM1].get()); 
-    if(!ret){
+    if( !SetSecurityDescriptorGroup(&_sec_desc, _sec_sid.get(), FALSE) ){    
+        *e = GetLastError();
+        return -3;
+    }
+
+    if( !InitializeAcl(_sec_acl.get(), ACL_SIZE, ACL_REVISION) ){    
+        *e = GetLastError();
+        return -4;
+    }
+    
+    if( !AddAccessAllowedAce(_sec_acl.get(), ACL_REVISION, FILE_GENERIC_WRITE, _sec_sid.get()) ){    
+        *e = GetLastError();
+        return -5;
+    }
+
+    if( !AddAccessAllowedAce(_sec_acl.get(), ACL_REVISION, FILE_GENERIC_READ, _sec_sid.get()) ){    
         *e = GetLastError();
         return -6;
     }
-
-    ret = AddAccessAllowedAce(_acls[PIPE1].get(), ACL_REVISION, FILE_GENERIC_WRITE, _sids[PIPE1].get());
-    if(!ret){
+    
+    if( !SetSecurityDescriptorDacl(&_sec_desc, TRUE, _sec_acl.get(), FALSE) ){    
         *e = GetLastError();
-        return -6;
-    }
-
-    ret = AddAccessAllowedAce(_acls[PIPE1].get(), ACL_REVISION, FILE_GENERIC_READ, _sids[PIPE1].get()); 
-    if(!ret){
-        *e = GetLastError();
-        return -6;
-    }
-
-    ret = AddAccessAllowedAce(_acls[MUTEX1].get(), ACL_REVISION, SYNCHRONIZE, _sids[MUTEX1].get());
-    if(!ret){
-        *e = GetLastError();
-        return -6;
-    }
-
-    for(int i = 0; i < NSECURABLE; ++i){
-        ret = SetSecurityDescriptorDacl(&(_sec_desc[(Securable)i]), TRUE, _acls[(Securable)i].get(), FALSE);
-        if(!ret){
-            *e = GetLastError();
-            return -7;
-        }
-    }
+        return -7;
+    }    
     
     *e = 0;
     return 0;
