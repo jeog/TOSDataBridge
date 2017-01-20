@@ -351,24 +351,21 @@ RunMainCommLoop(IPCSlave *pslave)
     while(!shutdown_flag){     
 
         /* BLOCK until master is ready */
-        TOSDB_LogDebug("***IPC*** ENGINE - WAIT FOR MASTER (IN)");        
+        //TOSDB_LogDebug("***IPC*** ENGINE - WAIT FOR MASTER");        
         if( !pslave->wait_for_master() )
         {      
             TOSDB_LogH("IPC", "wait_for_master failed");
             shutdown_flag = true;
             return -1;
-        }
-        TOSDB_LogDebug("***IPC*** ENGINE - WAIT FOR MASTER (OUT)");        
+        }     
                          
         /* BLOCK until we get a message */
-        TOSDB_LogDebug("***IPC*** ENGINE - RECEIVE (IN)");        
+        //TOSDB_LogDebug("***IPC*** ENGINE - RECEIVE");        
         if( !pslave->recv(&ipc_msg) )
-        {
-            TOSDB_LogDebug("***IPC*** ENGINE - RECEIVE (FAIL)");
+        {            
             pslave->drop_master();
             continue;          
         }
-        TOSDB_LogDebug("***IPC*** ENGINE - RECEIVE (OUT)");
 
         /* parse the received msg */     
         if( ParseIPCMessage(ipc_msg, &cli_op, &cli_topic, &cli_item, &cli_timeout) )
@@ -381,11 +378,10 @@ RunMainCommLoop(IPCSlave *pslave)
         }
 
         /* reply to MASTER */
-        TOSDB_LogDebug("***IPC*** ENGINE - REPLY (IN)");        
+        //TOSDB_LogDebug("***IPC*** ENGINE - REPLY");        
         if( !pslave->send( std::to_string(resp) ) ){
             TOSDB_LogH("IPC", "send/reply failed in main comm loop");                       
-        }
-        TOSDB_LogDebug("***IPC*** ENGINE - REPLY (OUT)");            
+        }                  
          
         pslave->drop_master();
     }  

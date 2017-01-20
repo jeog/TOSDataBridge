@@ -128,21 +128,18 @@ SendMsgWaitForResponse(long msg)
     
     std::string ipc_msg = std::to_string(msg);
 
-    TOSDB_LogDebug("***IPC*** SERVICE - CHECK CONNECTED (IN)");
+    TOSDB_LogDebug("***IPC*** SERVICE - CHECK CONNECTED");
     if( !master->connected(TOSDB_DEF_TIMEOUT) ){
         TOSDB_LogH("IPC", "Service's IPCMaster is not connected");
         return false;
-    }
-    TOSDB_LogDebug("***IPC*** SERVICE - CHECK CONNECTED (OUT)");
-
-
-    TOSDB_LogDebug("***IPC*** SERVICE - CALL (IN)");
+    }    
+    
+    TOSDB_LogDebug("***IPC*** SERVICE - CALL");
     if( !master->call(&ipc_msg, TOSDB_DEF_TIMEOUT) ){
          TOSDB_LogH("IPC",("master.call failed in SendMsgWaitForResponse, msg:" + ipc_msg).c_str());
          return false;
     }
-    TOSDB_LogDebug("***IPC*** SERVICE - CALL (OUT)");
-
+   
     try{
         ret = std::stol(ipc_msg);
         return (ret == TOSDB_SIG_GOOD);

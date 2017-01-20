@@ -137,7 +137,7 @@ void
 local_commands(CommandCtx *ctx)
 {
     std::string cmd;
-    int maxl;
+    size_t maxl;
 
     int count = CMD_OUT_PER_PAGE;   
     auto reset_count = [&count](){ count = CMD_OUT_PER_PAGE; };
@@ -165,7 +165,7 @@ local_commands(CommandCtx *ctx)
                          << std::endl << std::endl;
                 maxl = 0;
                 for(auto & c : group.second.second)
-                    maxl = max(maxl, c.first.size());               
+                    maxl = std::max(maxl, c.first.size());               
                 for(auto & c : group.second.second){                  
                     if( !_decr_page_latch_and_wait(&count, reset_count) )
                         break;

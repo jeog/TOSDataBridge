@@ -207,17 +207,25 @@ IPCNamedMutexClient::unlock()
     }
 }
 
-
+/* FIX THIS UP */
 NamedMutexLockGuard::NamedMutexLockGuard(std::string name)
 {    
     _mtx = CreateMutex(NULL, FALSE, name.c_str());
     if(!_mtx){        
-        errno_t e = GetLastError();
+        errno_t e = GetLastError();        
+        if(e == ERROR_ACCESS_DENIED){
+            /* if mutex is released before here PROBLEM */
+            _mtx = OpenMutex(NULL, FALSE, name.c_str());
+            if(_mtx)
+                goto wait;
+        }
         std::stringstream m;
         m << "failed to create mutex: " << name << ", error: " << e;        
+        TOSDB_LogRaw("MUTEX", m.str().c_str());
         throw std::runtime_error(m.str());
     }
         
+    wait:
     if( WaitForSingleObject(_mtx, INFINITE) == WAIT_FAILED )
     {
         errno_t e = GetLastError(); 

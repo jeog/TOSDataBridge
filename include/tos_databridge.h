@@ -60,11 +60,19 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 #define DLL_SPEC_IMPL /* default == nothing */
 #endif /* IMPLEMENTATION */
 
+#define NOMINMAX /* for std::min/max */
 
-#include <windows.h> /* C API uses Window's string typedefs (LPSTR/LPCSTR) */
+#ifndef _DEBUG
+#define NDEBUG /* for assert */
+#endif
+
+/*** NO INCLUDES BEFORE HERE ***/
+
+#include <windows.h> /* (our) C API uses Window's string typedefs (LPSTR/LPCSTR) */
 #include <time.h>
 #include <limits.h>
 #include <stdint.h>
+#include <assert.h>
 
 #ifdef __cplusplus
 
@@ -182,7 +190,7 @@ typedef struct{
 #define TOSDB_STR_DATA_SZ ((size_type)40)
 #define TOSDB_MAX_STR_SZ ((size_type)0xFF)
 #define TOSDB_DEF_TIMEOUT 2000
-#define TOSDB_DEF_PAUSE (TOSDB_DEF_TIMEOUT / 10)
+#define TOSDB_DEF_PAUSE 100
 #define TOSDB_PROBE_WAIT ((int)Moderate * 3) 
 #define TOSDB_MIN_TIMEOUT 1500
 #define TOSDB_SHEM_BUF_SZ 4096

@@ -52,11 +52,10 @@ _display_header(std::string hpre, std::string hpost);
 
 }; /* namespace */
 
-
 int main(int argc, char* argv[])
 {           
     std::string cmd;
- 
+   
     _display_header<MAX_DISPLAY_WIDTH, LEFT_INDENT_SIZE, '-'>("[--", "--]");
 
     while(1){ 

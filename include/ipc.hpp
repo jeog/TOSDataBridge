@@ -51,6 +51,17 @@ protected:
     bool
     recv(std::string *msg) const;
 
+    template<typename T>
+    bool 
+    _call_pipe_timed( std::string name,
+                      T* in,
+                      DWORD in_sz,
+                      T* out, 
+                      DWORD out_sz,
+                      unsigned long timeout, 
+                      std::function<bool(T*,DWORD)> handle_good_call,
+                      std::function<void(void)> handle_file_not_found = nullptr ); 
+
     IPCBase(std::string name)
         :    
             _main_channel_pipe_name(std::string("\\\\.\\pipe\\")
@@ -152,6 +163,7 @@ public:
     bool
     call(std::string *msg, unsigned long timeout);
 };
+
 
 
 

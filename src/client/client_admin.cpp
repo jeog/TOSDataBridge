@@ -85,9 +85,6 @@ _requestStreamOP(TOS_Topics::TOPICS topic_t,
          < 0 on IPC error
          = 1 if the engine fails to do what is requested */
 {
-    long ret;
-    bool ret_stat;      
-
     switch(opcode){
     case TOSDB_SIG_ADD:
     case TOSDB_SIG_REMOVE:
@@ -106,8 +103,7 @@ _requestStreamOP(TOS_Topics::TOPICS topic_t,
     }
 
     try{
-        ret = std::stol(msg);
-        return ret;
+        return std::stol(msg);        
     }catch(...){
         TOSDB_LogH("IPC", ("failed to convert return message to long, msg:" + msg).c_str());
         return -3;
