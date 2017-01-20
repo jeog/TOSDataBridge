@@ -61,12 +61,23 @@ _REGEX_HEADER_CONST = "#define[\s]+([\w]+)[\s]+.*?([\d][\w]*)"
 #adjust for topics we had to permute to form valid enum vars
 TOPIC_VAL_REPLACE = {'HIGH52':'52HIGH','LOW52':'52LOW'}
 
+#exclude certain header consts
+HEADER_PREFIX_EXCLUDES = ['TOSDB_SIG_', 'TOSDB_COMM_', 'TOSDB_PROBE_',
+                          'LOG_BACKEND_MUTEX_NAME', 'LOCAL_LOG_PATH', 'TOSDB_SHEM_BUF_SZ']
+
 
 class TOSDB_SetupError(Exception):
     def __init__(self,*msgs):
         super().__init__(*msgs)  
 
- 
+
+def _on_exclude_list(h):
+    for exc in HEADER_PREFIX_EXCLUDES:
+        if _match(exc,h):
+            return True
+    return False
+
+    
 def _pull_consts_from_header(verbose=True):
     consts = {}
     lineno = 0
@@ -80,10 +91,13 @@ def _pull_consts_from_header(verbose=True):
                 continue    
             try:
                 g0, g1 = groups
+                #custom excluded consts
+                if _on_exclude_list(g0):
+                    continue
                 val = str(hex(int(g1,16)) if 'x' in g1 else int(g1))
                 consts[g0] = val
                 if verbose:
-                    print(' ',_HEADER_NAME + ':' + str(lineno)+ ': '+ groups[0], val)
+                    print(' ',_HEADER_NAME + ':' + str(lineno)+ ': '+ g0, val)
             except ValueError:
                 raise TOSDB_SetupError("invalid header const value", str(g0))   
             except Exception as e:
