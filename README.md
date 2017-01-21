@@ -14,13 +14,6 @@ The core implementation is not portable, but the python interface does provides 
 - TDAmeritrade's ThinkOrSwim(TOS) platform that exposes DDE functionality (the Window's verion)
 - VC++ 2012 Redistributable (included)
 
-### Versions
-- - -
-
-- **v0.5** \[branch 'v0.5'\] - 'stable' version that guarantees up-to-date binaries, signatures, and symbols (use the README from branch 'v0.5')
-
-- **v0.6** \[branch 'master'\] - development version that may lack up-to-date binaries, signatures, and/or symbols
-    
 ### Quick Setup
 - - -
 - tosdb-setup.bat will attempt to install the necessary modules/dependencies for you but you should refer to [Installation Details](README_INSTALL.md) for a more detailed explanation
