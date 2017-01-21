@@ -207,32 +207,42 @@ IPCNamedMutexClient::unlock()
     }
 }
 
+
+#define HANDLE_MUTEX_ERROR(msg, e) do{ \
+    std::stringstream m; \
+    m << msg << ": " << name << " (" << e << ")"; \
+    return; \
+}while(0)
+
+
 /* FIX THIS UP */
 NamedMutexLockGuard::NamedMutexLockGuard(std::string name)
 {    
-    _mtx = CreateMutex(NULL, FALSE, name.c_str());
-    if(!_mtx){        
-        errno_t e = GetLastError();        
+    errno_t e;  
+    /* no guarantee the service/engine won't create the mutex, 
+       leaving us w/o adequate privileges; if so we try to open 
+       the mutex; if that fails because the mutex was closed AFTER
+       our last call to CreateMutex we loop back and try again */
+    do{
+        _mtx = CreateMutex(NULL, FALSE, name.c_str());
+        if(_mtx)
+            break;               
+        e = GetLastError();        
+        /* if we dont have privileges to create just open */
         if(e == ERROR_ACCESS_DENIED){
-            /* if mutex is released before here PROBLEM */
             _mtx = OpenMutex(NULL, FALSE, name.c_str());
             if(_mtx)
-                goto wait;
+                break;          
+            e = GetLastError();
+            if(e == ERROR_FILE_NOT_FOUND)
+                continue;
+            HANDLE_MUTEX_ERROR("failed to open mutex", e);           
         }
-        std::stringstream m;
-        m << "failed to create mutex: " << name << ", error: " << e;        
-        TOSDB_LogRaw("MUTEX", m.str().c_str());
-        throw std::runtime_error(m.str());
-    }
-        
-    wait:
+        HANDLE_MUTEX_ERROR("failed to create mutex", e);                            
+    }while(1);
+
     if( WaitForSingleObject(_mtx, INFINITE) == WAIT_FAILED )
-    {
-        errno_t e = GetLastError(); 
-        std::stringstream m;
-        m << "failed to lock mutex: " << name << ", error: " << e;        
-        throw std::runtime_error(m.str());
-    }      
+        HANDLE_MUTEX_ERROR("failed to lock mutex", GetLastError());
 }
 
 
