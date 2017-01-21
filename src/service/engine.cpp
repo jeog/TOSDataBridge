@@ -348,6 +348,7 @@ RunMainCommLoop(IPCSlave *pslave)
     unsigned int cli_op;  
     int resp;        
     
+    TOSDB_Log("STARTUP", "entering MainCommLoop");
     while(!shutdown_flag){     
 
         /* BLOCK until master is ready */
@@ -379,12 +380,14 @@ RunMainCommLoop(IPCSlave *pslave)
 
         /* reply to MASTER */
         //TOSDB_LogDebug("***IPC*** ENGINE - REPLY");        
-        if( !pslave->send( std::to_string(resp) ) ){
+        if( !pslave->send(std::to_string(resp)) )
+        {
             TOSDB_LogH("IPC", "send/reply failed in main comm loop");                       
         }                  
          
         pslave->drop_master();
-    }  
+    }
+    TOSDB_Log("SHUTDOWN", "exiting MainCommLoop");
 
     return 0;
 }

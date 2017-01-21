@@ -452,8 +452,7 @@ public:
     static inline type_bits_type 
     TypeBits(enum_type topic) 
     { 
-        return ((type_bits_type)(TOSDB_BIT_SHIFT_RIGHT(T, (T)topic)) 
-                & TOSDB_TOPIC_BITMASK); 
+        return ((type_bits_type)(TOSDB_BIT_SHIFT_RIGHT(T, (T)topic)) & TOSDB_TOPIC_BITMASK); 
     }
 
     /* type size at run-time */

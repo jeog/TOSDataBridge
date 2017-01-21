@@ -32,7 +32,12 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 
 class IPCBase{
 public:
+    /* we limit message size to make the implemenation much easier/safer; 
+       a more robust mechanism could manually write/read to/from the pipe server 
+       and loop on the read calls until ERROR_MORE_DATA isn't returned */
     static const int MAX_MESSAGE_SZ = 255; 
+
+    /* arbitrary value the 'probe' channel sends/recieves to confirm connection */
     static const uint8_t PROBE_BYTE = 0xff;
 
     bool
@@ -53,14 +58,14 @@ protected:
 
     template<typename T>
     bool 
-    _call_pipe_timed( std::string name,
-                      T* in,
-                      DWORD in_sz,
-                      T* out, 
-                      DWORD out_sz,
-                      unsigned long timeout, 
-                      std::function<bool(T*,DWORD)> handle_good_call,
-                      std::function<void(void)> handle_file_not_found = nullptr ); 
+    _call_pipe( std::string name,
+                T* in,
+                DWORD in_sz,
+                T* out, 
+                DWORD out_sz,
+                unsigned long timeout, 
+                std::function<bool(T*,DWORD)> handle_good_call,
+                std::function<void(void)> handle_file_not_found = nullptr ); 
 
     IPCBase(std::string name)
         :    

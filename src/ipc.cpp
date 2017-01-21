@@ -76,61 +76,43 @@ IPCBase::recv(std::string *msg) const
 
 template<typename T>
 bool 
-IPCBase::_call_pipe_timed( std::string name,
-                           T* in,
-                           DWORD in_sz,
-                           T* out, 
-                           DWORD out_sz,
-                           unsigned long timeout, 
-                           std::function<bool(T*,DWORD)> handle_good_call,
-                           std::function<void(void)> handle_file_not_found ) 
+IPCBase::_call_pipe( std::string name,
+                     T* in,
+                     DWORD in_sz,
+                     T* out, 
+                     DWORD out_sz,
+                     unsigned long timeout, 
+                     std::function<bool(T*,DWORD)> handle_good_call,
+                     std::function<void(void)> handle_file_not_found ) 
 { 
     using namespace std::chrono;
       
     errno_t e;
-    DWORD r = 0;    
-    long long time_elapsed = 0;
-    long long t_o;
-    
-    auto tbeg = steady_clock_type::now();
-    do{    
-        /* wait for a 'pause' interval or whats left on the overall timeout */
-        t_o = std::min(timeout - time_elapsed, (long long)TOSDB_DEF_PAUSE);      
-        assert(t_o > 0);
+    DWORD r = 0;  
+   
+    if( CallNamedPipe(name.c_str(), (void*)in, in_sz, (void*)out, out_sz, &r, timeout) )
+    {    
+        return handle_good_call(out, r);                 
+    }
 
-        if( CallNamedPipe(name.c_str(), (void*)in, in_sz, (void*)out, out_sz, &r, (DWORD)t_o) )
-        {    
-            return handle_good_call(out, r);                 
-        }
+    e = GetLastError(); 
+    if(e == ERROR_FILE_NOT_FOUND){
+        if(handle_file_not_found)
+            handle_file_not_found();
+    }else{
+        TOSDB_LogEx("IPC", ("CallNamedPipe failed for pipe:" + name).c_str(), e);
+    }
 
-        e = GetLastError(); 
-        switch(e){
-        case(ERROR_PIPE_BUSY): /* try again (or timeout) */
-            TOSDB_LogDebug(("ERROR_PIPE_BUSY for pipe: " + name).c_str());
-            break;
-        case(ERROR_FILE_NOT_FOUND): 
-            if(handle_file_not_found)
-                handle_file_not_found();
-            return false;
-        default:
-            TOSDB_LogEx("IPC", ("CallNamedPipe failed for pipe:" + name).c_str(), e);
-            return false;
-        };               
-      
-        time_elapsed = duration_cast<milliseconds>(steady_clock_type::now() - tbeg).count();              
-    }while(time_elapsed < timeout);
-        
-    TOSDB_LogH("IPC", ("_call_pipe_timed() timed out for pipe:" + name).c_str());
-    return false;   
+    return false;     
 }
 
 template bool /* connected() / _probe_channel_pipe */
-IPCBase::_call_pipe_timed<uint8_t>(std::string, uint8_t*, DWORD, uint8_t*, DWORD, unsigned long, 
-                                   std::function<bool(uint8_t*,DWORD)>, std::function<void(void)>);
+IPCBase::_call_pipe<uint8_t>(std::string, uint8_t*, DWORD, uint8_t*, DWORD, unsigned long, 
+                             std::function<bool(uint8_t*,DWORD)>, std::function<void(void)>);
 
 template bool /* call() / _main_channel_pipe */
-IPCBase::_call_pipe_timed<const char>(std::string, const char*, DWORD, const char*, DWORD, unsigned long, 
-                                      std::function<bool(const char*,DWORD)>, std::function<void(void)>);
+IPCBase::_call_pipe<const char>(std::string, const char*, DWORD, const char*, DWORD, unsigned long, 
+                                std::function<bool(const char*,DWORD)>, std::function<void(void)>);
 
 
 bool 
@@ -143,7 +125,7 @@ IPCBase::connected(unsigned long timeout)
     std::function<bool(uint8_t*,DWORD)> cb = 
         [](uint8_t *out, DWORD r){ return (*out == PROBE_BYTE) && (r == 1); };
   
-    return _call_pipe_timed(_probe_channel_pipe_name, &i, sizeof(i), &o, sizeof(o), timeout, cb); 
+    return _call_pipe(_probe_channel_pipe_name, &i, sizeof(i), &o, sizeof(o), timeout, cb); 
 }
 
 
@@ -157,14 +139,14 @@ IPCMaster::call(std::string *msg, unsigned long timeout)
     std::function<bool(const char*,DWORD)> cb_good = 
         [msg,&recv](const char* d1, DWORD d2){ *msg = recv; return true; };
 
-    /* if we get are here the main pipe *should* be available; log if not */
+    /* if we get here the main pipe *should* be available; log if not */
     std::function<void(void)> cb_no_file = 
         [](){ TOSDB_LogH("IPC", "main pipe not found (slave not available)"); };
        
-    return _call_pipe_timed( _main_channel_pipe_name, 
-                             msg->c_str(), msg->length() + 1, 
-                             recv.c_str(), recv.length() + 1, 
-                             timeout, cb_good, cb_no_file ); 
+    return _call_pipe( _main_channel_pipe_name, 
+                       msg->c_str(), msg->length() + 1, 
+                       recv.c_str(), recv.length() + 1, 
+                       timeout, cb_good, cb_no_file ); 
 }
 
 

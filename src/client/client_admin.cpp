@@ -445,9 +445,8 @@ DllMain(HANDLE mod, DWORD why, LPVOID res) /* ENTRY POINT */
 int 
 TOSDB_Connect() 
 {  
-    /* Nov 1 2016: Change (non-blocking) raw log calls to regular (blocking) 
-         We should be able to block in here as long as this is not called from DllMain  */
-    if(_connected()) /* shouldnt this just check aware_of_connection ? */
+    /* We should be able to block in here as long as this is not called from DllMain  */
+    if(_connected()) 
         return 0;
  
     if(buffer_thread)
@@ -497,9 +496,10 @@ TOSDB_IsConnectedToEngine()
 
 /* ... and... */
 unsigned int 
-TOSDB_IsConnectedToEngineAndTOS() // int wait_for_response=1000
+TOSDB_IsConnectedToEngineAndTOS() 
 {
-    long ret = _requestStreamOP(TOS_Topics::TOPICS::LAST, "SPY", 1000, TOSDB_SIG_TEST);
+    long ret = _requestStreamOP(TOS_Topics::TOPICS::LAST, "SPY", 
+                                TOSDB_MIN_TIMEOUT, TOSDB_SIG_TEST);
 
     return ret ? 0 : 1;
 }
@@ -507,7 +507,7 @@ TOSDB_IsConnectedToEngineAndTOS() // int wait_for_response=1000
 
 /* ... and... */
 unsigned int   
-TOSDB_ConnectionState() // int wait_for_response=1000
+TOSDB_ConnectionState() 
 {   
     if( !TOSDB_IsConnectedToEngine() )
         return TOSDB_CONN_NONE;
@@ -1042,6 +1042,7 @@ TOSDB_GetClientLogPath(char* path, size_type sz)
     
     return strcpy_s(path,psz,p.c_str()) ? -1 : 0;
 }
+
 
 unsigned long 
 TOSDB_SetLatency(UpdateLatency latency) 

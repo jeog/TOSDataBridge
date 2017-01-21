@@ -208,42 +208,46 @@ IPCNamedMutexClient::unlock()
 }
 
 
-#define HANDLE_MUTEX_ERROR(msg, e) do{ \
+#define HANDLE_MUTEX_ERROR(msg, name, e) do{ \
     std::stringstream m; \
     m << msg << ": " << name << " (" << e << ")"; \
-    return; \
+    /* can't block here, use ...Raw */ \
+    TOSDB_LogRawH("MUTEX", m.str().c_str()); \
+    throw std::runtime_error(m.str()); \
 }while(0)
 
-
-/* FIX THIS UP */
 NamedMutexLockGuard::NamedMutexLockGuard(std::string name)
 {    
     errno_t e;  
-    /* no guarantee the service/engine won't create the mutex, 
-       leaving us w/o adequate privileges; if so we try to open 
-       the mutex; if that fails because the mutex was closed AFTER
-       our last call to CreateMutex we loop back and try again */
+    /* no guarantee the service/engine won't create the mutex, leaving us w/o 
+       adequate privileges; if so we try to open the mutex; if the mutex was 
+       closed AFTER our call to CreateMutex failed we loop back and try again */
     do{
         _mtx = CreateMutex(NULL, FALSE, name.c_str());
         if(_mtx)
             break;               
-        e = GetLastError();        
-        /* if we dont have privileges to create just open */
+        e = GetLastError();                
         if(e == ERROR_ACCESS_DENIED){
+            /* if we dont have privileges to create, just try to open */
             _mtx = OpenMutex(NULL, FALSE, name.c_str());
             if(_mtx)
                 break;          
             e = GetLastError();
-            if(e == ERROR_FILE_NOT_FOUND)
+            if(e == ERROR_FILE_NOT_FOUND) /* if it was closed, try again */                
                 continue;
-            HANDLE_MUTEX_ERROR("failed to open mutex", e);           
+            HANDLE_MUTEX_ERROR("failed to open mutex", name, e);           
         }
-        HANDLE_MUTEX_ERROR("failed to create mutex", e);                            
+        HANDLE_MUTEX_ERROR("failed to create mutex", name, e);                            
     }while(1);
 
+    /* lock mutex */
     if( WaitForSingleObject(_mtx, INFINITE) == WAIT_FAILED )
-        HANDLE_MUTEX_ERROR("failed to lock mutex", GetLastError());
+    {
+        HANDLE_MUTEX_ERROR("failed to lock mutex", name, GetLastError());
+    }
 }
+
+#undef HANDLE_MUTEX_ERROR(msg,e)
 
 
 NamedMutexLockGuard::~NamedMutexLockGuard()
@@ -251,7 +255,7 @@ NamedMutexLockGuard::~NamedMutexLockGuard()
     if(_mtx){     
         ReleaseMutex(_mtx);
         CloseHandle(_mtx);             
-    }
+    } 
 }
 
 #endif

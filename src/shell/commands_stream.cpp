@@ -494,7 +494,7 @@ _min_stream_len(std::string block, long beg, long end, size_type len)
     if(beg < 0)
         beg += block_size;
         
-    min_size = std::min((size_t)(end-beg+1), len);
+    min_size = std::min((size_type)(end-beg+1), len);
 
     if(beg < 0 || end < 0)
         throw TOSDB_Error("STREAM DATA", "negative 'beg' or 'end' index values");
