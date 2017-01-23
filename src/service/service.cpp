@@ -84,7 +84,7 @@ LogState(int state, std::string msg="")
 
     try{
         TOSDB_Log("STATE", (STATE_STRINGS.at(state) + ' ' + msg).c_str());
-    }catch(std::out_of_range){
+    }catch(const std::out_of_range){
         std::string msg = "invalid state (" + std::to_string(state) + ") passed to LogState";
         TOSDB_LogH("LOG", msg.c_str());
     }    

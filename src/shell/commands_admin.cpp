@@ -572,7 +572,7 @@ GetItemCount(CommandCtx *ctx)
     if(prompt_for_cpp(ctx)){
         try{
             std::cout<< std::endl << TOSDB_GetItemCount(block) << std::endl << std::endl;
-        }catch(std::exception & e){
+        }catch(const std::exception & e){
             std::cout<< std::endl << "error: " << e.what() << std::endl << std::endl;
         }
     }else{         
@@ -595,7 +595,7 @@ GetTopicCount(CommandCtx *ctx)
     if(prompt_for_cpp(ctx)){
         try{
             std::cout<< std::endl << TOSDB_GetTopicCount(block) << std::endl << std::endl;
-        }catch(std::exception & e){
+        }catch(const std::exception & e){
             std::cout<< std::endl << "error: " << e.what() << std::endl << std::endl;
         }
     }else{         
@@ -622,7 +622,7 @@ GetTopicNames(CommandCtx *ctx)
             for(auto & t : TOSDB_GetTopicNames(block))
                 std::cout<< t << std::endl;
             std::cout<< std::endl;
-        }catch(std::exception & e){
+        }catch(const std::exception & e){
             std::cout<< std::endl << "error: " << e.what() << std::endl << std::endl;
         }
     }else{          
@@ -659,7 +659,7 @@ GetItemNames(CommandCtx *ctx)
             for(auto & i : TOSDB_GetItemNames(block))
                 std::cout<< i << std::endl;
             std::cout<< std::endl;
-        }catch(std::exception & e){
+        }catch(const std::exception& e){
             std::cout<< std::endl << "error: " << e.what() << std::endl << std::endl;
         }
     }else{     
@@ -710,7 +710,7 @@ GetPreCachedTopicNames(CommandCtx *ctx)
             for(auto & t : TOSDB_GetPreCachedTopicNames(block))
                 std::cout<< t << std::endl;
             std::cout<< std::endl;
-        }catch(std::exception & e){
+        }catch(const std::exception & e){
             std::cout<< std::endl << "error: " << e.what() << std::endl << std::endl;
         }
     }else{                  
@@ -747,7 +747,7 @@ GetPreCachedItemNames(CommandCtx *ctx)
             for(auto & i : TOSDB_GetPreCachedItemNames(block))
                 std::cout<< i << std::endl;
             std::cout<< std::endl;
-        }catch(std::exception & e){
+        }catch(const std::exception & e){
             std::cout<< std::endl << "error: " << e.what() << std::endl << std::endl;
         }
     }else{                
@@ -796,7 +796,7 @@ GetPreCachedItemCount(CommandCtx *ctx)
             std::cout<< std::endl 
                       << TOSDB_GetPreCachedItemCount(block) 
                       << std::endl << std::endl;
-        }catch(std::exception & e){
+        }catch(const std::exception & e){
             std::cout<< std::endl << "error: " << e.what() << std::endl << std::endl;
         }
     }else{            
@@ -821,7 +821,7 @@ GetPreCachedTopicCount(CommandCtx *ctx)
             std::cout<< std::endl 
                       << TOSDB_GetPreCachedTopicCount(block) 
                       << std::endl << std::endl;
-        }catch(std::exception & e){
+        }catch(const std::exception& e){
             std::cout<< std::endl << "error: " << e.what() << std::endl << std::endl;
         }
     }else{            
@@ -846,7 +846,7 @@ GetTypeBits(CommandCtx *ctx)
             std::cout<< std::endl << std::hex
                       << (int)TOSDB_GetTypeBits(TOS_Topics::MAP()[topic]) 
                       << std::endl << std::endl; 
-        }catch(std::exception & e){
+        }catch(const std::exception& e){
             std::cout<< std::endl <<"error: " << e.what() << std::endl << std::endl;
         }
     }else{            
@@ -873,7 +873,7 @@ GetTypeString(CommandCtx *ctx)
             std::cout<< std::endl 
                       << TOSDB_GetTypeString(TOS_Topics::MAP()[topic]) 
                       << std::endl << std::endl; 
-        }catch(std::exception & e){
+        }catch(const std::exception& e){
             std::cout<< std::endl << "error: " << e.what() << std::endl << std::endl;
         }
     }else{            
@@ -898,7 +898,7 @@ IsUsingDateTime(CommandCtx *ctx)
             std::cout<< std::endl << std::boolalpha 
                       << TOSDB_IsUsingDateTime(block) 
                       << std::endl << std::endl; 
-        }catch(std::exception & e){
+        }catch(const std::exception& e){
             std::cout<< std::endl << "error: " << e.what() << std::endl << std::endl;
         }
     }else{

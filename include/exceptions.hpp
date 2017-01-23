@@ -24,15 +24,15 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 
 class TOSDB_Error 
         : public std::exception{
-    unsigned long _threadID;
-    unsigned long _processID;
+    DWORD _threadID;
+    DWORD _processID;
     std::string _tag;
     std::string _info;
 
 public:
-    TOSDB_Error(const char* info, const char* tag)
+    TOSDB_Error(std::string info, std::string tag)
         : 
-            std::exception(info),
+            std::exception(info.c_str()),
             _tag(tag),
             _info(info),
             _threadID(GetCurrentThreadId()),
@@ -40,7 +40,7 @@ public:
         {         
         }
 
-    TOSDB_Error(const std::exception& e, const char* tag)
+    TOSDB_Error(const std::exception& e, std::string tag)
         : 
             std::exception(e),
             _tag(tag),    
@@ -49,7 +49,7 @@ public:
         {         
         }
 
-    TOSDB_Error(const std::exception& e, const char* info, const char* tag)
+    TOSDB_Error(const std::exception& e, std::string info, std::string tag)
         : 
             std::exception(e),
             _tag(tag),
@@ -64,13 +64,13 @@ public:
         {
         }
 
-    inline unsigned long 
+    inline DWORD 
     threadID() const 
     { 
         return _threadID; 
     }
 
-    inline unsigned long 
+    inline DWORD 
     processID() const 
     { 
         return _processID; 
@@ -87,13 +87,20 @@ public:
     { 
         return _info; 
     }
+
+    /* do better than this */
+    inline std::string 
+    info_and_what() const 
+    { 
+        return "info: " + _info + ", what: " + std::string(what());
+    }
 };
 
 
 class TOSDB_BufferError 
         : public TOSDB_Error{
 public:
-    TOSDB_BufferError(const char* info, const char* tag = "DataBuffer")
+    TOSDB_BufferError(std::string info, std::string tag = "DataBuffer")
         : 
             TOSDB_Error(info, tag) 
         {
@@ -104,13 +111,13 @@ public:
 class TOSDB_DDE_Error 
         : public TOSDB_Error{
 public:
-    TOSDB_DDE_Error(const char* info, const char* tag = "DDE")
+    TOSDB_DDE_Error(std::string info, std::string tag = "DDE")
         : 
             TOSDB_Error(info, tag) 
         {
         }
 
-    TOSDB_DDE_Error(const std::exception& e, const char* info, const char* tag = "DDE")
+    TOSDB_DDE_Error(const std::exception& e, std::string info, std::string tag = "DDE")
         : 
             TOSDB_Error(e, info, tag) 
         {
@@ -121,18 +128,29 @@ public:
 class TOSDB_DataBlockError 
         : public TOSDB_Error{
 public:
-    TOSDB_DataBlockError(const char* info, const char* tag = "DataBlock")
+    TOSDB_DataBlockError(std::string info, std::string tag = "DataBlock")
         : 
             TOSDB_Error(info, tag) 
         {
         }
 
-    TOSDB_DataBlockError(const std::exception& e, const char* info, const char* tag = "DataBlock") 
+    TOSDB_DataBlockError(const std::exception& e, std::string info, std::string tag = "DataBlock") 
         :  
             TOSDB_Error(e, info, tag) 
         {
         }
-};    
+};  
+
+
+class TOSDB_DataBlockDoesntExist 
+        : public TOSDB_DataBlockError{
+public:
+    TOSDB_DataBlockDoesntExist(std::string name)
+        : 
+            TOSDB_DataBlockError("block (" + std::string(name) + ") doesn't exist") 
+        {
+        }
+};  
 
 
 class TOSDB_DataBlockLimitError 
@@ -154,13 +172,13 @@ public:
 class TOSDB_DataStreamError 
         : public TOSDB_DataBlockError{
 public:
-    TOSDB_DataStreamError(const char* info, const char* tag = "DataStream")
+    TOSDB_DataStreamError(std::string info, std::string tag = "DataStream")
         : 
             TOSDB_DataBlockError(info, tag) 
         {
         }
 
-    TOSDB_DataStreamError(const std::exception& e, const char* info, const char* tag = "DataStream")
+    TOSDB_DataStreamError(const std::exception& e, std::string info, std::string tag = "DataStream")
         : 
             TOSDB_DataBlockError(e, info, tag) 
         {

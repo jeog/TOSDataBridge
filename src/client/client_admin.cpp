@@ -75,6 +75,23 @@ _getBlockPtr(std::string id)
 }
 
 
+bool
+_connected(bool log_if_not_connected=false)
+{
+    bool conn = master.connected(TOSDB_DEF_TIMEOUT);
+    bool aware = aware_of_connection.load();
+
+    if(log_if_not_connected){
+        if(!aware)
+            TOSDB_LogH("IPC", "not connected to slave (!aware_of_connection)");                 
+        if(!conn)
+            TOSDB_LogH("IPC", "not connected to slave (!master.connected)");            
+    }
+
+    return conn && aware;
+}
+
+
 long 
 _requestStreamOP(TOS_Topics::TOPICS topic_t, 
                 std::string item, 
@@ -91,22 +108,27 @@ _requestStreamOP(TOS_Topics::TOPICS topic_t,
     case TOSDB_SIG_TEST:
         break;
     default:
-        return -1;
-    }          
+        return TOSDB_ERROR_BAD_SIG;
+    }         
+
+    if( !_connected(true) ){
+        TOSDB_LogH("IPC", "_requestStreamOP failed, not connected");
+        return TOSDB_ERROR_NOT_CONNECTED;
+    }
 
     std::string msg = std::to_string(opcode) + ' ' + TOS_Topics::MAP()[topic_t] + ' '
                       + item + ' ' + std::to_string(timeout);   
 
     if( !master.call(&msg,timeout) ){
         TOSDB_LogH("IPC",("master.call failled in _requestStreamOP, msg:" + msg).c_str());
-        return -2;
+        return TOSDB_ERROR_IPC;
     }
 
     try{
         return std::stol(msg);        
     }catch(...){
         TOSDB_LogH("IPC", ("failed to convert return message to long, msg:" + msg).c_str());
-        return -3;
+        return TOSDB_ERROR_IPC;
     }    
 }
 
@@ -137,7 +159,7 @@ _captureBuffer(TOS_Topics::TOPICS topic_t,
             if(fm_hndl)
                 CloseHandle(fm_hndl);
             std::string e("failure to map shared memory: "); 
-            throw TOSDB_BufferError( e.append(buf_name).c_str() );
+            throw TOSDB_BufferError( e.append(buf_name) );
         }
         CloseHandle(fm_hndl); 
 
@@ -146,7 +168,7 @@ _captureBuffer(TOS_Topics::TOPICS topic_t,
         if(!mtx_hndl){ 
             UnmapViewOfFile(mem_addr);
             std::string e("failure to open MUTEX handle: ");
-            throw TOSDB_BufferError( e.append(buf_name).c_str() );
+            throw TOSDB_BufferError( e.append(buf_name) );
         }
 
         std::set<const TOSDBlock*> db_set;
@@ -281,23 +303,6 @@ _cleanupBlock(LPVOID lParam)
 }
 
 
-bool
-_connected(bool log_if_not_connected=false)
-{
-    bool conn = master.connected(TOSDB_DEF_TIMEOUT);
-    bool aware = aware_of_connection.load();
-
-    if(log_if_not_connected){
-        if(!aware)
-            TOSDB_LogH("IPC", "not connected to slave (!aware_of_connection)");                 
-        if(!conn)
-            TOSDB_LogH("IPC", "not connected to slave (!master.connected)");            
-    }
-
-    return conn && aware;
-}
-
-
 DWORD WINAPI 
 _threadedExtractLoop(LPVOID lParam)
 {       
@@ -369,9 +374,12 @@ _createBlock(LPCSTR id,
     /* --- CRITICAL SECTION --- */
 
     if( GetBlockPtr(id,false) ){
-        TOSDB_LogH("BLOCK", ("TOSDBlock with this ID already exists: " + std::string(id)).c_str());
-        return -3; 
+        TOSDB_LogH("BLOCK", ("block (" + std::string(id) + ") already exists").c_str());
+        return TOSDB_ERROR_BLOCK_ALREADY_EXISTS; 
     }
+
+    if( !IsValidBlockSize(sz) )
+        return TOSDB_ERROR_BLOCK_SIZE;             
 
     db = new TOSDBlock;   
     db->timeout = std::max<unsigned long>(timeout,TOSDB_MIN_TIMEOUT);
@@ -379,16 +387,16 @@ _createBlock(LPCSTR id,
 
     try{
         db->block = TOSDB_RawDataBlock::CreateBlock(sz, is_datetime); 
-    }catch(TOSDB_DataBlockLimitError&){
+    }catch(const TOSDB_DataBlockLimitError){
         TOSDB_LogH("BLOCK", "attempt to exceed block limit");
-    }catch(std::exception& e){
+    }catch(const std::exception& e){
         TOSDB_LogH("BLOCK", e.what());
     }
    
     if(!db->block){
-        TOSDB_LogH("BLOCK", "creation error, TOSDBlock will be destroyed.");
+        TOSDB_LogH("BLOCK", "failed to create block");
         delete db;
-        return -4;
+        return TOSDB_ERROR_BLOCK_CREATE_FAIL;
     }   
  
     dde_blocks.insert( std::pair<std::string, TOSDBlock*>(id, db) );  
@@ -455,7 +463,7 @@ TOSDB_Connect()
     buffer_thread = CreateThread(0, 0, _threadedExtractLoop, 0, 0, &buffer_thread_id);
     if(!buffer_thread){
         TOSDB_LogH("THREAD","TOSDB_Connect(): error initializing communication thread");        
-        return -2;  
+        return TOSDB_ERROR_CONCURRENCY;  
     }
         
     for(int msec = TOSDB_DEF_PAUSE; msec <= TOSDB_DEF_TIMEOUT; msec += TOSDB_DEF_PAUSE){
@@ -467,8 +475,9 @@ TOSDB_Connect()
     }
     
     TOSDB_LogH("IPC", "timed out waiting for aware_of_connection");                   
-    return -3;
+    return TOSDB_ERROR_TIMEOUT;
 }
+
 
 int 
 TOSDB_Disconnect()
@@ -498,10 +507,12 @@ TOSDB_IsConnectedToEngine()
 unsigned int 
 TOSDB_IsConnectedToEngineAndTOS() 
 {
-    long ret = _requestStreamOP(TOS_Topics::TOPICS::LAST, "SPY", 
-                                TOSDB_MIN_TIMEOUT, TOSDB_SIG_TEST);
+    if(!_connected())
+        return 0;
 
-    return ret ? 0 : 1;
+    long r = _requestStreamOP(TOS_Topics::TOPICS::LAST, "SPY", TOSDB_MIN_TIMEOUT, TOSDB_SIG_TEST);
+
+    return r ? 0 : 1;
 }
 
 
@@ -515,7 +526,7 @@ TOSDB_ConnectionState()
     if( !TOSDB_IsConnectedToEngineAndTOS() )
         return TOSDB_CONN_ENGINE;
 
-    /* TODO: develope a heuristic for inicating:
+    /* TODO: develop a heuristic for inicating:
                a) we're connected to engine AND TOS
                b) we're not getting good/normal data */
     
@@ -524,6 +535,9 @@ TOSDB_ConnectionState()
 }
 
 
+/* note: if we want to do anything else with the Reserved Block(s) we'll 
+         need to introduce private versions of the API that don't call 
+         IsValidBlockID (i.e TOSDB_CreateBlock / _createBlock) */
 int 
 TOSDB_CreateBlock(LPCSTR id,
                   size_type sz,
@@ -531,15 +545,10 @@ TOSDB_CreateBlock(LPCSTR id,
                   size_type timeout)
 {   
     if( !_connected(true) )
-        return -1;
+        return TOSDB_ERROR_NOT_CONNECTED;
 
-    if(!CheckIDLength(id))    
-        return -2;
-
-    if(strcmp(id,TOSDB_RESERVED_BLOCK_NAME) == 0){        
-        TOSDB_LogH("BLOCK", ("Block name '" + std::string(id) + "' is reserved").c_str());
-        return -5; 
-    }
+    if( !IsValidBlockID(id) )    
+        return TOSDB_ERROR_BAD_INPUT;
 
     return _createBlock(id,sz,is_datetime,timeout);
 }
@@ -561,27 +570,34 @@ TOSDB_Add(std::string id, str_set_type items, topic_set_type topics_t)
     TOSDBlock *db;
 
     HWND hndl = NULL;
-    int err = 0;
+    int err = TOSDB_ERROR_DECREMENT_BASE;
 
      if( !_connected(true) )
-        return -2;
-	
-    /* remove NULL topics */
-    auto is_null = [&](TOS_Topics::TOPICS t){ return t == TOS_Topics::TOPICS::NULL_TOPIC; };    
+        return TOSDB_ERROR_NOT_CONNECTED;
+	  
+     auto is_null = [&](TOS_Topics::TOPICS t){ return t == TOS_Topics::TOPICS::NULL_TOPIC; };
 
-    topics_t.erase(std::remove_if(topics_t.begin(), topics_t.end(), is_null), topics_t.end());	
+    /* log removal of null topics */
+    for(auto& t : topics_t){
+        if(is_null(t))
+            TOSDB_LogH("INPUT", "NULL topic removed from TOSDB_Add");
+    }        
+
+    /* remove NULL topics */
+    topics_t.erase( std::remove_if(topics_t.begin(), topics_t.end(), is_null), 
+                    topics_t.end() );	
 
     /* fail if both are empty - note: this could result from NULL topics */
     if( items.empty() && topics_t.empty() )
-        return -1; /* closer to bad param than anything else */
+        return TOSDB_ERROR_BAD_INPUT; 
 
     GLOBAL_RLOCK_GUARD;
     /* --- CRITICAL SECTION --- */
 
     db = _getBlockPtr(id);
     if(!db){
-        TOSDB_LogH("BLOCK", "block doesn't exist");
-        return -3;
+        TOSDB_LogH("BLOCK", ("block (" + id + ") doesn't exist").c_str());
+        return TOSDB_ERROR_BLOCK_DOESNT_EXIST;
     }
 
     old_topics = db->block->topics();
@@ -638,9 +654,8 @@ TOSDB_Add(std::string id, str_set_type items, topic_set_type topics_t)
                     db->item_precache.clear();
                     db->topic_precache.clear();
                     _captureBuffer(topic, item, db);  
-                }else{
-                    ++err;        
-                }
+                }else
+                    --err;                        
             }          
         }    
     }else if(old_topics.empty()){ /* don't ignore items if no topics yet.. */
@@ -653,16 +668,16 @@ TOSDB_Add(std::string id, str_set_type items, topic_set_type topics_t)
     for(auto & topic : old_topics){     
         for(auto & item : idiff){       
             /* TRY TO ADD TO BLOCK */
-            if( !_requestStreamOP(topic, item, db->timeout, TOSDB_SIG_ADD) ){
+            if(_requestStreamOP(topic, item, db->timeout, TOSDB_SIG_ADD) == 0){
                 db->block->add_item(item);          
                 _captureBuffer(topic, item, db);   
-            }else{
-                ++err; 
-            }
+            }else
+                --err;             
         }
     }
 
-    return err;
+    /* if we didn't decr err return success */
+    return (err == TOSDB_ERROR_DECREMENT_BASE) ? 0 : err;
     /* --- CRITICAL SECTION --- */
 }
 
@@ -670,6 +685,11 @@ TOSDB_Add(std::string id, str_set_type items, topic_set_type topics_t)
 int 
 TOSDB_AddTopic(std::string id, TOS_Topics::TOPICS topic_t)
 {
+    if(topic_t == TOS_Topics::TOPICS::NULL_TOPIC){
+        TOSDB_LogH("INPUT", "NULL topic passed to TOSDB_AddTopic");
+        return TOSDB_ERROR_BAD_TOPIC;  
+    }
+
     return TOSDB_Add(id, str_set_type(), topic_t);
 }
 
@@ -684,10 +704,16 @@ TOSDB_AddItem(std::string id, std::string item)
 int 
 TOSDB_AddTopic(LPCSTR id, LPCSTR topic_str)
 {
-    if( !CheckIDLength(id) || !CheckStringLength(topic_str) )
-        return -1;
+    if( !IsValidBlockID(id) || !CheckStringLength(topic_str) )
+    {
+        return TOSDB_ERROR_BAD_INPUT;
+    }
 
-    return TOSDB_AddTopic(id, GetTopicEnum(topic_str));
+    TOS_Topics::TOPICS t = GetTopicEnum(topic_str);
+    if(t == TOS_Topics::TOPICS::NULL_TOPIC)
+        return TOSDB_ERROR_BAD_TOPIC;    
+
+    return TOSDB_AddTopic(id, t);
 }
 
 
@@ -701,10 +727,12 @@ TOSDB_AddTopics(std::string id, topic_set_type topics_t)
 int 
 TOSDB_AddTopics(LPCSTR id, LPCSTR* topics_str, size_type topics_len)
 {  
-    if( !CheckIDLength(id) || !CheckStringLengths(topics_str, topics_len) ) 
-        return -1;  
+    if( !IsValidBlockID(id) || !CheckStringLengths(topics_str, topics_len) )
+    {
+        return TOSDB_ERROR_BAD_INPUT;  
+    }
 
-    auto f =  [=](LPCSTR str){ return TOS_Topics::map[str]; };
+    auto f =  [=](LPCSTR str){ return GetTopicEnum(str); };
     topic_set_type tset(topics_str, topics_len, f);
 
     return TOSDB_Add(id, str_set_type(), std::move(tset));
@@ -714,8 +742,10 @@ TOSDB_AddTopics(LPCSTR id, LPCSTR* topics_str, size_type topics_len)
 int 
 TOSDB_AddItem(LPCSTR id, LPCSTR item)
 {  
-    if( !CheckIDLength(id) || !CheckStringLength(item) )
-        return -1;
+    if( !IsValidBlockID(id) || !CheckStringLength(item) )
+    {
+        return TOSDB_ERROR_BAD_INPUT;
+    }
 
     return TOSDB_Add(id, std::string(item), topic_set_type());
 }
@@ -731,8 +761,10 @@ TOSDB_AddItems(std::string id, str_set_type items)
 int 
 TOSDB_AddItems(LPCSTR id, LPCSTR* items, size_type items_len)
 {  
-    if( !CheckIDLength(id) || !CheckStringLengths(items, items_len) ) 
-        return -1; 
+    if( !IsValidBlockID(id) || !CheckStringLengths(items, items_len) )
+    {
+        return TOSDB_ERROR_BAD_INPUT; 
+    }
    
     return TOSDB_Add(id, str_set_type(items,items_len), topic_set_type());  
 }
@@ -745,13 +777,14 @@ TOSDB_Add(LPCSTR id,
           LPCSTR* topics_str, 
           size_type topics_len)
 { 
-    if( !CheckIDLength(id) 
+    if( !IsValidBlockID(id) 
         || !CheckStringLengths(items, items_len) 
-        || !CheckStringLengths(topics_str, topics_len) ){  
-        return -1;  
+        || !CheckStringLengths(topics_str, topics_len) )
+    {  
+        return TOSDB_ERROR_BAD_INPUT;
     }
 
-    auto f = [=](LPCSTR str){ return TOS_Topics::map[str]; };
+    auto f = [=](LPCSTR str){ return GetTopicEnum(str); };
     topic_set_type tset(topics_str, topics_len, f);
   
     return TOSDB_Add(id, str_set_type(items,items_len), std::move(tset)); 
@@ -761,8 +794,10 @@ TOSDB_Add(LPCSTR id,
 int 
 TOSDB_RemoveTopic(LPCSTR id, LPCSTR topic_str)
 {
-    if( !CheckIDLength(id) || !CheckStringLength(topic_str) )
-        return -1;
+    if( !IsValidBlockID(id) || !CheckStringLength(topic_str) )
+    {
+        return TOSDB_ERROR_BAD_INPUT;
+    }       
 
     return TOSDB_RemoveTopic(id, TOS_Topics::map[topic_str]);
 }
@@ -772,23 +807,23 @@ int
 TOSDB_RemoveTopic(std::string id, TOS_Topics::TOPICS topic_t)
 {  
     TOSDBlock* db;
-    int err = 0;
+    int err = TOSDB_ERROR_DECREMENT_BASE;
 
     if( !_connected(true) )
-        return -2;
+        return TOSDB_ERROR_NOT_CONNECTED;
   
     GLOBAL_RLOCK_GUARD;
     /* --- CRITICAL SECTION --- */
 
     db = _getBlockPtr(id);
     if(!db){
-        TOSDB_LogH("BLOCK", "block doesn't exist");
-        return -3;
+        TOSDB_LogH("BLOCK", ("block (" + id + ") doesn't exist").c_str());
+        return TOSDB_ERROR_BLOCK_DOESNT_EXIST;
     }   
 
-    if( !(TOS_Topics::enum_value_type)(topic_t) ){
-        TOSDB_LogH("TOPIC", "NULL topic");
-        return -3;
+    if(topic_t == TOS_Topics::TOPICS::NULL_TOPIC){
+        TOSDB_LogH("INPUT", "NULL topic passed to TOSDB_RemoveTopic");
+        return TOSDB_ERROR_BAD_TOPIC;
     }   
 
     /* OCT 30 2016 --- if not in block, check if in pre-cache, before returning error */
@@ -796,8 +831,8 @@ TOSDB_RemoveTopic(std::string id, TOS_Topics::TOPICS topic_t)
         for(auto & item : db->block->items())
         {
             _releaseBuffer(topic_t, item, db); 
-            if( _requestStreamOP(topic_t, item, db->timeout, TOSDB_SIG_REMOVE) ){
-                ++err;
+            if(_requestStreamOP(topic_t, item, db->timeout, TOSDB_SIG_REMOVE) != 0){
+                --err;
                 TOSDB_LogH("IPC","_requestStreamOP(REMOVE) failed, stream leaked");
             }
         }
@@ -811,11 +846,12 @@ TOSDB_RemoveTopic(std::string id, TOS_Topics::TOPICS topic_t)
             }  
         }
     }else if(db->topic_precache.find(topic_t) == db->topic_precache.end()){
-        err = -4;  
+        return TOSDB_ERROR_BAD_TOPIC;  
     }
 
     db->topic_precache.erase(topic_t);
-    return err;
+    /* if we didn't decr err return success */
+    return (err == TOSDB_ERROR_DECREMENT_BASE) ? 0 : err;
     /* --- CRITICAL SECTION --- */
 }
 
@@ -832,35 +868,33 @@ int
 TOSDB_RemoveItem(LPCSTR id, LPCSTR item)
 {  
     TOSDBlock* db;
-    int err = 0;
+    int err = TOSDB_ERROR_DECREMENT_BASE;
 
     if( !_connected(true) )
-        return -1;
+        return TOSDB_ERROR_NOT_CONNECTED;
   
     GLOBAL_RLOCK_GUARD;
     /* --- CRITICAL SECTION --- */
 
-    if( !CheckIDLength(id) ){
-        TOSDB_LogH("BLOCK", "invalid id length");
-        return -2;
-    }  
+    if( !IsValidBlockID(id) )    
+        return TOSDB_ERROR_BAD_INPUT;    
 
     db = _getBlockPtr(id);
     if(!db){
-        TOSDB_LogH("BLOCK", "block doesn't exist");
-        return -2;
+        TOSDB_LogH("BLOCK", ("block (" + std::string(id) + ") doesn't exist").c_str());
+        return TOSDB_ERROR_BLOCK_DOESNT_EXIST;
     }  
 
     if( !CheckStringLength(item) )
-        return -3;
+        return TOSDB_ERROR_BAD_INPUT;
 
     /* OCT 30 2016 --- if not in block, check if in pre-cache, before returning error */
     if( db->block->has_item(item) ){
         for(auto topic : db->block->topics())
         {
             _releaseBuffer(topic, item, db); 
-            if( _requestStreamOP(topic, item, db->timeout, TOSDB_SIG_REMOVE) ){
-                ++err;
+            if(_requestStreamOP(topic, item, db->timeout, TOSDB_SIG_REMOVE) != 0){
+                --err;
                 TOSDB_LogH("IPC","_requestStreamOP(REMOVE) failed, stream leaked");
             }
         }
@@ -874,11 +908,12 @@ TOSDB_RemoveItem(LPCSTR id, LPCSTR item)
             }
         }
     }else if(db->item_precache.find(item) == db->item_precache.end()){
-        err = -4;  
+        return TOSDB_ERROR_BAD_ITEM;
     }
 
     db->item_precache.erase(item);
-    return err;
+    /* if we didn't decr err return success */
+    return (err == TOSDB_ERROR_DECREMENT_BASE) ? 0 : err;    
   /* --- CRITICAL SECTION --- */
 }
 
@@ -890,28 +925,26 @@ TOSDB_CloseBlock(LPCSTR id)
     HANDLE del_thrd_hndl;
     DWORD del_thrd_id;
 
-    int err = 0;  
+    int err = TOSDB_ERROR_DECREMENT_BASE;  
 
     GLOBAL_RLOCK_GUARD;
     /* --- CRITICAL SECTION --- */
 
-    if( !CheckIDLength(id) ){
-        TOSDB_LogH("BLOCK", "invalid id length");
-        return -2;
-    }  
+    if( !IsValidBlockID(id) )        
+        return TOSDB_ERROR_BAD_INPUT;      
 
     db = _getBlockPtr(id);
     if(!db){
-        TOSDB_LogH("BLOCK", "block doesn't exist");
-        return -2;
+        TOSDB_LogH("BLOCK", ("block (" + std::string(id) + ") doesn't exist").c_str());
+        return TOSDB_ERROR_BLOCK_DOESNT_EXIST;
     }  
 
     for(auto & item : db->block->items()){
         for(auto topic : db->block->topics())
         {
             _releaseBuffer(topic, item, db);
-            if( _requestStreamOP(topic, item, db->timeout, TOSDB_SIG_REMOVE) ){
-                ++err;
+            if(_requestStreamOP(topic, item, db->timeout, TOSDB_SIG_REMOVE) != 0){
+                --err;
                 TOSDB_LogH("IPC", "_requestStreamOP(REMOVE) failed, stream leaked");
             }
         }
@@ -921,15 +954,15 @@ TOSDB_CloseBlock(LPCSTR id)
 
     /* spin-off block destruction to its own thread so we don't block main */
     del_thrd_hndl = CreateThread(NULL, 0, _cleanupBlock, (LPVOID)db->block, 0, &(del_thrd_id));
-    if(!del_thrd_hndl){
-        err = -3;
+    if(!del_thrd_hndl){       
         TOSDB_LogH("THREAD", "using main thread to clean-up(THIS MAY BLOCK)"); 
         _cleanupBlock((LPVOID)db->block);
     }
 
     delete db;
 
-    return err;
+    /* if we didn't decr err return success */
+    return (err == TOSDB_ERROR_DECREMENT_BASE) ? 0 : err;   
     /* --- CRITICAL SECTION --- */
 }
 
@@ -937,7 +970,7 @@ int
 TOSDB_CloseBlocks()
 {
     std::map<std::string, TOSDBlock*> bcopy;  
-    int err = 0;
+    int err = TOSDB_ERROR_DECREMENT_BASE;
     try{ 
         GLOBAL_RLOCK_GUARD;  
         /* --- CRITICAL SECTION --- */
@@ -947,14 +980,15 @@ TOSDB_CloseBlocks()
         std::copy(dde_blocks.begin(), dde_blocks.end(), i); 
         for(auto & b: bcopy){    
             if( TOSDB_CloseBlock(b.first.c_str()) )
-                ++err;
+                --err;
         }
         /* --- CRITICAL SECTION --- */
     }catch(...){ 
-        return -1; 
+        return TOSDB_ERROR_UNKNOWN; // really ? 
     }
 
-    return err;
+    /* if we didn't decr err return success */
+    return (err == TOSDB_ERROR_DECREMENT_BASE) ? 0 : err;   
 }
 
 
@@ -964,7 +998,7 @@ TOSDB_DumpSharedBufferStatus()
     long ret;
 
     if( !_connected(true) )
-        return -1;;
+        return TOSDB_ERROR_NOT_CONNECTED;
 
     GLOBAL_RLOCK_GUARD;
     /* --- CRITICAL SECTION --- */
@@ -973,15 +1007,15 @@ TOSDB_DumpSharedBufferStatus()
 
     if( !master.call(&msg, TOSDB_DEF_TIMEOUT) ){
         TOSDB_LogH("IPC",("master.call failled, msg:" + msg).c_str());
-        return -2;
+        return TOSDB_ERROR_IPC;
     }
 
     try{
         ret = std::stol(msg);
-        return (ret == TOSDB_SIG_GOOD) ? 0 : 1;
+        return (ret == TOSDB_SIG_GOOD) ? 0 : TOSDB_ERROR_ENGINE;
     }catch(...){
         TOSDB_LogH("IPC", "failed to convert return message to long");
-        return -3;
+        return TOSDB_ERROR_IPC;
     }      
     /* --- CRITICAL SECTION --- */
 }
@@ -994,18 +1028,16 @@ TOSDB_GetBlockIDs(LPSTR* dest, size_type array_len, size_type str_len)
     GLOBAL_RLOCK_GUARD;
     /* --- CRITICAL SECTION --- */
     if(array_len < dde_blocks.size()) 
-      return -1;
+        return TOSDB_ERROR_BAD_INPUT;
 
     int i = 0;
-    int err = 0;
 
     for(auto & name : dde_blocks){
-        err = strcpy_s(dest[i++], str_len, name.first.c_str());
-        if(err) 
-            return err;    
+        if( strcpy_s(dest[i++], str_len, name.first.c_str()) )
+            return TOSDB_ERROR_BAD_INPUT;    
     }
      
-    return err; 
+    return 0; 
     /* --- CRITICAL SECTION --- */
 }
 
@@ -1069,6 +1101,18 @@ TOSDB_SetLatency(UpdateLatency latency)
 }
 
 
+TOS_Topics::TOPICS 
+GetTopicEnum(std::string topic_str, bool log_if_null)
+{
+    /* operator[] uses .at(), catches out_of_range, returns NULL_TOPIC */
+    TOS_Topics::TOPICS t = TOS_Topics::map[topic_str];
+    if(log_if_null && t == TOS_Topics::TOPICS::NULL_TOPIC)
+        TOSDB_LogH("INPUT", ("bad topic string: " + std::string(topic_str)).c_str()); 
+
+    return t;
+}
+
+
 const TOSDBlock* 
 GetBlockPtr(const std::string id, bool log)
 {
@@ -1076,7 +1120,7 @@ GetBlockPtr(const std::string id, bool log)
         return dde_blocks.at(id);
     }catch(...){ 
         if(log){
-            std::string msg = "block " + id + " doesn't exist";
+            std::string msg = "block (" + id + ") doesn't exist";
             TOSDB_LogH("BLOCK", msg.c_str());
         }
         return NULL; 
@@ -1091,20 +1135,42 @@ GetBlockOrThrow(std::string id)
 
     db = GetBlockPtr(id,false);
     if(!db) 
-        throw TOSDB_DataBlockError("block doesn't exist");
+        throw TOSDB_DataBlockDoesntExist(id.c_str());
  
     return db;
 }
 
-/*
-TOS_Topics::TOPICS 
-GetTopicEnum(std::string topic_str)
-{
-    TOS_Topics::TOPICS t = TOS_Topics::map[topic_str];
-    /* why are we logging this ?? 
-    if( !(TOS_Topics::enum_value_type)t )
-        TOSDB_Log("TOS_Topic", "TOS_Topic has no corresponding enum type in map"); */ /*
-    return t;
-}
-*/
 
+bool
+IsValidBlockSize(size_type sz)
+{
+    if(sz < 1){
+        TOSDB_LogH("BLOCK", "block size < 1");
+        return false; 
+    }        
+
+    if(sz > TOSDB_MAX_BLOCK_SZ){
+        TOSDB_LogH("BLOCK", ("block size (" + std::to_string(sz) + ") > TOSDB_MAX_BLOCK_SZ ("
+                             + std::to_string(TOSDB_MAX_BLOCK_SZ) + ")").c_str());
+        return false; 
+    } 
+
+    return true;
+}
+
+
+bool
+IsValidBlockID(std::string id)
+{
+    /* check length */
+    if(!CheckIDLength(id.c_str()))
+        return false;
+
+    /* check isn't reserved */
+    if(id == std::string(TOSDB_RESERVED_BLOCK_NAME)){        
+        TOSDB_LogH("BLOCK", ("block name '" + id + "' is reserved").c_str());
+        return false; 
+    }
+
+    return true;
+}

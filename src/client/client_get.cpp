@@ -52,73 +52,125 @@ TOSDB_GetBlockCount()
 int 
 TOSDB_GetBlockSize(LPCSTR id, size_type* pSize)
 {
-    try{   
-        if(!CheckIDLength(id))
-            return -1;
+    if(!IsValidBlockID(id))
+        return TOSDB_ERROR_BAD_INPUT;
 
+    try{   
         GLOBAL_RLOCK_GUARD;  
         /* --- CRITICAL SECTION --- */
         *pSize = GetBlockOrThrow(id)->block->block_size();
         return 0;
         /* --- CRITICAL SECTION --- */
+
+    }catch(const TOSDB_DataBlockDoesntExist& e){
+        TOSDB_LogH("BLOCK", e.what());
+        return TOSDB_ERROR_BLOCK_DOESNT_EXIST;
+
+    }catch(const TOSDB_Error& e){
+        TOSDB_LogH(e.tag().c_str(), e.info_and_what().c_str()); 
+        return TOSDB_ERROR_GET_STATE;
+
+    }catch(const std::exception& e){
+        TOSDB_LogH("TOSDB_GetgetBlockSize", e.what());
+        return TOSDB_ERROR_GET_STATE;
+
     }catch(...){ 
-        return -2; 
-    }
+        return TOSDB_ERROR_UNKNOWN;
+    } 
 }
 
 int 
 TOSDB_SetBlockSize(LPCSTR id, size_type sz)
 {
-    try{
-        if(!CheckIDLength(id))
-            return -1;
+    if(!IsValidBlockID(id))
+        return TOSDB_ERROR_BAD_INPUT;
 
+    if(!IsValidBlockSize(sz))
+        return TOSDB_ERROR_BLOCK_SIZE;           
+
+    try{
         GLOBAL_RLOCK_GUARD;
         /* --- CRITICAL SECTION --- */
         GetBlockOrThrow(id)->block->block_size(sz);
         return 0;
         /* --- CRITICAL SECTION --- */
+
+    }catch(const TOSDB_DataBlockDoesntExist& e){
+        TOSDB_LogH("BLOCK", e.what());
+        return TOSDB_ERROR_BLOCK_DOESNT_EXIST;
+
+    }catch(const TOSDB_Error& e){
+        TOSDB_LogH(e.tag().c_str(), e.info_and_what().c_str());
+        return TOSDB_ERROR_SET_STATE;
+
+    }catch(const std::exception& e){
+        TOSDB_LogH("TOSDB_GetSetBlockSize", e.what());
+        return TOSDB_ERROR_SET_STATE;
+
     }catch(...){ 
-        return -2; 
-    }
+        return TOSDB_ERROR_UNKNOWN;
+    } 
 }
 
 int 
 TOSDB_GetItemCount(LPCSTR id, size_type* count)
 {
-    try{
-        if(!CheckIDLength(id))
-            return -1;
+    if(!IsValidBlockID(id))
+        return TOSDB_ERROR_BAD_INPUT;
 
+    try{
         GLOBAL_RLOCK_GUARD;
         /* --- CRITICAL SECTION --- */
         *count = GetBlockOrThrow(id)->block->item_count();
         return 0;
-        /* --- CRITICAL SECTION --- */
-    }
-    catch(...){ 
-        return -2; 
-    }
+        /* --- CRITICAL SECTION --- */  
+
+    }catch(const TOSDB_DataBlockDoesntExist& e){
+        TOSDB_LogH("BLOCK", e.what());
+        return TOSDB_ERROR_BLOCK_DOESNT_EXIST;
+
+    }catch(const TOSDB_Error& e){
+        TOSDB_LogH(e.tag().c_str(), e.info_and_what().c_str());
+        return TOSDB_ERROR_GET_STATE;
+
+    }catch(const std::exception& e){
+        TOSDB_LogH("TOSDB_GetPreItemCount", e.what());
+        return TOSDB_ERROR_GET_STATE;
+
+    }catch(...){ 
+        return TOSDB_ERROR_UNKNOWN;
+    } 
 }
 
 int 
 TOSDB_GetTopicCount(LPCSTR id, size_type* count)
 {
-    try{
-        if(!CheckIDLength(id))
-            return -1;
+    if(!IsValidBlockID(id))
+        return TOSDB_ERROR_BAD_INPUT;
 
+    try{   
         GLOBAL_RLOCK_GUARD;
         /* --- CRITICAL SECTION --- */
         *count = GetBlockOrThrow(id)->block->topic_count();
         return 0;
         /* --- CRITICAL SECTION --- */
-    }
-    catch(...){ 
-        return -2; 
-    }
-}
 
+    }catch(const TOSDB_DataBlockDoesntExist& e){
+        TOSDB_LogH("BLOCK", e.what());
+        return TOSDB_ERROR_BLOCK_DOESNT_EXIST;
+
+    }catch(const TOSDB_Error& e){
+        TOSDB_LogH(e.tag().c_str(), e.info_and_what().c_str());
+        return TOSDB_ERROR_GET_STATE;
+
+    }catch(const std::exception& e){
+        TOSDB_LogH("TOSDB_GetTopicCount", e.what());
+        return TOSDB_ERROR_GET_STATE;
+
+    }catch(...){ 
+        return TOSDB_ERROR_UNKNOWN;
+    } 
+}
 
 
 int 
@@ -126,28 +178,28 @@ TOSDB_GetTopicNames(LPCSTR id, LPSTR* dest, size_type array_len, size_type str_l
 {
     const TOSDBlock *db;
     topic_set_type topics;
-    int i, err;
+    int i;
 
-    if(!CheckIDLength(id))
-        return -1;
+    if(!IsValidBlockID(id))
+        return TOSDB_ERROR_BAD_INPUT;
 
     GLOBAL_RLOCK_GUARD;
     /* --- CRITICAL SECTION --- */
     db = GetBlockPtr(id);
-    if (!db) 
-        return -2;
+    if(!db) 
+        return TOSDB_ERROR_BLOCK_DOESNT_EXIST;
 
     topics = db->block->topics();  
     if (array_len < topics.size()) 
-        return -3;  
+        return TOSDB_ERROR_BAD_INPUT_BUFFER;  
 
-    i = err = 0;
+    i = 0;
     for(auto & t : topics){
-        err = strcpy_s(dest[i++], str_len,TOS_Topics::map[t].c_str());
-        if(err)
-            return err;     
+        if( strcpy_s(dest[i++], str_len, TOS_Topics::map[t].c_str()) )
+            return TOSDB_ERROR_BAD_INPUT_BUFFER;
     }
-    return err;
+
+    return 0;
     /* --- CRITICAL SECTION --- */
 }
 
@@ -156,68 +208,90 @@ TOSDB_GetItemNames(LPCSTR id, LPSTR* dest, size_type array_len, size_type str_le
 {
     const TOSDBlock *db;
     str_set_type items;
-    int i, err;
+    int i;
 
-    if(!CheckIDLength(id))
-        return -1;
+    if(!IsValidBlockID(id))
+        return TOSDB_ERROR_BAD_INPUT;
 
     GLOBAL_RLOCK_GUARD;
     /* --- CRITICAL SECTION --- */
     db = GetBlockPtr(id);
     if (!db) 
-        return -2;
+        return TOSDB_ERROR_BLOCK_DOESNT_EXIST;
 
     items = db->block->items();   
     if (array_len < items.size()) 
-        return -3;   
+        return TOSDB_ERROR_BAD_INPUT_BUFFER;   
  
-    i = err = 0;
+    i = 0;
     for(auto & item : items){
-        err = strcpy_s(dest[i++], str_len, item.c_str());
-        if(err)
-            return err;
+        if( strcpy_s(dest[i++], str_len, item.c_str()) )
+        return TOSDB_ERROR_BAD_INPUT_BUFFER;
     }
-    return err;
+
+    return 0;
     /* --- CRITICAL SECTION --- */
 }
 
 
-/*** --- BEGIN --- Oct 30 2016 ***/
-
 int 
 TOSDB_GetPreCachedItemCount(LPCSTR id, size_type* count)
 {
-    try{
-        if(!CheckIDLength(id))
-            return -1;
+    if(!IsValidBlockID(id))
+        return TOSDB_ERROR_BAD_INPUT;
 
+    try{ 
         GLOBAL_RLOCK_GUARD;
         /* --- CRITICAL SECTION --- */
         *count = GetBlockOrThrow(id)->item_precache.size();
         return 0;
         /* --- CRITICAL SECTION --- */
-    }
-    catch(...){ 
-        return -2; 
-    }
+
+    }catch(const TOSDB_DataBlockDoesntExist& e){
+        TOSDB_LogH("BLOCK", e.what());
+        return TOSDB_ERROR_BLOCK_DOESNT_EXIST;
+
+    }catch(const TOSDB_Error& e){
+        TOSDB_LogH(e.tag().c_str(), e.info_and_what().c_str());
+        return TOSDB_ERROR_GET_STATE;
+
+    }catch(const std::exception& e){
+        TOSDB_LogH("TOSDB_GetPreCachedItemCount", e.what());
+        return TOSDB_ERROR_GET_STATE;
+
+    }catch(...){ 
+        return TOSDB_ERROR_UNKNOWN;
+    } 
 }
 
 int 
 TOSDB_GetPreCachedTopicCount(LPCSTR id, size_type* count)
 {
-    try{
-        if(!CheckIDLength(id))
-            return -1;
-
+    if(!IsValidBlockID(id))
+        return TOSDB_ERROR_BAD_INPUT;
+    
+    try{            
         GLOBAL_RLOCK_GUARD;
         /* --- CRITICAL SECTION --- */
         *count = GetBlockOrThrow(id)->topic_precache.size();
         return 0;
         /* --- CRITICAL SECTION --- */
-    }
-    catch(...){ 
-        return -2; 
-    }
+
+    }catch(const TOSDB_DataBlockDoesntExist& e){
+        TOSDB_LogH("BLOCK", e.what());
+        return TOSDB_ERROR_BLOCK_DOESNT_EXIST;
+
+    }catch(const TOSDB_Error& e){
+        TOSDB_LogH(e.tag().c_str(), e.info_and_what().c_str());
+        return TOSDB_ERROR_GET_STATE;
+
+    }catch(const std::exception& e){
+        TOSDB_LogH("TOSDB_GetPreCachedTopicCount", e.what());
+        return TOSDB_ERROR_GET_STATE;
+
+    }catch(...){ 
+        return TOSDB_ERROR_UNKNOWN;
+    } 
 }
 
 
@@ -225,27 +299,27 @@ int
 TOSDB_GetPreCachedTopicNames(LPCSTR id, LPSTR* dest, size_type array_len, size_type str_len)
 {
     const TOSDBlock *db;    
-    int i, err;
+    int i;
 
-    if(!CheckIDLength(id))
-        return -1;
+    if(!IsValidBlockID(id))
+        return TOSDB_ERROR_BAD_INPUT;
 
     GLOBAL_RLOCK_GUARD;
     /* --- CRITICAL SECTION --- */
     db = GetBlockPtr(id);
     if (!db) 
-        return -2;
+        return TOSDB_ERROR_BLOCK_DOESNT_EXIST;;
         
     if (array_len < db->topic_precache.size()) 
-        return -3;  
+        return TOSDB_ERROR_BAD_INPUT_BUFFER;  
 
-    i = err = 0;
+    i = 0;
     for(auto & t : db->topic_precache){
-        err = strcpy_s(dest[i++], str_len,TOS_Topics::map[t].c_str());
-        if(err)
-            return err;     
+        if( strcpy_s(dest[i++], str_len,TOS_Topics::map[t].c_str()) )
+        return TOSDB_ERROR_BAD_INPUT_BUFFER;
     }
-    return err;
+
+    return 0;
     /* --- CRITICAL SECTION --- */
 }
 
@@ -253,31 +327,29 @@ int
 TOSDB_GetPreCachedItemNames(LPCSTR id, LPSTR* dest, size_type array_len, size_type str_len)
 {
     const TOSDBlock *db;    
-    int i, err;
+    int i;
 
-    if(!CheckIDLength(id))
-        return -1;
+    if(!IsValidBlockID(id))
+        return TOSDB_ERROR_BAD_INPUT;
 
     GLOBAL_RLOCK_GUARD;
     /* --- CRITICAL SECTION --- */
     db = GetBlockPtr(id);
     if (!db) 
-        return -2;
+        return TOSDB_ERROR_BLOCK_DOESNT_EXIST;;
         
     if (array_len < db->item_precache.size()) 
-        return -3;   
+        return TOSDB_ERROR_BAD_INPUT_BUFFER;   
  
-    i = err = 0;
+    i = 0;
     for(auto & item : db->item_precache){
-        err = strcpy_s(dest[i++], str_len, item.c_str());
-        if(err)
-            return err;
+        if( strcpy_s(dest[i++], str_len, item.c_str()) )
+            return TOSDB_ERROR_BAD_INPUT_BUFFER;            
     }
-    return err;
+
+    return 0;
     /* --- CRITICAL SECTION --- */
 }
-
-/*** --- END --- Oct 30 2016 ***/
 
 
 int 
@@ -286,52 +358,75 @@ TOSDB_GetTypeBits(LPCSTR topic_str, type_bits_type* type_bits)
     TOS_Topics::TOPICS t;
 
     if(!CheckStringLength(topic_str))
-        return -1;
+        return TOSDB_ERROR_BAD_INPUT;
 
     t = GetTopicEnum(topic_str);
     if(t == TOS_Topics::TOPICS::NULL_TOPIC)
-        return -2;
+        return TOSDB_ERROR_BAD_TOPIC;
 
     try{
         *type_bits = TOSDB_GetTypeBits(t);
         return 0;
+
+    }catch(const TOSDB_Error& e){
+        TOSDB_LogH(e.tag().c_str(), e.info_and_what().c_str());
+        return TOSDB_ERROR_GET_STATE;
+
+    }catch(const std::exception& e){
+        TOSDB_LogH("TOSDB_GetTypeBits", e.what());
+        return TOSDB_ERROR_GET_STATE;
+
     }catch(...){ 
-        return -3; 
-    }
+        return TOSDB_ERROR_UNKNOWN;
+    }         
 }
 
 int 
 TOSDB_GetTypeString(LPCSTR topic_str, LPSTR dest, size_type str_len)
 {
     TOS_Topics::TOPICS t;
-    std::string str;
 
     if(!CheckStringLength(topic_str))
-        return -1;
+        return TOSDB_ERROR_BAD_INPUT;
 
     t = GetTopicEnum(topic_str);
     if(t == TOS_Topics::TOPICS::NULL_TOPIC)
-        return -2;
+        return TOSDB_ERROR_BAD_TOPIC;    
 
-    str = TOS_Topics::TypeString(t);
-    return strcpy_s(dest, str_len, str.c_str());
+    if( strcpy_s(dest, str_len, TOS_Topics::TypeString(t).c_str()) )
+        return TOSDB_ERROR_BAD_INPUT_BUFFER;
+
+    return 0;
 }
 
 int 
 TOSDB_IsUsingDateTime(LPCSTR id, unsigned int* is_datetime)
 {  
-    try{
-        if(!CheckIDLength(id))
-            return -1;
+    if(!IsValidBlockID(id))
+        return TOSDB_ERROR_BAD_INPUT;
 
+    try{
         GLOBAL_RLOCK_GUARD;
         /* --- CRITICAL SECTION --- */
         *is_datetime = GetBlockOrThrow(id)->block->uses_dtstamp();
         return 0;
         /* --- CRITICAL SECTION --- */
+
+    }catch(const TOSDB_DataBlockDoesntExist& e){
+        TOSDB_LogH("BLOCK", e.what());
+        return TOSDB_ERROR_BLOCK_DOESNT_EXIST;
+
+    }catch(const TOSDB_Error& e){
+        TOSDB_LogH(e.tag().c_str(), e.info_and_what().c_str());
+        return TOSDB_ERROR_GET_STATE;
+
+    }catch(const std::exception& e){
+        TOSDB_LogH("TOSDB_IsUsingDateTime", e.what());
+        return TOSDB_ERROR_GET_STATE;
+
     }catch(...){ 
-        return -2; 
-    }
+        return TOSDB_ERROR_UNKNOWN;
+    } 
 }
 
 topic_set_type 
@@ -445,8 +540,6 @@ TOSDB_GetTopicCount(std::string id)
 }
 
 
-/*** --- BEGIN --- Oct 30 2016 ***/
-
 size_type 
 TOSDB_GetPreCachedItemCount(std::string id)
 {
@@ -464,8 +557,6 @@ TOSDB_GetPreCachedTopicCount(std::string id)
     return GetBlockOrThrow(id)->topic_precache.size();
     /* --- CRITICAL SECTION --- */
 }
-
-/*** --- END --- Oct 30 2016 ***/
 
 
 void 
@@ -502,13 +593,17 @@ TOSDB_GetStreamOccupancy(LPCSTR id, LPCSTR item, LPCSTR topic_str, size_type* sz
     TOSDB_RawDataBlock::stream_const_ptr_type dat;
     TOS_Topics::TOPICS t;
 
-    if( !CheckIDLength(id) 
+    if( !IsValidBlockID(id) 
         || !CheckStringLength(item) 
-        || !CheckStringLength(topic_str) ){
-        return -1;  
+        || !CheckStringLength(topic_str) )
+    {
+        return TOSDB_ERROR_BAD_INPUT;  
     }
 
     t = GetTopicEnum(topic_str);
+    if(t == TOS_Topics::TOPICS::NULL_TOPIC)
+        return TOSDB_ERROR_BAD_TOPIC;
+    
     try{
         GLOBAL_RLOCK_GUARD;
         /* --- CRITICAL SECTION --- */
@@ -517,11 +612,21 @@ TOSDB_GetStreamOccupancy(LPCSTR id, LPCSTR item, LPCSTR topic_str, size_type* sz
         *sz = (size_type)(dat->size());
         return 0;
         /* --- CRITICAL SECTION --- */
+
+     }catch(const TOSDB_DataBlockDoesntExist& e){
+        TOSDB_LogH("BLOCK", e.what());
+        return TOSDB_ERROR_BLOCK_DOESNT_EXIST;    
+
+    }catch(const TOSDB_Error& e){
+        TOSDB_LogH(e.tag().c_str(), e.info_and_what().c_str());
+        return TOSDB_ERROR_GET_STATE;
+
     }catch(const std::exception& e){
         TOSDB_LogH("TOSDB_GetStreamOccupancy", e.what());
-        return -2;
+        return TOSDB_ERROR_GET_STATE;
+
     }catch(...){ 
-        return -2; 
+        return TOSDB_ERROR_UNKNOWN;
     }  
 }
 
@@ -532,6 +637,9 @@ TOSDB_GetStreamOccupancy(std::string id,
 {
     const TOSDBlock *db;  
     TOSDB_RawDataBlock::stream_const_ptr_type dat;
+
+    if(topic_t == TOS_Topics::TOPICS::NULL_TOPIC)
+        throw std::invalid_argument("NULL TOPIC");
 
     GLOBAL_RLOCK_GUARD;
     /* --- CRITICAL SECTION --- */
@@ -553,13 +661,17 @@ TOSDB_GetMarkerPosition(LPCSTR id, LPCSTR item, LPCSTR topic_str, long long* pos
     TOSDB_RawDataBlock::stream_const_ptr_type dat;
     TOS_Topics::TOPICS t;
 
-    if( !CheckIDLength(id) 
+    if( !IsValidBlockID(id) 
         || !CheckStringLength(item)
-        || !CheckStringLength(topic_str) ){
-        return -1;  
+        || !CheckStringLength(topic_str) )
+    {
+        return TOSDB_ERROR_BAD_INPUT;  
     }
 
-    t = GetTopicEnum(topic_str);
+    t = GetTopicEnum(topic_str);   
+    if(t == TOS_Topics::TOPICS::NULL_TOPIC)
+        return TOSDB_ERROR_BAD_TOPIC;
+
     try{
         GLOBAL_RLOCK_GUARD;
         /* --- CRITICAL SECTION --- */
@@ -568,12 +680,22 @@ TOSDB_GetMarkerPosition(LPCSTR id, LPCSTR item, LPCSTR topic_str, long long* pos
         *pos = (dat->marker_position());
         return 0;
         /* --- CRITICAL SECTION --- */
+
+    }catch(const TOSDB_DataBlockDoesntExist& e){
+        TOSDB_LogH("BLOCK", e.what());
+        return TOSDB_ERROR_BLOCK_DOESNT_EXIST; 
+
+    }catch(const TOSDB_Error& e){
+        TOSDB_LogH(e.tag().c_str(), e.info_and_what().c_str());
+        return TOSDB_ERROR_GET_STATE;
+
     }catch(const std::exception& e){
         TOSDB_LogH("TOSDB_GetMarkerPosition", e.what());
-        return -2;
+        return TOSDB_ERROR_GET_STATE;
+
     }catch(...){ 
-        return -2; 
-    }  
+        return TOSDB_ERROR_UNKNOWN;
+    } 
 }
 
 long long 
@@ -583,6 +705,9 @@ TOSDB_GetMarkerPosition(std::string id,
 {
     const TOSDBlock *db;  
     TOSDB_RawDataBlock::stream_const_ptr_type dat;
+
+    if(topic_t == TOS_Topics::TOPICS::NULL_TOPIC)
+        throw std::invalid_argument("NULL TOPIC");
 
     GLOBAL_RLOCK_GUARD;
     /* --- CRITICAL SECTION --- */
@@ -606,13 +731,17 @@ TOSDB_IsMarkerDirty(LPCSTR id,
     TOSDB_RawDataBlock::stream_const_ptr_type dat;
     TOS_Topics::TOPICS t;
 
-    if( !CheckIDLength(id) 
+    if( !IsValidBlockID(id) 
         || !CheckStringLength(item)
-        || !CheckStringLength(topic_str) ){ 
-        return -1;  
+        || !CheckStringLength(topic_str) )
+    { 
+        return TOSDB_ERROR_BAD_INPUT;  
     }
 
     t = GetTopicEnum(topic_str);
+    if(t == TOS_Topics::TOPICS::NULL_TOPIC)
+        return TOSDB_ERROR_BAD_TOPIC;
+
     try{
         GLOBAL_RLOCK_GUARD;
         /* --- CRITICAL SECTION --- */
@@ -621,11 +750,21 @@ TOSDB_IsMarkerDirty(LPCSTR id,
         *is_dirty = (unsigned int)(dat->is_marker_dirty());
         return 0;
         /* --- CRITICAL SECTION --- */
+
+    }catch(const TOSDB_DataBlockDoesntExist& e){
+        TOSDB_LogH("BLOCK", e.what());
+        return TOSDB_ERROR_BLOCK_DOESNT_EXIST; 
+
+    }catch(const TOSDB_Error& e){
+        TOSDB_LogH(e.tag().c_str(), e.info_and_what().c_str());
+        return TOSDB_ERROR_GET_STATE;
+
     }catch(const std::exception& e){
         TOSDB_LogH("TOSDB_IsMarkerDirty", e.what());
-        return -2;
+        return TOSDB_ERROR_GET_STATE;
+
     }catch(...){ 
-        return -2; 
+        return TOSDB_ERROR_UNKNOWN;
     }  
 }
 
@@ -636,6 +775,9 @@ TOSDB_IsMarkerDirty(std::string id,
 {
     const TOSDBlock *db;  
     TOSDB_RawDataBlock::stream_const_ptr_type dat;
+
+    if(topic_t == TOS_Topics::TOPICS::NULL_TOPIC)
+        throw std::invalid_argument("NULL TOPIC");
 
     GLOBAL_RLOCK_GUARD;
     /* --- CRITICAL SECTION --- */
@@ -659,6 +801,9 @@ TOSDB_Get<generic_type, false>(std::string id,
     const TOSDBlock *db;  
     TOSDB_RawDataBlock::stream_const_ptr_type dat;
 
+    if(topic_t == TOS_Topics::TOPICS::NULL_TOPIC)
+        throw std::invalid_argument("NULL TOPIC");
+
     GLOBAL_RLOCK_GUARD;
     /* --- CRITICAL SECTION --- */
     db = GetBlockOrThrow(id);
@@ -680,6 +825,9 @@ TOSDB_Get<generic_type, true>(std::string id,
 {
     const TOSDBlock *db;
     TOSDB_RawDataBlock::stream_const_ptr_type dat;
+
+    if(topic_t == TOS_Topics::TOPICS::NULL_TOPIC)
+        throw std::invalid_argument("NULL TOPIC");
 
     GLOBAL_RLOCK_GUARD;
     /* --- CRITICAL SECTION --- */
@@ -725,6 +873,9 @@ TOSDB_Get(std::string id,
     T tmp;
     DateTimeStamp datetime;
 
+    if(topic_t == TOS_Topics::TOPICS::NULL_TOPIC)
+        throw std::invalid_argument("NULL TOPIC");
+
     if(TOSDB_Get_(id, item, topic_t, indx, &tmp, &datetime))    
         throw TOSDB_DataStreamError("TOSDB_Get_");
 
@@ -751,11 +902,21 @@ TOSDB_Get_(std::string id,
         dat->copy(dest, 1,indx, indx, datetime);
         return 0;
         /* --- CRITICAL SECTION --- */
+
+    }catch(const TOSDB_DataBlockDoesntExist& e){
+        TOSDB_LogH("BLOCK", e.what());
+        return TOSDB_ERROR_BLOCK_DOESNT_EXIST;
+
+    }catch(const TOSDB_Error& e){
+        TOSDB_LogH(e.tag().c_str(), e.info_and_what().c_str());
+        return TOSDB_ERROR_GET_DATA;
+
     }catch(const std::exception& e){
-        TOSDB_LogH("TOSDB_Get<T>", e.what());
-        return -1;
-    }catch(...){
-        return -1;
+        TOSDB_LogH("TOSDB_Get<T>", e.what());       
+        return TOSDB_ERROR_GET_DATA;
+
+    }catch(...){ 
+        return TOSDB_ERROR_UNKNOWN;
     }
 }
 
@@ -768,13 +929,18 @@ TOSDB_Get_(LPCSTR id,
            T* dest, 
            pDateTimeStamp datetime)
 { 
-    if( !CheckIDLength(id) 
+    if( !IsValidBlockID(id) 
         || !CheckStringLength(item)
-        || !CheckStringLength(topic_str) ){
-        return -1;  
+        || !CheckStringLength(topic_str) )
+    {
+        return TOSDB_ERROR_BAD_INPUT;  
     }
+
+    TOS_Topics::TOPICS t = GetTopicEnum(topic_str);
+    if(t == TOS_Topics::TOPICS::NULL_TOPIC)
+        return TOSDB_ERROR_BAD_TOPIC;
   
-    return TOSDB_Get_(id, item, GetTopicEnum(topic_str), indx, dest, datetime);
+    return TOSDB_Get_(id, item, t, indx, dest, datetime);
 }
 
 int 
@@ -834,13 +1000,17 @@ TOSDB_GetString(LPCSTR id,
     TOSDB_RawDataBlock::stream_const_ptr_type dat;
     TOS_Topics::TOPICS t;
 
-    if( !CheckIDLength(id) 
+    if( !IsValidBlockID(id) 
         || !CheckStringLength(item)
-        || !CheckStringLength(topic_str) ){ 
-        return -1;  
+        || !CheckStringLength(topic_str) )
+    { 
+        return TOSDB_ERROR_BAD_INPUT;  
     }
 
     t = GetTopicEnum(topic_str);
+    if(t == TOS_Topics::TOPICS::NULL_TOPIC)
+        return TOSDB_ERROR_BAD_TOPIC;
+
     try{
         GLOBAL_RLOCK_GUARD;
         /* --- CRITICAL SECTION --- */
@@ -849,12 +1019,22 @@ TOSDB_GetString(LPCSTR id,
         dat->copy(&dest, 1, str_len, indx,indx,datetime);
         return 0;
         /* --- CRITICAL SECTION --- */
+
+    }catch(const TOSDB_DataBlockDoesntExist& e){
+        TOSDB_LogH("BLOCK", e.what());
+        return TOSDB_ERROR_BLOCK_DOESNT_EXIST;
+
+    }catch(const TOSDB_Error& e){
+        TOSDB_LogH(e.tag().c_str(), e.info_and_what().c_str());
+        return TOSDB_ERROR_GET_DATA;
+
     }catch(const std::exception& e){
         TOSDB_LogH("TOSDB_GetString", e.what());
-        return -2;
+        return TOSDB_ERROR_GET_DATA;
+
     }catch(...){ 
-        return -2; 
-    }  
+        return TOSDB_ERROR_UNKNOWN;
+    } 
 }
 
 template<> 
@@ -867,6 +1047,9 @@ TOSDB_GetStreamSnapshot<generic_type, false>(std::string id,
 {
     const TOSDBlock *db;
     TOSDB_RawDataBlock::stream_const_ptr_type dat;
+
+    if(topic_t == TOS_Topics::TOPICS::NULL_TOPIC)
+        throw std::invalid_argument("NULL TOPIC");
 
     GLOBAL_RLOCK_GUARD;
     /* --- CRITICAL SECTION --- */
@@ -890,6 +1073,9 @@ TOSDB_GetStreamSnapshot<generic_type, true>(std::string id,
 {
     const TOSDBlock *db;
     TOSDB_RawDataBlock::stream_const_ptr_type dat;
+
+    if(topic_t == TOS_Topics::TOPICS::NULL_TOPIC)
+        throw std::invalid_argument("NULL TOPIC");
 
     GLOBAL_RLOCK_GUARD;
     /* --- CRITICAL SECTION --- */
@@ -967,6 +1153,9 @@ TOSDB_GetStreamSnapshot(std::string id,
     const TOSDBlock *db;
     TOSDB_RawDataBlock::stream_const_ptr_type dat;
 
+    if(topic_t == TOS_Topics::TOPICS::NULL_TOPIC)
+        throw std::invalid_argument("NULL TOPIC");
+
     GLOBAL_RLOCK_GUARD;
     /* --- CRITICAL SECTION --- */
     db = GetBlockOrThrow(id);  
@@ -1009,8 +1198,10 @@ TOSDB_GetStreamSnapshot_(LPCSTR id,
     const TOSDBlock *db;
     TOSDB_RawDataBlock::stream_const_ptr_type dat;
 
-    if(!CheckIDLength(id) || !CheckStringLength(item))
-        return -1;
+    if(!IsValidBlockID(id) || !CheckStringLength(item))
+    {
+        return TOSDB_ERROR_BAD_INPUT;
+    }
 
     try{
         GLOBAL_RLOCK_GUARD;
@@ -1020,11 +1211,21 @@ TOSDB_GetStreamSnapshot_(LPCSTR id,
         dat->copy(dest,array_len,end,beg,datetime);
         return 0;
         /* --- CRITICAL SECTION --- */
+
+    }catch(const TOSDB_DataBlockDoesntExist& e){
+        TOSDB_LogH("BLOCK", e.what());
+        return TOSDB_ERROR_BLOCK_DOESNT_EXIST;
+
+    }catch(const TOSDB_Error& e){
+        TOSDB_LogH(e.tag().c_str(), e.info_and_what().c_str());
+        return TOSDB_ERROR_GET_DATA;
+
     }catch(const std::exception& e){
         TOSDB_LogH("GetStreamSnapshot<T>", e.what());
-        return -2;
+        return TOSDB_ERROR_GET_DATA;
+
     }catch(...){ 
-        return -2; 
+        return TOSDB_ERROR_UNKNOWN;
     }
 }
 
@@ -1040,10 +1241,13 @@ TOSDB_GetStreamSnapshot_(LPCSTR id,
                          long beg)
 {  
     if(!CheckStringLength(topic_str)) /* let this go thru std::string ? */
-        return -1;   
+        return TOSDB_ERROR_BAD_INPUT;   
    
-    return TOSDB_GetStreamSnapshot_(id, item, GetTopicEnum(topic_str), dest, 
-                                    array_len, datetime, end, beg);
+    TOS_Topics::TOPICS t = GetTopicEnum(topic_str);
+    if(t == TOS_Topics::TOPICS::NULL_TOPIC)
+        return TOSDB_ERROR_BAD_TOPIC;
+
+    return TOSDB_GetStreamSnapshot_(id, item, t, dest, array_len, datetime, end, beg);
 }
 
 int 
@@ -1117,13 +1321,17 @@ TOSDB_GetStreamSnapshotStrings(LPCSTR id,
     TOSDB_RawDataBlock::stream_const_ptr_type dat;
     TOS_Topics::TOPICS topic_t;
 
-    if( !CheckIDLength(id) 
+    if( !IsValidBlockID(id) 
         || !CheckStringLength(item)
-        || !CheckStringLength(topic_str) ){
-        return -1;
+        || !CheckStringLength(topic_str) )
+    {
+        return TOSDB_ERROR_BAD_INPUT;
     }
 
-    topic_t = GetTopicEnum(topic_str);    
+    topic_t = GetTopicEnum(topic_str);
+    if(topic_t == TOS_Topics::TOPICS::NULL_TOPIC)
+        return TOSDB_ERROR_BAD_TOPIC;
+
     try{
         GLOBAL_RLOCK_GUARD;
         /* --- CRITICAL SECTION --- */
@@ -1132,11 +1340,21 @@ TOSDB_GetStreamSnapshotStrings(LPCSTR id,
         dat->copy(dest,array_len,str_len,end,beg,datetime);
         return 0;
         /* --- CRITICAL SECTION --- */
+
+    }catch(const TOSDB_DataBlockDoesntExist& e){
+        TOSDB_LogH("BLOCK", e.what());
+        return TOSDB_ERROR_BLOCK_DOESNT_EXIST;
+
+    }catch(const TOSDB_Error& e){
+        TOSDB_LogH(e.tag().c_str(), e.info_and_what().c_str());
+        return TOSDB_ERROR_GET_DATA;
+
     }catch(const std::exception& e){
         TOSDB_LogH("TOSDB_GetStreamSnapshotStrings", e.what());
-        return -2;
+        return TOSDB_ERROR_GET_DATA;
+
     }catch(...){ 
-        return -2; 
+        return TOSDB_ERROR_UNKNOWN;
     }
 }
 
@@ -1154,8 +1372,10 @@ TOSDB_GetStreamSnapshotFromMarker_(LPCSTR id,
     const TOSDBlock *db;
     TOSDB_RawDataBlock::stream_const_ptr_type dat;
 
-    if(!CheckIDLength(id) || !CheckStringLength(item))
-        return -1;
+    if(!IsValidBlockID(id) || !CheckStringLength(item))
+    {
+        return TOSDB_ERROR_BAD_INPUT;
+    }
 
     try{
         GLOBAL_RLOCK_GUARD;
@@ -1166,11 +1386,21 @@ TOSDB_GetStreamSnapshotFromMarker_(LPCSTR id,
         *get_size = (long)(dat->copy_from_marker(dest,array_len,beg,datetime));
         return 0;
         /* --- CRITICAL SECTION --- */
+
+    }catch(const TOSDB_DataBlockDoesntExist& e){
+        TOSDB_LogH("BLOCK", e.what());
+        return TOSDB_ERROR_BLOCK_DOESNT_EXIST;
+
+    }catch(const TOSDB_Error& e){
+        TOSDB_LogH(e.tag().c_str(), e.info_and_what().c_str());
+        return TOSDB_ERROR_GET_DATA;
+
     }catch(const std::exception& e){
         TOSDB_LogH("GetStreamSnapshotFromMarker<T>", e.what());
-        return -2;
+        return TOSDB_ERROR_GET_DATA;
+
     }catch(...){ 
-        return -2; 
+        return TOSDB_ERROR_UNKNOWN;
     }
 }
 
@@ -1188,8 +1418,11 @@ TOSDB_GetStreamSnapshotFromMarker_(LPCSTR id,
     if(!CheckStringLength(topic_str)) /* let this go thru std::string ? */
         return 0;   
    
-    return TOSDB_GetStreamSnapshotFromMarker_(id,item,GetTopicEnum(topic_str),dest,
-                                              array_len, datetime, beg, get_size);
+    TOS_Topics::TOPICS t = GetTopicEnum(topic_str);
+    if(t == TOS_Topics::TOPICS::NULL_TOPIC)
+        return TOSDB_ERROR_BAD_TOPIC;
+
+    return TOSDB_GetStreamSnapshotFromMarker_(id, item, t, dest, array_len, datetime, beg, get_size);
 }
 
 int 
@@ -1263,13 +1496,17 @@ TOSDB_GetStreamSnapshotStringsFromMarker(LPCSTR id,
     TOSDB_RawDataBlock::stream_const_ptr_type dat;
     TOS_Topics::TOPICS topic_t;
 
-    if( !CheckIDLength(id) 
+    if( !IsValidBlockID(id) 
         || !CheckStringLength(item)
-        || !CheckStringLength(topic_str) ){
-        return -1;
+        || !CheckStringLength(topic_str) )
+    {
+        return TOSDB_ERROR_BAD_INPUT;
     }
 
-    topic_t = GetTopicEnum(topic_str);   
+    topic_t = GetTopicEnum(topic_str); 
+    if(topic_t == TOS_Topics::TOPICS::NULL_TOPIC)
+        return TOSDB_ERROR_BAD_TOPIC;
+
     try{
         GLOBAL_RLOCK_GUARD;
         /* --- CRITICAL SECTION --- */
@@ -1279,11 +1516,21 @@ TOSDB_GetStreamSnapshotStringsFromMarker(LPCSTR id,
         *get_size = (long)(dat->copy_from_marker(dest, array_len, str_len, beg, datetime));   
         return 0;
         /* --- CRITICAL SECTION --- */
+
+    }catch(const TOSDB_DataBlockDoesntExist& e){
+        TOSDB_LogH("BLOCK", e.what());
+        return TOSDB_ERROR_BLOCK_DOESNT_EXIST;
+
+    }catch(const TOSDB_Error& e){
+        TOSDB_LogH(e.tag().c_str(), e.info_and_what().c_str());
+        return TOSDB_ERROR_GET_DATA;
+
     }catch(const std::exception& e){
         TOSDB_LogH("TOSDB_GetStreamSnapshotStringsFromMarker", e.what());
-        return -2;
+        return TOSDB_ERROR_GET_DATA;
+
     }catch(...){ 
-        return -2; 
+        return TOSDB_ERROR_UNKNOWN;
     }
 }
 
@@ -1292,6 +1539,9 @@ generic_map_type
 TOSDB_GetItemFrame<false>(std::string id, TOS_Topics::TOPICS topic_t)
 {
     const TOSDBlock *db; 
+
+    if(topic_t == TOS_Topics::TOPICS::NULL_TOPIC)
+        throw std::invalid_argument("NULL TOPIC");
 
     GLOBAL_RLOCK_GUARD;
     /* --- CRITICAL SECTION --- */
@@ -1305,6 +1555,9 @@ generic_dts_map_type
 TOSDB_GetItemFrame<true>(std::string id, TOS_Topics::TOPICS topic_t)
 {
     const TOSDBlock *db; 
+
+    if(topic_t == TOS_Topics::TOPICS::NULL_TOPIC)
+        throw std::invalid_argument("NULL TOPIC");
 
     GLOBAL_RLOCK_GUARD;
     /* --- CRITICAL SECTION --- */
@@ -1324,10 +1577,14 @@ TOSDB_GetItemFrame_(LPCSTR id,
                     pDateTimeStamp datetime)
 {
     const TOSDBlock *db;
-    int err = 0;
+  
+    if(!IsValidBlockID(id))
+        return TOSDB_ERROR_BAD_INPUT;
 
-    if(!CheckIDLength(id))
-        return -1;
+    if(topic_t == TOS_Topics::TOPICS::NULL_TOPIC){
+        TOSDB_LogH("INPUT", "NULL topic passed to TOSDB_GetItemFrame_");
+        return TOSDB_ERROR_BAD_TOPIC;
+    }
 
     try{
         GLOBAL_RLOCK_GUARD;
@@ -1345,11 +1602,9 @@ TOSDB_GetItemFrame_(LPCSTR id,
             {
                 dest[i] = (T)b_iter->second.first;
                 datetime[i] = b_iter->second.second;
-
                 if(dest2){
-                    err = strcpy_s(dest2[i], str_len2, (b_iter->first).c_str());
-                    if(err) 
-                        return err; 
+                    if( strcpy_s(dest2[i], str_len2, (b_iter->first).c_str()) )
+                        return TOSDB_ERROR_BAD_INPUT_BUFFER;
                 }
             }      
         }else{        
@@ -1361,22 +1616,29 @@ TOSDB_GetItemFrame_(LPCSTR id,
                  (i < array_len) && (b_iter != e_iter); 
                  ++b_iter, ++i )  
             {      
-                dest[i] = (T)b_iter->second; 
- 
+                dest[i] = (T)b_iter->second;  
                 if(dest2){
-                    err = strcpy_s(dest2[i], str_len2, (b_iter->first).c_str());
-                    if(err) 
-                        return err;
-
+                    if( strcpy_s(dest2[i], str_len2, (b_iter->first).c_str()) )
+                        return TOSDB_ERROR_BAD_INPUT_BUFFER;                  
                 }
             }            
         }    
         /* --- CRITICAL SECTION --- */
+
+    }catch(const TOSDB_DataBlockDoesntExist& e){
+        TOSDB_LogH("BLOCK", e.what());
+        return TOSDB_ERROR_BLOCK_DOESNT_EXIST;
+
+    }catch(const TOSDB_Error& e){
+        TOSDB_LogH(e.tag().c_str(), e.info_and_what().c_str());
+        return TOSDB_ERROR_GET_DATA;
+
     }catch(const std::exception& e){
         TOSDB_LogH("GetItemFrame<T>", e.what());
-        return -2;  
+        return TOSDB_ERROR_GET_DATA;
+
     }catch(...){ 
-        return -2; 
+        return TOSDB_ERROR_UNKNOWN;
     }
 
   return 0;
@@ -1393,10 +1655,13 @@ TOSDB_GetItemFrame_(LPCSTR id,
                     pDateTimeStamp datetime)
 {  
     if(!CheckStringLength(topic_str))
-        return -1;   
+        return TOSDB_ERROR_BAD_INPUT;   
    
-    return TOSDB_GetItemFrame_(id, GetTopicEnum(topic_str), dest, array_len, 
-                               dest2, str_len2, datetime);  
+    TOS_Topics::TOPICS t = GetTopicEnum(topic_str);
+    if(t == TOS_Topics::TOPICS::NULL_TOPIC)
+        return TOSDB_ERROR_BAD_TOPIC;
+
+    return TOSDB_GetItemFrame_(id, t, dest, array_len, dest2, str_len2, datetime);  
 }
 
 int 
@@ -1464,12 +1729,15 @@ TOSDB_GetItemFrameStrings(LPCSTR id,
     const TOSDBlock *db;
     TOS_Topics::TOPICS topic_t;
 
-    int err = 0;
+    if(!IsValidBlockID(id) || !CheckStringLength(topic_str))
+    {
+        return TOSDB_ERROR_BAD_INPUT;
+    }
 
-    if(!CheckIDLength(id) || !CheckStringLength(topic_str))
-      return -1;
+    topic_t = GetTopicEnum(topic_str);
+    if(topic_t == TOS_Topics::TOPICS::NULL_TOPIC)        
+        return TOSDB_ERROR_BAD_TOPIC;
 
-    topic_t = GetTopicEnum(topic_str);   
     try{
         GLOBAL_RLOCK_GUARD;
         /* --- CRITICAL SECTION --- */
@@ -1486,14 +1754,12 @@ TOSDB_GetItemFrameStrings(LPCSTR id,
             {
                 datetime[i] = b_iter->second.second;
 
-                err = strcpy_s(dest[i], str_len, (b_iter->second.first).as_string().c_str());
-                if(err) 
-                    return err;   
+                if( strcpy_s(dest[i], str_len, (b_iter->second.first).as_string().c_str()) )
+                    return TOSDB_ERROR_BAD_INPUT_BUFFER;
  
                 if(label_dest){
-                    err = strcpy_s(label_dest[i], label_str_len, (b_iter->first).c_str());
-                    if(err)              
-                        return err;
+                    if( strcpy_s(label_dest[i], label_str_len, (b_iter->first).c_str()) )
+                        return TOSDB_ERROR_BAD_INPUT_BUFFER;
                 }
             }    
         }else{          
@@ -1505,23 +1771,31 @@ TOSDB_GetItemFrameStrings(LPCSTR id,
                  (i < array_len) && (b_iter != e_iter); 
                  ++b_iter, ++i )
             {
-                err = strcpy_s(dest[i], str_len, (b_iter->second).as_string().c_str());
-                if(err)
-                    return err;
+                if( strcpy_s(dest[i], str_len, (b_iter->second).as_string().c_str()) )
+                    return TOSDB_ERROR_BAD_INPUT_BUFFER;
 
                 if(label_dest){
-                    err = strcpy_s(label_dest[i], label_str_len, (b_iter->first).c_str());             
-                    if(err)
-                        return err; 
+                    if( strcpy_s(label_dest[i], label_str_len, (b_iter->first).c_str()) )
+                        return TOSDB_ERROR_BAD_INPUT_BUFFER;
                 }
             }
         }    
        /* --- CRITICAL SECTION --- */
+
+    }catch(const TOSDB_DataBlockDoesntExist& e){
+        TOSDB_LogH("BLOCK", e.what());
+        return TOSDB_ERROR_BLOCK_DOESNT_EXIST;
+
+    }catch(const TOSDB_Error& e){
+        TOSDB_LogH(e.tag().c_str(), e.info_and_what().c_str());
+        return TOSDB_ERROR_GET_DATA;
+
     }catch(const std::exception& e){
         TOSDB_LogH("TOSDB_GetItemFrameStrings", e.what());
-        return -2;
+        return TOSDB_ERROR_GET_DATA;
+
     }catch(...){ 
-        return -2; 
+        return TOSDB_ERROR_UNKNOWN;
     }
 
   return 0;    
@@ -1566,8 +1840,10 @@ TOSDB_GetTopicFrameStrings(LPCSTR id,
     const TOSDBlock *db;
     int err = 0;
 
-    if(!CheckIDLength(id) || !CheckStringLength(item))
-        return -1;  
+    if(!IsValidBlockID(id) || !CheckStringLength(item))
+    {
+        return TOSDB_ERROR_BAD_INPUT;  
+    }
 
     try{
         GLOBAL_RLOCK_GUARD;
@@ -1585,14 +1861,12 @@ TOSDB_GetTopicFrameStrings(LPCSTR id,
             {
                 datetime[i] = b_iter->second.second;
 
-                err = strcpy_s(dest[i], str_len, (b_iter->second.first).as_string().c_str());
-                if(err) 
-                    return err;   
+                if( strcpy_s(dest[i], str_len, (b_iter->second.first).as_string().c_str()) )
+                    return TOSDB_ERROR_BAD_INPUT_BUFFER;
 
                 if(label_dest){
-                    err = strcpy_s(label_dest[i], label_str_len, (b_iter->first).c_str());
-                    if(err)              
-                        return err;   
+                    if( strcpy_s(label_dest[i], label_str_len, (b_iter->first).c_str()) )
+                        return TOSDB_ERROR_BAD_INPUT_BUFFER;
                 }
             }    
         }else{    
@@ -1604,23 +1878,30 @@ TOSDB_GetTopicFrameStrings(LPCSTR id,
                  (i < array_len) && (b_iter != e_iter); 
                  ++b_iter, ++i)
             {
-                err = strcpy_s(dest[i], str_len, (b_iter->second).as_string().c_str());
-                if(err) 
-                    return err;
+                if( strcpy_s(dest[i], str_len, (b_iter->second).as_string().c_str()) )
+                    return TOSDB_ERROR_BAD_INPUT_BUFFER;
 
                 if(label_dest){
-                    err = strcpy_s(label_dest[i], label_str_len, (b_iter->first).c_str());
-                    if(err)
-                        return err;  
+                    if( strcpy_s(label_dest[i], label_str_len, (b_iter->first).c_str()) )
+                        return TOSDB_ERROR_BAD_INPUT_BUFFER;
                 }
             }  
         }
         /* --- CRITICAL SECTION --- */
+    }catch(const TOSDB_DataBlockDoesntExist& e){
+        TOSDB_LogH("BLOCK", e.what());
+        return TOSDB_ERROR_BLOCK_DOESNT_EXIST;
+
+    }catch(const TOSDB_Error& e){
+        TOSDB_LogH(e.tag().c_str(), e.info_and_what().c_str());
+        return TOSDB_ERROR_GET_DATA;
+
     }catch(const std::exception& e){
         TOSDB_LogH("TOSDB_GetTopicFrameStrings", e.what());
-        return -2;
+        return TOSDB_ERROR_GET_DATA;
+
     }catch(...){ 
-        return -2; 
+        return TOSDB_ERROR_UNKNOWN;
     }
 
   return 0;

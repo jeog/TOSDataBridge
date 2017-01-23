@@ -363,7 +363,8 @@ RunMainCommLoop(IPCSlave *pslave)
         /* BLOCK until we get a message */
         //TOSDB_LogDebug("***IPC*** ENGINE - RECEIVE");        
         if( !pslave->recv(&ipc_msg) )
-        {            
+        {         
+            TOSDB_LogH("IPC", "recv failed");
             pslave->drop_master();
             continue;          
         }
@@ -1248,15 +1249,19 @@ HandleData(UINT msg, WPARAM wparam, LPARAM lparam)
             break;
         }     
         };
-    }catch(std::out_of_range& e){      
-        TOSDB_Log("DDE", e.what());
-    }catch(std::invalid_argument& e){    
+
+    }catch(const std::out_of_range& e){      
+        TOSDB_LogH("DDE", e.what());
+
+    }catch(const std::invalid_argument&){    
         /* Dec 20 2016 - comment out, cluttering log file */
-        /*
+        /*        
         std::string serr(e.what());
-        TOSDB_Log("DDE", serr.append(" Value:: ").append(cp_data).c_str()); 
-        */
-    }catch(std::exception& e){    
+        TOSDB_Log("DDE", serr.append(" Value:: ").append(cp_data).c_str());       
+         */
+
+    }catch(const std::exception& e){    
+        TOSDB_LogH("DDE", e.what());
         throw TOSDB_DDE_Error(e, "error handling dde data");
     }  
 

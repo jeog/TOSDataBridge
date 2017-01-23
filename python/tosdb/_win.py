@@ -158,7 +158,7 @@ def init(dllpath=None, root="C:\\", bypass_check=False):
 
 
 def connect():
-    """ Attempts to connect to the library
+    """ Attempts to connect to the engine
 
     Note: this returns a boolean and does not raise an exception on failure
     """            
@@ -167,9 +167,20 @@ def connect():
 
 
 def connected():
-    """ Returns true if there is an active connection to the library """
-    ret = _lib_call("TOSDB_IsConnected", ret_type=_uint_, error_check=False)
+    """ Returns true if there is an active connection to the engine AND TOS platform """
+    ret = _lib_call("TOSDB_IsConnectedToEngineAndTOS", ret_type=_uint_, error_check=False)
     return bool(ret) # 1 on success (bool value)
+
+
+def connection_state():
+    """ Returns the connections state between the client lib, engine and TOS platform
+
+    returns:
+    CONN_NONE :: there is NO connection to the engine
+    CONN_ENGINE :: there is a connection to the engine BUT NOT the TOS platform
+    CONN_ENGINE_TOS :: there is a connection to the engine AND the TOS platform
+    """
+    return _lib_call("TOSDB_ConnectionState", ret_type=_uint_, error_check=False)    
          
        
 def clean_up():
@@ -466,7 +477,7 @@ class TOSDB_DataBlock(_TOSDB_DataBlock):
                             item.encode("ascii").upper(),
                             arg_types=(_str_,_str_), error_check=False)
             if err:
-                fails[item] = err
+                fails[item] = _lookup_error_name(err)
        
         if not self._items and not self._topics:
             self._topics = self.topics() # in case topics came out of pre-cache            
@@ -484,7 +495,7 @@ class TOSDB_DataBlock(_TOSDB_DataBlock):
                             topic.encode("ascii").upper(),
                             arg_types=(_str_,_str_), error_check=False)
             if err:
-                fails[topic] = err
+                fails[topic] = _lookup_error_name(err)
 
         if not self._items and not self._topics:
             self._items = self.items() # in case items came out of pre-cache            
@@ -502,7 +513,7 @@ class TOSDB_DataBlock(_TOSDB_DataBlock):
                             item.encode("ascii").upper(),
                             arg_types=(_str_,_str_), error_check=False)
             if err:
-                fails[item] = err
+                fails[item] = _lookup_error_name(err)
 
         self._items = self.items()
                 
@@ -519,7 +530,7 @@ class TOSDB_DataBlock(_TOSDB_DataBlock):
                             topic.encode("ascii").upper(),
                             arg_types=(_str_,_str_), error_check=False)
             if err:
-                fails[topic] = err
+                fails[topic] = _lookup_error_name(err)
 
         self._topics = self.topics()
                 
@@ -948,10 +959,20 @@ def _lib_call(f, *fargs, ret_type=_int_, arg_types=None, error_check=True):
 
     if err:
         raise TOSDB_CLibError("unable to execute library function [%s]" % f, err)
-    elif error_check and ret:
-        raise TOSDB_CLibError("library function [%s] returned error code [%i]" % (f, ret))
+    elif error_check and ret:               
+        raise TOSDB_CLibError("library function [%s] returned error code [%i,%s]" \
+                              % (f, ret, _lookup_error_name(ret)))
     
     return ret  
+
+
+def _lookup_error_name(e):
+    err_str = '*** unrecognized error code ***'
+    try:
+        err_str = ERROR_LOOKUP[ret]        
+    except:
+        pass
+    return err_str
 
 
 # create a custom namedtuple with an i.d tag for special pickling

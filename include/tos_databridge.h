@@ -177,12 +177,14 @@ typedef struct{
 /* reserve a block name for the implementation */
 #define TOSDB_RESERVED_BLOCK_NAME "___RESERVED_BLOCK_NAME___"
 
+/* the following #defines contain names/values that are necessary
+   for the python backage. BE CAREFUL CHANGING NAMES */
+
 /* the connected states we can be in; see TOSDB_ConnectedState() */
 #define TOSDB_CONN_NONE 0
 #define TOSDB_CONN_ENGINE 1
 #define TOSDB_CONN_ENGINE_TOS 2
 
-/* NEED for tosdb/setup.py !!! DO NOT REMOVE !!! */
 #define TOSDB_INTGR_BIT ((type_bits_type)0x80)
 #define TOSDB_QUAD_BIT ((type_bits_type)0x40)
 #define TOSDB_STRING_BIT ((type_bits_type)0x20)
@@ -195,9 +197,35 @@ typedef struct{
 #define TOSDB_MIN_TIMEOUT 1500
 #define TOSDB_SHEM_BUF_SZ 4096
 #define TOSDB_BLOCK_ID_SZ 63 
-#define TOSDB_MAX_BLOCK_SZ INT_MAX 
+/* adjust to avoid mem issues with INT_MAX(2**32) */
+#define TOSDB_MAX_BLOCK_SZ 16777216 /* 2**24 */
 #define TOSDB_DEF_LATENCY Moderate
-/* NEED for tosdb/setup.py !!! DO NOT REMOVE !!! */ 
+
+/* error codes the C API returns */
+#define TOSDB_ERROR_BAD_INPUT -1
+#define TOSDB_ERROR_BAD_INPUT_BUFFER -2
+#define TOSDB_ERROR_NOT_CONNECTED -3
+#define TOSDB_ERROR_BLOCK_ALREADY_EXISTS -4
+#define TOSDB_ERROR_BLOCK_DOESNT_EXIST -5
+#define TOSDB_ERROR_BLOCK_CREATE_FAIL -6
+#define TOSDB_ERROR_BLOCK_SIZE -7
+#define TOSDB_ERROR_BAD_TOPIC -8
+#define TOSDB_ERROR_BAD_ITEM -9
+#define TOSDB_ERROR_IPC -10
+#define TOSDB_ERROR_BAD_SIG -11
+#define TOSDB_ERROR_CONCURRENCY -12
+#define TOSDB_ERROR_TIMEOUT -13
+#define TOSDB_ERROR_ENGINE -14
+#define TOSDB_ERROR_SERVICE -15
+#define TOSDB_ERROR_GET_DATA -16
+#define TOSDB_ERROR_GET_STATE -17
+#define TOSDB_ERROR_SET_STATE -18
+#define TOSDB_ERROR_UNKNOWN -19
+/* this must be our last error because it can be decremented */
+#define TOSDB_ERROR_DECREMENT_BASE -20
+
+/* the previous #defines contain names/values that are necessary
+   for the python backage. BE CAREFUL CHANGING NAMES */
 
 /* severity of log events */
 typedef enum{ 
