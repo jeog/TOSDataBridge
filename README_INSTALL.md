@@ -41,7 +41,7 @@
     (note: some of the particulars in these (older) screen-shots may be different for newer versions)    
     ![](./res/SCss1.png)
 
-10. (***C/C++ ONLY***) Include the tos_databridge.h header in your code ( if its C++ make sure the compiler can find containers.hpp, generic.hpp, and exceptions.hpp.) and adjust the link settings to import the tos-databridge-0.6-[].lib stub. (If you run into trouble review the VisualStudio settings for tos-databridge-shell[].exe as they should resemble what you're trying to do.)
+10. (***C/C++ ONLY***) Include the tos_databridge.h header in your code ( if its C++ make sure the compiler can find containers.hpp, generic.hpp, and exceptions.hpp.) and adjust the link settings to import the tos-databridge-[version]-[build].lib stub. (If you run into trouble review the VisualStudio settings for tos-databridge-shell[].exe as they should resemble what you're trying to do.)
    
 11. (***C/C++ ONLY***) Add appropriate [API calls](README_API.md) to your code.
    

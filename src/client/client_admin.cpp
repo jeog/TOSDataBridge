@@ -396,7 +396,7 @@ _createBlock(LPCSTR id,
     if(!db->block){
         TOSDB_LogH("BLOCK", "failed to create block");
         delete db;
-        return TOSDB_ERROR_BLOCK_CREATE_FAIL;
+        return TOSDB_ERROR_BLOCK_CREATION;
     }   
  
     dde_blocks.insert( std::pair<std::string, TOSDBlock*>(id, db) );  

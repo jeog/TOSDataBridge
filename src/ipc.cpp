@@ -30,21 +30,16 @@ IPCBase::send(std::string msg) const
     DWORD d; 
     BOOL ret;
 
-    if(msg.length() > MAX_MESSAGE_SZ)
-        throw std::runtime_error("IPCBase::send() :: msg length > MAX_MESSAGE_SZ");
+    if(msg.length() > MAX_MESSAGE_SZ){
+        throw std::invalid_argument("IPCBase::send() :: msg length > MAX_MESSAGE_SZ");
+    }
 
     ret = WriteFile(_main_channel_pipe_hndl, (void*)msg.c_str(), msg.length() + 1, &d, NULL);
 
-    if(!ret){
-        errno_t e = GetLastError();     
-        /* we should expect broken pipes */
-        if(e == ERROR_BROKEN_PIPE)            
-            TOSDB_LogDebug("***IPC*** MAIN SEND - (BROKEN_PIPE)");
-        else
-            TOSDB_LogEx("IPC", "WriteFile failed in _recv()", e);  
-        return false;
+    if(!ret){        
+        TOSDB_LogEx("IPC", "WriteFile failed in _recv()", GetLastError());  
+        return false; 
     }
-
     return true;
 }
  
@@ -61,15 +56,9 @@ IPCBase::recv(std::string *msg) const
     ret = ReadFile(_main_channel_pipe_hndl, (void*)msg->c_str(), MAX_MESSAGE_SZ + 1, &d, NULL);
 
     if(!ret || d == 0){
-        errno_t e = GetLastError();
-        /* we should expect broken pipes */
-        if(e == ERROR_BROKEN_PIPE)            
-            TOSDB_LogDebug("***IPC*** MAIN RECEIVE - (BROKEN_PIPE)");
-        else
-            TOSDB_LogEx("IPC", "ReadFile failed in _recv()", e);
+        TOSDB_LogEx("IPC", "ReadFile failed in _recv()", GetLastError());
         return false;
     }
-
     return true;
 }
 
@@ -188,16 +177,16 @@ IPCSlave::_listen_for_probes()
     uint8_t b;
     errno_t e;          
 
-    /* Main run loop for the probe channel: a very simple named pipe server that 
-       allows clients (master AND slave objects) to share a single pipe instance 
-       in order to send a PROBE_BYTE. If the server receives a PROBE_BYTE it 
-       returns it, disconnects the pipe instance and waits for another */
     while(_probe_channel_run_flag){ 
+     /* Main run loop for the probe channel: a very simple named pipe server that 
+        allows clients (master AND slave objects) to share a single pipe instance 
+        in order to send a PROBE_BYTE. If the server receives a PROBE_BYTE it 
+        returns it, disconnects the pipe instance and waits for another */
 
         ret = ConnectNamedPipe(_probe_channel_pipe_hndl, NULL);
         if(!ret){
             e = GetLastError();                               
-            if(e != ERROR_PIPE_CONNECTED){  /* incase client connects first */
+            if(e != ERROR_PIPE_CONNECTED){  /* in case client connects first */
                 TOSDB_LogEx("IPC", "ConnectNamedPipe failed in probe_channel", e);
                 continue;
             }

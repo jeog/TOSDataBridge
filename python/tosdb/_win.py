@@ -966,13 +966,14 @@ def _lib_call(f, *fargs, ret_type=_int_, arg_types=None, error_check=True):
     return ret  
 
 
-def _lookup_error_name(e):
-    err_str = '*** unrecognized error code ***'
+def _lookup_error_name(e):    
     try:
-        err_str = ERROR_LOOKUP[ret]        
+        return ERROR_LOOKUP[e]        
     except:
-        pass
-    return err_str
+        dbase = min(ERROR_LOOKUP.keys())
+        if e < dbase:
+            return "ERROR_DECREMENT_BASE(" + str(e - dbase) + ")"
+        return '***unrecognized error code***'    
 
 
 # create a custom namedtuple with an i.d tag for special pickling
