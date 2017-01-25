@@ -3,46 +3,60 @@
 
 This tutorial attempts to show example usage of the core tosdb package. Please refer to *\_win.py*, *\_common.py* and *\__init__.py* for more details on the core package; *\__init__.\__doc__* for an explanation of the virtual layer; *\__main__.py* for running the package outside of the interactive interpreter; *intervalize.py* for a work-in-progress attempt to build time intervals(e.g OHLC) with the raw data; and *cli_scripts/* for code built on top of the core package.
 
-There are a number of comments inside the screen-shots that help explain what we are doing and why.
+Comments inside the screen-shots help explain what we are doing and why.
 
 ---
 
-- first, cd to the /python directory and run the setup script(if we haven't already)
+**IMPORTANT:** Before using tosdb/ be sure to:
 
-![](./../res/tosdb_tutorial_1.png)
+1. build/install the backend C/C++ modules with the appropriate build(x86 vs. x64) for your version of python, 
+2. start the TOSDataBridge Service(SC Start TOSDataBridge),
+3. have the TOS platform running, with the correct privileges (i.e if you run as admin you should have passed 'admin' to the tosdb-setup.bat script)
+4. install the tosdb/ package (python setup.py install)
 
-- import tosdb and experiment with two different ways to initialize
+**NOTE:** During init(see below) be sure to use the correct version of the tos-databridge DLL (e.x if you are using branch/version v0.6 you should be using tos-databridge-0.6-x86.dll or tos-databridge-0.6-x64.dll)
 
-**IMPORTANT:** Before you can successfully connect you must have the underlying TOSDataBridge Service and TOS platform running, with the correct privileges, using the appropriate build(x86 vs x64) for your version of python. Refer to [Installation Details](../README_INSTALL.md) for more details.
+First, let's initialize the library with the init() call. This loads the shared library into python and tries to automatically connect us to the engine.
 
-**NOTE:** Be sure to use the correct version of the tos-databridge DLL; these screen-shots use older versions of the library. (e.x if you are using branch/version v0.4 you should be using tos-databridge-0.4-x86.dll or tos-databridge-0.4-x64.dll)
+![](./../res/tosdb_tut1.png)
 
-- use some of the global admin calls
-- create/delete a TOSDB_DataBlock and examine it's contents
-- view our first TOSDB_ exception (see _common.py) 
+Next, learn about topics(fields) and items(symbols).
 
-![](./../res/tosdb_tutorial_2.png)
+![](./../res/tosdb_tut2.png)
 
-- show how to use 'items' and 'topics' 
-- attempt to illustrate the slightly confusing pre-caching behavior of the block
+Next, learn about TOSDB_DataBlock, adding items/topics to the block, and pre-caching.
 
-![](./../res/tosdb_tutorial_3.png)
+![](./../res/tosdb_tut3.png)
 
-- show how tosdb handles bad inputs
-- start retrieving data from the block
-- show how size and occupancy relate to the block's get method
+Next, get a 'total frame' from the block.
 
-![](./../res/tosdb_tutorial_4.png)
+![](./../res/tosdb_tut4.png)
 
-- examine how to retrieve historical data via the block's stream_snapshot method
+Or, just get an 'item frame' or a 'topic frame'.
 
-![](./../res/tosdb_tutorial_5.png)
+![](./../res/tosdb_tut5.png)
 
-- examine how we can guarantee contiguous data from different calls via the blocks' stream_snapshot_from_marker method
+Now, let's look at block size, stream occupancy, and the simplest method of pulling a historical data-point from the block.
 
-![](./../res/tosdb_tutorial_6.png)
+![](./../res/tosdb_tut6.png)
 
-- examine the different types of 'frame' methods 
-- clean up when we're done
+Next, let's pull multiple contiguous data-points from the block.
 
-![](./../res/tosdb_tutorial_7.png)
+![](./../res/tosdb_tut7.png)
+
+Next, let's look at a detailed explanation for how we can pull multiple contiguous data-points using an 'atomic' marker, to avoid missing data between calls.
+
+![](./../res/tosdb_tut8.png)
+
+And, an example:
+
+![](./../res/tosdb_tut9.png)
+
+Finally, lets remove some topics, show a C lib exception with an error code (tos_databridge.h), and **call clean_up() when done**
+
+![](./../res/tosdb_tut10.png)
+
+ 
+
+
+

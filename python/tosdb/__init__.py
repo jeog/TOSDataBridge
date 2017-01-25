@@ -311,7 +311,7 @@ class VTOSDB_DataBlock(_TOSDB_DataBlock):
     password:: str :: password for authentication(None for no authentication)
     size: how much historical data to save
     date_time: should block include date-time stamp with each data-point?
-    timeout: how long to wait for responses from TOS-DDE server 
+    timeout: how long to wait for responses from TOS-DDE server (milliseconds)
 
     Please review the attached README.html for details.
     """  

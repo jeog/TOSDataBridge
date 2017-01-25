@@ -228,7 +228,7 @@ class _TOSDB_DataBlock(metaclass=_ABCMeta):
         topic: any topic string in the block
         date_time: (True/False) attempt to retrieve a TOSDB_DateTime object            
         beg: index of most recent data-point (beginning of the snapshot)    
-        margin_of_safety: (True/False) error margin for async stream growth
+        margin_of_safety: error margin for async stream growth
         throw_if_data_loss: (True/False) how to handle error states (see above)
         data_str_max: the maximum length of string data returned
 

@@ -260,7 +260,7 @@ class TOSDB_DataBlock(_TOSDB_DataBlock):
 
     size: how much historical data to save
     date_time: should block include date-time stamp with each data-point?
-    timeout: how long to wait for responses from TOS-DDE server 
+    timeout: how long to wait for responses from TOS-DDE server (milliseconds)
     """    
     def __init__(self, size=1000, date_time=False, timeout=DEF_TIMEOUT):        
         self._name = (_uuid4().hex).encode("ascii")
