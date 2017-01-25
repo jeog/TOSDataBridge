@@ -189,8 +189,7 @@ class _TOSDB_DataBlock(metaclass=_ABCMeta):
 
     @_abstractmethod
     def stream_snapshot_from_marker(): 
-        """ Return multiple data-points(a snapshot) from the data-stream,
-        ending where the last call began
+        """ Return multiple data-points(a snapshot) from an 'atomic' marker
 
         It's likely the stream will grow between consecutive calls. This call
         guarantees to pick up where the last get(), stream_snapshot(), or
