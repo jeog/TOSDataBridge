@@ -176,7 +176,7 @@ def test():
         print("!! ITEMS DON'T MATCH !!", file=_stderr)
     else:
         print('  ',_ladj("ITEMS:"), b1.items())
-        print('  ',_ladj("TOPICS:"), b1.items())
+        print('  ',_ladj("TOPICS:"), b1.topics())
     
     print()
     print("Sleep 5 seconds for historical data...",flush=1,end='')

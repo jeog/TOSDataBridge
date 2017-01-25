@@ -17,9 +17,13 @@ The core implementation is not portable, but the python interface does provides 
 ### Versions
 - - -
 
+**WARNING** Major changes to the IPC mechanism and more moderate changes to the API(additional connection state info, new universal error codes for C) were recently pushed to the master branch. If you experience bugs: 1) report them, 2) revert to branch 'v0.5', 'v0.6' or 'master' @ commit 609779c. 
+
 - **v0.5** \[branch 'v0.5'\] - 'stable' version that guarantees up-to-date binaries, signatures, and symbols (use the README from branch 'v0.5')
 
-- **v0.6** \[branch 'master'\] - development version that may lack up-to-date binaries, signatures, and/or symbols
+- **v0.6** \[branch 'v0.6'\] - (PRE new_ipc branch merge) development version that may lack up-to-date binaries, signatures, and/or symbols
+
+- **v0.7** \[branch 'master'\] - (POST new_ipc branch merge) development version that may lack up-to-date binaries, signatures, and/or symbols
     
 ### Quick Setup
 - - -
@@ -62,7 +66,7 @@ The core implementation is not portable, but the python interface does provides 
 ##### For C/C++:
 - Include tos_databridge.h header in your code 
 - Use the library calls detailed in [C/C++ API](README_API.md)
-- Link with *tos-databridge-0.6-[x86|x64].dll*
+- Link with *tos-databridge-[version]-[build].dll*
 - Build
 - Run
 
@@ -94,7 +98,7 @@ The core implementation is not portable, but the python interface does provides 
     
     - *tos-databridge-engine-[x86|x64].exe* : The main engine - spawned from tos-databridge-serv.exe - that interacts with the TOS platform and our DLL(below). It runs with a lower(ed) integrity level and reduced privileges. 
     
-    - *tos-databridge-0.6-[x86|x64].dll* : The library/interface that client code uses to access TOSDB. Review tos-databridge.h, and the sections below, for all the necessary calls, types, and objects.
+    - *tos-databridge-[version]-[x86|x64].dll* : The library/interface that client code uses to access TOSDB. Review tos-databridge.h, and the sections below, for all the necessary calls, types, and objects.
     
     - *_tos-databridge-[x86|x64].dll* : A back-end library that provides custom concurrency and IPC objects; logging and utilities; as well as the Topic-String mapping. 
     
@@ -104,7 +108,7 @@ The core implementation is not portable, but the python interface does provides 
 
 - **/python** - Files relevant to the python wrapper.
 
-    - **tosdb/** : A python package that serves as a wrapper around *tos-databridge-0.6-[x86|x64].dll*. It provides a more object oriented, simplified means of accessing the core functionality.
+    - **tosdb/** : A python package that serves as a wrapper around *tos-databridge-[version]-[x86|x64].dll*. It provides a more object oriented, simplified means of accessing the core functionality.
 
     - **tosdb/cli_scripts/** : Python scripts built on top of the python wrapper.
 

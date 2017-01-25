@@ -52,11 +52,10 @@ _display_header(std::string hpre, std::string hpost);
 
 }; /* namespace */
 
-
 int main(int argc, char* argv[])
 {           
     std::string cmd;
- 
+   
     _display_header<MAX_DISPLAY_WIDTH, LEFT_INDENT_SIZE, '-'>("[--", "--]");
 
     while(1){ 
@@ -80,7 +79,7 @@ int main(int argc, char* argv[])
             /* default to here */        
             std::cout<< std::endl << "BAD COMMAND" << std::endl << std::endl;
             
-        }catch(TOSDB_Error& e){             
+        }catch(const TOSDB_Error& e){             
             std::cerr<< std::endl << "*** TOSDB_Error caught by shell **" << std::endl
                      << std::setw(15) << "    Process ID: "<< e.processID() << std::endl
                      << std::setw(15) << "    Thread ID: "<< e.threadID() << std::endl

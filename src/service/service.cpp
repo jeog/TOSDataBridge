@@ -21,9 +21,11 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 #include <future>
 #include <memory>
 #include <atomic>
+
 #include "tos_databridge.h"
 #include "ipc.hpp"
 #include "concurrency.hpp"
+#include "initializer_chain.hpp"
 
 namespace {
 
@@ -31,15 +33,34 @@ const unsigned int COMM_BUFFER_SIZE = 4;
 const unsigned int ACL_SIZE = 96;
 const unsigned int UPDATE_PERIOD = 2000;  
 const unsigned int MAX_ARG_SIZE = 20;
+
+const std::map<int,std::string> STATE_STRINGS = 
+    InitializerChain<std::map<int,std::string>>
+        (SERVICE_START_PENDING, "SERVICE_START_PENDING")
+        (SERVICE_STOP_PENDING, "SERVICE_STOP_PENDING")
+        (SERVICE_STOPPED, "SERVICE_STOPPED")
+        (SERVICE_RUNNING, "SERVICE_RUNNING")
+        (SERVICE_CONTINUE_PENDING, "SERVICE_CONTINUE_PENDING")
+        (SERVICE_PAUSE_PENDING, "SERVICE_PAUSE_PENDING")
+        (SERVICE_PAUSED, "SERVICE_PAUSED");
     
 LPSTR SERVICE_NAME = "TOSDataBridge"; 
-LPCSTR LOG_NAME = "service-log.log";
 LPCSTR ENGINE_BASE_NAME = "tos-databridge-engine";
+
+#ifdef LOG_BACKEND_USE_SINGLE_FILE
+LPCSTR LOG_NAME = LOG_BACKEND_SINGLE_FILE_NAME;
+#else
+LPCSTR LOG_NAME = "service-log.log";
+#endif 
+
+#ifdef REDIRECT_STDERR_TO_LOG
+LPCSTR ERR_LOG_NAME = "service-stderr.log";
+#endif
 
 std::string engine_path;
 std::string integrity_level; 
 
-std::unique_ptr<DynamicIPCMaster> master;
+std::unique_ptr<IPCMaster> master;
 
 PROCESS_INFORMATION engine_pinfo;      
 SYSTEM_INFO sys_info;
@@ -54,6 +75,20 @@ volatile bool is_service = true;
 
 int custom_session = -1; 
 
+
+void
+LogState(int state, std::string msg="")
+{   
+    if(state == -1)
+        return;
+
+    try{
+        TOSDB_Log("STATE", (STATE_STRINGS.at(state) + ' ' + msg).c_str());
+    }catch(const std::out_of_range){
+        std::string msg = "invalid state (" + std::to_string(state) + ") passed to LogState";
+        TOSDB_LogH("LOG", msg.c_str());
+    }    
+}
 
 void 
 UpdateStatus(int status, int check_point)
@@ -70,125 +105,113 @@ UpdateStatus(int status, int check_point)
 
     ret = SetServiceStatus(service_status_hndl, &service_status);
     if(!ret){
-        TOSDB_LogH("ADMIN","error setting status");
+        TOSDB_LogH("ADMIN","error setting service status");
         service_status.dwCurrentState = SERVICE_STOPPED;
         service_status.dwWin32ExitCode = ERROR_SERVICE_SPECIFIC_ERROR;
         service_status.dwServiceSpecificExitCode = 2;
         ++service_status.dwCheckPoint;
-
-        ret = SetServiceStatus(service_status_hndl, &service_status);
-        if(!ret){
-            TOSDB_LogH("ADMIN", "fatal error handling service error");
-            TerminateProcess(engine_pinfo.hProcess, EXIT_FAILURE);            
-            ExitProcess(EXIT_FAILURE);
-        }
+                
+        TOSDB_LogH("SHUTDOWN","UpdateStatus terminating engine");
+        shutdown_flag = true;
+        TerminateProcess(engine_pinfo.hProcess, EXIT_FAILURE);                 
+        UpdateStatus(SERVICE_STOPPED, -1);         
     }
+
+    LogState(status);
 }
 
 
-long 
+bool 
 SendMsgWaitForResponse(long msg)
 {
-    long i;
-    unsigned int lcount = 0;
+    long ret;
+    
+    std::string ipc_msg = std::to_string(msg);
 
-    if(!master){
-        master = std::unique_ptr<DynamicIPCMaster>( new DynamicIPCMaster(TOSDB_COMM_CHANNEL) );
-        master->try_for_slave();
-        // ERROR CHECK
-        IPC_TIMED_WAIT( master->grab_pipe() <= 0,
-                        "SendMsgWaitForResponse timed out",
-                        -1 );     
+    TOSDB_LogDebug("***IPC*** SERVICE - CHECK CONNECTED");
+    if( !master->connected(TOSDB_DEF_TIMEOUT) ){
+        TOSDB_LogH("IPC", "Service's IPCMaster is not connected");
+        return false;
     }    
-    master->send(msg);
-    master->send(0); 
-    master->recv(i);
-    return i;
+    
+    TOSDB_LogDebug("***IPC*** SERVICE - CALL");
+    if( !master->call(&ipc_msg, TOSDB_DEF_TIMEOUT) ){
+         TOSDB_LogH("IPC",("master.call failed in SendMsgWaitForResponse, msg:" + ipc_msg).c_str());
+         return false;
+    }
+   
+    try{
+        ret = std::stol(ipc_msg);
+        return (ret == TOSDB_SIG_GOOD);
+    }catch(...){
+        TOSDB_LogH("IPC", "failed to convert return message to long in SendMsgWaitForResponse");
+        return false;
+    }    
 }
 
 
 VOID WINAPI 
 ServiceController(DWORD cntrl)
 {
-    long ret;
-
     switch(cntrl){ 
     case SERVICE_CONTROL_SHUTDOWN:
-    case SERVICE_CONTROL_STOP :
-    {     
-        shutdown_flag = true;
+    case SERVICE_CONTROL_STOP:     
 
-        TOSDB_Log("STATE","SERVICE_STOP_PENDING");
+        shutdown_flag = true;                
         UpdateStatus(SERVICE_STOP_PENDING, -1); 
 
-        if(pause_flag){ /* if we're paused... get it to continue silently */   
-            ret = SendMsgWaitForResponse(TOSDB_SIG_CONTINUE);
-            if(ret != TOSDB_SIG_GOOD)            
-                TOSDB_Log("ADMIN", "error resuming paused thread to stop it");              
+        if(pause_flag){ 
+            /* if we're paused... get it to continue silently */              
+            if(!SendMsgWaitForResponse(TOSDB_SIG_CONTINUE))            
+                TOSDB_Log("ADMIN", "error resuming paused service stop it");              
         }
-
-        ret = SendMsgWaitForResponse(TOSDB_SIG_STOP);
-        if(ret != TOSDB_SIG_GOOD)        
-            TOSDB_Log("ADMIN","BAD_SIG returned from core process");   
+               
+        if(!SendMsgWaitForResponse(TOSDB_SIG_STOP)){        
+            TOSDB_Log("ADMIN","failed to send stop signal to engine");                  
+            TerminateProcess(engine_pinfo.hProcess, EXIT_FAILURE);
+        }        
 
         break;
-    }     
-    case SERVICE_CONTROL_PAUSE:
-    {        
+       
+    case SERVICE_CONTROL_PAUSE: 
+
         if(pause_flag)
-            break;
-
-        pause_flag = true;
-
-        TOSDB_Log("STATE","SERVICE_PAUSE_PENDING");
-        UpdateStatus(SERVICE_PAUSE_PENDING, -1);
-           
-        ret = SendMsgWaitForResponse(TOSDB_SIG_PAUSE);
-        if(ret == TOSDB_SIG_GOOD){
-            TOSDB_Log("STATE","SERVICE_PAUSED");
+            break;       
+                
+        UpdateStatus(SERVICE_PAUSE_PENDING, -1);    
+      
+        if(SendMsgWaitForResponse(TOSDB_SIG_PAUSE)){            
             UpdateStatus(SERVICE_PAUSED, -1);
+            pause_flag = true;
         }else{            
-            TOSDB_LogH("ADMIN", "engine failed to confirm pause msg");                        
-        }
+            TOSDB_LogH("ADMIN", "failed to send pause signal to engine");                        
+        }        
 
         break;
-    }     
-    case SERVICE_CONTROL_CONTINUE:
-    {
+         
+    case SERVICE_CONTROL_CONTINUE: 
+
         if(!pause_flag)
             break;    
-        
-        TOSDB_Log("STATE","SERVICE_CONTINUE_PENDING");
-        UpdateStatus(SERVICE_CONTINUE_PENDING, -1);
-
-        if(!master){
-            TOSDB_LogH("ADMIN","we don't own the slave");
-            break;
-        }            
-
-        ret = SendMsgWaitForResponse(TOSDB_SIG_CONTINUE);
-        if(ret == TOSDB_SIG_GOOD){
-            TOSDB_Log("STATE","SERVICE_RUNNING");
+                
+        UpdateStatus(SERVICE_CONTINUE_PENDING, -1);        
+              
+        if(SendMsgWaitForResponse(TOSDB_SIG_CONTINUE)){            
             UpdateStatus(SERVICE_RUNNING, -1);
             pause_flag = false;
         }else{
-            TOSDB_Log("ADMIN","BAD_SIG returned from core process");
+            TOSDB_Log("ADMIN","failed to send continue signal to engine");
         }
 
-        master->release_pipe();
-        master.reset();
-        break;
-    }    
-    default: 
         break;
     }    
 }
 
 
-#define SPAWN_ERROR_CHECK(ret, msg) \
-do{ \
+#define SPAWN_ERROR_CHECK(ret, msg) do{ \
     if(!ret){ \
-        TOSDB_LogEx("SPAWN", msg, GetLastError()); \
+        errno_t e = GetLastError(); \
+        TOSDB_LogEx("SPAWN", msg, e); \
         goto cleanup_and_exit; \
     } \
 }while(0)    
@@ -297,6 +320,8 @@ SpawnRestrictedProcess(std::string engine_cmd, int session = -1)
 
 };
 
+
+
 void WINAPI 
 ServiceMain(DWORD argc, LPSTR argv[])
 {
@@ -324,57 +349,69 @@ ServiceMain(DWORD argc, LPSTR argv[])
     TOSDB_Log("ADMIN","successfully registered control handler");
 
     SetServiceStatus(service_status_hndl, &service_status);
-    TOSDB_Log("STATE","SERVICE_START_PENDING");
-    TOSDB_Log("ADMIN","starting service update loop on its own thread");
-        
-    /* spin off the basic service update loop */
-    std::async( std::launch::async, 
-                [&]
-                {
-                    while(!shutdown_flag){
-                        Sleep(UPDATE_PERIOD);
-                        UpdateStatus(-1, -1); 
-                    } 
-                } 
-              );
-                  
-    TOSDB_Log("STARTUP", "try to start tos-databridge-engine.exe (AS A SERVICE)");
-    
-    /* create new process that can communicate with our interface */
+    LogState(SERVICE_START_PENDING);
+    UpdateStatus(-1, -1);
+
+    TOSDB_Log("STARTUP", "start tos-databridge-engine.exe (AS A SERVICE)");    
     good_engine = SpawnRestrictedProcess("--spawned --service", custom_session);
-    if(!good_engine){      
-        std::string serr("failed to spawn ");
-        serr.append(engine_path).append(" --spawned --service");
-        TOSDB_LogH("STARTUP", serr.c_str());         
-    }else{
-        /* on success, update and block */
-        UpdateStatus(SERVICE_RUNNING, -1);
-        TOSDB_Log("STATE","SERVICE_RUNNING");
-        WaitForSingleObject(engine_pinfo.hProcess, INFINITE);
+    if(!good_engine){                
+        TOSDB_LogH("STARTUP", ("failed to spawn " + engine_path + " --spawned --service").c_str());         
+        UpdateStatus(SERVICE_STOPPED, -1);
+        return;
+    }          
+
+    /* create 'master' to communicate with engine */
+    master = std::unique_ptr<IPCMaster>( new IPCMaster(TOSDB_COMM_CHANNEL) );
+   
+    UpdateStatus(SERVICE_RUNNING, -1);        
+
+    /* MAIN UPDATE LOOP */           
+    do{
+        /* first check if engine is running */
+        if( WaitForSingleObject(engine_pinfo.hProcess, 0) != WAIT_TIMEOUT){
+            TOSDB_LogH("SHUTDOWN", "service believes engine closed unexpectedly");
+            shutdown_flag = true;
+            break;
+        }
+        Sleep(UPDATE_PERIOD);
+        UpdateStatus(-1, -1);            
+    }while(!shutdown_flag);
+
+    /* wait on engine process to exit (if necessary), or timeout and force exit */
+    if( WaitForSingleObject(engine_pinfo.hProcess, TOSDB_DEF_TIMEOUT * 2) == WAIT_TIMEOUT){                    
+        /* forcefully close the engine */
+        TOSDB_LogH("SHUTDOWN", "engine took too long to shutdown, terminated");
+        TerminateProcess(engine_pinfo.hProcess, EXIT_FAILURE);     
     }
+       
+    TOSDB_LogH("SHUTDOWN", "service believes engine has shutdown");   
 
     /*** IF WE GET HERE WE WILL SHUTDOWN ***/
     UpdateStatus(SERVICE_STOPPED, 0);
-    
-    TOSDB_Log("STATE","SERVICE_STOPPED");    
+    /*** NO GUARANTEE ANYTHING AFTER THIS WILL STILL BE VALID ***/
 }
 
 
 int WINAPI 
 WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLn, int nShowCmd)
 {     
-    bool good_engine;
-    std::string cmd_str(lpCmdLn);
+    bool good_engine;    
     std::vector<std::string> args;    
+
+    std::string cmd_str(lpCmdLn);    
+    std::string logpath(TOSDB_LOG_PATH);
+
+#ifdef REDIRECT_STDERR_TO_LOG
+    freopen( (logpath + ERR_LOG_NAME).c_str(), "a", stderr);
+#endif
+
+    /* start  logging */
+    logpath.append(LOG_NAME);
+    StartLogging(logpath.c_str()); 
 
     /* get 'our' module name */
     SmartBuffer<CHAR> module_buf(MAX_PATH);
-    GetModuleFileName(NULL, module_buf.get(), MAX_PATH);
-
-    /* start  logging */
-    std::string logpath(TOSDB_LOG_PATH);
-    logpath.append(LOG_NAME);
-    StartLogging(logpath.c_str()); 
+    GetModuleFileName(NULL, module_buf.get(), MAX_PATH); 
 
     /* add the appropriate engine name to the module path */
     std::string path(module_buf.get()); 
@@ -459,28 +496,27 @@ WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLn, int nShowCmd)
         is_service = false;
 
         TOSDB_Log("STARTUP", "starting tos-databridge-engine.exe directly(NOT A SERVICE)");
-
         good_engine = SpawnRestrictedProcess("--spawned --noservice", custom_session); 
-        if(!good_engine){      
-            std::string serr("failed to spawn ");
-            serr.append(engine_path).append(" --spawned --noservice");
-            TOSDB_LogH("STARTUP", serr.c_str());         
-        }
+        if(!good_engine)        
+            TOSDB_LogH("STARTUP", ("failed to spawn " + engine_path + " --spawned --noservice").c_str());                 
     }else{    
-        SERVICE_TABLE_ENTRY dTable[] = {
-            {SERVICE_NAME,ServiceMain},
-            {NULL,NULL}
-        };        
+        SERVICE_TABLE_ENTRY dtable[] = {{SERVICE_NAME,ServiceMain}, {NULL,NULL}};        
 
         /* START SERVICE */	
-        if( !StartServiceCtrlDispatcher(dTable) ){
+        if( !StartServiceCtrlDispatcher(dtable) ){
             TOSDB_LogH("STARTUP", "StartServiceCtrlDispatcher() failed. "  
                                   "(Be sure to use an appropriate Window's tool to start the service "
                                   "(e.g SC.exe, Services.msc) or pass '--noservice' to run directly.)");
         }
     }
 
+    TOSDB_Log("SHUTDOWN","service exiting");
     StopLogging();
+
+#ifdef REDIRECT_STDERR_TO_LOG
+    fclose(stderr);
+#endif
+
     return 0;
 }
     

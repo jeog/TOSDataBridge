@@ -43,16 +43,19 @@ typedef struct {
     unsigned long       timeout;
 } TOSDBlock; /* no ptr or const typedefs; force code to state explicitly */
 
-inline TOS_Topics::TOPICS 
-GetTopicEnum(std::string topic_str)
-{ 
-    return TOS_Topics::map[topic_str]; 
-}
+TOS_Topics::TOPICS 
+GetTopicEnum(std::string topic_str, bool log_if_null=true);
 
 const TOSDBlock*   
 GetBlockPtr(std::string id, bool log=true);
 
 const TOSDBlock*   
 GetBlockOrThrow(std::string id);
+
+bool
+IsValidBlockSize(size_type sz);
+
+bool
+IsValidBlockID(std::string id);
 
 #endif

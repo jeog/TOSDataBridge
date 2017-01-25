@@ -156,4 +156,106 @@ SignalManager::signal(std::string unq_id, bool secondary)
 }
 
 
+bool
+IPCNamedMutexClient::try_lock(unsigned long timeout,
+                              std::function<void(errno_t)> no_open_cb,
+                              std::function<void(void)> timeout_cb,
+                              std::function<void(errno_t)> fail_cb)
+{
+    if(_mtx)
+        return true;
+          
+    /* open late to be sure slave has already created */
+    HANDLE tmp = OpenMutex(SYNCHRONIZE, FALSE, _name.c_str()); 
+    if(!tmp){
+        if(no_open_cb)
+            no_open_cb( GetLastError() );
+        return false;
+    }
+
+    /* we use 'tmp' because technically the mutex has yet to be 
+        locked but locked() simply checks that _mtx != NULL */    
+    DWORD wstate = WaitForSingleObject(tmp, timeout);
+    errno_t e = GetLastError();
+
+    switch(wstate){
+    case WAIT_TIMEOUT: 
+        CloseHandle(tmp);                 
+        if(timeout_cb)
+            timeout_cb();              
+        return false;
+    case WAIT_FAILED:    
+        CloseHandle(tmp);                 
+        if(fail_cb)
+            fail_cb(e);          
+        return false;          
+    }        
+
+    /* on success we pass the handle to _mtx */
+    _mtx = tmp;
+    return true;
+}
+
+
+void
+IPCNamedMutexClient::unlock()
+{
+    if(locked()){
+        ReleaseMutex(_mtx);                  
+        CloseHandle(_mtx);
+        _mtx = NULL;
+    }
+}
+
+
+#define HANDLE_MUTEX_ERROR(msg, name, e) do{ \
+    std::stringstream m; \
+    m << msg << ": " << name << " (" << e << ")"; \
+    /* can't block here, use ...Raw */ \
+    TOSDB_LogRawH("MUTEX", m.str().c_str()); \
+    throw std::runtime_error(m.str()); \
+}while(0)
+
+NamedMutexLockGuard::NamedMutexLockGuard(std::string name)
+{    
+    errno_t e;  
+    /* no guarantee the service/engine won't create the mutex, leaving us w/o 
+       adequate privileges; if so we try to open the mutex; if the mutex was 
+       closed AFTER our call to CreateMutex failed we loop back and try again */
+    do{
+        _mtx = CreateMutex(NULL, FALSE, name.c_str());
+        if(_mtx)
+            break;               
+        e = GetLastError();                
+        if(e == ERROR_ACCESS_DENIED){
+            /* if we dont have privileges to create, just try to open */
+            _mtx = OpenMutex(NULL, FALSE, name.c_str());
+            if(_mtx)
+                break;          
+            e = GetLastError();
+            if(e == ERROR_FILE_NOT_FOUND) /* if it was closed, try again */                
+                continue;
+            HANDLE_MUTEX_ERROR("failed to open mutex", name, e);           
+        }
+        HANDLE_MUTEX_ERROR("failed to create mutex", name, e);                            
+    }while(1);
+
+    /* lock mutex */
+    if( WaitForSingleObject(_mtx, INFINITE) == WAIT_FAILED )
+    {
+        HANDLE_MUTEX_ERROR("failed to lock mutex", name, GetLastError());
+    }
+}
+
+#undef HANDLE_MUTEX_ERROR(msg,e)
+
+
+NamedMutexLockGuard::~NamedMutexLockGuard()
+{
+    if(_mtx){     
+        ReleaseMutex(_mtx);
+        CloseHandle(_mtx);             
+    } 
+}
+
 #endif

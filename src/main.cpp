@@ -119,7 +119,7 @@ CheckStringLength(LPCSTR str)
 {
     size_t slen = strnlen_s(str, TOSDB_MAX_STR_SZ+1);
     if( slen == (TOSDB_MAX_STR_SZ+1) ){
-        TOSDB_LogH("User Input", "string length > TOSDB_MAX_STR_SZ");
+        TOSDB_LogH("INPUT", "string length > TOSDB_MAX_STR_SZ");
         return 0;
     }
 
@@ -134,7 +134,7 @@ CheckStringLengths(LPCSTR* str, size_type items_len)
     while(items_len--){
         slen = strnlen_s(str[items_len], TOSDB_MAX_STR_SZ + 1);
         if( slen == (TOSDB_MAX_STR_SZ+1) ){ 
-            TOSDB_LogH("User Input", "string length > TOSDB_MAX_STR_SZ");
+            TOSDB_LogH("INPUT", "string length > TOSDB_MAX_STR_SZ");
             return 0;
         }
     }
@@ -148,7 +148,7 @@ CheckIDLength(LPCSTR id)
 {
     size_t slen = strnlen_s(id, TOSDB_BLOCK_ID_SZ + 1);
     if( slen == (TOSDB_BLOCK_ID_SZ + 1) ){
-        TOSDB_LogH("Strings", "name/id length > TOSDB_BLOCK_ID_SZ");
+        TOSDB_LogH("INPUT", "block name length > TOSDB_BLOCK_ID_SZ");
         return 0;
     }
 

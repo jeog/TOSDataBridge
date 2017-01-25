@@ -15,6 +15,8 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see http://www.gnu.org/licenses.
 */
 
+#include <algorithm>
+
 #include "shell.hpp"
 
 namespace{
@@ -491,10 +493,15 @@ _min_stream_len(std::string block, long beg, long end, size_type len)
         end += block_size;
     if(beg < 0)
         beg += block_size;
+        
+    min_size = std::min((size_type)(end-beg+1), len);
 
-    min_size = min( end-beg+1, len );
+    if(beg < 0 || end < 0)
+        throw TOSDB_Error("STREAM DATA", "negative 'beg' or 'end' index values");
 
-    if(beg < 0 || end < 0 || beg >= block_size || end >= block_size || min_size <= 0)
+    if( (size_type)beg >= block_size 
+        || (size_type)end >= block_size 
+        || (size_type)min_size <= 0)
         throw TOSDB_Error("STREAM DATA", "invalid beg or end index values");
 
     return min_size;

@@ -124,6 +124,57 @@ public:
         }
 };
 
+
+class IPCNamedMutexClient{
+    HANDLE _mtx;   
+    std::string _name;
+
+    IPCNamedMutexClient(const IPCNamedMutexClient&);
+    IPCNamedMutexClient(IPCNamedMutexClient&&);
+    IPCNamedMutexClient& operator=(IPCNamedMutexClient& ipm);
+
+public:
+    IPCNamedMutexClient(std::string name) 
+        :            
+            _name(name)
+        {   
+        }
+
+    bool
+    try_lock(unsigned long timeout,
+             std::function<void(errno_t)> no_open_cb = nullptr,
+             std::function<void(void)> timeout_cb = nullptr,
+             std::function<void(errno_t)> fail_cb = nullptr);
+
+    void
+    unlock();
+
+    inline bool
+    locked() const
+    {
+        return (_mtx != NULL);
+    }
+
+    ~IPCNamedMutexClient()
+    {
+        unlock();
+    }
+};
+
+
+class NamedMutexLockGuard{
+    HANDLE _mtx;       
+
+    NamedMutexLockGuard(const NamedMutexLockGuard&);
+    NamedMutexLockGuard(NamedMutexLockGuard&&);
+    NamedMutexLockGuard& operator=(NamedMutexLockGuard& ipm);
+
+public:
+    NamedMutexLockGuard(std::string name);         
+    ~NamedMutexLockGuard();   
+};
+
+
 class SignalManager {    
     std::multimap<std::string, volatile bool> _unq_flags; 
     LightWeightMutex _mtx;
