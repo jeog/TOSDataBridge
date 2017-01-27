@@ -11,12 +11,11 @@ Comments inside the screen-shots help explain what we are doing and why.
 
 1. build/install the backend C/C++ modules with the appropriate build(x86 vs. x64) for your version of python, 
 2. start the TOSDataBridge Service(SC Start TOSDataBridge),
-3. have the TOS platform running, with the correct privileges (i.e if you run as admin you should have passed 'admin' to the tosdb-setup.bat script)
+3. have the TOS platform running, with the correct privileges (i.e if you run as admin you should have passed 'admin' to the tosdb-setup.bat script),
 4. install the tosdb/ package (python setup.py install)
 
-**NOTE:** During init(see below) be sure to use the correct version of the tos-databridge DLL (e.x if you are using branch/version v0.6 you should be using tos-databridge-0.6-x86.dll or tos-databridge-0.6-x64.dll)
-
-First, let's initialize the library with the init() call. This loads the shared library into python and tries to automatically connect us to the engine.
+First, let's initialize the library with the init() call. Be sure to use the correct version of the tos-databridge DLL. If you are using branch/version v0.6, for instance, you should be using tos-databridge-0.6-x86.dll or tos-databridge-0.6-x64.dll.
+This - via ctypes.py - loads the shared library into python and tries to automatically connect to the engine.
 
 ![](./../res/tosdb_tut1.png)
 

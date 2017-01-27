@@ -460,6 +460,7 @@ HandleGoodIPCMessage(unsigned int op,
     return ret;
 }
 
+#undef STREAM_CHECK_LOG_ERROR
 
 int
 ParseIPCMessage(std::string msg, 
@@ -713,8 +714,6 @@ RemoveStream( TOS_Topics::TOPICS topic_t,
     /* if no items close the convo */
     if(topic_iter->second.empty())       
          TearDownTopic(topic_t, timeout);  
-   
-    STREAM_CHECK_LOG_ERROR(err,"RemoveStream",topic_t,item,timeout);
 
     return err;      
 }

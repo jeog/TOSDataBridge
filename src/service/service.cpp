@@ -210,12 +210,10 @@ ServiceController(DWORD cntrl)
 
 #define SPAWN_ERROR_CHECK(ret, msg) do{ \
     if(!ret){ \
-        errno_t e = GetLastError(); \
-        TOSDB_LogEx("SPAWN", msg, e); \
+        TOSDB_LogEx("SPAWN", msg, GetLastError()); \
         goto cleanup_and_exit; \
     } \
-}while(0)    
-
+}while(0)  
 
 bool 
 SpawnRestrictedProcess(std::string engine_cmd, int session = -1)
@@ -318,8 +316,9 @@ SpawnRestrictedProcess(std::string engine_cmd, int session = -1)
     return success;
 }    
 
-};
+#undef SPAWN_ERROR_CHECK
 
+};
 
 
 void WINAPI 

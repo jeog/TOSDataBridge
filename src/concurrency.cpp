@@ -243,11 +243,12 @@ NamedMutexLockGuard::NamedMutexLockGuard(std::string name)
     /* lock mutex */
     if( WaitForSingleObject(_mtx, INFINITE) == WAIT_FAILED )
     {
-        HANDLE_MUTEX_ERROR("failed to lock mutex", name, GetLastError());
+        errno_t e = GetLastError();
+        HANDLE_MUTEX_ERROR("failed to lock mutex", name, e);
     }
 }
 
-#undef HANDLE_MUTEX_ERROR(msg,e)
+#undef HANDLE_MUTEX_ERROR
 
 
 NamedMutexLockGuard::~NamedMutexLockGuard()

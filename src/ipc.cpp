@@ -73,9 +73,7 @@ IPCBase::_call_pipe( std::string name,
                      unsigned long timeout, 
                      std::function<bool(T*,DWORD)> handle_good_call,
                      std::function<void(void)> handle_file_not_found ) 
-{ 
-    using namespace std::chrono;
-      
+{     
     errno_t e;
     DWORD r = 0;  
    
