@@ -29,9 +29,7 @@ core
 
 VisualStudioBuild/[Dd]ebug/
 VisualStudioBuild/[Rr]elease/
-# x64/
 build/
-# [Bb]in/
 bin/Debug
 [Oo]bj/
 log/
