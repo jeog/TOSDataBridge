@@ -112,7 +112,7 @@ _requestStreamOP(TOS_Topics::TOPICS topic_t,
     }         
 
     if( !_connected(true) ){
-        TOSDB_LogH("IPC", "_requestStreamOP failed, not connected");
+        TOSDB_LogRawH("IPC", "_requestStreamOP failed, not connected");
         return TOSDB_ERROR_NOT_CONNECTED;
     }
 
@@ -120,14 +120,14 @@ _requestStreamOP(TOS_Topics::TOPICS topic_t,
                       + item + ' ' + std::to_string(timeout);   
 
     if( !master.call(&msg,timeout) ){
-        TOSDB_LogH("IPC",("master.call failled in _requestStreamOP, msg:" + msg).c_str());
+        TOSDB_LogRawH("IPC",("master.call failled in _requestStreamOP, msg:" + msg).c_str());
         return TOSDB_ERROR_IPC;
     }
 
     try{
         return std::stol(msg);        
     }catch(...){
-        TOSDB_LogH("IPC", ("failed to convert return message to long, msg:" + msg).c_str());
+        TOSDB_LogRawH("IPC", ("failed to convert return message to long, msg:" + msg).c_str());
         return TOSDB_ERROR_IPC;
     }    
 }
