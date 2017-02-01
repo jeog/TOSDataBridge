@@ -514,6 +514,10 @@ class TOSDB_DataBlock(_TOSDB_DataBlock):
                 fails[item] = _lookup_error_name(err)
 
         self._items = self.items()
+
+        #jan 30 2017: if topics are sent to pre-cache
+        if not self._items:
+            self._topics = self.topics()
                 
         if fails:
             raise TOSDB_CLibError("error(s) removing items", str(fails))
@@ -531,7 +535,11 @@ class TOSDB_DataBlock(_TOSDB_DataBlock):
                 fails[topic] = _lookup_error_name(err)
 
         self._topics = self.topics()
-                
+
+        #jan 30 2017: if items are sent to pre-cache
+        if not self._topics:
+            self._items = self.items()
+            
         if fails:
             raise TOSDB_CLibError("error(s) removing topics", str(fails))
           
