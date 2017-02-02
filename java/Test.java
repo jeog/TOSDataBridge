@@ -1,12 +1,18 @@
 
 import com.tosdatabridge.CLib;
+import com.tosdatabridge.DateTime;
 import com.tosdatabridge.TOSDataBridge;
+
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 
 
 public class Test{    
 
     private static final String TOSDB_LIB_PATH =
         "C:/users/j/documents/github/tosdatabridge/bin/Release/x64/tos-databridge-0.7-x64.dll";
+
+    private static final int SLEEP_PERIOD = 1000;
 
     public static void
     main(String[] args)
@@ -133,16 +139,57 @@ public class Test{
             block1.addTopic(topic3);
             printBlockItemsTopics(block1);
 
+            Thread.sleep(SLEEP_PERIOD*3);
+            System.out.println("***SLEEP FOR " + String.valueOf(SLEEP_PERIOD*3) + " MILLISECONDS***");
+
+            System.out.println();
             System.out.println("TEST GET CALLS:");
-            long g = block1.getLong(item1,topic2,true);
-            System.out.println("GetLong (" + item1 + "," + topic2 + "): " + String.valueOf(g));
-            g = block1.getLong(item1,topic2,1,true);
-            System.out.println("GetLong (" + item1 + "," + topic2 + "1): " + String.valueOf(g));
-            TOSDataBridge.Pair<Long,CLib.DateTimeStamp> p =
-                    block1.getLongWithDateTime(item1,topic2,true);
-            System.out.println("GetLong (" + item1 + "," + topic2 + "): " + p.toString());
-            p = block1.getLongWithDateTime(item1,topic2,1,true);
-            System.out.println("GetLong (" + item1 + "," + topic2 + "1): " + p.toString());
+            Test.<Long>printGet(block1,item1,topic2,1,"getLong");
+            Test.<Long>printGet(block1,item1,topic2,0,"getLong");
+            Test.<TOSDataBridge.Pair<Long,DateTime>>printGet(block1,item1,topic2,1,"getLongWithDateTime");
+            Test.<TOSDataBridge.Pair<Long,DateTime>>printGet(block1,item1,topic2,0,"getLongWithDateTime");
+            Test.<Double>printGet(block1,item2,topic1,1,"getDouble");
+            Test.<Double>printGet(block1,item2,topic1,0,"getDouble");
+            Test.<TOSDataBridge.Pair<Double,DateTime>>printGet(block1,item2,topic1,1,"getDoubleWithDateTime");
+            Test.<TOSDataBridge.Pair<Double,DateTime>>printGet(block1,item2,topic1,0,"getDoubleWithDateTime");
+            Test.<String>printGet(block1,item3,topic3,1,"getString");
+            Test.<String>printGet(block1,item3,topic3,0,"getString");
+            Test.<TOSDataBridge.Pair<String,DateTime>>printGet(block1,item3,topic3,1,"getStringWithDateTime");
+            Test.<TOSDataBridge.Pair<String,DateTime>>printGet(block1,item3,topic3,0,"getStringWithDateTime");
+
+            System.out.println();
+            System.out.println("TEST STREAM SNAPSHOT CALLS:");
+            Test.<Long>printGetStreamSnapshot(block1,item1,topic2,5,0,"getStreamSnapshotLongs");
+            Test.<TOSDataBridge.Pair<Long,DateTime>>printGetStreamSnapshot(
+                    block1,item1,topic2,5,0,"getStreamSnapshotLongsWithDateTime");
+            Test.<Double>printGetStreamSnapshot(block1,item2,topic1,5,0,"getStreamSnapshotDoubles");
+            Test.<TOSDataBridge.Pair<Double,DateTime>>printGetStreamSnapshot(
+                    block1,item2,topic1,5,0,"getStreamSnapshotDoublesWithDateTime");
+            Test.<String>printGetStreamSnapshot(block1,item3,topic3,5,0,"getStreamSnapshotStrings");
+            Test.<TOSDataBridge.Pair<String,DateTime>>printGetStreamSnapshot(
+                    block1,item3,topic3,5,0,"getStreamSnapshotStringsWithDateTime");
+
+            System.out.println();
+            System.out.println("TEST STREAM SNAPSHOT FROM MARKER CALLS:");
+            Test.<Long>printGetStreamSnapshotFromMarker(block1,item1,topic2,0,"getStreamSnapshotLongsFromMarker");
+            Thread.sleep(SLEEP_PERIOD);
+            System.out.println("***SLEEP FOR " + String.valueOf(SLEEP_PERIOD) + " MILLISECONDS***");
+            Test.<TOSDataBridge.Pair<Long,DateTime>>printGetStreamSnapshotFromMarker(
+                    block1,item1,topic2,0,"getStreamSnapshotLongsFromMarkerWithDateTime");
+            Thread.sleep(SLEEP_PERIOD);
+            System.out.println("***SLEEP FOR " + String.valueOf(SLEEP_PERIOD) + " MILLISECONDS***");
+            Test.<Double>printGetStreamSnapshotFromMarker(block1,item2,topic1,0,"getStreamSnapshotDoublesFromMarker");
+            Thread.sleep(SLEEP_PERIOD);
+            System.out.println("***SLEEP FOR " + String.valueOf(SLEEP_PERIOD) + " MILLISECONDS***");
+            Test.<TOSDataBridge.Pair<Double,DateTime>>printGetStreamSnapshotFromMarker(
+                    block1,item2,topic1,0,"getStreamSnapshotDoublesFromMarkerWithDateTime");
+            Thread.sleep(SLEEP_PERIOD);
+            System.out.println("***SLEEP FOR " + String.valueOf(SLEEP_PERIOD) + " MILLISECONDS***");
+            Test.<String>printGetStreamSnapshotFromMarker(block1,item3,topic3,0,"getStreamSnapshotStringsFromMarker");
+            Thread.sleep(SLEEP_PERIOD);
+            System.out.println("***SLEEP FOR " + String.valueOf(SLEEP_PERIOD) + " MILLISECONDS***");
+            Test.<TOSDataBridge.Pair<String,DateTime>>printGetStreamSnapshotFromMarker(
+                    block1,item3,topic3,0,"getStreamSnapshotStringsFromMarkerWithDateTime");
 
 
         }catch(TOSDataBridge.LibraryNotLoaded e){
@@ -156,6 +203,90 @@ public class Test{
         } catch (TOSDataBridge.BlockDoesntSupportDateTime e) {
             System.out.println("EXCEPTION: BlockDoesntSupportDateTime");
             System.out.println(e.toString());
+            e.printStackTrace();
+        } catch (InterruptedException e) {
+            System.out.println("EXCEPTION: InterruptedException");
+            System.out.println(e.toString());
+            e.printStackTrace();
+        }
+    }
+
+
+    public static <T> void
+    printGet(TOSDataBridge.DataBlock block, String item, String topic, int indx, String mname)
+            throws TOSDataBridge.CLibException, TOSDataBridge.LibraryNotLoaded,
+                   TOSDataBridge.BlockDoesntSupportDateTime
+    {
+        Method m;
+        try {
+            m = block.getClass().getMethod(mname,String.class,String.class,int.class,boolean.class);
+        } catch (NoSuchMethodException e) {
+            e.printStackTrace();
+            return;
+        }
+
+        try {
+            T r1 = (T)m.invoke(block,item,topic,indx,true);
+            System.out.println(mname + "(" + item + "," + topic + "," + String.valueOf(indx)
+                                     + "): " + r1.toString());
+        } catch (IllegalAccessException e) {
+            e.printStackTrace();
+        } catch (InvocationTargetException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public static <T> void
+    printGetStreamSnapshot(TOSDataBridge.DataBlock block, String item,
+                           String topic, int end, int beg, String mname)
+            throws TOSDataBridge.CLibException, TOSDataBridge.LibraryNotLoaded,
+            TOSDataBridge.BlockDoesntSupportDateTime
+    {
+        Method m;
+        try {
+            m = block.getClass().getMethod(mname,String.class,String.class,int.class,int.class);
+        } catch (NoSuchMethodException e) {
+            e.printStackTrace();
+            return;
+        }
+
+        try {
+            T[] r1 = (T[])m.invoke(block,item,topic,end,beg);
+            System.out.println(mname + "(" + item + "," + topic + "," + String.valueOf(beg)
+                               + "-" + String.valueOf(end) + "): ");
+            for(int i = 0; i < r1.length; ++i){
+                 System.out.println(String.valueOf(i) + ": " + r1[i].toString());
+            }
+        } catch (IllegalAccessException e) {
+            e.printStackTrace();
+        } catch (InvocationTargetException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public static <T> void
+    printGetStreamSnapshotFromMarker(TOSDataBridge.DataBlock block, String item,
+                                     String topic, int beg, String mname)
+            throws TOSDataBridge.CLibException, TOSDataBridge.LibraryNotLoaded,
+            TOSDataBridge.BlockDoesntSupportDateTime
+    {
+        Method m;
+        try {
+            m = block.getClass().getMethod(mname,String.class,String.class,int.class);
+        } catch (NoSuchMethodException e) {
+            e.printStackTrace();
+            return;
+        }
+
+        try {
+            T[] r1 = (T[])m.invoke(block,item,topic,beg);
+            System.out.println(mname + "(" + item + "," + topic + "," + String.valueOf(beg) + "): ");
+            for(int i = 0; i < r1.length; ++i){
+                System.out.println(String.valueOf(i) + ": " + r1[i].toString());
+            }
+        } catch (IllegalAccessException e) {
+            e.printStackTrace();
+        } catch (InvocationTargetException e) {
             e.printStackTrace();
         }
     }
