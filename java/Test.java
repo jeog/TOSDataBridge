@@ -1,110 +1,82 @@
+/*
+Copyright (C) 2017 Jonathon Ogden   <jeog.dev@gmail.com>
 
-import com.tosdatabridge.DataBlock;
-import com.tosdatabridge.DateTime;
-import com.tosdatabridge.Pair;
-import com.tosdatabridge.TOSDataBridge;
-import com.tosdatabridge.TOSDataBridge.*;
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
 
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see http://www.gnu.org/licenses.
+*/
+
+import com.github.jeog.tosdatabridge.TOSDataBridge;
+import com.github.jeog.tosdatabridge.TOSDataBridge.*;
+import com.github.jeog.tosdatabridge.DataBlock;
+import com.github.jeog.tosdatabridge.DataBlock.*;
+
+import java.io.File;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Map;
+import java.util.Random;
+import java.util.Set;
 
 
 public class Test{    
-
-    private static final String TOSDB_LIB_PATH =
-        "C:/users/j/documents/github/tosdatabridge/bin/Release/x64/tos-databridge-0.7-x64.dll";
 
     private static final int SLEEP_PERIOD = 1000;
 
     public static void
     main(String[] args)
     {
-        TOSDataBridge.init(TOSDB_LIB_PATH);
+        if(args.length == 0){
+            System.err.println("TOSDataBridge library path must be passed as arg0");
+            return;
+        }
+
+        if( !(new File(args[0])).exists() ){
+            System.err.println("Arg0 (" + args[0] + ") is not a valid file.");
+            throw new IllegalArgumentException("Arg0 is not a valid file");
+        }
+
+        if( !TOSDataBridge.init(args[0]) ){
+            System.err.println("Failed to load library (" + args[0] + ")");
+            throw new RuntimeException("failed to load library");
+        }
 
         try{
-            // connect() (should already be connected)
-            TOSDataBridge.connect();
+            testConnection();
+            testAdminCalls();
 
-            // connected()
-            if(!TOSDataBridge.connected()){
-                System.out.println("NOT CONNECTED");
-                return;
-            }
-
-            // connection_state()
-            int connState = TOSDataBridge.connectionState();
-            System.out.println("CONNECTION STATE: " + String.valueOf(connState));
-            if(connState != TOSDataBridge.CONN_ENGINE_TOS){
-                System.out.println("INVALID CONNECTION STATE");
-                return;
-            }
-
-            // get_block_limit()
-            int l = TOSDataBridge.getBlockLimit();
-            System.out.println("block limit: " + String.valueOf(l));
-
-            // set_block_limit()
-            System.out.println("set block limit to: " +String.valueOf(l*2));
-            TOSDataBridge.setBlockLimit(l*2);
-
-            // get_block_limit()
-            l = TOSDataBridge.getBlockLimit();
-            System.out.println("block limit: " + String.valueOf(l));
-
-            // get_block_count()
-            int c = TOSDataBridge.getBlockCount();
-            System.out.println("block count: " + String.valueOf(c));
-
-            // type_bits()
-            int b = TOSDataBridge.getTypeBits("LAST");
-            System.out.println("Type Bits for 'LAST': " + String.valueOf(b));
-
-            b = TOSDataBridge.getTopicType("LAST");
-            System.out.println("Type value for 'LAST': " + String.valueOf(b));
-
-            int block1Sz = 10000;
+            int block1Sz = 10;
             boolean block1DateTime = true;
             int block1Timeout = 3000;
 
+            System.out.println();
+            System.out.println("CREATE BLOCK...");
             DataBlock block1 = new DataBlock(block1Sz, block1DateTime, block1Timeout);
 
-            System.out.println("Create block: " + block1.getName());
-
-            if(block1.getBlockSize() != block1Sz){
-                System.out.println("invalid block size: "
-                                    + String.valueOf(block1.getBlockSize()) + ", "
-                                    + String.valueOf(block1Sz));
+            if( !testBlockState(block1, block1Sz, block1DateTime, block1Timeout) )
                 return;
-            }
+            else
+                System.out.println("Successfully created block: " + block1.getName());
 
-            if(block1.isUsingDateTime() != block1DateTime){
-                System.out.println("invalid block DateTime: "
-                        + String.valueOf(block1.isUsingDateTime()) + ", "
-                        + String.valueOf(block1DateTime));
-                return;
-            }
-
-            if(block1.getTimeout() != block1Timeout){
-                System.out.println("invalid block timeout: "
-                        + String.valueOf(block1.getTimeout()) + ", "
-                        + String.valueOf(block1Timeout));
-                return;
-            }
-
-            System.out.println("Block: " + block1.getName());
-            System.out.println("using datetime: " + String.valueOf(block1.isUsingDateTime()));
-            System.out.println("timeout: " + String.valueOf(block1.getTimeout()));
-            System.out.println("block size: " + String.valueOf(block1.getBlockSize()));
-
+            System.out.println();
             System.out.println("Double block size...");
             block1.setBlockSize(block1.getBlockSize() * 2);
-            System.out.println("block size: " + String.valueOf(block1.getBlockSize()));
+            if(block1.getBlockSize() != 2 * block1Sz){
+                System.err.println("failed to double block size");
+                return;
+            }
 
             String item1 = "SPY";
             String item2 = "QQQ";
-            String item3 = "IWM";
-
             String topic1 = "LAST"; // double
             String topic2 = "VOLUME"; // long
             String topic3 = "LASTX"; // string
@@ -132,7 +104,6 @@ public class Test{
             System.out.println("Add ALL items");
             block1.addItem(item1);
             block1.addItem(item2);
-            block1.addItem(item3);
             printBlockItemsTopics(block1);
 
             System.out.println("Add ALL topics");
@@ -141,136 +112,63 @@ public class Test{
             block1.addTopic(topic3);
             printBlockItemsTopics(block1);
 
-            Thread.sleep(SLEEP_PERIOD*3);
             System.out.println("***SLEEP FOR " + String.valueOf(SLEEP_PERIOD*3) + " MILLISECONDS***");
+            Thread.sleep(SLEEP_PERIOD*3);
+            System.out.println();
+
+            System.out.println("TEST GET CALLS, BLOCK: " + block1.getName());
+            testGetCalls(block1,false);
+            System.out.println();
+
+            System.out.println("TEST GET CALLS (WITH DATETIME), BLOCK: " + block1.getName());
+            testGetCalls(block1,true);
+            System.out.println();
+
+            System.out.println("TEST STREAM SNAPSHOT CALLS, BLOCK: " + block1.getName());
+            testStreamSnapshotCalls(block1,5,false);
+            System.out.println();
+
+            System.out.println("TEST STREAM SNAPSHOT CALLS (WITH DATETIME), BLOCK: " + block1.getName());
+            testStreamSnapshotCalls(block1,3,true);
+            System.out.println();
 
             System.out.println();
-            System.out.println("TEST GET CALLS:");
-            Test.<Long>printGet(block1,item1,topic2,1,"getLong");
-            Test.<Long>printGet(block1,item1,topic2,-1,"getLong");
-            Test.<Pair<Long,DateTime>>printGet(block1,item1,topic2,1,"getLongWithDateTime");
-            Test.<Pair<Long,DateTime>>printGet(block1,item1,topic2,0,"getLongWithDateTime");
-            Test.<Double>printGet(block1,item2,topic1,1,"getDouble");
-            Test.<Double>printGet(block1,item2,topic1,0,"getDouble");
-            Test.<Pair<Double,DateTime>>printGet(block1,item2,topic1,1,"getDoubleWithDateTime");
-            Test.<Pair<Double,DateTime>>printGet(block1,item2,topic1,0,"getDoubleWithDateTime");
-            Test.<String>printGet(block1,item3,topic3,1,"getString");
-            Test.<String>printGet(block1,item3,topic3,0,"getString");
-            Test.<Pair<String,DateTime>>printGet(block1,item3,topic3,1,"getStringWithDateTime");
-            Test.<Pair<String,DateTime>>printGet(block1,item3,topic3,0,"getStringWithDateTime");
-
-            System.out.println();
-            System.out.println("TEST STREAM SNAPSHOT CALLS:");
-            Test.<Long>printGetStreamSnapshot(block1,item1,topic2,5,0,"getStreamSnapshotLongs");
-            Test.<Pair<Long,DateTime>>printGetStreamSnapshot(
-                    block1,item1,topic2,5,0,"getStreamSnapshotLongsWithDateTime");
-            Test.<Double>printGetStreamSnapshot(block1,item2,topic1,5,0,"getStreamSnapshotDoubles");
-            Test.<Pair<Double,DateTime>>printGetStreamSnapshot(
-                    block1,item2,topic1,5,0,"getStreamSnapshotDoublesWithDateTime");
-            Test.<String>printGetStreamSnapshot(block1,item3,topic3,5,0,"getStreamSnapshotStrings");
-            Test.<Pair<String,DateTime>>printGetStreamSnapshot(
-                    block1,item3,topic3,5,0,"getStreamSnapshotStringsWithDateTime");
-
-            System.out.println();
-            Thread.sleep(SLEEP_PERIOD);
             System.out.println("***SLEEP FOR " + String.valueOf(SLEEP_PERIOD) + " MILLISECONDS***");
+            Thread.sleep(SLEEP_PERIOD);
             System.out.println();
 
-            System.out.println("TEST STREAM SNAPSHOT FROM MARKER CALLS:");
-            Test.<Long>printGetStreamSnapshotFromMarker(
-                    block1,item1,topic2,0,"getStreamSnapshotLongsFromMarker");
-            Thread.sleep(SLEEP_PERIOD);
-            System.out.println("***SLEEP FOR " + String.valueOf(SLEEP_PERIOD) + " MILLISECONDS***");
-            Test.<Pair<Long,DateTime>>printGetStreamSnapshotFromMarker(
-                    block1,item1,topic2,0,"getStreamSnapshotLongsFromMarkerWithDateTime");
-            Thread.sleep(SLEEP_PERIOD);
-            System.out.println("***SLEEP FOR " + String.valueOf(SLEEP_PERIOD) + " MILLISECONDS***");
-            Test.<Double>printGetStreamSnapshotFromMarker(
-                    block1,item2,topic1,0,"getStreamSnapshotDoublesFromMarker");
-            Thread.sleep(SLEEP_PERIOD);
-            System.out.println("***SLEEP FOR " + String.valueOf(SLEEP_PERIOD) + " MILLISECONDS***");
-            Test.<Pair<Double,DateTime>>printGetStreamSnapshotFromMarker(
-                    block1,item2,topic1,0,"getStreamSnapshotDoublesFromMarkerWithDateTime");
-            Thread.sleep(SLEEP_PERIOD);
-            System.out.println("***SLEEP FOR " + String.valueOf(SLEEP_PERIOD) + " MILLISECONDS***");
-            Test.<String>printGetStreamSnapshotFromMarker(
-                    block1,item3,topic3,0,"getStreamSnapshotStringsFromMarker");
-            Thread.sleep(SLEEP_PERIOD);
-            System.out.println("***SLEEP FOR " + String.valueOf(SLEEP_PERIOD) + " MILLISECONDS***");
-            Test.<Pair<String,DateTime>>printGetStreamSnapshotFromMarker(
-                    block1,item3,topic3,0,"getStreamSnapshotStringsFromMarkerWithDateTime");
-            Thread.sleep(SLEEP_PERIOD);
-            System.out.println("***SLEEP FOR " + String.valueOf(SLEEP_PERIOD) + " MILLISECONDS***");
-            Test.<Pair<String,DateTime>>printGetStreamSnapshotFromMarker(
-                    block1,item3,topic3,0,"getStreamSnapshotStringsFromMarkerWithDateTime");
-            Thread.sleep(SLEEP_PERIOD);
-            System.out.println("***SLEEP FOR " + String.valueOf(SLEEP_PERIOD) + " MILLISECONDS***");
-            Test.<Pair<String,DateTime>>printGetStreamSnapshotFromMarker(
-                    block1,item3,topic3,0,"getStreamSnapshotStringsFromMarkerWithDateTime");
-
-            System.out.println();
-            System.out.println("TEST FRAME CALLS:");
-            System.out.println("Total Frame:");
-            Map<String,Map<String,String>> tf = block1.getTotalFrame();
-            for(String i : tf.keySet()){
-                System.out.print(String.format("%-12s :::  ", i));
-                Map<String,String> row = tf.get(i);
-                for(String t : row.keySet()){
-                    System.out.print(String.format("%s %s  ", t, row.get(t)));
-                }
-                System.out.println();
-            }
-
-            System.out.println();
-            System.out.println("Total Frame With DateTime:");
-            Map<String,Map<String,Pair<String,DateTime>>> tfdt = block1.getTotalFrameWithDateTime();
-            for(String i : tf.keySet()){
-                System.out.print(String.format("%-12s :::  ", i));
-                Map<String,Pair<String,DateTime>> row = tfdt.get(i);
-                for(String t : row.keySet()){
-                    Pair<String,DateTime> p = row.get(t);
-                    System.out.print(String.format("%s %s %s  ", t, p.first, p.second.toString()));
-                }
-                System.out.println();
-            }
-
-            System.out.println();
-            System.out.println("Item Frame:");
-            Map<String,String> iframe = block1.getItemFrame(topic1);
-            System.out.print(String.format("%-12s :::  ", topic1));
-            for(String i : iframe.keySet()){
-                System.out.print(String.format("%s %s  ", i, iframe.get(i)));
-            }
+            System.out.println("TEST STREAM SNAPSHOT FROM MARKER CALLS, BLOCK: " + block1.getName());
+            testStreamSnapshotFromMarkerCalls(block1,3,SLEEP_PERIOD,false,false);
             System.out.println();
 
-            System.out.println();
-            System.out.println("Item Frame With DateTime:");
-            Map<String,Pair<String,DateTime>> iframedt = block1.getItemFrameWithDateTime(topic2);
-            System.out.print(String.format("%-12s :::  ", topic2));
-            for(String i : iframedt.keySet()){
-                Pair<String,DateTime> p = iframedt.get(i);
-                System.out.print(String.format("%s %s %s  ", i, p.first, p.second.toString()));
-            }
+            System.out.println("TEST STREAM SNAPSHOT FROM MARKER (WITH DATETIME) CALLS, BLOCK: " + block1.getName());
+            testStreamSnapshotFromMarkerCalls(block1,3,SLEEP_PERIOD,true,true);
             System.out.println();
 
-            System.out.println();
-            System.out.println("Topic Frame:");
-            Map<String,String> tframe = block1.getTopicFrame(item1);
-            System.out.print(String.format("%-12s :::  ", item1));
-            for(String t : tframe.keySet()){
-                System.out.print(String.format("%s %s  ", t, tframe.get(t)));
-            }
+            System.out.println("TEST TOTAL FRAME CALLS: " + block1.getName());
+            testTotalFrameCalls(block1, false);
             System.out.println();
 
+            System.out.println("TEST TOTAL FRAME (WITH DATETIME) CALLS, BLOCK: " + block1.getName());
+            testTotalFrameCalls(block1, true);
             System.out.println();
-            System.out.println("Topic Frame With DateTime:");
-            Map<String,Pair<String,DateTime>> tframedt = block1.getTopicFrameWithDateTime(item2);
-            System.out.print(String.format("%-12s :::  ", item2));
-            for(String t : tframedt.keySet()){
-                Pair<String,DateTime> p = tframedt.get(t);
-                System.out.print(String.format("%s %s %s  ", t, p.first, p.second.toString()));
-            }
+
+            System.out.println("TEST ITEM FRAME CALLS: " + block1.getName());
+            testItemFrameCalls(block1, false);
             System.out.println();
+
+            System.out.println("TEST ITEM FRAME (WITH DATETIME) CALLS, BLOCK: " + block1.getName());
+            testItemFrameCalls(block1, true);
+            System.out.println();
+
+            System.out.println("TEST TOPIC FRAME CALLS: " + block1.getName());
+            testTopicFrameCalls(block1, false);
+            System.out.println();
+
+            System.out.println("TEST TOPIC FRAME (WITH DATETIME) CALLS, BLOCK: " + block1.getName());
+            testTopicFrameCalls(block1, true);
+            System.out.println();
+
 
         }catch(LibraryNotLoaded e){
             System.out.println("EXCEPTION: LibraryNotLoaded");
@@ -291,8 +189,318 @@ public class Test{
         }
     }
 
+    private static void
+    testConnection() throws LibraryNotLoaded
+    {
+        // connect() (should already be connected)
+        TOSDataBridge.connect();
 
-    public static <T> void
+        // connected()
+        if(!TOSDataBridge.connected()){
+            System.out.println("NOT CONNECTED");
+            return;
+        }
+
+        // connection_state()
+        int connState = TOSDataBridge.connectionState();
+        System.out.println("CONNECTION STATE: " + String.valueOf(connState));
+        if(connState != TOSDataBridge.CONN_ENGINE_TOS){
+            System.out.println("INVALID CONNECTION STATE");
+            return;
+        }
+    }
+
+    private static boolean
+    testAdminCalls() throws LibraryNotLoaded, CLibException
+    {
+        // get_block_limit()
+        int l = TOSDataBridge.getBlockLimit();
+        System.out.println("block limit: " + String.valueOf(l));
+
+        // set_block_limit()
+        System.out.println("double block limit");
+        TOSDataBridge.setBlockLimit(l*2);
+
+        // get_block_limit()
+        int ll = TOSDataBridge.getBlockLimit();
+        if( ll != l * 2 ){
+            System.err.println("failed to double block limit");
+            return false;
+        }
+        System.out.println("block limit: " + String.valueOf(l));
+
+        // get_block_count()
+        int c = TOSDataBridge.getBlockCount();
+        if(c != 0){
+            System.err.println("initial block count != 0");
+            return false;
+        }
+        System.out.println("block count: " + String.valueOf(c));
+
+        // type_bits()
+        if(!testTypeBits("LAST", TOSDataBridge.QUAD_BIT, "QUAD_BIT",
+                         TOSDataBridge.TOPIC_IS_DOUBLE, "TOPIC_IS_DOUBLE")) {
+            return false;
+        }
+
+        if(!testTypeBits("EPS", 0, "", TOSDataBridge.TOPIC_IS_DOUBLE, "TOPIC_IS_DOUBLE"))
+            return false;
+
+        if(!testTypeBits("VOLUME", TOSDataBridge.QUAD_BIT | TOSDataBridge.INTGR_BIT, "QUAD_BIT | INTGR_BIT",
+                         TOSDataBridge.TOPIC_IS_LONG, "TOPIC_IS_LONG")){
+            return false;
+        }
+
+        if(!testTypeBits("LAST_SIZE", TOSDataBridge.INTGR_BIT, "INTGR_BIT",
+                         TOSDataBridge.TOPIC_IS_LONG, "TOPIC_IS_LONG")){
+            return false;
+        }
+
+        if(!testTypeBits("SYMBOL", TOSDataBridge.STRING_BIT, "STRING_BIT",
+                         TOSDataBridge.TOPIC_IS_STRING, "TOPIC_IS_STRING")) {
+            return false;
+        }
+
+        return true;
+    }
+
+    private static boolean
+    testTypeBits(String topic, int cBits, String cName, int jTypeId, String jName)
+            throws CLibException, LibraryNotLoaded
+    {
+        if( TOSDataBridge.getTypeBits(topic) != cBits) {
+            System.err.println("Type Bits for '" + topic + "' != " + cName + "(" + String.valueOf(cBits) + ")");
+            return false;
+        }
+
+        if( TOSDataBridge.getTopicType(topic) != jTypeId) {
+            System.err.println("Topic type for '" + topic + "' != " + jName + "(" + String.valueOf(jTypeId) + ")");
+            return false;
+        }
+
+        return true;
+    }
+
+    private static boolean
+    testBlockState(DataBlock block, int blockSize, boolean withDateTime, int timeout)
+            throws CLibException, LibraryNotLoaded
+    {
+        if(block.getBlockSize() != blockSize){
+            System.out.println("invalid block size: "
+                    + String.valueOf(block.getBlockSize()) + ", "
+                    + String.valueOf(blockSize));
+            return false;
+        }
+
+        if(block.isUsingDateTime() != withDateTime){
+            System.out.println("invalid block DateTime: "
+                    + String.valueOf(block.isUsingDateTime()) + ", "
+                    + String.valueOf(withDateTime));
+            return false;
+        }
+
+        if(block.getTimeout() != timeout){
+            System.out.println("invalid block timeout: "
+                    + String.valueOf(block.getTimeout()) + ", "
+                    + String.valueOf(timeout));
+            return false;
+        }
+
+        System.out.println("Block: " + block.getName());
+        System.out.println("using datetime: " + String.valueOf(block.isUsingDateTime()));
+        System.out.println("timeout: " + String.valueOf(block.getTimeout()));
+        System.out.println("block size: " + String.valueOf(block.getBlockSize()));
+        return true;
+    }
+
+    private static void
+    testGetCalls(DataBlock block, boolean withDateTime)
+            throws CLibException, LibraryNotLoaded, DateTimeNotSupported
+    {
+        Random rand = new Random(Double.doubleToLongBits(Math.random()));
+        String dtSuffix = withDateTime ? "WithDateTime" : "";
+
+        Set<String> items = block.getItems();
+        Set<String> topics = block.getTopics();
+
+        for(String topic : topics){
+            int tType = TOSDataBridge.getTopicType(topic);
+
+            for(String item : items) {
+                int occ = block.getStreamOccupancy(item,topic);
+
+                for(int i : new int[]{0, 1 + rand.nextInt(occ-1), occ-1}) {
+                    switch (tType) {
+                        case TOSDataBridge.TOPIC_IS_LONG:
+                            printGet(block, item, topic, i, "getLong" + dtSuffix);
+                            break;
+                        case TOSDataBridge.TOPIC_IS_DOUBLE:
+                            printGet(block, item, topic, i, "getDouble" + dtSuffix);
+                            break;
+                        case TOSDataBridge.TOPIC_IS_STRING:
+                            printGet(block, item, topic, i, "getString" + dtSuffix);
+                            break;
+                    }
+                }
+            }
+        }
+
+    }
+
+    private static void
+    testStreamSnapshotCalls(DataBlock block, int sz, boolean withDateTime)
+            throws CLibException, LibraryNotLoaded, DateTimeNotSupported
+    {
+        String dtSuffix = withDateTime ? "WithDateTime" : "";
+
+        Set<String> items = block.getItems();
+        Set<String> topics = block.getTopics();
+
+        if(sz < 1)
+            throw new IllegalArgumentException("sz < 1");
+
+        for(String topic : topics){
+            int tType = TOSDataBridge.getTopicType(topic);
+
+            for(String item : items) {
+                int occ = block.getStreamOccupancy(item,topic);
+
+                for(int[] ii : new int[][]{{0,sz-1}, {occ-sz,-1}}) {
+                    switch (tType) {
+                        case TOSDataBridge.TOPIC_IS_LONG:
+                            printGetStreamSnapshot(block,item,topic,ii[1],ii[0],"getStreamSnapshotLongs" + dtSuffix);
+                            break;
+                        case TOSDataBridge.TOPIC_IS_DOUBLE:
+                            printGetStreamSnapshot(block,item,topic,ii[1],ii[0],"getStreamSnapshotDoubles" + dtSuffix);
+                            break;
+                        case TOSDataBridge.TOPIC_IS_STRING:
+                            printGetStreamSnapshot(block,item,topic,ii[1],ii[0],"getStreamSnapshotStrings" + dtSuffix);
+                            break;
+                    }
+                }
+            }
+        }
+
+    }
+
+    private static void
+    testStreamSnapshotFromMarkerCalls(DataBlock block, int passes, int wait, boolean withDateTime,
+                                      boolean ignoreDirty)
+            throws CLibException, LibraryNotLoaded, DateTimeNotSupported
+    {
+        String callSuffix = withDateTime ? "WithDateTime" : "";
+        callSuffix = callSuffix + (ignoreDirty ? "IgnoreDirty" : "");
+
+        Set<String> items = block.getItems();
+        Set<String> topics = block.getTopics();
+
+        if(passes < 1)
+            throw new IllegalArgumentException("passes < 1");
+
+        for(String topic : topics){
+            int tType = TOSDataBridge.getTopicType(topic);
+
+            for(String item : items) {
+                int occ = block.getStreamOccupancy(item,topic);
+
+                for(int i = 0; i < passes; ++i) {
+                    System.out.print("PASS #" + String.valueOf(i+1) + " :: ");
+                    switch (tType) {
+                        case TOSDataBridge.TOPIC_IS_LONG:
+                            printGetStreamSnapshotFromMarker(
+                                    block,item,topic,0,"getStreamSnapshotLongsFromMarker" + callSuffix);
+                            break;
+                        case TOSDataBridge.TOPIC_IS_DOUBLE:
+                            printGetStreamSnapshotFromMarker(
+                                    block,item,topic,0,"getStreamSnapshotDoublesFromMarker" + callSuffix);
+                            break;
+                        case TOSDataBridge.TOPIC_IS_STRING:
+                            printGetStreamSnapshotFromMarker(
+                                    block,item,topic,0,"getStreamSnapshotStringsFromMarker" + callSuffix);
+                            break;
+                    }
+                    try {
+                        Thread.sleep(wait);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        }
+    }
+
+    private static <T> void
+    testTotalFrameCalls(DataBlock block, boolean withDateTime)
+            throws CLibException, LibraryNotLoaded, DateTimeNotSupported
+    {
+        Map<String,Map<String,T>> frame =
+            (Map<String,Map<String,T>> )(withDateTime ? block.getTotalFrameWithDateTime()
+                                                      : block.getTotalFrame());
+
+        for(String i : frame.keySet()){
+            System.out.print(String.format("%-12s :::  ", i));
+            Map<String,T> row = frame.get(i);
+            for(String t : row.keySet()){
+                if(withDateTime){
+                    DateTimePair<String> p = (DateTimePair<String>)row.get(t);
+                    System.out.print(String.format("%s %s %s  ", t, p.first, p.second.toString()));
+                }else {
+                    System.out.print(String.format("%s %s  ", t, row.get(t)));
+                }
+            }
+            System.out.println();
+        }
+    }
+
+    private static <T> void
+    testItemFrameCalls(DataBlock block,  boolean withDateTime)
+            throws CLibException, LibraryNotLoaded, DateTimeNotSupported
+    {
+        Set<String> topics = block.getTopics();
+
+        for(String topic : topics) {
+            Map<String, T> frame =
+                (Map<String, T>) (withDateTime ? block.getItemFrameWithDateTime(topic)
+                                               : block.getItemFrame(topic));
+
+            System.out.print(String.format("%-12s :::  ", topic));
+            for(String item : frame.keySet()){
+                if(withDateTime){
+                    DateTimePair<String> p = (DateTimePair<String>)frame.get(item);
+                    System.out.print(String.format("%s %s %s  ", item, p.first, p.second.toString()));
+                }else {
+                    System.out.print(String.format("%s %s  ", item, frame.get(item)));
+                }
+            }
+            System.out.println();
+        }
+    }
+
+    private static <T> void
+    testTopicFrameCalls(DataBlock block,  boolean withDateTime)
+            throws CLibException, LibraryNotLoaded, DateTimeNotSupported
+    {
+        Set<String> items = block.getItems();
+
+        for(String item : items) {
+            Map<String, T> frame =
+                (Map<String, T>)(withDateTime ? block.getTopicFrameWithDateTime(item)
+                                              : block.getTopicFrame(item));
+
+            System.out.print(String.format("%-12s :::  ", item));
+            for(String topic: frame.keySet()){
+                if(withDateTime){
+                    DateTimePair<String> p = (DateTimePair<String>)frame.get(topic);
+                    System.out.print(String.format("%s %s %s  ", topic, p.first, p.second.toString()));
+                }else {
+                    System.out.print(String.format("%s %s  ", topic, frame.get(topic)));
+                }
+            }
+            System.out.println();
+        }
+    }
+
+        private static <T> void
     printGet(DataBlock block, String item, String topic, int indx, String mname)
             throws CLibException, LibraryNotLoaded,
                    DateTimeNotSupported
@@ -316,7 +524,7 @@ public class Test{
         }
     }
 
-    public static <T> void
+    private static <T> void
     printGetStreamSnapshot(DataBlock block, String item,
                            String topic, int end, int beg, String mname)
             throws CLibException, LibraryNotLoaded,
@@ -333,7 +541,7 @@ public class Test{
         try {
             T[] r1 = (T[])m.invoke(block,item,topic,end,beg);
             System.out.println(mname + "(" + item + "," + topic + "," + String.valueOf(beg)
-                               + "-" + String.valueOf(end) + "): ");
+                               + " to " + String.valueOf(end) + "): ");
             for(int i = r1.length-1; i >= 0; --i){
                  System.out.println(String.valueOf(i) + ": " + r1[i].toString());
             }
@@ -344,7 +552,7 @@ public class Test{
         }
     }
 
-    public static <T> void
+    private static <T> void
     printGetStreamSnapshotFromMarker(DataBlock block, String item,
                                      String topic, int beg, String mname)
             throws CLibException, LibraryNotLoaded,
@@ -371,7 +579,7 @@ public class Test{
         }
     }
 
-    public static void
+    private static void
     printBlockItemsTopics(DataBlock block)
             throws CLibException, LibraryNotLoaded
     {

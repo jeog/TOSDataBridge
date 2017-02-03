@@ -1,13 +1,26 @@
-package com.tosdatabridge;
+/*
+Copyright (C) 2017 Jonathon Ogden   <jeog.dev@gmail.com>
 
-import com.sun.jna.Memory;
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see http://www.gnu.org/licenses.
+*/
+
+package com.github.jeog.tosdatabridge;
+
 import com.sun.jna.Native;
-import com.sun.jna.NativeLong;
-import com.sun.jna.Pointer;
 
 import java.io.File;
-import java.lang.reflect.Array;
-import java.util.*;
+
 
 public class TOSDataBridge{
 
@@ -95,8 +108,12 @@ public class TOSDataBridge{
             System.out.println("directory: " + d + ", name: " + n);
             System.setProperty("jna.library.path", d);
             library = Native.loadLibrary(n, CLib.class);
+            if( !connect() ){
+                System.err.println("TOSDataBridge connect() failed");
+                return false;
+            }
         }catch(Throwable t){
-            System.out.println("TOSDataBridge init() failed: " + t.toString());
+            System.err.println("TOSDataBridge init() failed: " + t.toString());
             t.printStackTrace();
             return false;
         }

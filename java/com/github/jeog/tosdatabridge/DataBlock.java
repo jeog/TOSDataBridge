@@ -1,6 +1,23 @@
-package com.tosdatabridge;
+/*
+Copyright (C) 2017 Jonathon Ogden   <jeog.dev@gmail.com>
 
-import com.tosdatabridge.TOSDataBridge.*;
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see http://www.gnu.org/licenses.
+*/
+
+package com.github.jeog.tosdatabridge;
+
+import com.github.jeog.tosdatabridge.TOSDataBridge.*;
 
 import com.sun.jna.Memory;
 import com.sun.jna.Native;
@@ -18,6 +35,20 @@ public class DataBlock {
 
     /* how much buffer 'padding' for the marker calls (careful changing default) */
     public static int MARKER_MARGIN_OF_SAFETY = TOSDataBridge.MARKER_MARGIN_OF_SAFETY;
+
+    public static class DateTimePair<T> extends Pair<T,DateTime>{
+        public
+        DateTimePair(T first, DateTime second)
+        {
+            super(first, second);
+        }
+
+        public
+        DateTimePair()
+        {
+            super();
+        }
+    }
 
     private String _name;
     private int _size;
@@ -39,7 +70,6 @@ public class DataBlock {
         int err = TOSDataBridge.getCLibrary().TOSDB_CreateBlock(_name, size, dateTime, timeout);
         if (err != 0)
             throw new CLibException("TOSDB_CreateBlock", err);
-
     }
 
     public void
@@ -117,51 +147,6 @@ public class DataBlock {
             throw new CLibException("TOSDB_GetStreamOccupancy", err);
 
         return occ[0];
-    }
-
-
-    private Set<String>
-    _getItemTopicNames(boolean useItemVersion, boolean usePreCachedVersion)
-            throws LibraryNotLoaded, CLibException
-    {
-        int n = 0;
-        if (useItemVersion) {
-            n = usePreCachedVersion ? _getItemPreCachedCount() : _getItemCount();
-        }else{
-            n = usePreCachedVersion ? _getTopicPreCachedCount() : _getTopicCount();
-        }
-
-        if(n < 1)
-            return new HashSet<>();
-
-        Pointer[] arrayVals = new Pointer[n];
-        for(int i = 0; i < n; ++i){
-            arrayVals[i] = new Memory(MAX_STR_SZ+1);
-        }
-
-        int err;
-        final CLib lib = TOSDataBridge.getCLibrary();
-        if (useItemVersion) {
-            err = usePreCachedVersion
-                    ? lib.TOSDB_GetPreCachedItemNames(_name, arrayVals, n, MAX_STR_SZ)
-                    : lib.TOSDB_GetItemNames(_name, arrayVals, n, MAX_STR_SZ);
-
-        }else{
-            err = usePreCachedVersion
-                    ? lib.TOSDB_GetPreCachedTopicNames(_name, arrayVals, n, MAX_STR_SZ)
-                    : lib.TOSDB_GetTopicNames(_name, arrayVals, n, MAX_STR_SZ);
-        }
-
-        if(err != 0) {
-            throw new CLibException("TOSDB_Get" + (usePreCachedVersion ? "PreCached" : "")
-                    + (useItemVersion ? "Item" : "Topic") + "Names", err);
-        }
-
-        Set<String> strVals = new HashSet<>();
-        for(int i = 0; i < n; ++i){
-            strVals.add(arrayVals[i].getString(0));
-        }
-        return strVals;
     }
 
     public Set<String>
@@ -264,272 +249,272 @@ public class DataBlock {
     getLong(String item, String topic, boolean checkIndx)
             throws CLibException, LibraryNotLoaded, DataIndexException
     {
-        return this.<Long>_get(item,topic,0, checkIndx, false, Long.class);
+        return _get(item,topic,0, checkIndx, false, Long.class);
     }
 
     public Long
     getLong(String item, String topic,int indx, boolean checkIndx)
             throws CLibException, LibraryNotLoaded, DataIndexException
     {
-        return this.<Long>_get(item,topic, indx, checkIndx, false, Long.class);
+        return _get(item,topic, indx, checkIndx, false, Long.class);
     }
 
-    public Pair<Long, DateTime>
+    public DateTimePair<Long>
     getLongWithDateTime(String item, String topic, boolean checkIndx)
             throws CLibException, LibraryNotLoaded, DataIndexException, DateTimeNotSupported
     {
         if(!_dateTime)
             throw new DateTimeNotSupported();
 
-        return this.<Pair>_get(item,topic,0, checkIndx, true, Long.class);
+        return _get(item,topic,0, checkIndx, true, Long.class);
     }
 
-    public Pair<Long, DateTime>
+    public DateTimePair<Long>
     getLongWithDateTime(String item, String topic,int indx, boolean checkIndx)
             throws CLibException, LibraryNotLoaded, DataIndexException, DateTimeNotSupported
     {
         if(!_dateTime)
             throw new DateTimeNotSupported();
 
-        return this.<Pair>_get(item,topic, indx, checkIndx, true, Long.class);
+        return _get(item,topic, indx, checkIndx, true, Long.class);
     }
 
     public Double
     getDouble(String item, String topic, boolean checkIndx)
             throws CLibException, LibraryNotLoaded, DataIndexException
     {
-        return this.<Double>_get(item,topic,0, checkIndx, false, Double.class);
+        return _get(item,topic,0, checkIndx, false, Double.class);
     }
 
     public Double
     getDouble(String item, String topic,int indx, boolean checkIndx)
             throws CLibException, LibraryNotLoaded, DataIndexException
     {
-        return this.<Double>_get(item,topic, indx, checkIndx, false, Double.class);
+        return _get(item,topic, indx, checkIndx, false, Double.class);
     }
 
-    public Pair<Double, DateTime>
+    public DateTimePair<Double>
     getDoubleWithDateTime(String item, String topic, boolean checkIndx)
             throws CLibException, LibraryNotLoaded, DataIndexException, DateTimeNotSupported
     {
         if(!_dateTime)
             throw new DateTimeNotSupported();
 
-        return this.<Pair>_get(item,topic,0, checkIndx, true, Double.class);
+        return _get(item,topic,0, checkIndx, true, Double.class);
     }
 
-    public Pair<Double, DateTime>
+    public DateTimePair<Double>
     getDoubleWithDateTime(String item, String topic,int indx, boolean checkIndx)
             throws CLibException, LibraryNotLoaded, DataIndexException, DateTimeNotSupported
     {
         if(!_dateTime)
             throw new DateTimeNotSupported();
 
-        return this.<Pair>_get(item,topic, indx, checkIndx, true, Double.class);
+        return _get(item,topic, indx, checkIndx, true, Double.class);
     }
 
     public String
     getString(String item, String topic, boolean checkIndx)
             throws CLibException, LibraryNotLoaded, DataIndexException
     {
-        return this.<String>_get(item,topic,0, checkIndx, false, String.class);
+        return _get(item,topic,0, checkIndx, false, String.class);
     }
 
     public String
     getString(String item, String topic,int indx, boolean checkIndx)
             throws CLibException, LibraryNotLoaded, DataIndexException
     {
-        return this.<String>_get(item,topic, indx, checkIndx, false, String.class);
+        return _get(item,topic, indx, checkIndx, false, String.class);
     }
 
-    public Pair<String, DateTime>
+    public DateTimePair<String>
     getStringWithDateTime(String item, String topic, boolean checkIndx)
             throws CLibException, LibraryNotLoaded, DataIndexException, DateTimeNotSupported
     {
         if(!_dateTime)
             throw new DateTimeNotSupported();
 
-        return this.<Pair>_get(item,topic,0, checkIndx, true, String.class);
+        return _get(item,topic,0, checkIndx, true, String.class);
     }
 
-    public Pair<String, DateTime>
+    public DateTimePair<String>
     getStringWithDateTime(String item, String topic,int indx, boolean checkIndx)
             throws CLibException, LibraryNotLoaded, DataIndexException, DateTimeNotSupported
     {
         if(!_dateTime)
             throw new DateTimeNotSupported();
 
-        return this.<Pair>_get(item,topic, indx, checkIndx, true, String.class);
+        return _get(item,topic, indx, checkIndx, true, String.class);
     }
 
     public Long[]
     getStreamSnapshotLongs(String item, String topic)
             throws LibraryNotLoaded, CLibException, DataIndexException
     {
-        return this.<Long>_getStreamSnapshot(item,topic,-1,0,true, false,Long.class);
+        return _getStreamSnapshot(item,topic,-1,0,true, false,Long.class);
     }
 
     public Long[]
     getStreamSnapshotLongs(String item, String topic, int end)
             throws LibraryNotLoaded, CLibException, DataIndexException
     {
-        return this.<Long>_getStreamSnapshot(item,topic,end,0,true, false,Long.class);
+        return _getStreamSnapshot(item,topic,end,0,true, false,Long.class);
     }
 
     public Long[]
     getStreamSnapshotLongs(String item, String topic, int end, int beg)
             throws LibraryNotLoaded, CLibException, DataIndexException
     {
-        return this.<Long>_getStreamSnapshot(item,topic,end,beg,true,false,Long.class);
+        return _getStreamSnapshot(item,topic,end,beg,true,false,Long.class);
     }
 
-    public Pair<Long, DateTime>[]
+    public DateTimePair<Long>[]
     getStreamSnapshotLongsWithDateTime(String item, String topic)
             throws LibraryNotLoaded, CLibException, DataIndexException, DateTimeNotSupported
     {
         if(!_dateTime)
             throw new DateTimeNotSupported();
 
-        return this.<Pair>_getStreamSnapshot(item,topic,-1,0,true, true,Long.class);
+        return _getStreamSnapshot(item,topic,-1,0,true, true,Long.class);
     }
 
-    public Pair<Long, DateTime>[]
+    public DateTimePair<Long>[]
     getStreamSnapshotLongsWithDateTime(String item, String topic, int end)
             throws LibraryNotLoaded, CLibException, DataIndexException, DateTimeNotSupported
     {
         if(!_dateTime)
             throw new DateTimeNotSupported();
 
-        return this.<Pair>_getStreamSnapshot(item,topic,end,0,true, true,Long.class);
+        return _getStreamSnapshot(item,topic,end,0,true, true,Long.class);
     }
 
-    public Pair<Long, DateTime>[]
+    public DateTimePair<Long>[]
     getStreamSnapshotLongsWithDateTime(String item, String topic, int end, int beg)
             throws LibraryNotLoaded, CLibException, DataIndexException, DateTimeNotSupported
     {
         if(!_dateTime)
             throw new DateTimeNotSupported();
 
-        return this.<Pair>_getStreamSnapshot(item,topic,end,beg,true,true,Long.class);
+        return _getStreamSnapshot(item,topic,end,beg,true,true,Long.class);
     }
 
     public Double[]
     getStreamSnapshotDoubles(String item, String topic)
             throws LibraryNotLoaded, CLibException, DataIndexException
     {
-        return this.<Double>_getStreamSnapshot(item,topic,-1,0,true, false,Double.class);
+        return _getStreamSnapshot(item,topic,-1,0,true, false,Double.class);
     }
 
     public Double[]
     getStreamSnapshotDoubles(String item, String topic, int end)
             throws LibraryNotLoaded, CLibException, DataIndexException
     {
-        return this.<Double>_getStreamSnapshot(item,topic,end,0,true, false,Double.class);
+        return _getStreamSnapshot(item,topic,end,0,true, false,Double.class);
     }
 
     public Double[]
     getStreamSnapshotDoubles(String item, String topic, int end, int beg)
             throws LibraryNotLoaded, CLibException, DataIndexException
     {
-        return this.<Double>_getStreamSnapshot(item,topic,end,beg,true,false,Double.class);
+        return _getStreamSnapshot(item,topic,end,beg,true,false,Double.class);
     }
 
-    public Pair<Double, DateTime>[]
+    public DateTimePair<Double>[]
     getStreamSnapshotDoublesWithDateTime(String item, String topic)
             throws LibraryNotLoaded, CLibException, DataIndexException, DateTimeNotSupported
     {
         if(!_dateTime)
             throw new DateTimeNotSupported();
 
-        return this.<Pair>_getStreamSnapshot(item,topic,-1,0,true, true,Double.class);
+        return _getStreamSnapshot(item,topic,-1,0,true, true,Double.class);
     }
 
-    public Pair<Double, DateTime>[]
+    public DateTimePair<Double>[]
     getStreamSnapshotDoublesWithDateTime(String item, String topic, int end)
             throws LibraryNotLoaded, CLibException, DataIndexException, DateTimeNotSupported
     {
         if(!_dateTime)
             throw new DateTimeNotSupported();
 
-        return this.<Pair>_getStreamSnapshot(item,topic,end,0,true, true,Double.class);
+        return _getStreamSnapshot(item,topic,end,0,true, true,Double.class);
     }
 
-    public Pair<Double, DateTime>[]
+    public DateTimePair<Double>[]
     getStreamSnapshotDoublesWithDateTime(String item, String topic, int end, int beg)
             throws LibraryNotLoaded, CLibException, DataIndexException, DateTimeNotSupported
     {
         if(!_dateTime)
             throw new DateTimeNotSupported();
 
-        return this.<Pair>_getStreamSnapshot(item,topic,end,beg,true,true,Double.class);
+        return _getStreamSnapshot(item,topic,end,beg,true,true,Double.class);
     }
 
     public String[]
     getStreamSnapshotStrings(String item, String topic)
             throws LibraryNotLoaded, CLibException, DataIndexException
     {
-        return this.<String>_getStreamSnapshot(item,topic,-1,0,true,false,String.class);
+        return _getStreamSnapshot(item,topic,-1,0,true,false,String.class);
     }
 
     public String[]
     getStreamSnapshotStrings(String item, String topic, int end)
             throws LibraryNotLoaded, CLibException, DataIndexException
     {
-        return this.<String>_getStreamSnapshot(item,topic,end,0,true,false,String.class);
+        return _getStreamSnapshot(item,topic,end,0,true,false,String.class);
     }
 
     public String[]
     getStreamSnapshotStrings(String item, String topic, int end, int beg)
             throws LibraryNotLoaded, CLibException, DataIndexException
     {
-        return this.<String>_getStreamSnapshot(item,topic,end,beg,true,false,String.class);
+        return _getStreamSnapshot(item,topic,end,beg,true,false,String.class);
     }
 
-    public Pair<String, DateTime>[]
+    public DateTimePair<String>[]
     getStreamSnapshotStringsWithDateTime(String item, String topic)
             throws LibraryNotLoaded, CLibException, DataIndexException, DateTimeNotSupported
     {
         if(!_dateTime)
             throw new DateTimeNotSupported();
 
-        return this.<Pair>_getStreamSnapshot(item,topic,-1,0,true, true, String.class);
+        return _getStreamSnapshot(item,topic,-1,0,true, true, String.class);
     }
 
-    public Pair<String, DateTime>[]
+    public DateTimePair<String>[]
     getStreamSnapshotStringsWithDateTime(String item, String topic, int end)
             throws LibraryNotLoaded, CLibException, DataIndexException, DateTimeNotSupported
     {
         if(!_dateTime)
             throw new DateTimeNotSupported();
 
-        return this.<Pair>_getStreamSnapshot(item,topic,end,0,true,true,String.class);
+        return _getStreamSnapshot(item,topic,end,0,true,true,String.class);
     }
 
-    public Pair<String, DateTime>[]
+    public DateTimePair<String>[]
     getStreamSnapshotStringsWithDateTime(String item, String topic, int end, int beg)
             throws LibraryNotLoaded, CLibException, DataIndexException, DateTimeNotSupported
     {
         if(!_dateTime)
             throw new DateTimeNotSupported();
 
-        return this.<Pair>_getStreamSnapshot(item,topic,end,beg,true,true,String.class);
+        return _getStreamSnapshot(item,topic,end,beg,true,true,String.class);
     }
 
     public Long[]
     getStreamSnapshotLongsFromMarker(String item, String topic)
             throws LibraryNotLoaded, CLibException, DataIndexException, DirtyMarkerException
     {
-        return this.<Long>_getStreamSnapshotFromMarker(item,topic,0,true,false,Long.class);
+        return _getStreamSnapshotFromMarker(item,topic,0,true,false,Long.class);
     }
 
     public Long[]
     getStreamSnapshotLongsFromMarker(String item, String topic, int beg)
             throws LibraryNotLoaded, CLibException, DataIndexException, DirtyMarkerException
     {
-        return this.<Long>_getStreamSnapshotFromMarker(item,topic,beg,true,false,Long.class);
+        return _getStreamSnapshotFromMarker(item,topic,beg,true,false,Long.class);
     }
 
-    public Pair<Long,DateTime>[]
+    public DateTimePair<Long>[]
     getStreamSnapshotLongsFromMarkerWithDateTime(String item, String topic)
             throws LibraryNotLoaded, CLibException, DataIndexException,
                    DateTimeNotSupported, DirtyMarkerException
@@ -537,10 +522,10 @@ public class DataBlock {
         if(!_dateTime)
             throw new DateTimeNotSupported();
 
-        return this.<Pair>_getStreamSnapshotFromMarker(item,topic,0,true,true,Long.class);
+        return _getStreamSnapshotFromMarker(item,topic,0,true,true,Long.class);
     }
 
-    public Pair<Long,DateTime>[]
+    public DateTimePair<Long>[]
     getStreamSnapshotLongsFromMarkerWithDateTime(String item, String topic, int beg)
             throws LibraryNotLoaded, CLibException, DataIndexException,
                    DateTimeNotSupported, DirtyMarkerException
@@ -548,24 +533,24 @@ public class DataBlock {
         if(!_dateTime)
             throw new DateTimeNotSupported();
 
-        return this.<Pair>_getStreamSnapshotFromMarker(item,topic,beg,true,true,Long.class);
+        return _getStreamSnapshotFromMarker(item,topic,beg,true,true,Long.class);
     }
 
     public Double[]
     getStreamSnapshotDoublesFromMarker(String item, String topic)
             throws LibraryNotLoaded, CLibException, DataIndexException, DirtyMarkerException
     {
-        return this.<Double>_getStreamSnapshotFromMarker(item,topic,0,true,false,Double.class);
+        return _getStreamSnapshotFromMarker(item,topic,0,true,false,Double.class);
     }
 
     public Double[]
     getStreamSnapshotDoublesFromMarker(String item, String topic, int beg)
             throws LibraryNotLoaded, CLibException, DataIndexException, DirtyMarkerException
     {
-        return this.<Double>_getStreamSnapshotFromMarker(item,topic,beg,true,false,Double.class);
+        return _getStreamSnapshotFromMarker(item,topic,beg,true,false,Double.class);
     }
 
-    public Pair<Double,DateTime>[]
+    public DateTimePair<Double>[]
     getStreamSnapshotDoublesFromMarkerWithDateTime(String item, String topic)
             throws LibraryNotLoaded, CLibException, DataIndexException,
             DateTimeNotSupported, DirtyMarkerException
@@ -573,10 +558,10 @@ public class DataBlock {
         if(!_dateTime)
             throw new DateTimeNotSupported();
 
-        return this.<Pair>_getStreamSnapshotFromMarker(item,topic,0,true,true,Double.class);
+        return _getStreamSnapshotFromMarker(item,topic,0,true,true,Double.class);
     }
 
-    public Pair<Double,DateTime>[]
+    public DateTimePair<Double>[]
     getStreamSnapshotDoublesFromMarkerWithDateTime(String item, String topic, int beg)
             throws LibraryNotLoaded, CLibException, DataIndexException,
             DateTimeNotSupported, DirtyMarkerException
@@ -584,24 +569,24 @@ public class DataBlock {
         if(!_dateTime)
             throw new DateTimeNotSupported();
 
-        return this.<Pair>_getStreamSnapshotFromMarker(item,topic,beg,true,true,Double.class);
+        return _getStreamSnapshotFromMarker(item,topic,beg,true,true,Double.class);
     }
 
     public String[]
     getStreamSnapshotStringsFromMarker(String item, String topic)
             throws LibraryNotLoaded, CLibException, DataIndexException, DirtyMarkerException
     {
-        return this.<String>_getStreamSnapshotFromMarker(item,topic,0,true,false,String.class);
+        return _getStreamSnapshotFromMarker(item,topic,0,true,false,String.class);
     }
 
     public String[]
     getStreamSnapshotStringsFromMarker(String item, String topic, int beg)
             throws LibraryNotLoaded, CLibException, DataIndexException, DirtyMarkerException
     {
-        return this.<String>_getStreamSnapshotFromMarker(item,topic,beg,true,false,String.class);
+        return _getStreamSnapshotFromMarker(item,topic,beg,true,false,String.class);
     }
 
-    public Pair<String,DateTime>[]
+    public DateTimePair<String>[]
     getStreamSnapshotStringsFromMarkerWithDateTime(String item, String topic)
             throws LibraryNotLoaded, CLibException, DataIndexException,
             DateTimeNotSupported, DirtyMarkerException
@@ -609,10 +594,10 @@ public class DataBlock {
         if(!_dateTime)
             throw new DateTimeNotSupported();
 
-        return this.<Pair>_getStreamSnapshotFromMarker(item,topic,0,true,true,String.class);
+        return _getStreamSnapshotFromMarker(item,topic,0,true,true,String.class);
     }
 
-    public Pair<String,DateTime>[]
+    public DateTimePair<String>[]
     getStreamSnapshotStringsFromMarkerWithDateTime(String item, String topic, int beg)
             throws LibraryNotLoaded, CLibException, DataIndexException,
             DateTimeNotSupported, DirtyMarkerException
@@ -620,39 +605,147 @@ public class DataBlock {
         if(!_dateTime)
             throw new DateTimeNotSupported();
 
-        return this.<Pair>_getStreamSnapshotFromMarker(item,topic,beg,true,true,String.class);
+        return _getStreamSnapshotFromMarker(item,topic,beg,true,true,String.class);
+    }
+
+    public Long[]
+    getStreamSnapshotLongsFromMarkerIgnoreDirty(String item, String topic)
+            throws LibraryNotLoaded, CLibException, DataIndexException
+    {
+        return _ignoreDirtyWrapper(item,topic,0,false,Long.class);
+    }
+
+    public Long[]
+    getStreamSnapshotLongsFromMarkerIgnoreDirty(String item, String topic, int beg)
+            throws LibraryNotLoaded, CLibException, DataIndexException
+    {
+        return _ignoreDirtyWrapper(item,topic,beg,false,Long.class);
+    }
+
+    public DateTimePair<Long>[]
+    getStreamSnapshotLongsFromMarkerWithDateTimeIgnoreDirty(String item, String topic)
+            throws LibraryNotLoaded, CLibException, DataIndexException,
+            DateTimeNotSupported
+    {
+        if(!_dateTime)
+            throw new DateTimeNotSupported();
+
+        return _ignoreDirtyWrapper(item,topic,0,true,Long.class);
+    }
+
+    public DateTimePair<Long>[]
+    getStreamSnapshotLongsFromMarkerWithDateTimeIgnoreDirty(String item, String topic, int beg)
+            throws LibraryNotLoaded, CLibException, DataIndexException,
+            DateTimeNotSupported
+    {
+        if(!_dateTime)
+            throw new DateTimeNotSupported();
+
+        return _ignoreDirtyWrapper(item,topic,beg,true,Long.class);
+    }
+
+    public Double[]
+    getStreamSnapshotDoublesFromMarkerIgnoreDirty(String item, String topic)
+            throws LibraryNotLoaded, CLibException, DataIndexException
+    {
+        return _ignoreDirtyWrapper(item,topic,0,false,Double.class);
+    }
+
+    public Double[]
+    getStreamSnapshotDoublesFromMarkerIgnoreDirty(String item, String topic, int beg)
+            throws LibraryNotLoaded, CLibException, DataIndexException
+    {
+        return _ignoreDirtyWrapper(item,topic,beg,false,Double.class);
+    }
+
+    public DateTimePair<Double>[]
+    getStreamSnapshotDoublesFromMarkerWithDateTimeIgnoreDirty(String item, String topic)
+            throws LibraryNotLoaded, CLibException, DataIndexException,
+            DateTimeNotSupported
+    {
+        if(!_dateTime)
+            throw new DateTimeNotSupported();
+
+        return _ignoreDirtyWrapper(item,topic,0,true,Double.class);
+    }
+
+    public DateTimePair<Double>[]
+    getStreamSnapshotDoublesFromMarkerWithDateTimeIgnoreDirty(String item, String topic, int beg)
+            throws LibraryNotLoaded, CLibException, DataIndexException,
+            DateTimeNotSupported
+    {
+        if(!_dateTime)
+            throw new DateTimeNotSupported();
+
+        return _ignoreDirtyWrapper(item,topic,beg,true,Double.class);
+    }
+
+    public String[]
+    getStreamSnapshotStringsFromMarkerIgnoreDirty(String item, String topic)
+            throws LibraryNotLoaded, CLibException, DataIndexException
+    {
+        return _ignoreDirtyWrapper(item,topic,0,false,String.class);
+    }
+
+    public String[]
+    getStreamSnapshotStringsFromMarkerIgnoreDirty(String item, String topic, int beg)
+            throws LibraryNotLoaded, CLibException, DataIndexException
+    {
+        return _ignoreDirtyWrapper(item,topic,beg,false,String.class);
+    }
+
+    public DateTimePair<String>[]
+    getStreamSnapshotStringsFromMarkerWithDateTimeIgnoreDirty(String item, String topic)
+            throws LibraryNotLoaded, CLibException, DataIndexException,
+            DateTimeNotSupported
+    {
+        if(!_dateTime)
+            throw new DateTimeNotSupported();
+
+        return _ignoreDirtyWrapper(item,topic,0,true,String.class);
+    }
+
+    public DateTimePair<String>[]
+    getStreamSnapshotStringsFromMarkerWithDateTimeIgnoreDirty(String item, String topic, int beg)
+            throws LibraryNotLoaded, CLibException, DataIndexException,
+            DateTimeNotSupported
+    {
+        if(!_dateTime)
+            throw new DateTimeNotSupported();
+
+        return _ignoreDirtyWrapper(item,topic,beg,true,String.class);
     }
 
     public Map<String,String>
     getItemFrame(String topic) throws CLibException, LibraryNotLoaded
     {
-        return this.<Map>_getFrame(topic, true,false);
+        return _getFrame(topic, true, false);
     }
 
-    public Map<String,Pair<String,DateTime>>
+    public Map<String,DateTimePair<String>>
     getItemFrameWithDateTime(String topic)
             throws CLibException, LibraryNotLoaded, DateTimeNotSupported
     {
         if(!_dateTime)
             throw new DateTimeNotSupported();
 
-        return this.<Map>_getFrame(topic, true,true);
+        return _getFrame(topic, true,true);
     }
 
     public Map<String,String>
     getTopicFrame(String item) throws CLibException, LibraryNotLoaded
     {
-        return this.<Map>_getFrame(item, false, false);
+        return _getFrame(item, false, false);
     }
 
-    public Map<String,Pair<String,DateTime>>
+    public Map<String,DateTimePair<String>>
     getTopicFrameWithDateTime(String item)
             throws CLibException, LibraryNotLoaded, DateTimeNotSupported
     {
         if(!_dateTime)
             throw new DateTimeNotSupported();
 
-        return this.<Map>_getFrame(item, false,true);
+        return _getFrame(item, false,true);
     }
 
     public Map<String, Map<String,String>>
@@ -667,17 +760,15 @@ public class DataBlock {
         return frame;
     }
 
-    public Map<String, Map<String,Pair<String,DateTime>>>
-    getTotalFrameWithDateTime()
-            throws LibraryNotLoaded, CLibException, DateTimeNotSupported
+    public Map<String, Map<String,DateTimePair<String>>>
+    getTotalFrameWithDateTime() throws LibraryNotLoaded, CLibException, DateTimeNotSupported
     {
         if(!_dateTime)
             throw new DateTimeNotSupported();
 
-        Map<String, Map<String,Pair<String,DateTime>>> frame = new HashMap<>();
+        Map<String, Map<String,DateTimePair<String>>> frame = new HashMap<>();
         for(String item : getItems()){
-            Map<String,Pair<String,DateTime>> tf
-                    = getTopicFrameWithDateTime(item);
+            Map<String,DateTimePair<String>> tf = getTopicFrameWithDateTime(item);
             frame.put(item, tf);
         }
 
@@ -748,18 +839,49 @@ public class DataBlock {
         return count[0];
     }
 
-    private class _PreGet {
-        String item;
-        String topic;
+    private Set<String>
+    _getItemTopicNames(boolean useItemVersion, boolean usePreCachedVersion)
+            throws LibraryNotLoaded, CLibException
+    {
+        final CLib lib = TOSDataBridge.getCLibrary();
 
-        public _PreGet(String item, String topic) throws LibraryNotLoaded, CLibException
-        {
-            this.item = item.toUpperCase();
-            this.topic = topic.toUpperCase();
-
-            _isValidItem(this.item);
-            _isValidTopic(this.topic);
+        int n = 0;
+        if (useItemVersion) {
+            n = usePreCachedVersion ? _getItemPreCachedCount() : _getItemCount();
+        }else{
+            n = usePreCachedVersion ? _getTopicPreCachedCount() : _getTopicCount();
         }
+
+        if(n < 1)
+            return new HashSet<>();
+
+        Pointer[] arrayVals = new Pointer[n];
+        for(int i = 0; i < n; ++i){
+            arrayVals[i] = new Memory(MAX_STR_SZ+1);
+        }
+
+        int err;
+        if (useItemVersion) {
+            err = usePreCachedVersion
+                    ? lib.TOSDB_GetPreCachedItemNames(_name, arrayVals, n, MAX_STR_SZ)
+                    : lib.TOSDB_GetItemNames(_name, arrayVals, n, MAX_STR_SZ);
+
+        }else{
+            err = usePreCachedVersion
+                    ? lib.TOSDB_GetPreCachedTopicNames(_name, arrayVals, n, MAX_STR_SZ)
+                    : lib.TOSDB_GetTopicNames(_name, arrayVals, n, MAX_STR_SZ);
+        }
+
+        if(err != 0) {
+            throw new CLibException("TOSDB_Get" + (usePreCachedVersion ? "PreCached" : "")
+                    + (useItemVersion ? "Item" : "Topic") + "Names", err);
+        }
+
+        Set<String> strVals = new HashSet<>();
+        for(int i = 0; i < n; ++i){
+            strVals.add(arrayVals[i].getString(0));
+        }
+        return strVals;
     }
 
     private <T> T
@@ -767,7 +889,13 @@ public class DataBlock {
          boolean withDateTime, Class<?> valType)
             throws LibraryNotLoaded, CLibException, DataIndexException
     {
-        _PreGet pre = new _PreGet(item,topic);
+        final CLib lib = TOSDataBridge.getCLibrary();
+
+        item = item.toUpperCase();
+        topic = topic.toUpperCase();
+
+        _isValidItem(item);
+        _isValidTopic(topic);
 
         if(indx < 0)
             indx += _size;
@@ -775,32 +903,38 @@ public class DataBlock {
         if(indx >= _size)
             throw new DataIndexException("indx >= _size in DataBlock");
 
-        int occ = getStreamOccupancy(pre.item,pre.topic);
-        if(checkIndx && indx > occ)
+        int occ = getStreamOccupancy(item, topic);
+        if(checkIndx && indx >= occ) {
             throw new DataIndexException("Can not get data at indx: " + String.valueOf(indx)
                     + ", occupancy only: " + String.valueOf(occ));
+        }
 
         DateTime ptrDTS =  withDateTime ? new DateTime() : null;
 
-        final CLib lib = TOSDataBridge.getCLibrary();
         if(valType.equals(Long.class)) {
             long[] ptrVal = {0};
-            int err = lib.TOSDB_GetLongLong(_name, pre.item, pre.topic, indx, ptrVal, ptrDTS);
+            int err = lib.TOSDB_GetLongLong(_name, item, topic, indx, ptrVal, ptrDTS);
             if(err != 0)
                 throw new CLibException("TOSDB_GetLongLongs", err);
-            return (T)(withDateTime ? new Pair<>(ptrVal[0],ptrDTS) : ptrVal[0]);
+
+            return (T)(withDateTime ? new DateTimePair<>(ptrVal[0],ptrDTS) : ptrVal[0]);
+
         }else if(valType.equals(Double.class)) {
             double[] ptrVal = {0};
-            int err = lib.TOSDB_GetDouble(_name, pre.item, pre.topic, indx, ptrVal, ptrDTS);
+            int err = lib.TOSDB_GetDouble(_name, item, topic, indx, ptrVal, ptrDTS);
             if(err != 0)
                 throw new CLibException("TOSDB_GetDoubles", err);
-            return (T)(withDateTime ? new Pair<>(ptrVal[0],ptrDTS) : ptrVal[0]);
+
+            return (T)(withDateTime ? new DateTimePair<>(ptrVal[0],ptrDTS) : ptrVal[0]);
+
         }else {
             byte[] ptrVal = new byte[STR_DATA_SZ + 1];
-            int err = lib.TOSDB_GetString(_name, pre.item, pre.topic, indx, ptrVal, STR_DATA_SZ + 1, ptrDTS);
+            int err = lib.TOSDB_GetString(_name, item, topic, indx, ptrVal, STR_DATA_SZ + 1, ptrDTS);
             if(err != 0)
                 throw new CLibException("TOSDB_GetStrings", err);
-            return (T)(withDateTime ? new Pair<>(Native.toString(ptrVal),ptrDTS) : Native.toString(ptrVal));
+
+            return (T)(withDateTime ? new DateTimePair<>(Native.toString(ptrVal),ptrDTS)
+                                    : Native.toString(ptrVal));
         }
     }
 
@@ -809,7 +943,13 @@ public class DataBlock {
                        boolean smartSize, boolean withDateTime, Class<?> valType)
             throws LibraryNotLoaded, CLibException, DataIndexException
     {
-        _PreGet pre = new _PreGet(item,topic);
+        final CLib lib = TOSDataBridge.getCLibrary();
+
+        item = item.toUpperCase();
+        topic = topic.toUpperCase();
+
+        _isValidItem(item);
+        _isValidTopic(topic);
 
         if(end < 0)
             end += _size;
@@ -819,7 +959,9 @@ public class DataBlock {
 
         int size = end - beg + 1;
 
-        if(beg < 0 || end < 0 || beg >= _size || end >= _size || size <= 0)
+        if(beg < 0 || end < 0
+            || beg >= _size || end >= _size
+            || size <= 0)
         {
             throw new DataIndexException("invalid 'beg' and/or 'end' index");
         }
@@ -827,7 +969,7 @@ public class DataBlock {
         if(smartSize){
             int occ = getStreamOccupancy(item, topic);
             if(occ == 0 || occ <= beg)
-                return (T[])(withDateTime ? new Pair[]{} : Array.newInstance(valType,0));
+                return (T[])(withDateTime ? new DateTimePair[]{} : Array.newInstance(valType,0));
             end = Math.min(end, occ-1);
             beg = Math.min(beg, occ-1);
             size = end - beg + 1;
@@ -835,55 +977,70 @@ public class DataBlock {
 
         DateTime[] arrayDTS = (withDateTime ? new DateTime[size] : null);
 
-        T[] data = (T[])(withDateTime ? new Pair[size] : Array.newInstance(valType,size));
+        T[] data = (T[])(withDateTime ? new DateTimePair[size] : Array.newInstance(valType,size));
 
-        final CLib lib = TOSDataBridge.getCLibrary();
         if(valType.equals(Long.class)){
             long[] arrayVals = new long[size];
             int err = lib.TOSDB_GetStreamSnapshotLongLongs(
-                    _name, pre.item, pre.topic, arrayVals, size, arrayDTS, end, beg);
+                            _name, item, topic, arrayVals, size, arrayDTS, end, beg);
             if(err != 0)
                 throw new CLibException("TOSDB_GetStreamSnapshotLongs", err);
 
             for(int i = 0; i < size; ++i) {
-                data[i] = (T)(withDateTime ? new Pair<>(arrayVals[i], arrayDTS[i]) : arrayVals[i]);
+                data[i] = (T)(withDateTime ? new DateTimePair<>(arrayVals[i], arrayDTS[i])
+                                           : arrayVals[i]);
             }
+
         }else if(valType.equals(Double.class)){
             double[] arrayVals = new double[size];
             int err = lib.TOSDB_GetStreamSnapshotDoubles(
-                    _name, pre.item, pre.topic, arrayVals, size, arrayDTS, end, beg);
+                            _name, item, topic, arrayVals, size, arrayDTS, end, beg);
             if(err != 0)
                 throw new CLibException("TOSDB_GetStreamSnapshotDoubles", err);
 
             for(int i = 0; i < size; ++i) {
-                data[i] = (T)(withDateTime ? new Pair<>(arrayVals[i], arrayDTS[i]) : arrayVals[i]);
+                data[i] = (T)(withDateTime ? new DateTimePair<>(arrayVals[i], arrayDTS[i])
+                                           : arrayVals[i]);
             }
+
         }else{
             Pointer[] arrayVals = new Pointer[size];
             for(int i = 0; i < size; ++i){
                 arrayVals[i] = new Memory(STR_DATA_SZ+1);
             }
             int err = lib.TOSDB_GetStreamSnapshotStrings(
-                    _name, pre.item, pre.topic, arrayVals, size,
-                    STR_DATA_SZ + 1, arrayDTS, end, beg);
+                            _name, item, topic, arrayVals, size, STR_DATA_SZ + 1, arrayDTS, end, beg);
             if(err != 0)
                 throw new CLibException("TOSDB_GetStreamSnapshotStrings", err);
 
             for(int i = 0; i < size; ++i) {
-                data[i] = (T)(withDateTime ? new Pair<>(arrayVals[i].getString(0), arrayDTS[i])
-                        : arrayVals[i].getString(0));
+                data[i] = (T)(withDateTime ? new DateTimePair<>(arrayVals[i].getString(0), arrayDTS[i])
+                                           : arrayVals[i].getString(0));
             }
         }
         return data;
     }
 
+    private <T> T[]
+    _ignoreDirtyWrapper(String item, String topic, int beg, boolean withDateTime, Class<?> valType)
+            throws LibraryNotLoaded, CLibException, DataIndexException
+    {
+        try {
+            return _getStreamSnapshotFromMarker(item,topic,beg,false,withDateTime,valType);
+        } catch (DirtyMarkerException e) {
+        }
+
+        /* SHOULD NEVER GET HERE */
+        throw new RuntimeException("...IgnoreDirty failed to ignore dirty marker");
+    }
+
     private long
-    _handleSzGotFromMarker(NativeLong l, boolean throwIfDataLost)
+    _handleSzGotFromMarker(NativeLong l, boolean throwIfDataLost) throws DirtyMarkerException
     {
         long szGot = l.longValue();
         if(szGot < 0){
             if(throwIfDataLost)
-                throw new IllegalStateException("data lost behind marker");
+                throw new DirtyMarkerException();
             else
                 szGot *= -1;
         }
@@ -893,18 +1050,22 @@ public class DataBlock {
     private <T> T[]
     _getStreamSnapshotFromMarker(String item, String topic, int beg, boolean throwIfDataLost,
                                  boolean withDateTime, Class<?> valType)
-            throws LibraryNotLoaded, CLibException, DataIndexException, DirtyMarkerException {
+            throws LibraryNotLoaded, CLibException, DataIndexException, DirtyMarkerException
+    {
+        final CLib lib = TOSDataBridge.getCLibrary();
         int err;
 
-        _PreGet pre = new _PreGet(item,topic);
+        item = item.toUpperCase();
+        topic = topic.toUpperCase();
+
+        _isValidItem(item);
+        _isValidTopic(topic);
 
         if(beg < 0)
             beg += _size;
 
         if(beg < 0 || beg >= _size)
             throw new DataIndexException("invalid 'beg' index argument");
-
-        final CLib lib = TOSDataBridge.getCLibrary();
 
         int[] ptrIsDirty = {0};
         err = lib.TOSDB_IsMarkerDirty(_name, item, topic, ptrIsDirty);
@@ -921,65 +1082,65 @@ public class DataBlock {
 
         long curSz = ptrMarkerPos[0] - beg + 1;
         if(curSz < 0)
-            return (T[])(withDateTime ? new Pair[]{} : Array.newInstance(valType,0));
+            return (T[])(withDateTime ? new DateTimePair[]{} : Array.newInstance(valType,0));
 
         // NEED TO CHECK WE CAN GO FROM LONG TO INT
         int safeSz = (int)curSz + MARKER_MARGIN_OF_SAFETY;
 
-        T[] data;
+        T[] data; /* can't instantiate data array until we assign the szGot pointer */
         DateTime[] arrayDTS = (withDateTime ? new DateTime[safeSz] : null);
         NativeLong[] ptrGetSz = {new NativeLong(0)};
 
         if(valType.equals(Long.class)){
             long[] arrayVals = new long[safeSz];
             err = lib.TOSDB_GetStreamSnapshotLongLongsFromMarker(
-                    _name, pre.item, pre.topic, arrayVals, safeSz, arrayDTS, beg, ptrGetSz);
+                            _name, item, topic, arrayVals, safeSz, arrayDTS, beg, ptrGetSz);
             if(err != 0)
                 throw new CLibException("TOSDB_GetStreamSnapshotLongsFromMarker", err);
 
             int szGot = (int)_handleSzGotFromMarker(ptrGetSz[0],throwIfDataLost);
 
-            data = (T[])(withDateTime ? new Pair[szGot] : new Long[szGot]);
+            data = (T[])(withDateTime ? new DateTimePair[szGot] : new Long[szGot]);
             for(int i = 0; i < szGot; ++i) {
-                data[i] = (T)(withDateTime ? new Pair<>(arrayVals[i], arrayDTS[i]) : arrayVals[i]);
+                data[i] = (T)(withDateTime ? new DateTimePair<>(arrayVals[i], arrayDTS[i]) : arrayVals[i]);
             }
+
         }else if(valType.equals(Double.class)){
             double[] arrayVals = new double[safeSz];
             err = lib.TOSDB_GetStreamSnapshotDoublesFromMarker(
-                    _name, pre.item, pre.topic, arrayVals, safeSz, arrayDTS, beg, ptrGetSz);
+                            _name, item, topic, arrayVals, safeSz, arrayDTS, beg, ptrGetSz);
             if(err != 0)
                 throw new CLibException("TOSDB_GetStreamSnapshotDoublesFromMarker", err);
 
             int szGot = (int)_handleSzGotFromMarker(ptrGetSz[0],throwIfDataLost);
 
-            data = (T[])(withDateTime ? new Pair[szGot] : new Double[szGot]);
+            data = (T[])(withDateTime ? new DateTimePair[szGot] : new Double[szGot]);
             for(int i = 0; i < szGot; ++i) {
-                data[i] = (T)(withDateTime ? new Pair<>(arrayVals[i], arrayDTS[i]) : arrayVals[i]);
+                data[i] = (T)(withDateTime ? new DateTimePair<>(arrayVals[i], arrayDTS[i]) : arrayVals[i]);
             }
+
         }else{
             Pointer[] arrayVals = new Pointer[safeSz];
             for(int i = 0; i < safeSz; ++i){
                 arrayVals[i] = new Memory(STR_DATA_SZ+1);
             }
             err = lib.TOSDB_GetStreamSnapshotStringsFromMarker(
-                    _name, pre.item, pre.topic, arrayVals, safeSz,
-                    STR_DATA_SZ + 1, arrayDTS, beg, ptrGetSz);
+                    _name, item, topic, arrayVals, safeSz, STR_DATA_SZ + 1, arrayDTS, beg, ptrGetSz);
             if(err != 0)
                 throw new CLibException("TOSDB_GetStreamSnapshotStringsFromMarker", err);
 
             int szGot = (int)_handleSzGotFromMarker(ptrGetSz[0],throwIfDataLost);
 
-            data = (T[])(withDateTime ? new Pair[szGot] : new String[szGot]);
+            data = (T[])(withDateTime ? new DateTimePair[szGot] : new String[szGot]);
             for(int i = 0; i < szGot; ++i) {
-                data[i] = (T)(withDateTime
-                        ? new Pair<>(arrayVals[i].getString(0), arrayDTS[i])
-                        : arrayVals[i].getString(0));
+                data[i] = (T)(withDateTime ? new DateTimePair<>(arrayVals[i].getString(0), arrayDTS[i])
+                                           : arrayVals[i].getString(0));
             }
         }
         return data;
     }
 
-    private <T> T
+    private <T> Map<String,T>
     _getFrame(String s, boolean itemFrame, boolean withDateTime)
             throws CLibException, LibraryNotLoaded
     {
@@ -1014,14 +1175,14 @@ public class DataBlock {
         if(err != 0)
             throw new CLibException("TOSDB_Get" + (itemFrame ? "Item" : "Topic") + "FrameStrings", err);
 
-        T frame = (T)new HashMap<>();
+        Map<String,T> frame = new HashMap<>();
 
         for(int i = 0; i < n; ++i){
-            ((Map)frame).put(arrayLabels[i].getString(0),
-                             (withDateTime ? new Pair(arrayVals[i].getString(0), arrayDTS[i])
-                                           : arrayVals[i].getString(0)));
+            T val = (T)(withDateTime ? new DateTimePair(arrayVals[i].getString(0), arrayDTS[i])
+                                     : arrayVals[i].getString(0));
+            frame.put(arrayLabels[i].getString(0), val);
         }
-        return frame;
 
+        return frame;
     }
 }
