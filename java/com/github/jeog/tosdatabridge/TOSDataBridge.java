@@ -158,10 +158,10 @@ public class TOSDataBridge{
     }
 
     public static int
-    getTypeBits(String topic) throws LibraryNotLoaded, CLibException
+    getTypeBits(Topic topic) throws LibraryNotLoaded, CLibException
     {
         byte[] bits = {0};
-        int err = getCLibrary().TOSDB_GetTypeBits(topic, bits);
+        int err = getCLibrary().TOSDB_GetTypeBits(topic.val, bits);
         if(err != 0)
             throw new CLibException("TOSDB_GetTypeBits", err);
 
@@ -169,7 +169,7 @@ public class TOSDataBridge{
     }
 
     public static int
-    getTopicType(String topic) throws CLibException, LibraryNotLoaded
+    getTopicType(Topic topic) throws CLibException, LibraryNotLoaded
     {
         switch(getTypeBits(topic)){
             case INTGR_BIT | QUAD_BIT:
