@@ -101,8 +101,8 @@ StreamSnapshotFromMarker(...) calls provide client code a guarantee that it won'
 
     import io.github.jeog.tosdatabridge.TOSDataBridge;
 
-    // path to the C Lib
-    TOSDataBridge.connect("C:\...\TOSDataBridge\bin\Release\x64\tos-databridge-0.7-x64.dll);
+    // path to the C Lib; tries to load lib and calls connect() 
+    TOSDataBridge.init("C:\...\TOSDataBridge\bin\Release\x64\tos-databridge-0.7-x64.dll);
 
     switch( TOSDataBridge.connectionState() ){
     case TOSDataBridge.CONN_NONN:
