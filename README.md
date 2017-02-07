@@ -1,8 +1,8 @@
 ## TOSDataBridge  
 - - -
-TOSDataBridge (TOSDB) is an open-source collection of resources for 'scraping' real-time streaming data off of TDAmeritrade's ThinkOrSwim(TOS) platform, providing C, C++, and Python interfaces. 
+TOSDataBridge (TOSDB) is an open-source collection of resources for 'scraping' real-time streaming data off of TDAmeritrade's ThinkOrSwim(TOS) platform, providing C, C++, Java*(in development)* and Python interfaces. 
 
-TOSDB uses TOS's antiquated, yet still useful, DDE feature, directly through the Windows API. The C / C++ interfaces are implemented as a shared library that communicates with a backend Windows Service. The Python interface wraps this library in a more object-oriented, user-friendly format.
+TOSDB uses TOS's antiquated, yet still useful, DDE feature, directly through the Windows API. The C / C++ interfaces are implemented as a shared library that communicates with a backend Windows Service. The Python and Java interfaces wrap this library in a more object-oriented, user-friendly format.
 
 The core implementation is not portable, but the python interface does provides a thin virtualization layer over TCP. A user running Windows in a Virtual Machine, for instance, can expose the exact same python interface to a different host system running python3. 
 
@@ -28,7 +28,7 @@ The core implementation is not portable, but the python interface does provides 
 ### Quick Setup
 - - -
 - tosdb-setup.bat will attempt to install the necessary modules/dependencies for you but you should refer to [Installation Details](README_INSTALL.md) for a more detailed explanation
-- Be sure to know what build you need(x86 vs x64); it should match your system, all the modules you'll need, and your version of Python(if you plan on using the python wrapper)
+- Be sure to know what build you need(x86 vs x64); it should match your system, all the modules you'll need, and your version of Python(if you plan on using the python wrapper), or your version of the Java Runtime(if you plan on using the java wrapper)
 
     ##### Core C/C++ Libraries
     ```
@@ -52,6 +52,12 @@ The core implementation is not portable, but the python interface does provides 
     - Core C/C++ libs (above) must be installed first to use the (non-virtual) interface
     - C++ python extensions have been converted to pure python to avoid portability/build issues. (tosdb/_tosdb.py is now generated automatically by setup.py)
 
+    ##### Java Wrapper (optional)
+    - ***Warning - in early development; not stable; interface subject to change; [see docs](README_JAVA.md)***
+    - Core C/C++ libs (above) must be installed first
+    - *java/tosdatabridge.jar* should be included (source is in java/src if you want/need to build)
+    
+
 ### Quick Start
 - - -
 1. You may need to white-list some of these files (specifically tos-databridge-engine-\[x86|x64].exe) in your Anti-Virus software before proceeding.
@@ -74,6 +80,12 @@ The core implementation is not portable, but the python interface does provides 
 - import tosdb
 - [(view tutorial)](python/tutorial.md)
 
+##### For Java:
+- ***Warning - in early development; not stable; interface subject to change***
+- add *java/tosdatabridge.jar* to your classpath
+- [see docs](README_JAVA.md) for an intro to the API, or the source(java/src) for the details
+- Compile
+- Run
 
 ### Build (optional)
 - - -
@@ -112,7 +124,11 @@ The core implementation is not portable, but the python interface does provides 
 
     - **tosdb/cli_scripts/** : Python scripts built on top of the python wrapper.
 
-- **/sigs** - The detached signature for each binary; sha256 checksums for binaries, signatures, and the jeog.dev public key; **(master branch may, or may not, contain all, or any)**
+- **/java** - Files relevant to the Java wrapper.
+
+- **/test** - Test scripts for the various languages and modules.
+
+- **/sigs** - The detached signature for each binary; sha256 checksums for binaries and signatures; **(master branch may, or may not, contain all, or any)**
 
 - **/res** - Miscellaneous resources
 
@@ -120,24 +136,29 @@ The core implementation is not portable, but the python interface does provides 
 
 - **/prov** - Provisional code that is being worked on outside the main build tree
 
+### Docs
+- - - 
 
-### [Installation Details](README_INSTALL.md)
-- - -
+#### [Installation Details](README_INSTALL.md)
 
-### [C/C++ API](README_API.md)
-- - -
 
-### [TOSDataBridge Service](README_SERVICE.md)
-- - -
+#### [C/C++ API](README_API.md)
 
-### [Python Wrapper (tosdb/)](README_PYTHON.md)
-- - -
 
-### [Details, Provisos & Source Glossary](README_DETAILS.md)
-- - -
+#### [TOSDataBridge Service](README_SERVICE.md)
+
+
+#### [Python Wrapper (tosdb/)](README_PYTHON.md)
+
+
+#### [Java Wrapper (Alpha version)](README_JAVA.md)
+
+
+#### [Details, Provisos & Source Glossary](README_DETAILS.md)
+
 
 ### Contributions
----
+- - -
 This project grew out of personal need and is maintained by a single developer. Contributions - testing, bug fixes, suggestions, extensions, whatever - are always welcome. If you want to contribute something non-trivial it's recommended you communicate the intention first to avoid unnecessary and/or conflicting work.
 
 Simply reporting bugs or questioning seemingly idiotic or unintuitive interface design can be very helpful.
