@@ -5,9 +5,21 @@
 prov/tmp*
 python/tosdb/_tosdb.py
 core
+
+
+#################
+## intelliJ
+#################
 java/.idea/*
+test/java/.idea/*
 *.iml
 java/out/*
+
+#################
+## Java
+#################
+*.class
+
 
 #################
 ## Eclipse

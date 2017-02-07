@@ -15,9 +15,9 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see http://www.gnu.org/licenses.
 */
 
-package com.github.jeog.tosdatabridge;
+package io.github.jeog.tosdatabridge;
 
-import com.github.jeog.tosdatabridge.TOSDataBridge.*;
+import io.github.jeog.tosdatabridge.TOSDataBridge.*;
 
 import com.sun.jna.Memory;
 import com.sun.jna.Native;
@@ -37,7 +37,10 @@ public class DataBlock {
     /* how much buffer 'padding' for the marker calls (careful changing default) */
     public static int MARKER_MARGIN_OF_SAFETY = TOSDataBridge.MARKER_MARGIN_OF_SAFETY;
 
-    public static class DateTimePair<T> extends Pair<T,DateTime>{
+    /* default timeout for communicating with the engine/platform */
+    public static int DEF_TIMEOUT = TOSDataBridge.DEF_TIMEOUT;
+
+    public static class DateTimePair<T> extends Pair<T,DateTime> {
         public
         DateTimePair(T first, DateTime second)
         {
@@ -58,8 +61,20 @@ public class DataBlock {
     private Set<String> _items;
     private Set<Topic> _topics;
 
-    public DataBlock(int size, boolean dateTime, int timeout)
-            throws LibraryNotLoaded, CLibException
+    public
+    DataBlock(int size) throws CLibException, LibraryNotLoaded
+    {
+        this(size, true);
+    }
+
+    public
+    DataBlock(int size, boolean dateTime) throws CLibException, LibraryNotLoaded
+    {
+        this(size, dateTime, DEF_TIMEOUT);
+    }
+
+    public
+    DataBlock(int size, boolean dateTime, int timeout) throws LibraryNotLoaded, CLibException
     {
         _size = size;
         _dateTime = dateTime;
@@ -72,6 +87,7 @@ public class DataBlock {
         if (err != 0)
             throw new CLibException("TOSDB_CreateBlock", err);
     }
+
 
     public void
     close() throws CLibException, LibraryNotLoaded
