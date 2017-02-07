@@ -15,11 +15,12 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see http://www.gnu.org/licenses.
 */
 
-import com.github.jeog.tosdatabridge.TOSDataBridge;
-import com.github.jeog.tosdatabridge.TOSDataBridge.*;
-import com.github.jeog.tosdatabridge.DataBlock;
-import com.github.jeog.tosdatabridge.DataBlock.*;
-import com.github.jeog.tosdatabridge.Topic;
+import io.github.jeog.tosdatabridge.Pair;
+import io.github.jeog.tosdatabridge.TOSDataBridge;
+import io.github.jeog.tosdatabridge.TOSDataBridge.*;
+import io.github.jeog.tosdatabridge.DataBlock;
+import io.github.jeog.tosdatabridge.DataBlock.*;
+import io.github.jeog.tosdatabridge.Topic;
 
 import java.io.File;
 import java.lang.reflect.InvocationTargetException;
@@ -34,17 +35,17 @@ public class TOSDataBridgeTest {
     public static void
     main(String[] args)
     {
+        if(args.length == 0 || args[0] == null){
+            System.err.println("TOSDataBridge library path must be passed as arg0");
+            return;
+        }
+
+        if( !(new File(args[0])).exists() ){
+            System.err.println("Arg0 (" + args[0] + ") is not a valid file.");
+            throw new IllegalArgumentException("Arg0 is not a valid file");
+        }
+
         try{
-            if(args.length == 0){
-                System.err.println("TOSDataBridge library path must be passed as arg0");
-                return;
-            }
-
-            if( !(new File(args[0])).exists() ){
-                System.err.println("Arg0 (" + args[0] + ") is not a valid file.");
-                throw new IllegalArgumentException("Arg0 is not a valid file");
-            }
-
             if( !TOSDataBridge.init(args[0]) ){
                 System.err.println("Failed to load library (" + args[0] + ")");
                 throw new RuntimeException("failed to load library");
@@ -53,7 +54,7 @@ public class TOSDataBridgeTest {
             testConnection();
             testAdminCalls();
 
-            int block1Sz = 10;
+            int block1Sz = 1000;
             boolean block1DateTime = true;
             int block1Timeout = 3000;
 

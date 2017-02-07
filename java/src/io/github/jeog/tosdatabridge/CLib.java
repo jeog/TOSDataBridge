@@ -15,7 +15,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see http://www.gnu.org/licenses.
 */
 
-package com.github.jeog.tosdatabridge;
+package io.github.jeog.tosdatabridge;
 
 import com.sun.jna.Library;
 import com.sun.jna.NativeLong;
@@ -75,17 +75,17 @@ public interface CLib extends Library {
     int TOSDB_GetStreamSnapshotStringsFromMarker(String name, String item, String topic,
                                                  Pointer[] arrayVals, int arraySz, int strSz,
                                                  DateTime[] arrayDateTime, int beg,
-                                                 NativeLong[] getSz );
+                                                 NativeLong[] getSz);
 
     int TOSDB_GetStreamSnapshotDoublesFromMarker(String name, String item, String topic,
                                                  double[] arrayVals, int arraySz,
                                                  DateTime[] arrayDateTime, int beg,
-                                                 NativeLong[] getSz );
+                                                 NativeLong[] getSz);
 
     int TOSDB_GetStreamSnapshotLongLongsFromMarker(String name, String item, String topic,
                                                    long[] arrayVals, int arraySz,
                                                    DateTime[] arrayDateTime, int beg,
-                                                   NativeLong[] getSz );
+                                                   NativeLong[] getSz);
 
     int TOSDB_GetItemFrameStrings(String name, String topic, Pointer[] arrayVals, int arraySz,
                                   int strSz, Pointer[] arrayLabels, int strLabelSz,

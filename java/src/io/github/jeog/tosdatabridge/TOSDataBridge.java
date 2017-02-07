@@ -15,7 +15,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see http://www.gnu.org/licenses.
 */
 
-package com.github.jeog.tosdatabridge;
+package io.github.jeog.tosdatabridge;
 
 import com.sun.jna.Native;
 
@@ -40,6 +40,7 @@ public class TOSDataBridge{
     public static final int MAX_STR_SZ = 0xff;
     public static final int STR_DATA_SZ = 40;
 
+    public static final int DEF_TIMEOUT = 2000;
     public static final int MARKER_MARGIN_OF_SAFETY = 100;
 
     public static class LibraryNotLoaded extends Exception{

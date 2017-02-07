@@ -1,4 +1,4 @@
-package com.github.jeog.tosdatabridge;
+package io.github.jeog.tosdatabridge;
 
 public enum Topic {
     VOL_DIFF ("VOL_DIFF"),
