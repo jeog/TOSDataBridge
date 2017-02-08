@@ -97,37 +97,37 @@ _requestStreamOP(TOS_Topics::TOPICS topic_t,
                 std::string item, 
                 unsigned long timeout, 
                 unsigned int opcode)
-/* needs exclusivity but can't block; CALLING CODE MUST LOCK
-   returns 0 on sucess
-         < 0 on IPC error
-         = 1 if the engine fails to do what is requested */
-{
+{ /* needs exclusivity but can't block; CALLING CODE MUST LOCK
+     returns 0 on sucess, TOSDB_ERROR... on error */
+
+    /* build ipc msg early so we can log it on error */
+    std::string msg = std::to_string(opcode) + ' ' + TOS_Topics::MAP()[topic_t] + ' '
+                    + item + ' ' + std::to_string(timeout); 
+
     switch(opcode){
     case TOSDB_SIG_ADD:
     case TOSDB_SIG_REMOVE:
     case TOSDB_SIG_TEST:
         break;
     default:
+        TOSDB_LogRawH("IPC", ("_requestStreamOP received bad opcode, msg:" + msg).c_str());
         return TOSDB_ERROR_BAD_SIG;
     }         
 
     if( !_connected() ){
-        TOSDB_LogRawH("IPC", "connected() failed in _requestStreamOP");
+        TOSDB_LogRawH("IPC", ("_requestStreamOP failed, not connected, msg:" + msg).c_str());
         return TOSDB_ERROR_NOT_CONNECTED;
     }
 
-    std::string msg = std::to_string(opcode) + ' ' + TOS_Topics::MAP()[topic_t] + ' '
-                      + item + ' ' + std::to_string(timeout);   
-
     if( !master.call(&msg,timeout) ){
-        TOSDB_LogRawH("IPC",("master.call() failed in _requestStreamOP, msg:" + msg).c_str());
+        TOSDB_LogRawH("IPC",("master.call failled in _requestStreamOP, msg:" + msg).c_str());
         return TOSDB_ERROR_IPC;
     }
 
     try{
         return std::stol(msg);        
     }catch(...){
-        TOSDB_LogRawH("IPC", ("std::stol() failed in _requestStreamOP, msg:" + msg).c_str());
+        TOSDB_LogRawH("IPC", ("failed to convert return message to long, msg:" + msg).c_str());
         return TOSDB_ERROR_IPC;
     }    
 }
@@ -428,9 +428,7 @@ DllMain(HANDLE mod, DWORD why, LPVOID res) /* ENTRY POINT */
         break;
     case DLL_PROCESS_DETACH:  
         {
-            if( master.connected(TOSDB_DEF_TIMEOUT) )
-            {
-                aware_of_connection.store(false);        
+            if( master.connected(TOSDB_DEF_TIMEOUT) ){                        
                 for(const auto & buffer : buffers)
                 {/* signal the service and close the handles */        
                     _requestStreamOP(buffer.first.first, buffer.first.second, 
@@ -438,6 +436,8 @@ DllMain(HANDLE mod, DWORD why, LPVOID res) /* ENTRY POINT */
                     UnmapViewOfFile(std::get<3>(buffer.second));
                     CloseHandle(std::get<4>(buffer.second));
                 }                  
+                /* needs to come after close ops or _requestStreamOP will fail on _connected() */
+                aware_of_connection.store(false);
             }
             StopLogging();
         } 

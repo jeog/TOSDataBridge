@@ -6,6 +6,21 @@ prov/tmp*
 python/tosdb/_tosdb.py
 core
 
+
+#################
+## intelliJ
+#################
+java/.idea/*
+test/java/.idea/*
+*.iml
+java/out/*
+
+#################
+## Java
+#################
+*.class
+
+
 #################
 ## Eclipse
 #################
@@ -45,7 +60,7 @@ symbols/Debug/
 *.meta
 *.obj
 *.pch
-*.pdb
+#*.pdb
 *.pgc
 *.pgd
 *.rsp
