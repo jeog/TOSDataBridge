@@ -435,10 +435,10 @@ DllMain(HANDLE mod, DWORD why, LPVOID res) /* ENTRY POINT */
                                     TOSDB_DEF_TIMEOUT, TOSDB_SIG_REMOVE);
                     UnmapViewOfFile(std::get<3>(buffer.second));
                     CloseHandle(std::get<4>(buffer.second));
-                }                  
-                /* needs to come after close ops or _requestStreamOP will fail on _connected() */
-                aware_of_connection.store(false);
+                }                                  
             }
+            /* needs to come after close ops or _requestStreamOP will fail on _connected() */
+            aware_of_connection.store(false);
             StopLogging();
         } 
         break;    
