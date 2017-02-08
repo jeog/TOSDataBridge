@@ -59,9 +59,9 @@ public interface CLib extends Library {
     int TOSDB_GetLongLong(String name, String item, String topic, int indx, long[] ptrVal,
                           DateTime ptrDateTime);
 
-    int TOSDB_GetStreamSnapshotStrings(String name, String item, String topic,
-                                       Pointer[] arrayVals, int arraySz, int strSz,
-                                       DateTime[] arrayDateTime, int end, int beg);
+    int TOSDB_GetStreamSnapshotStrings(String name, String item, String topic, Pointer[] arrayVals,
+                                       int arraySz, int strSz, DateTime[] arrayDateTime, int end,
+                                       int beg);
 
     int TOSDB_GetStreamSnapshotDoubles(String name, String item, String topic, double[] arrayVals,
                                        int arraySz, DateTime[] arrayDateTime, int end, int beg);

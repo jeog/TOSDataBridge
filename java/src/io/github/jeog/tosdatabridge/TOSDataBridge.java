@@ -21,9 +21,7 @@ import com.sun.jna.Native;
 
 import java.io.File;
 
-
 public class TOSDataBridge{
-
     /* hardcode for time being */
     public static final int CONN_NONE = 0;
     public static final int CONN_ENGINE = 1;
@@ -83,29 +81,26 @@ public class TOSDataBridge{
 
     /* package-private */
     static final CLib
-    getCLibrary() throws LibraryNotLoaded
-    {
-        if(library == null)
+    getCLibrary() throws LibraryNotLoaded {
+        if(library == null) {
             throw new LibraryNotLoaded();
-
+        }
         return library;
     }
 
     public static boolean 
-    init(String path)
-    {
-        if(library != null)
+    init(String path) {
+        if(library != null) {
             return true;
-
+        }
         try{
             File f = new File(path);
             String n = f.getName();
             String d = f.getParentFile().getPath();
-        
             int pos = n.lastIndexOf(".");
-            if(pos > 0)
-                n = n.substring(0,pos);
-
+            if(pos > 0) {
+                n = n.substring(0, pos);
+            }
             System.out.println("directory: " + d + ", name: " + n);
             System.setProperty("jna.library.path", d);
             library = Native.loadLibrary(n, CLib.class);
@@ -118,60 +113,51 @@ public class TOSDataBridge{
             t.printStackTrace();
             return false;
         }
-
         return true;
     }
 
     public static boolean
-    connect() throws LibraryNotLoaded
-    {
+    connect() throws LibraryNotLoaded {
         return getCLibrary().TOSDB_Connect() == 0;
     }
 
     public static boolean
-    connected() throws LibraryNotLoaded
-    {
+    connected() throws LibraryNotLoaded {
         return getCLibrary().TOSDB_IsConnectedToEngineAndTOS() != 0;
     }
 
     public static int
-    connectionState() throws LibraryNotLoaded
-    {
+    connectionState() throws LibraryNotLoaded {
         return getCLibrary().TOSDB_ConnectionState();
     }
 
     public static int 
-    getBlockLimit() throws LibraryNotLoaded
-    {
+    getBlockLimit() throws LibraryNotLoaded {
         return getCLibrary().TOSDB_GetBlockLimit();
     }
 
     public static int
-    setBlockLimit(int limit) throws LibraryNotLoaded
-    {
+    setBlockLimit(int limit) throws LibraryNotLoaded {
         return getCLibrary().TOSDB_SetBlockLimit(limit);
     }
 
     public static int
-    getBlockCount() throws LibraryNotLoaded
-    {
+    getBlockCount() throws LibraryNotLoaded {
         return getCLibrary().TOSDB_GetBlockCount();
     }
 
     public static int
-    getTypeBits(Topic topic) throws LibraryNotLoaded, CLibException
-    {
+    getTypeBits(Topic topic) throws LibraryNotLoaded, CLibException {
         byte[] bits = {0};
         int err = getCLibrary().TOSDB_GetTypeBits(topic.val, bits);
-        if(err != 0)
+        if(err != 0) {
             throw new CLibException("TOSDB_GetTypeBits", err);
-
+        }
         return bits[0] & 0xFF;
     }
 
     public static int
-    getTopicType(Topic topic) throws CLibException, LibraryNotLoaded
-    {
+    getTopicType(Topic topic) throws CLibException, LibraryNotLoaded {
         switch(getTypeBits(topic)){
             case INTGR_BIT | QUAD_BIT:
             case INTGR_BIT:

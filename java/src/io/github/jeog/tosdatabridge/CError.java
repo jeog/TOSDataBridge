@@ -68,18 +68,16 @@ public class CError {
     }
 
     public static String
-    errorLookup(int errorCode)
-    {
+    errorLookup(int errorCode){
         String errorStr = LOOKUP.get(errorCode);
-
-        if(errorStr != null)
+        if(errorStr != null) {
             return errorStr;
-
+        }
         int baseError = Collections.min(LOOKUP.keySet());
-        if(errorCode < baseError)
-            return "ERROR_DECREMENT_BASE(" + String.valueOf(errorCode-baseError) + ")";
-        else
+        if(errorCode < baseError) {
+            return "ERROR_DECREMENT_BASE(" + String.valueOf(errorCode - baseError) + ")";
+        }else {
             return "***unrecognized error code***";
-
+        }
     }
 }

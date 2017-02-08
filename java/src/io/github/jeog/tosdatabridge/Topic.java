@@ -73,13 +73,14 @@ public enum Topic {
     }
 
     public static Topic
-    toEnum(String val)
-    {   /* 2 cases where .name() != .val */
-        if(val.equals("52HIGH"))
+    toEnum(String val){
+        /* 2 cases where .name() != .val */
+        if(val.equals("52HIGH")) {
             return HIGH52;
-        else if(val.equals("52LOW"))
+        }else if(val.equals("52LOW")) {
             return LOW52;
-        else
+        }else {
             return valueOf(val);
+        }
     }
 }

@@ -22,22 +22,19 @@ public class Pair<T1,T2>{
     public final T2 second;
 
     public
-    Pair(T1 first, T2 second)
-    {
+    Pair(T1 first, T2 second){
         this.first = first;
         this.second = second;
     }
 
     public
-    Pair()
-    {
+    Pair(){
         this.first = null;
         this.second = null;
     }
 
     public String
-    toString()
-    {
+    toString(){
         return "<" + String.valueOf(first) + "," + String.valueOf(second) + ">";
     }
 }

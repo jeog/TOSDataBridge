@@ -15,7 +15,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see http://www.gnu.org/licenses.
 */
 
-import io.github.jeog.tosdatabridge.Pair;
+
 import io.github.jeog.tosdatabridge.TOSDataBridge;
 import io.github.jeog.tosdatabridge.TOSDataBridge.*;
 import io.github.jeog.tosdatabridge.DataBlock;
@@ -29,7 +29,6 @@ import java.util.*;
 
 
 public class TOSDataBridgeTest {
-
     private static final int SLEEP_PERIOD = 1000;
 
     public static void
@@ -45,28 +44,28 @@ public class TOSDataBridgeTest {
             throw new IllegalArgumentException("Arg0 is not a valid file");
         }
 
+        DataBlock block1 = null;
         try{
             if( !TOSDataBridge.init(args[0]) ){
                 System.err.println("Failed to load library (" + args[0] + ")");
                 throw new RuntimeException("failed to load library");
             }
-
             testConnection();
             testAdminCalls();
 
             int block1Sz = 1000;
             boolean block1DateTime = true;
             int block1Timeout = 3000;
-
             System.out.println();
             System.out.println("CREATE BLOCK...");
-            DataBlock block1 = new DataBlock(block1Sz, block1DateTime, block1Timeout);
+            block1 = new DataBlock(block1Sz, block1DateTime, block1Timeout);
 
-            if( !testBlockState(block1, block1Sz, block1DateTime, block1Timeout) )
-                throw new Exception();
-            else
+            if( !testBlockState(block1, block1Sz, block1DateTime, block1Timeout) ) {
+                // just break out of the try-block
+                throw new IllegalStateException("testBlockState(...) failed");
+            }else {
                 System.out.println("Successfully created block: " + block1.getName());
-
+            }
             System.out.println();
             System.out.println("Double block size...");
             block1.setBlockSize(block1.getBlockSize() * 2);
@@ -172,7 +171,6 @@ public class TOSDataBridgeTest {
             System.out.println();
             System.out.println("*** DONE (SUCCESS) ***");
             return;
-
         }catch(LibraryNotLoaded e){
             System.out.println("EXCEPTION: LibraryNotLoaded");
             System.out.println(e.toString());
@@ -194,24 +192,28 @@ public class TOSDataBridgeTest {
             System.out.println(t.toString());
             t.printStackTrace();
             // catch anything else so we can print fail message
+        }finally{
+            /* make sure DLLMain is handling automatic disconnection of blocks on dll detach */
+            /*
+            try {
+                block1.close();
+            }catch(Throwable t){
+            }
+            */
         }
-
         System.out.println();
         System.err.println("*** DONE (FAILURE) ***");
     }
 
     private static void
-    testConnection() throws LibraryNotLoaded
-    {
+    testConnection() throws LibraryNotLoaded {
         // connect() (should already be connected)
         TOSDataBridge.connect();
-
         // connected()
         if(!TOSDataBridge.connected()){
             System.out.println("NOT CONNECTED");
             return;
         }
-
         // connection_state()
         int connState = TOSDataBridge.connectionState();
         System.out.println("CONNECTION STATE: " + String.valueOf(connState));
@@ -222,8 +224,7 @@ public class TOSDataBridgeTest {
     }
 
     private static boolean
-    testAdminCalls() throws LibraryNotLoaded, CLibException
-    {
+    testAdminCalls() throws LibraryNotLoaded, CLibException {
         // get_block_limit()
         int l = TOSDataBridge.getBlockLimit();
         System.out.println("block limit: " + String.valueOf(l));
@@ -253,70 +254,59 @@ public class TOSDataBridgeTest {
                          TOSDataBridge.TOPIC_IS_DOUBLE, "TOPIC_IS_DOUBLE")) {
             return false;
         }
-
-        if(!testTypeBits(Topic.EPS, 0, "", TOSDataBridge.TOPIC_IS_DOUBLE, "TOPIC_IS_DOUBLE"))
+        if(!testTypeBits(Topic.EPS, 0, "", TOSDataBridge.TOPIC_IS_DOUBLE, "TOPIC_IS_DOUBLE")) {
             return false;
-
+        }
         if(!testTypeBits(Topic.VOLUME, TOSDataBridge.QUAD_BIT | TOSDataBridge.INTGR_BIT, "QUAD_BIT | INTGR_BIT",
                          TOSDataBridge.TOPIC_IS_LONG, "TOPIC_IS_LONG")){
             return false;
         }
-
         if(!testTypeBits(Topic.LAST_SIZE, TOSDataBridge.INTGR_BIT, "INTGR_BIT",
                          TOSDataBridge.TOPIC_IS_LONG, "TOPIC_IS_LONG")){
             return false;
         }
-
         if(!testTypeBits(Topic.SYMBOL, TOSDataBridge.STRING_BIT, "STRING_BIT",
                          TOSDataBridge.TOPIC_IS_STRING, "TOPIC_IS_STRING")) {
             return false;
         }
-
         return true;
     }
 
     private static boolean
     testTypeBits(Topic topic, int cBits, String cName, int jTypeId, String jName)
-            throws CLibException, LibraryNotLoaded
-    {
+            throws CLibException, LibraryNotLoaded {
         if( TOSDataBridge.getTypeBits(topic) != cBits) {
             System.err.println("Type Bits for '" + topic + "' != " + cName + "(" + String.valueOf(cBits) + ")");
             return false;
         }
-
         if( TOSDataBridge.getTopicType(topic) != jTypeId) {
             System.err.println("Topic type for '" + topic + "' != " + jName + "(" + String.valueOf(jTypeId) + ")");
             return false;
         }
-
         return true;
     }
 
     private static boolean
     testBlockState(DataBlock block, int blockSize, boolean withDateTime, int timeout)
-            throws CLibException, LibraryNotLoaded
-    {
+            throws CLibException, LibraryNotLoaded {
         if(block.getBlockSize() != blockSize){
             System.out.println("invalid block size: "
                     + String.valueOf(block.getBlockSize()) + ", "
                     + String.valueOf(blockSize));
             return false;
         }
-
         if(block.isUsingDateTime() != withDateTime){
             System.out.println("invalid block DateTime: "
                     + String.valueOf(block.isUsingDateTime()) + ", "
                     + String.valueOf(withDateTime));
             return false;
         }
-
         if(block.getTimeout() != timeout){
             System.out.println("invalid block timeout: "
                     + String.valueOf(block.getTimeout()) + ", "
                     + String.valueOf(timeout));
             return false;
         }
-
         System.out.println("Block: " + block.getName());
         System.out.println("using datetime: " + String.valueOf(block.isUsingDateTime()));
         System.out.println("timeout: " + String.valueOf(block.getTimeout()));
@@ -330,38 +320,40 @@ public class TOSDataBridgeTest {
     {
         Random rand = new Random(Double.doubleToLongBits(Math.random()));
         String dtSuffix = withDateTime ? "WithDateTime" : "";
-
         Set<String> items = block.getItems();
         Set<Topic> topics = block.getTopics();
-
         for(Topic topic : topics){
             int tType = TOSDataBridge.getTopicType(topic);
-
             for(String item : items) {
                 int occ = block.getStreamOccupancy(item,topic);
                 List<Integer> iParams = new ArrayList<>();
                 switch(occ){
-                    case 0:
-                        System.out.println("testGetCalls (" + item + "," + topic + ") occ == 0");
-                        continue;
-                    case 1:
-                        iParams.add(0); //first
-                    case 2:
-                        iParams.add(-1); //last
-                    default:
-                        iParams.add(1 + rand.nextInt(occ-1)); // something in between
+                case 0:
+                    System.out.println("testGetCalls (" + item + "," + topic + ") occ == 0");
+                    continue;
+                case 1:
+                    iParams.add(0); //first
+                    break;
+                case 2:
+                    iParams.add(0); //first
+                    iParams.add(occ-1); //last
+                    break;
+                default:
+                    iParams.add(0); //first
+                    iParams.add(occ-1); //last
+                    iParams.add(1 + rand.nextInt(occ-1)); // something in between
                 }
                 for(int i : iParams) {
                     switch (tType) {
-                        case TOSDataBridge.TOPIC_IS_LONG:
-                            printGet(block, item, topic, i, "getLong" + dtSuffix);
-                            break;
-                        case TOSDataBridge.TOPIC_IS_DOUBLE:
-                            printGet(block, item, topic, i, "getDouble" + dtSuffix);
-                            break;
-                        case TOSDataBridge.TOPIC_IS_STRING:
-                            printGet(block, item, topic, i, "getString" + dtSuffix);
-                            break;
+                    case TOSDataBridge.TOPIC_IS_LONG:
+                        printGet(block, item, topic, i, "getLong" + dtSuffix);
+                        break;
+                    case TOSDataBridge.TOPIC_IS_DOUBLE:
+                        printGet(block, item, topic, i, "getDouble" + dtSuffix);
+                        break;
+                    case TOSDataBridge.TOPIC_IS_STRING:
+                        printGet(block, item, topic, i, "getString" + dtSuffix);
+                        break;
                     }
                 }
             }
@@ -373,34 +365,35 @@ public class TOSDataBridgeTest {
     testStreamSnapshotCalls(DataBlock block, int sz, boolean withDateTime)
             throws CLibException, LibraryNotLoaded, DateTimeNotSupported
     {
+        if(sz < 1) {
+            throw new IllegalArgumentException("sz < 1");
+        }
         String dtSuffix = withDateTime ? "WithDateTime" : "";
-
         Set<String> items = block.getItems();
         Set<Topic> topics = block.getTopics();
-
-        if(sz < 1)
-            throw new IllegalArgumentException("sz < 1");
-
         for(Topic topic : topics){
             int tType = TOSDataBridge.getTopicType(topic);
-
             for(String item : items) {
                 int occ = block.getStreamOccupancy(item,topic);
                 if(occ < sz){
-                    System.out.println("testStreamSnapshotCalls (" + item + "," + topic + ") occ < sz ");
+                    System.out.println("testStreamSnapshotCalls (" + item + "," + topic
+                            + ") occ < sz ");
                     continue;
                 }
                 for(int[] ii : new int[][]{{0,sz-1}, {occ-sz,-1}}) {
                     switch (tType) {
-                        case TOSDataBridge.TOPIC_IS_LONG:
-                            printGetStreamSnapshot(block,item,topic,ii[1],ii[0],"getStreamSnapshotLongs" + dtSuffix);
-                            break;
-                        case TOSDataBridge.TOPIC_IS_DOUBLE:
-                            printGetStreamSnapshot(block,item,topic,ii[1],ii[0],"getStreamSnapshotDoubles" + dtSuffix);
-                            break;
-                        case TOSDataBridge.TOPIC_IS_STRING:
-                            printGetStreamSnapshot(block,item,topic,ii[1],ii[0],"getStreamSnapshotStrings" + dtSuffix);
-                            break;
+                    case TOSDataBridge.TOPIC_IS_LONG:
+                        printGetStreamSnapshot(block,item,topic,ii[1],ii[0],
+                                "getStreamSnapshotLongs" + dtSuffix);
+                        break;
+                    case TOSDataBridge.TOPIC_IS_DOUBLE:
+                        printGetStreamSnapshot(block,item,topic,ii[1],ii[0],
+                                "getStreamSnapshotDoubles" + dtSuffix);
+                        break;
+                    case TOSDataBridge.TOPIC_IS_STRING:
+                        printGetStreamSnapshot(block,item,topic,ii[1],ii[0],
+                                "getStreamSnapshotStrings" + dtSuffix);
+                        break;
                     }
                 }
             }
@@ -413,36 +406,32 @@ public class TOSDataBridgeTest {
                                       boolean ignoreDirty)
             throws CLibException, LibraryNotLoaded, DateTimeNotSupported
     {
+        if(passes < 1) {
+            throw new IllegalArgumentException("passes < 1");
+        }
         String callSuffix = withDateTime ? "WithDateTime" : "";
         callSuffix = callSuffix + (ignoreDirty ? "IgnoreDirty" : "");
-
         Set<String> items = block.getItems();
         Set<Topic> topics = block.getTopics();
-
-        if(passes < 1)
-            throw new IllegalArgumentException("passes < 1");
-
         for(Topic topic : topics){
             int tType = TOSDataBridge.getTopicType(topic);
-
             for(String item : items) {
                 int occ = block.getStreamOccupancy(item,topic);
-
                 for(int i = 0; i < passes; ++i) {
                     System.out.print("PASS #" + String.valueOf(i+1) + " :: ");
                     switch (tType) {
-                        case TOSDataBridge.TOPIC_IS_LONG:
-                            printGetStreamSnapshotFromMarker(
-                                    block,item,topic,0,"getStreamSnapshotLongsFromMarker" + callSuffix);
-                            break;
-                        case TOSDataBridge.TOPIC_IS_DOUBLE:
-                            printGetStreamSnapshotFromMarker(
-                                    block,item,topic,0,"getStreamSnapshotDoublesFromMarker" + callSuffix);
-                            break;
-                        case TOSDataBridge.TOPIC_IS_STRING:
-                            printGetStreamSnapshotFromMarker(
-                                    block,item,topic,0,"getStreamSnapshotStringsFromMarker" + callSuffix);
-                            break;
+                    case TOSDataBridge.TOPIC_IS_LONG:
+                        printGetStreamSnapshotFromMarker(block,item,topic,0,
+                                "getStreamSnapshotLongsFromMarker" + callSuffix);
+                        break;
+                    case TOSDataBridge.TOPIC_IS_DOUBLE:
+                        printGetStreamSnapshotFromMarker(block,item,topic,0,
+                                "getStreamSnapshotDoublesFromMarker" + callSuffix);
+                        break;
+                    case TOSDataBridge.TOPIC_IS_STRING:
+                        printGetStreamSnapshotFromMarker(block,item,topic,0,
+                                "getStreamSnapshotStringsFromMarker" + callSuffix);
+                        break;
                     }
                     try {
                         Thread.sleep(wait);
@@ -461,7 +450,6 @@ public class TOSDataBridgeTest {
         Map<String,Map<Topic,T>> frame =
             (Map<String,Map<Topic,T>> )(withDateTime ? block.getTotalFrameWithDateTime()
                                                      : block.getTotalFrame());
-
         for(String i : frame.keySet()){
             System.out.print(String.format("%-12s :::  ", i));
             Map<Topic,T> row = frame.get(i);
@@ -478,21 +466,20 @@ public class TOSDataBridgeTest {
     }
 
     private static <T> void
-    testItemFrameCalls(DataBlock block,  boolean withDateTime)
+    testItemFrameCalls(DataBlock block, boolean withDateTime)
             throws CLibException, LibraryNotLoaded, DateTimeNotSupported
     {
         Set<Topic> topics = block.getTopics();
-
         for(Topic topic : topics) {
             Map<String, T> frame =
                 (Map<String, T>) (withDateTime ? block.getItemFrameWithDateTime(topic)
                                                : block.getItemFrame(topic));
-
             System.out.print(String.format("%-12s :::  ", topic));
             for(String item : frame.keySet()){
                 if(withDateTime){
                     DateTimePair<String> p = (DateTimePair<String>)frame.get(item);
-                    System.out.print(String.format("%s %s %s  ", item, p.first, p.second.toString()));
+                    System.out.print(String.format("%s %s %s  ", item, p.first,
+                            p.second.toString()));
                 }else {
                     System.out.print(String.format("%s %s  ", item, frame.get(item)));
                 }
@@ -506,17 +493,16 @@ public class TOSDataBridgeTest {
             throws CLibException, LibraryNotLoaded, DateTimeNotSupported
     {
         Set<String> items = block.getItems();
-
         for(String item : items) {
             Map<Topic, T> frame =
                 (Map<Topic, T>)(withDateTime ? block.getTopicFrameWithDateTime(item)
                                              : block.getTopicFrame(item));
-
             System.out.print(String.format("%-12s :::  ", item));
             for(Topic topic: frame.keySet()){
                 if(withDateTime){
                     DateTimePair<String> p = (DateTimePair<String>)frame.get(topic);
-                    System.out.print(String.format("%s %s %s  ", topic, p.first, p.second.toString()));
+                    System.out.print(String.format("%s %s %s  ", topic, p.first,
+                            p.second.toString()));
                 }else {
                     System.out.print(String.format("%s %s  ", topic, frame.get(topic)));
                 }
@@ -527,9 +513,7 @@ public class TOSDataBridgeTest {
 
     private static <T> void
     printGet(DataBlock block, String item, Topic topic, int indx, String mname)
-            throws CLibException, LibraryNotLoaded,
-                   DateTimeNotSupported
-    {
+            throws CLibException, LibraryNotLoaded, DateTimeNotSupported {
         Method m;
         try {
             m = block.getClass().getMethod(mname,String.class,Topic.class,int.class,boolean.class);
@@ -537,7 +521,6 @@ public class TOSDataBridgeTest {
             e.printStackTrace();
             return;
         }
-
         try {
             T r1 = (T)m.invoke(block,item,topic,indx,true);
             System.out.println(mname + "(" + item + "," + topic + "," + String.valueOf(indx)
@@ -550,11 +533,8 @@ public class TOSDataBridgeTest {
     }
 
     private static <T> void
-    printGetStreamSnapshot(DataBlock block, String item,
-                           Topic topic, int end, int beg, String mname)
-            throws CLibException, LibraryNotLoaded,
-            DateTimeNotSupported
-    {
+    printGetStreamSnapshot(DataBlock block, String item, Topic topic, int end, int beg, String mname)
+            throws CLibException, LibraryNotLoaded, DateTimeNotSupported {
         Method m;
         try {
             m = block.getClass().getMethod(mname,String.class,Topic.class,int.class,int.class);
@@ -562,7 +542,6 @@ public class TOSDataBridgeTest {
             e.printStackTrace();
             return;
         }
-
         try {
             T[] r1 = (T[])m.invoke(block,item,topic,end,beg);
             System.out.println(mname + "(" + item + "," + topic + "," + String.valueOf(beg)
@@ -578,11 +557,8 @@ public class TOSDataBridgeTest {
     }
 
     private static <T> void
-    printGetStreamSnapshotFromMarker(DataBlock block, String item,
-                                     Topic topic, int beg, String mname)
-            throws CLibException, LibraryNotLoaded,
-            DateTimeNotSupported
-    {
+    printGetStreamSnapshotFromMarker(DataBlock block, String item, Topic topic, int beg, String mname)
+            throws CLibException, LibraryNotLoaded, DateTimeNotSupported {
         Method m;
         try {
             m = block.getClass().getMethod(mname,String.class,Topic.class,int.class);
@@ -590,7 +566,6 @@ public class TOSDataBridgeTest {
             e.printStackTrace();
             return;
         }
-
         try {
             T[] r1 = (T[])m.invoke(block,item,topic,beg);
             System.out.println(mname + "(" + item + "," + topic + "," + String.valueOf(beg) + "): ");
@@ -605,18 +580,20 @@ public class TOSDataBridgeTest {
     }
 
     private static void
-    printBlockItemsTopics(DataBlock block)
-            throws CLibException, LibraryNotLoaded
-    {
+    printBlockItemsTopics(DataBlock block) throws CLibException, LibraryNotLoaded {
         System.out.println("Block: " + block.getName());
-        for(String item : block.getItems())
+        for(String item : block.getItems()) {
             System.out.println("item: " + item);
-        for(Topic topic : block.getTopics())
+        }
+        for(Topic topic : block.getTopics()) {
             System.out.println("topic: " + topic);
-        for(String item : block.getItemsPreCached())
+        }
+        for(String item : block.getItemsPreCached()) {
             System.out.println("item(pre-cache): " + item);
-        for(Topic topic : block.getTopicsPreCached())
+        }
+        for(Topic topic : block.getTopicsPreCached()) {
             System.out.println("topic(pre-cache): " + topic);
+        }
         System.out.println();
     }
 
