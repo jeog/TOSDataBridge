@@ -11,7 +11,7 @@
 
 *4. implementation has not been optimized for speed, safety etc.*
 
-***The Python, C, and C++ interfaces are considerably more stable at this time.***
+*The Python, C, and C++ interfaces are considerably more stable at this time.*
 
 - - -
 
@@ -95,7 +95,7 @@ Methods with a plural type in the name(e.g getStreamSnapshotLongs(...)) return a
     Long[] l =  block.getStreamSnapshotLongs(item,topic);
     DateTimePair<Long>[] ll = block.getStreamSnanshotLongsWithDateTime(item,topic);
 
-StreamSnapshotFromMarker(...) calls provide client code a guarantee that it won't miss data between calls, assuming the 'marker' doesn't hit the back of the stream, becoming 'dirty'. The standard call will throw once the stream becomes 'dirty' to indicate old data has been dropped and the guarantee has been broken. Use the 'IgnoreDirty' versions, or keep the marker moving, to prevent the exception from being thrown.
+StreamSnapshotFromMarker(...) calls provide client code a guarantee that it won't miss data between calls, assuming the 'marker' doesn't hit the back of the stream, becoming 'dirty'. The standard call will throw once the stream becomes 'dirty' to indicate old data has been dropped and the guarantee has been broken. Use the 'IgnoreDirty' versions, or keep the marker moving, to prevent the exception from being thrown. (See python and C/C++ docs for a complete explanation.)
 
 ##### Connect to Native Library
 
@@ -150,46 +150,44 @@ StreamSnapshotFromMarker(...) calls provide client code a guarantee that it won'
             // 10 data-points ago, with datetime stamp
             DateTimePair<Double> dDT = block.getDoubleWithDateTime("SPY", Topic.LAST, 9); 
 
-            // array of 10 most recent data-points
+            // array of 10 most recent data-points (index 0 to 9, inclusive)
             Double[] dd = block.getStreamSnapshotDoubles("SPY", Topic.LAST, 9, 0); 
 
             // array of all valid data-points, with date time smap
             DateTimePair<Double>[] ddDT = 
                 block.getStreamSnapshotDoublesWithDateTime("SPY", Topic.LAST) 
 
-            // print most recent price and datetime string to stdout 
-            System.out.println("SPY Last :: " + String.valueOf(ddDt[0].first) 
-                               + " @ " + String.vlaueof(ddDt[0].second);
-
-            //
-            // use 'FromMarker' methods (below) to guarantee contiguous data BETWEEN calls 
-            //   (see python and C/C++ docs for complete explanation)
-            //
+            /*
+             *  use 'FromMarker' methods (below) to guarantee contiguous data BETWEEN calls 
+             *  (see python and C/C++ docs for complete explanation)
+             */
 
             // get 10 most recent values - THIS MOVES THE MARKER to 'beg' index (0 in this case)
-            List<DateTimePair<Double>> dListOld =  
+            List<DateTimePair<Double>> oldLasts =  
                 new ArrayList<>(Arrays.asList( 
-                    block.getStreamSnapshotDoublesWithDateTime("SPY", Topic.LAST,9) )); 
+                    block.getStreamSnapshotDoublesWithDateTime("SPY", Topic.LAST, 9) )); 
 
-            // add some time between the calls so data can come into stream
-            // as data comes into the stream the 'marker' is moving backwards
+            // add some time between the calls so data can come into stream            
             Thread.sleep(1000);            
+            // as data comes into the stream the 'marker' is moving backwards
 
             // get all the data-points up to the marker - THIS ALSO MOVES THE MARKER (as above)
-            List<DateTimePair<Double>> dlistNew = 
+            List<DateTimePair<Double>> newLasts = 
                 new ArrayList<>(Arrays.asList( 
                     block.getStreamSnapshotDoublesFromMarkerWithDateTime("SPY", Topic.LAST) ));          
 
             // concatenating the two arrays will guarantee we got ALL the data
-            dListNew.addAll(dListOld); // most recent first
-            for(DateTimePair<Double> p : dListNew)
+            newLasts.addAll(oldLasts); // most recent first
+            for(DateTimePair<Double> p : newLasts){
                 System.out.println(p);
+            }
 
-            /* we can keep using the marker calls in this way; if the 'marker' hits 
-               the back of the stream(becomes 'dirty') the next 'Marker' call will 
-               throw DirtyMarkerException; use the 'IgnoreDirty' versions to avoid 
-               this behavior, allowing it to return as much valid data as possible */
-
+            /* 
+             *  we can keep using the marker calls in this way; if the 'marker' hits 
+             *  the back of the stream(becomes 'dirty') the next 'Marker' call will 
+             *  throw DirtyMarkerException; use the 'IgnoreDirty' versions to avoid 
+             *  this behavior, allowing it to return as much valid data as possible 
+             */
             break;
 
         case TOSDataBridge.TOPIC_IS_STRING:
@@ -210,9 +208,11 @@ StreamSnapshotFromMarker(...) calls provide client code a guarantee that it won'
 
 ##### Close
 
-    /* DataBlock's finalize() method calls close() on destruction but we can't 
-       guarantee when/if that will happend; IT'S RECOMMENDED you explicitly tell 
-       the C Lib to close the underlying block when you're done with it. */
+    /* 
+     *  DataBlock's finalize() method calls close() on destruction but we can't 
+     *  guarantee when/if that will happend; IT'S RECOMMENDED you explicitly tell 
+     *  the C Lib to close the underlying block when you're done with it. 
+     */
     block.close();
     
 
