@@ -21,6 +21,15 @@ import com.sun.jna.Native;
 
 import java.io.File;
 
+/**
+ * TOSDataBridge.java
+ *
+ * Core class for tosdatabridge.jar; contains constants, exceptions, a
+ * package-private getter for the CLib, and high-level admin calls for the API.
+ *
+ * @author Jonathon Ogden
+ * @version 0.7
+ */
 public class TOSDataBridge{
     /* hardcode for time being */
     public static final int CONN_NONE = 0;

@@ -27,7 +27,26 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.*;
 
-
+/**
+ * TOSDataBirdgeTest.java
+ *
+ * Simple test for TOSDataBridge Java Wrapper/API (tosdatabridge.jar)
+ *
+ * 1) load native library and try to connect
+ * 2) check connection state
+ * 3) test admin calls
+ * 4) create a DataBlock
+ * 5) add/remove items/topics
+ * 6) use different versions of 'get' methods
+ * 7) use 'frame methods'
+ *
+ * Attempt to check what it can statically and print/throw on error but
+ * most of the methods that return data must be run dynamically and the
+ * output reviewed manually, in real-time.
+ *
+ * @author Jonathon Ogden
+ * @version 0.7
+ */
 public class TOSDataBridgeTest {
     private static final int SLEEP_PERIOD = 1000;
 

@@ -23,6 +23,16 @@ import com.sun.jna.Structure;
 import java.util.Arrays;
 import java.util.List;
 
+/**
+ * DateTime.java
+ *
+ * A JNA Structure used to represent DateTime values. It contains two fields:
+ *   1) cTime - a java version of C's tm struct, defined as a JNA Structure.
+ *   2) microSeconds
+ *
+ * @author Jonathon Ogden
+ * @version 0.7
+ */
 public class DateTime extends Structure {
     public _CTime cTime;
     public NativeLong microSeconds;

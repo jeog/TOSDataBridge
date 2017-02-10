@@ -21,6 +21,14 @@ import com.sun.jna.Library;
 import com.sun.jna.NativeLong;
 import com.sun.jna.Pointer;
 
+/**
+ * Clib.java
+ *
+ * JNA interface used to access the underlying C Lib.
+ *
+ * @author Jonathon Ogden
+ * @version 0.7
+ */
 public interface CLib extends Library {
     int TOSDB_Connect();
     int TOSDB_IsConnectedToEngineAndTOS();

@@ -27,6 +27,16 @@ import com.sun.jna.Pointer;
 import java.lang.reflect.Array;
 import java.util.*;
 
+/**
+ * DataBlock.java
+ *
+ * Object instantiated by clients to get data from the engine/TOS.
+ *
+ * @author Jonathon Ogden
+ * @version 0.7
+ * @throws CLibException   If C Lib returned a 'native' error (CError.java)
+ * @throws LibraryNotLoaded  If native C Lib has not been loaded via init(...)
+ */
 public class DataBlock {
     /* max size of non-data (e.g topics, labels) strings (excluding \0)*/
     public static final int MAX_STR_SZ = TOSDataBridge.MAX_STR_SZ;

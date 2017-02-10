@@ -17,6 +17,12 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 
 package io.github.jeog.tosdatabridge;
 
+/**
+ * Pair.java
+ *
+ * @author Jonathon Ogden
+ * @version 0.7
+ */
 public class Pair<T1,T2>{
     public final T1 first;
     public final T2 second;
