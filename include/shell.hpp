@@ -257,6 +257,9 @@ bool
 prompt_for_datetime(std::string block, CommandCtx *ctx);
 
 void
+prompt_for_item_topic(std::string *pitem, std::string *ptopic, CommandCtx *ctx);
+
+void
 prompt_for_block_item_topic(std::string *pblock, 
                             std::string *pitem, 
                             std::string *ptopic,

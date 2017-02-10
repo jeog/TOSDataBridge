@@ -125,7 +125,10 @@ _requestStreamOP(TOS_Topics::TOPICS topic_t,
     }
 
     try{
-        return std::stol(msg);        
+        long r = std::stol(msg);        
+        if(r)
+            TOSDB_LogRaw("ENGINE", ("error code returned from engine: " + std::to_string(r)).c_str());
+        return r;
     }catch(...){
         TOSDB_LogRawH("IPC", ("failed to convert return message to long, msg:" + msg).c_str());
         return TOSDB_ERROR_IPC;
@@ -799,7 +802,11 @@ TOSDB_RemoveTopic(LPCSTR id, LPCSTR topic_str)
         return TOSDB_ERROR_BAD_INPUT;
     }       
 
-    return TOSDB_RemoveTopic(id, TOS_Topics::map[topic_str]);
+    TOS_Topics::TOPICS t = GetTopicEnum(topic_str);
+    if(t == TOS_Topics::TOPICS::NULL_TOPIC)
+        return TOSDB_ERROR_BAD_TOPIC; 
+
+    return TOSDB_RemoveTopic(id, t);
 }
 
 
@@ -808,6 +815,11 @@ TOSDB_RemoveTopic(std::string id, TOS_Topics::TOPICS topic_t)
 {  
     TOSDBlock* db;
     int err = TOSDB_ERROR_DECREMENT_BASE;
+
+    if(topic_t == TOS_Topics::TOPICS::NULL_TOPIC){
+        TOSDB_LogH("INPUT", "NULL topic passed to TOSDB_RemoveTopic");
+        return TOSDB_ERROR_BAD_TOPIC;
+    }   
 
     if( !_connected(true) )
         return TOSDB_ERROR_NOT_CONNECTED;
@@ -819,11 +831,6 @@ TOSDB_RemoveTopic(std::string id, TOS_Topics::TOPICS topic_t)
     if(!db){
         TOSDB_LogH("BLOCK", ("block (" + id + ") doesn't exist").c_str());
         return TOSDB_ERROR_BLOCK_DOESNT_EXIST;
-    }   
-
-    if(topic_t == TOS_Topics::TOPICS::NULL_TOPIC){
-        TOSDB_LogH("INPUT", "NULL topic passed to TOSDB_RemoveTopic");
-        return TOSDB_ERROR_BAD_TOPIC;
     }   
 
     /* OCT 30 2016 --- if not in block, check if in pre-cache, before returning error */
@@ -870,6 +877,9 @@ TOSDB_RemoveItem(LPCSTR id, LPCSTR item)
     TOSDBlock* db;
     int err = TOSDB_ERROR_DECREMENT_BASE;
 
+    if( !CheckStringLength(item) )
+        return TOSDB_ERROR_BAD_INPUT;
+
     if( !_connected(true) )
         return TOSDB_ERROR_NOT_CONNECTED;
   
@@ -884,9 +894,6 @@ TOSDB_RemoveItem(LPCSTR id, LPCSTR item)
         TOSDB_LogH("BLOCK", ("block (" + std::string(id) + ") doesn't exist").c_str());
         return TOSDB_ERROR_BLOCK_DOESNT_EXIST;
     }  
-
-    if( !CheckStringLength(item) )
-        return TOSDB_ERROR_BAD_INPUT;
 
     /* OCT 30 2016 --- if not in block, check if in pre-cache, before returning error */
     if( db->block->has_item(item) ){
@@ -995,8 +1002,6 @@ TOSDB_CloseBlocks()
 int
 TOSDB_DumpSharedBufferStatus()
 {
-    long ret;
-
     if( !_connected(true) )
         return TOSDB_ERROR_NOT_CONNECTED;
 
@@ -1010,9 +1015,8 @@ TOSDB_DumpSharedBufferStatus()
         return TOSDB_ERROR_IPC;
     }
 
-    try{
-        ret = std::stol(msg);
-        return (ret == TOSDB_SIG_GOOD) ? 0 : TOSDB_ERROR_ENGINE;
+    try{        
+        return (std::stol(msg) == TOSDB_SIG_GOOD) ? 0 : TOSDB_ERROR_IPC;
     }catch(...){
         TOSDB_LogH("IPC", "failed to convert return message to long");
         return TOSDB_ERROR_IPC;
@@ -1020,6 +1024,34 @@ TOSDB_DumpSharedBufferStatus()
     /* --- CRITICAL SECTION --- */
 }
 
+
+/* WARNING - removes individual stream from the engine. It should only 
+   be used when you are certain a client lib has failed to close a stream 
+   during destruction of the containing block (e.g the program crashes 
+   before DLL_PROCESS_DETACH in DllMain is hit.)
+
+   YOU NEED TO BE SURE THIS IS THE CASE OR YOU CAN CORRUPT THE UNDERLYING 
+   BUFFERS FOR ANY NUMBER OF CLIENT INSTANCES! */
+int           
+TOSDB_RemoveOrphanedStream(LPCSTR item, LPCSTR topic_str)
+{
+    if( !CheckStringLength(item) || !CheckStringLength(topic_str) )
+    {
+        return TOSDB_ERROR_BAD_INPUT;
+    }       
+
+    TOS_Topics::TOPICS t = GetTopicEnum(topic_str);
+    if(t == TOS_Topics::TOPICS::NULL_TOPIC)
+        return TOSDB_ERROR_BAD_TOPIC; 
+
+    if( !_connected(true) )
+        return TOSDB_ERROR_NOT_CONNECTED;
+  
+    GLOBAL_RLOCK_GUARD;
+    /* --- CRITICAL SECTION --- */
+    return _requestStreamOP(t, item, TOSDB_DEF_TIMEOUT, TOSDB_SIG_REMOVE);    
+    /* --- CRITICAL SECTION --- */
+}
 
 
 int 

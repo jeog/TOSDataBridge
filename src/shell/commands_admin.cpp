@@ -60,6 +60,7 @@ void GetStreamOccupancy(CommandCtx *ctx);
 void GetMarkerPosition(CommandCtx *ctx);
 void IsMarkerDirty(CommandCtx *ctx);
 void DumpBufferStatus(CommandCtx *ctx);
+void RemoveOrphanedStream(CommandCtx *ctx);
 
 }; /* namespace */
 
@@ -104,7 +105,8 @@ CommandsMap commands_admin(
                           ("GetStreamOccupancy",GetStreamOccupancy)                              
                           ("GetMarkerPosition",GetMarkerPosition)                              
                           ("IsMarkerDirty",IsMarkerDirty)                              
-                          ("DumpBufferStatus",DumpBufferStatus) 
+                          ("DumpBufferStatus",DumpBufferStatus)
+                          ("RemoveOrphanedStream", RemoveOrphanedStream)
 );
 
 
@@ -981,6 +983,18 @@ void
 DumpBufferStatus(CommandCtx *ctx)
 {
     _check_display_ret( TOSDB_DumpSharedBufferStatus() );
+}
+
+
+void
+RemoveOrphanedStream(CommandCtx *ctx)
+{
+   std::string item;
+   std::string topic;
+
+   prompt_for_item_topic(&item, &topic, ctx);
+
+    _check_display_ret( TOSDB_RemoveOrphanedStream(item.c_str(), topic.c_str()) );
 }
 
 

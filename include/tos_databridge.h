@@ -191,6 +191,7 @@ typedef struct{
 #define TOSDB_TOPIC_BITMASK ((type_bits_type)0xE0)
 #define TOSDB_STR_DATA_SZ ((size_type)40)
 #define TOSDB_MAX_STR_SZ ((size_type)0xFF)
+#define TOSDB_MAX_NSTRS 1000
 #define TOSDB_DEF_TIMEOUT 2000
 #define TOSDB_DEF_PAUSE 100
 #define TOSDB_PROBE_WAIT ((int)Moderate * 3) 
@@ -215,14 +216,18 @@ typedef struct{
 #define TOSDB_ERROR_BAD_SIG -11
 #define TOSDB_ERROR_IPC -12
 #define TOSDB_ERROR_CONCURRENCY -13
-#define TOSDB_ERROR_ENGINE -14
-#define TOSDB_ERROR_SERVICE -15
-#define TOSDB_ERROR_GET_DATA -16
-#define TOSDB_ERROR_GET_STATE -17
-#define TOSDB_ERROR_SET_STATE -18
-#define TOSDB_ERROR_UNKNOWN -19
+#define TOSDB_ERROR_ENGINE_NO_TOPIC -14
+#define TOSDB_ERROR_ENGINE_NO_ITEM -15
+#define TOSDB_ERROR_SERVICE -16
+#define TOSDB_ERROR_GET_DATA -17
+#define TOSDB_ERROR_GET_STATE -18
+#define TOSDB_ERROR_SET_STATE -19
+#define TOSDB_ERROR_DDE_POST -20
+#define TOSDB_ERROR_DDE_NO_ACK -21
+#define TOSDB_ERROR_SHEM_BUFFER -22
+#define TOSDB_ERROR_UNKNOWN -23
 /* this must be our last error because it can be decremented */
-#define TOSDB_ERROR_DECREMENT_BASE -20
+#define TOSDB_ERROR_DECREMENT_BASE -24
 
 /* the previous #defines contain names/values that are necessary
    for the python backage. BE CAREFUL CHANGING NAMES */
@@ -698,6 +703,9 @@ TOSDB_IsMarkerDirty(LPCSTR id, LPCSTR item, LPCSTR topic_str, unsigned int* is_d
 
 EXT_C_SPEC DLL_SPEC_IFACE NO_THROW int           
 TOSDB_DumpSharedBufferStatus();
+
+EXT_C_SPEC DLL_SPEC_IFACE NO_THROW int           
+TOSDB_RemoveOrphanedStream(LPCSTR item, LPCSTR topic_str);
 
 #ifdef __cplusplus
 

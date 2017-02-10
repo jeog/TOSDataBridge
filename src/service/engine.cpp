@@ -112,7 +112,7 @@ template<typename T>
 class DDE_Data;
 
 template<typename T> 
-int  
+void 
 RouteToBuffer(DDE_Data<T> data); 
 
 int  
@@ -351,8 +351,7 @@ RunMainCommLoop(IPCSlave *pslave)
     TOSDB_Log("STARTUP", "entering MainCommLoop");
     while(!shutdown_flag){     
 
-        /* BLOCK until master is ready */
-        //TOSDB_LogDebug("***IPC*** ENGINE - WAIT FOR MASTER");        
+        /* BLOCK until master is ready */           
         if( !pslave->wait_for_master() )
         {      
             TOSDB_LogH("IPC", "wait_for_master failed");
@@ -360,8 +359,7 @@ RunMainCommLoop(IPCSlave *pslave)
             return -1;
         }     
                          
-        /* BLOCK until we get a message */
-        //TOSDB_LogDebug("***IPC*** ENGINE - RECEIVE");        
+        /* BLOCK until we get a message */        
         if( !pslave->recv(&ipc_msg) )
         {         
             TOSDB_LogH("IPC", "recv failed");
@@ -379,8 +377,7 @@ RunMainCommLoop(IPCSlave *pslave)
             resp = HandleGoodIPCMessage(cli_op, cli_topic, cli_item, cli_timeout);   
         }
 
-        /* reply to MASTER */
-        //TOSDB_LogDebug("***IPC*** ENGINE - REPLY");        
+        /* reply to MASTER */            
         if( !pslave->send(std::to_string(resp)) )
         {
             TOSDB_LogH("IPC", "send/reply failed in main comm loop");                       
@@ -557,17 +554,14 @@ CleanUpMain(int ret_code)
 int 
 TestStream(TOS_Topics::TOPICS topic_t,std::string item, unsigned long timeout)
 {
-    int a;
-    int r;
-    
-    a = AddStream(topic_t, item, timeout);
+    int a = AddStream(topic_t, item, timeout);
     if(a)
-        return -1;
+        return a;
 
-    r = RemoveStream(topic_t, item, timeout);
+    int r = RemoveStream(topic_t, item, timeout);
     if(r){
         TOSDB_LogEx("STREAM-OP", "failed to remove stream added during TestStream (stream leaked)", r);
-        return -2;
+        return r;
     }
 
     return 0;
@@ -583,7 +577,7 @@ AddStream( TOS_Topics::TOPICS topic_t,
     int err = 0;
 
     if(topic_t == TOS_Topics::TOPICS::NULL_TOPIC)
-        return -1;
+        return TOSDB_ERROR_BAD_TOPIC;
 
     auto topic_iter = topic_refcounts.find(topic_t);  
     if(topic_iter == topic_refcounts.end()) /* if topic isn't in our global mapping */
@@ -593,28 +587,31 @@ AddStream( TOS_Topics::TOPICS topic_t,
     else /* if it already is */   
     { 
         auto item_iter = topic_iter->second.find(item); 
-        if(item_iter == topic_iter->second.end()){ /* and it doesn't have that item yet */        
-            ret = PostItem(item, topic_t, timeout);
-            if(ret){
-                topic_iter->second[item] = 1;
-                ret = CreateBuffer(topic_t, item);
-                if(!ret)
-                    err = -4;      
-            }else
-                err = -3;            
+        if(item_iter == topic_iter->second.end()) /* and it doesn't have that item yet */        
+        { 
+            if( PostItem(item, topic_t, timeout) ){
+                topic_iter->second[item] = 1;                
+                if( !CreateBuffer(topic_t, item) )
+                    err = TOSDB_ERROR_SHEM_BUFFER;      
+            }else{
+                err = TOSDB_ERROR_DDE_POST;            
+            }
         }else /* if both already there simply increment the ref-count */
             ++(item_iter->second);            
     }  
   
     /* unwind if it fails during creation */
     switch(err){   
-    case -4:    
+    case TOSDB_ERROR_SHEM_BUFFER:    
         PostCloseItem(item, topic_t, timeout);
         topic_refcounts[topic_t].erase(item);
-    case -3:
+        /* no break */
+    case TOSDB_ERROR_DDE_POST:
         if( !topic_refcounts[topic_t].empty() ) 
             break;        
-    case -2:        
+        /* else 
+            no break */
+    case TOSDB_ERROR_DDE_NO_ACK:        
         TearDownTopic(topic_t, timeout);   
     }    
 
@@ -657,7 +654,7 @@ CreateNewTopicStream( TOS_Topics::TOPICS topic_t,
     if(!ret){ /* are we sure about this? error unwind will call TearDownTopic 
                    - whats the purpose if we never got the 'ack'? (maybe a late ack)
                    - deadlock or corrupt 'convos' on sending WM_DDE_TERMINATE in this state?*/
-        return -2;       
+        return TOSDB_ERROR_DDE_NO_ACK;       
     }
 
     /* once we get our ack set up/initialize our refcounts
@@ -666,7 +663,7 @@ CreateNewTopicStream( TOS_Topics::TOPICS topic_t,
 
     ret = PostItem(item, topic_t, timeout);
     if(!ret)
-        return -3;    
+        return TOSDB_ERROR_DDE_POST;    
 
     /* because of how AddStream unwinds errors order is important; 
        this MUST come after PostItem, before CreateBuffer */
@@ -674,7 +671,7 @@ CreateNewTopicStream( TOS_Topics::TOPICS topic_t,
 
     ret = CreateBuffer(topic_t, item);
     if(!ret)
-        return -4;             
+        return TOSDB_ERROR_SHEM_BUFFER;             
 
     return 0;
 }
@@ -684,32 +681,32 @@ int
 RemoveStream( TOS_Topics::TOPICS topic_t, 
               std::string item, 
               unsigned long timeout )
-{  
-    bool ret;    
-
+{      
     int err = 0;
 
     if(topic_t == TOS_Topics::TOPICS::NULL_TOPIC)
-        return -1;
+        return TOSDB_ERROR_BAD_TOPIC;
 
     auto topic_iter = topic_refcounts.find(topic_t);      
     if(topic_iter == topic_refcounts.end()) /* if topic is not in our global mapping */  
-        return -2;    
+        return TOSDB_ERROR_ENGINE_NO_TOPIC;    
 
     auto item_iter = topic_iter->second.find(item);    
     if(item_iter != topic_iter->second.end()){ /* if it has that item */
         /* decr the ref count */
         --(item_iter->second);
         /* if ref-count hits zero post close msg and destroy the buffer*/
-        if(item_iter->second == 0){
-            ret = PostCloseItem(item, topic_t, timeout); 
+        if(item_iter->second == 0){            
             /* if we return error continue with remove but log it (below) */
-            if(!ret)
-                err = -3;
-            DestroyBuffer(topic_t, item);
+            if( !PostCloseItem(item, topic_t, timeout) )
+                err = TOSDB_ERROR_DDE_POST;
+            if( !DestroyBuffer(topic_t, item) )
+                err = TOSDB_ERROR_SHEM_BUFFER;
             topic_iter->second.erase(item_iter);                 
         }
-    } 
+    }else{
+        err = TOSDB_ERROR_ENGINE_NO_ITEM;
+    }
 
     /* if no items close the convo */
     if(topic_iter->second.empty())       
@@ -838,17 +835,18 @@ CreateBuffer(TOS_Topics::TOPICS topic_t,
 
 bool 
 DestroyBuffer(TOS_Topics::TOPICS topic_t, std::string item)
-{   
+{       
     BUFFER_LOCK_GUARD;
     /* ---CRITICAL SECTION --- */
     /* don't allow buffer to be destroyed while we're writing to it */
     auto buf_iter = buffers.find( buffer_id_ty(item,topic_t) );
     if(buf_iter != buffers.end()){ 
-        UnmapViewOfFile(buf_iter->second.raw_addr);
-        CloseHandle(buf_iter->second.hfile);
-        CloseHandle(buf_iter->second.hmtx);
+        BOOL b = 1;
+        b &= UnmapViewOfFile(buf_iter->second.raw_addr);
+        b &= CloseHandle(buf_iter->second.hfile);
+        b &= CloseHandle(buf_iter->second.hmtx);
         buffers.erase(buf_iter);
-        return true;
+        return b == 1;
     }
     return false;
     /* ---CRITICAL SECTION --- */
@@ -870,17 +868,20 @@ ValToBuf(void* pos, std::string val) /* copy the string, truncate if necessary *
 }
 
 template<typename T>
-int 
+void
 RouteToBuffer(DDE_Data<T> data)
 {  
     pBufferHead head;  
-    int err = 0;
 
     BUFFER_LOCK_GUARD;
     /* ---(INTRA-PROCESS) CRITICAL SECTION --- */
     auto buf_iter = buffers.find(buffer_id_ty(data.item,data.topic));
-    if(buf_iter == buffers.end())  
-        return -1;
+    if(buf_iter == buffers.end()){
+        /* serious issue with internal state... is it fatal? */
+        TOSDB_LogH("BUFFER", ("Engine can't find buffer for item: " + data.item 
+                              + ", topic: " + data.item).c_str() );
+        return;
+    }
 
     head = (pBufferHead)(buf_iter->second.raw_addr);
   
@@ -896,10 +897,9 @@ RouteToBuffer(DDE_Data<T> data)
     }else{
         head->next_offset += head->elem_size;
     }
-
     /* ---(INTER-PROCESS) CRITICAL SECTION --- */
+
     ReleaseMutex(buf_iter->second.hmtx);
-    return err;  
     /* ---(INTRA-PROCESS) CRITICAL SECTION --- */
 }
 
@@ -1015,11 +1015,6 @@ WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             GlobalGetAtomName((ATOM)(plo), app_atom, (TOSDB_MAX_STR_SZ + 1));
 
             strcpy_s(app_str_lower, APP_NAME);       
-
-           /* not sure why we were using these
-            _strlwr_s(app_atom, TOSDB_MAX_STR_SZ); 
-            _strlwr_s(app_str_lower, TOSDB_MAX_STR_SZ); */ 
-
             str_to_lower(app_atom, TOSDB_MAX_STR_SZ); 
             str_to_lower(app_str_lower, TOSDB_MAX_STR_SZ); 
 

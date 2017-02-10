@@ -131,6 +131,12 @@ unsigned int
 CheckStringLengths(LPCSTR* str, size_type items_len)
 {
     size_t slen;
+
+    if(items_len > TOSDB_MAX_NSTRS){
+        TOSDB_LogH("INPUT", "# of strings > TOSDB_MAX_NSTRS");
+        return 0;
+    }
+
     while(items_len--){
         slen = strnlen_s(str[items_len], TOSDB_MAX_STR_SZ + 1);
         if( slen == (TOSDB_MAX_STR_SZ+1) ){ 

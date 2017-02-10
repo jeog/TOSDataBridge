@@ -217,14 +217,20 @@ prompt_for_datetime(std::string block, CommandCtx *ctx)
 
 
 void
+prompt_for_item_topic(std::string *pitem, std::string *ptopic, CommandCtx *ctx)
+{
+    prompt_for("item", pitem, ctx);    
+    prompt_for("topic", ptopic, ctx);
+}
+ 
+void
 prompt_for_block_item_topic(std::string *pblock, 
                             std::string *pitem, 
                             std::string *ptopic,
                             CommandCtx *ctx)
 {
     prompt_for("block", pblock, ctx);
-    prompt_for("item", pitem, ctx);    
-    prompt_for("topic", ptopic, ctx);
+    prompt_for_item_topic(pitem, ptopic, ctx);
 }
 
 
