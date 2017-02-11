@@ -60,20 +60,41 @@ class _TOSDB_DataBlock(metaclass=_ABCMeta):
 
     @_abstractmethod
     def get_block_size(): 
-        """ Returns the amount of historical data stored in the block """
+        """ Returns the amount of historical data that can be stored in the block
+
+        get_block_size(self)
+
+        returns -> int
+
+        throws TOSDB_CLibError
+        """
         pass
 
     @_abstractmethod
     def set_block_size(): 
-        """ Changes the amount of historical data stored in the block """
+        """ Changes the amount of historical data that can be stored in the block
+
+        set_block_size(self, sz)
+
+        sz :: int :: new size
+
+        throws TOSDB_CLibError
+        """
+        
         pass
 
     @_abstractmethod
     def stream_occupancy(): 
-        """ Returns the current number of data-points pushed into the data-stream
-            
-        item: any item string in the block
-        topic: any topic string in the block
+        """ Returns the current number of data-points inserted into the data-stream
+
+        stream_occupancy(self, item, topic)
+
+        item  :: str  :: any item string in the block
+        topic :: str  :: any topic string in the block
+        
+        returns -> int
+
+        throws TOSDB_CLibError
         """ 
         pass
 
@@ -81,8 +102,13 @@ class _TOSDB_DataBlock(metaclass=_ABCMeta):
     def items(): 
         """ Returns the items currently in the block (and not pre-cached).
         
-        str_max: the maximum length of item strings returned
-        returns -> list of strings 
+        items(self, str_max=MAX_STR_SZ)
+        
+        str_max :: int :: maximum length of item strings returned
+        
+        returns -> list of str
+
+        throws TOSDB_CLibError
         """
         pass
 
@@ -90,8 +116,13 @@ class _TOSDB_DataBlock(metaclass=_ABCMeta):
     def topics(): 
         """ Returns the topics currently in the block (and not pre-cached).
         
-        str_max: the maximum length of topic strings returned  
-        returns -> list of strings 
+        topics(self, str_max=MAX_STR_SZ)
+        
+        str_max :: int :: maximum length of topic strings returned
+        
+        returns -> list of str
+
+        throws TOSDB_CLibError 
         """
         pass
 
@@ -99,17 +130,27 @@ class _TOSDB_DataBlock(metaclass=_ABCMeta):
     def items_precached(): 
         """ Returns the items currently in the block's pre-cache.
         
-        str_max: the maximum length of item strings returned
-        returns -> list of strings 
+        items_precached(self, str_max=MAX_STR_SZ)
+        
+        str_max :: int :: maximum length of item strings returned
+        
+        returns -> list of str
+
+        throws TOSDB_CLibError
         """
         pass
 
     @_abstractmethod
     def topics_precached(): 
         """ Returns the topics currently in the block's pre-cache.
+
+        topics_precached(self, str_max=MAX_STR_SZ)
         
-        str_max: the maximum length of topic strings returned  
-        returns -> list of strings 
+        str_max :: int :: maximum length of topic strings returned
+        
+        returns -> list of str
+
+        throws TOSDB_CLibError
         """
         pass
 
@@ -120,7 +161,11 @@ class _TOSDB_DataBlock(metaclass=_ABCMeta):
         NOTE: if there are no topics currently in the block, these items will 
         be pre-cached and appear not to exist, until a valid topic is added.
 
-        *items: any numer of item strings
+        add_items(self, *items)
+        
+        *items :: *str :: any numer of item strings
+
+        throws TOSDB_CLibError
         """  
         pass
 
@@ -131,7 +176,11 @@ class _TOSDB_DataBlock(metaclass=_ABCMeta):
         NOTE: if there are no items currently in the block, these topics will 
         be pre-cached and appear not to exist, until a valid item is added.
 
-        *topics: any numer of topic strings
+        add_topics(self, *topics)
+        
+        *topics :: *str :: any numer of topic strings
+
+        throws TOSDB_CLibError
         """     
         pass
 
@@ -142,7 +191,11 @@ class _TOSDB_DataBlock(metaclass=_ABCMeta):
         NOTE: if this call removes all items from the block the remaining topics 
         will be pre-cached and appear not to exist, until a valid item is re-added.
 
-        *items: any numer of item strings
+        remove_items(self, *items)
+        
+        *items :: *str :: any numer of item strings in the block
+
+        throws TOSDB_CLibError
         """
         pass
 
@@ -153,37 +206,60 @@ class _TOSDB_DataBlock(metaclass=_ABCMeta):
         NOTE: if this call removes all topics from the block the remaining items 
         will be pre-cached and appear not to exist, until a valid topic is re-added.
 
-        *topics: any numer of topic strings
+        remove_topics(self, *topics)
+        
+        *topics :: *str :: any numer of topic strings in the block
+
+        throws TOSDB_CLibError
         """
         pass
 
     @_abstractmethod
     def get(): 
         """ Return a single data-point from the data-stream
+
+        get(self, item, topic, date_time=False, indx=0, check_indx=True, 
+            data_str_max=STR_DATA_SZ)
+            
+        item         :: str  :: any item string in the block
+        topic        :: str  :: any topic string in the block
+        date_time    :: bool :: include a TOSDB_DateTime object 
+        indx         :: int  :: index/position of data-point to get 
+                                [0 to block_size-1] or [-block_size to -1]
+        check_indx   :: bool :: throw if datum doesn't exist at that index 
+        data_str_max :: int  :: maximum size of string data returned 
+
+        if date_time == True:  returns -> 2-tuple**
+        else:                  returns -> int/float/str**
+
+        **data are of type int, float, or str (deping on the topic)
         
-        item: any item string in the block
-        topic: any topic string in the block
-        date_time: (True/False) attempt to retrieve a TOSDB_DateTime object   
-        indx: index of data-points [0 to block_size), [-block_size to -1]
-        check_indx: throw if datum doesn't exist at that particular index
-        data_str_max: the maximum size of string data returned
+        throws TOSDB_DataTimeError, TOSDB_IndexError, TOSDB_DataError,
+               TOSDB_CLibError
         """
         pass
 
     @_abstractmethod
     def stream_snapshot(): 
         """ Return multiple data-points(a snapshot) from the data-stream
-        
-        item: any item string in the block
-        topic: any topic string in the block
-        date_time: (True/False) attempt to retrieve a TOSDB_DateTime object        
-        end: index of least recent data-point (end of the snapshot)
-        beg: index of most recent data-point (beginning of the snapshot)    
-        smart_size: limits amount of returned data by data-stream's occupancy
-        data_str_max: the maximum length of string data returned
 
-        if date_time is True: returns-> list of 2tuple
-        else: returns -> list        
+        stream_snapshot(self, item, topic, date_time=False, end=-1, beg=0, 
+                        smart_size=True, data_str_max=STR_DATA_SZ)
+                        
+        item         :: str  :: any item string in the block
+        topic        :: str  :: any topic string in the block
+        date_time    :: bool :: include TOSDB_DateTime objects 
+        end          :: int  :: index of least recent data-point 
+        beg          :: int  :: index of most recent data-point     
+        smart_size   :: bool :: limit amount of returned data by occupancy 
+        data_str_max :: int  :: maximum length of string data returned 
+
+        if date_time == True:  returns -> list of 2-tuple**
+        else:                  returns -> list**
+
+        **data are of type int, float, or str (deping on the topic)
+
+        throws TOSDB_DataTimeError, TOSDB_IndexError, TOSDB_CLibError
         """
         pass
 
@@ -210,8 +286,8 @@ class _TOSDB_DataBlock(metaclass=_ABCMeta):
         move. 'None' will be returned.
 
         State (2) occurs when the marker doesn't get reset before it hits the
-        bound (block_size); as the oldest data is popped of the back of the
-        stream it is lost (the marker can't grow past the end of the stream). 
+        end of stream (block_size); as the oldest data is popped off the back of
+        the stream it is lost (the marker can't grow past the end of the stream). 
 
         State (3) occurs when an inadequately large buffer is used. The call
         handles buffer sizing for you by calling down to get the marker index,
@@ -220,21 +296,30 @@ class _TOSDB_DataBlock(metaclass=_ABCMeta):
         operation completes. The default value indicates that over 100 push
         operations would have to take place during this call(highly unlikely).
 
-        In either case (state (2) or (3)) if throw_if_data_lost is True a
-        TOSDB_DataError will be thrown, otherwise the available data will
-        be returned as normal. 
-        
-        item: any item string in the block
-        topic: any topic string in the block
-        date_time: (True/False) attempt to retrieve a TOSDB_DateTime object            
-        beg: index of most recent data-point (beginning of the snapshot)    
-        margin_of_safety: error margin for async stream growth
-        throw_if_data_loss: (True/False) how to handle error states (see above)
-        data_str_max: the maximum length of string data returned
+        If throw_if_data_lost is True, (2) or (3) will raise TOSDB_DataError.
 
-        if beg > internal marker value: returns -> None    
-        if date_time is True: returns-> list of 2tuple
-        else: returns -> list        
+        * * *
+        
+        stream_snapshot_from_marker(self, item, topic, date_time=False, beg=0, 
+                                    margin_of_safety=100, throw_if_data_lost=True,
+                                    data_str_max=STR_DATA_SZ)
+
+        item               :: str  :: any item string in the block
+        topic              :: str  :: any topic string in the block
+        date_time          :: bool :: include TOSDB_DateTime objects    
+        beg                :: int  :: index of most recent data-point     
+        margin_of_safety   :: int  :: error margin for async stream growth (see above)
+        throw_if_data_loss :: bool :: how to handle error states (see above)
+        data_str_max       :: int  :: maximum length of string data returned
+
+        if beg > internal marker position:  returns -> None    
+        elif date_time == True:             returns -> list of 2-tuple**
+        else:                               returns -> list**
+
+        **data are of type int, float, or str (deping on the topic)
+
+        throws TOSDB_DataTimeError, TOSDB_IndexError, TOSDB_ValueError,
+               TOSDB_DataError, TOSDB_CLibError       
         """
         pass
 
@@ -242,33 +327,47 @@ class _TOSDB_DataBlock(metaclass=_ABCMeta):
     def item_frame(): 
         """ Return all the most recent item values for a particular topic.
 
-        topic: any topic string in the block
-        date_time: (True/False) attempt to retrieve a TOSDB_DateTime object     
-        labels: (True/False) pull the item labels with the values 
-        data_str_max: the maximum length of string data returned
-        label_str_max: the maximum length of item label strings returned
+        item_frame(self, topic, date_time=False, labels=True, 
+                   data_str_max=STR_DATA_SZ, label_str_max=MAX_STR_SZ)                 
 
-        if labels and date_time are True: returns-> namedtuple of 2tuple
-        if labels is True: returns -> namedtuple
-        if date_time is True: returns -> list of 2tuple
-        else returns-> list
+        topic         :: str  :: any topic string in the block
+        date_time     :: bool :: include TOSDB_DateTime objects 
+        labels        :: bool :: include item labels
+        data_str_max  :: int  :: maximum length of string data returned
+        label_str_max :: int  :: maximum length of item label strings returned 
+
+        if labels == date_time == True:  returns -> namedtuple of 2-tuple**
+        elif labels == True:             returns -> namedtuple**
+        elif date_time == True:          returns -> list of 2-tuple**
+        else:                            returns -> list**
+
+        **data are of type int, float, or str (deping on the topic)
+        
+        throws TOSDB_DataTimeError, TOSDB_CLibError
         """
         pass
 
     @_abstractmethod
     def topic_frame(): 
         """ Return all the most recent topic values for a particular item:
-      
-        item: any item string in the block
-        date_time: (True/False) attempt to retrieve a TOSDB_DateTime object     
-        labels: (True/False) pull the topic labels with the values 
-        data_str_max: the maximum length of string data returned
-        label_str_max: the maximum length of topic label strings returned
 
-        if labels and date_time are True: returns-> namedtuple of 2tuple
-        if labels is True: returns -> namedtuple
-        if date_time is True: returns -> list of 2tuple
-        else returns-> list
+        topic_frame(self, item, date_time=False, labels=True, 
+                    data_str_max=STR_DATA_SZ, label_str_max=MAX_STR_SZ)
+                    
+        item          :: str  :: any item string in the block
+        date_time     :: bool :: include TOSDB_DateTime objects 
+        labels        :: bool :: include topic labels
+        data_str_max  :: int  :: maximum length of string data returned
+        label_str_max :: int  :: maximum length of topic label strings returned 
+
+        if labels == date_time == True:  returns -> namedtuple of 2-tuple**
+        elif labels == True:             returns -> namedtuple**
+        elif date_time == True:          returns -> list of 2-tuple**
+        else:                            returns -> list**
+
+        **data are ALL of type str (frame can contain topics of differnt type)
+
+        throws TOSDB_DataTimeError, TOSDB_CLibError     
         """
         pass
 
@@ -384,7 +483,7 @@ class _DateTimeStamp(_Structure):
 
 class TOSDB_DateTime( _namedtuple("DateTime",["micro","sec","min",
                                               "hour", "day","month","year"]) ):
-    """ The object used for handling DateTime values
+    """ The object used for handling DateTime values.
 
     TOSDB_DateTime is built on top of a simplified named tuple. It can be 
     constructed from _DateTimeStamp, _struct_time from the time.py library, or 
@@ -393,8 +492,12 @@ class TOSDB_DateTime( _namedtuple("DateTime",["micro","sec","min",
     respectively; overloads comparison operators; and provides static utility 
     functions to convert betwen DateTimeDiff objects and microseconds.       
 
-    obj: either a _DateTimeStamp,  time._struct_time, or TOSDB_DateTime object           
-    micro_second: custom micro_second value
+    __init__(self, obj, micro_second=0)
+    
+    obj          :: _DateTimeStamp -or- time._struct_time -or- TOSDB_DateTime object           
+    micro_second :: int microsecond value
+
+    throws TOSDB_DataTimeError
     """
     dtd_tuple = _namedtuple("DateTimeDiff",["micro","sec","min","hour","day","sign"])
     

@@ -91,10 +91,20 @@ _dll_depend1 = None
 
       
 def init(dllpath=None, root="C:\\", bypass_check=False):
-    """ Initialize the underlying tos-databridge DLL
+    """ Initialize the underlying tos-databridge DLL and try to connect.
 
-    dllpath: string of the exact path of the DLL
-    root: string of the directory to start walking/searching to find the DLL
+    Returns True if library was successfully loaded, not necessarily that
+    it was also able to connect. Details are sent to stdout.
+    
+    init(dllpath=None, root="C:\\", bypass_check=False)
+    
+    dllpath      :: str  :: exact path of the DLL -or-
+    root         :: str  :: directory to start walking/searching to find the DLL
+    bypass_check :: bool :: used by virtual layer implemenation (DO NOT SET)
+
+    returns -> bool 
+
+    throws TOSDB_InitError TOSDB_Error
     """  
     global _dll, _dll_depend1
     rel = set()
@@ -158,33 +168,61 @@ def init(dllpath=None, root="C:\\", bypass_check=False):
 
 
 def connect():
-    """ Attempts to connect to the engine
+    """ Attempts to connect to the engine and TOS platform
 
-    Note: this returns a boolean and does not raise an exception on failure
+    connect()
+
+    returns -> bool
+
+    throws TOSDB_CLibError
+           **does not raise an exception if lib call returns error code
     """            
     ret = _lib_call("TOSDB_Connect", error_check=False) 
     return (ret == 0) # 0 on success (error code)
 
 
 def connected():
-    """ Returns true if there is an active connection to the engine AND TOS platform """
+    """ Returns true if there is an active connection to the engine AND TOS platform
+
+    connected()
+
+    returns -> bool
+
+    throws TOSDB_CLibError
+           **does not raise an exception if lib call returns error code
+    """
     ret = _lib_call("TOSDB_IsConnectedToEngineAndTOS", ret_type=_uint_, error_check=False)
     return bool(ret) # 1 on success (bool value)
 
 
 def connection_state():
-    """ Returns the connections state between the client lib, engine and TOS platform
+    """ Returns the connection state between the client lib, engine and TOS platform
 
-    returns:
-    CONN_NONE :: there is NO connection to the engine
-    CONN_ENGINE :: there is a connection to the engine BUT NOT the TOS platform
-    CONN_ENGINE_TOS :: there is a connection to the engine AND the TOS platform
+    connection_state()
+    
+    if NOT connected to the engine:                         returns -> CONN_NONE
+    elif connected to the engine BUT NOT the TOS platform:  returns -> CONN_ENGINE
+    elif connected to the engine AND the TOS platform:      returns -> CONN_ENGINE_TOS
+
+    throws TOSDB_CLibError
+           **does not raise an exception if lib call returns error code
     """
     return _lib_call("TOSDB_ConnectionState", ret_type=_uint_, error_check=False)    
          
        
 def clean_up():
-    """ Clean up shared resources. ! CALL BEFORE EXITING INTERPRETER ! """
+    """ Clean up shared resources.  
+
+    *** CALL BEFORE EXITING INTERPRETER ***
+    
+    Attempts to close the underlying block and disconnect gracefully so
+    streams aren't orphaned/leaked. 
+    
+    clean_up()
+
+    throws TOSDB_CLibError
+           **does not raise an exception if lib call returns error code
+    """
     global _dll, _dll_depend1
     if _dll is not None:       
         err = _lib_call("TOSDB_CloseBlocks", error_check=False)
@@ -214,27 +252,58 @@ def Init(dllpath=None, root="C:\\", bypass_check=False):
 
 
 def get_block_limit():
-    """ Returns the block limit of C/C++ RawDataBlock factory """
+    """ Returns the block limit imposed by the C Lib
+
+    get_block_limit()
+
+    returns -> int
+
+    throws TOSDB_CLibError
+           **does not raise an exception if lib call returns error code
+    """
     return _lib_call("TOSDB_GetBlockLimit", ret_type=_uint32_, error_check=False)
 
 
 def set_block_limit(new_limit):
-    """ Changes the block limit of C/C++ RawDataBlock factory """
+    """ Changes the block limit imposed by the C Lib 
+
+    set_block_limit(new_limit)
+
+    new_limit :: int :: new block limit
+
+    throws TOSDB_CLibError
+           **does not raise an exception if lib call returns error code
+    """
     _lib_call("TOSDB_SetBlockLimit", new_limit, ret_type=_uint32_, 
               arg_types=(_uint32_,), error_check=False)
 
 
 def get_block_count():
-    """ Returns the count of current instantiated blocks """
+    """ Returns the current count of instantiated blocks (according to C Lib)
+
+    get_block_count()
+
+    returns -> int
+
+    throws TOSDB_CLibError
+           **does not raise an exception if lib call returns error code
+    """
     return _lib_call("TOSDB_GetBlockCount", ret_type=_uint32_, error_check=False)
 
 
 def type_bits(topic):
-    """ Returns the type bits for a particular 'topic'
+    """ Returns the type bits for a particular topic
 
-    topic: string representing a TOS data field('LAST','ASK', etc)
-    returns -> value that can be logical &'d with type bit contstants 
-    (ex. QUAD_BIT)
+    These type bits can be logical &'d with type bit contstants (ex. QUAD_BIT)
+    to determine the underlying type of the topic.
+
+    type_bits(topic)
+
+    topic :: str :: topic string ('LAST','ASK', etc)
+
+    returns -> int
+
+    throws TOSDB_CLibError
     """
     b = _uint8_()
     _lib_call("TOSDB_GetTypeBits", topic.upper().encode("ascii"), _pointer(b), 
@@ -244,9 +313,15 @@ def type_bits(topic):
 
 
 def type_string(topic):
-    """ Returns a platform-dependent string of the type of a particular 'topic'
+    """ Returns a platform-dependent string of the type of a particular topic
 
-    topic: string representing a TOS data field('LAST','ASK', etc)
+    type_string(topic)
+
+    topic :: str :: topic string ('LAST','ASK', etc)
+
+    returns -> str
+
+    throws TOSDB_CLibError
     """
     s = _BUF_(MAX_STR_SZ + 1)
     _lib_call("TOSDB_GetTypeString", topic.upper().encode("ascii"), s, (MAX_STR_SZ + 1))
@@ -258,9 +333,14 @@ def type_string(topic):
 class TOSDB_DataBlock(_TOSDB_DataBlock):
     """ The main object for storing TOS data.    
 
-    size: how much historical data to save
-    date_time: should block include date-time stamp with each data-point?
-    timeout: how long to wait for responses from TOS-DDE server (milliseconds)
+    __init__(self, size=1000, date_time=False, timeout=DEF_TIMEOUT)
+
+    size      :: int  :: how much historical data can be inserted
+    date_time :: bool :: should block include date-time with each data-point?
+    timeout   :: int  :: how long to wait for responses from engine, TOS-DDE server,
+                         and/or internal IPC/Concurrency mechanisms (milliseconds)
+
+    throws TOSDB_CLibError
     """    
     def __init__(self, size=1000, date_time=False, timeout=DEF_TIMEOUT):        
         self._name = (_uuid4().hex).encode("ascii")
@@ -276,6 +356,11 @@ class TOSDB_DataBlock(_TOSDB_DataBlock):
     
 
     def __del__(self): # for convenience, no guarantee
+        # cleaning up can be problematic if we exit python abruptly:
+        #   1) need to be sure _lib_call is still around to call the C Lib with
+        #   2) need to be sure block creation was actually successful using the
+        #      _valid flag (__del__ can be called if __init__ fails/throws)
+        #   3) need to be sure the DLL object is still around 
         if _lib_call is not None and self._valid and _dll is not None:
             try:
                 _lib_call("TOSDB_CloseBlock", self._name)      
@@ -921,19 +1006,27 @@ class TOSDB_DataBlock(_TOSDB_DataBlock):
                 return list(map(_cast_cstr, strs_array))
 
 
+    # total_frame not party of abstract base, so include doc string
     def total_frame(self, date_time=False, labels=True, data_str_max=STR_DATA_SZ, 
-                    label_str_max=MAX_STR_SZ):
-        """ Return a matrix of the most recent values:  
-        
-        date_time: (True/False) attempt to retrieve a TOSDB_DateTime object    
-        labels: (True/False) pull the item and topic labels with the values 
-        data_str_max: the maximum length of string data returned
-        label_str_max: the maximum length of label strings returned
-        
-        if labels and date_time are True: returns-> dict of namedtuple of 2tuple
-        if labels is True: returns -> dict of namedtuple
-        if date_time is True: returns -> list of 2tuple
-        else returns-> list
+                    label_str_max=MAX_STR_SZ):      
+        """ Return ALL of the block's most recent values:
+
+        total_frame(self, date_time=False, labels=True, data_str_max=STR_DATA_SZ, 
+                    label_str_max=MAX_STR_SZ)              
+     
+        date_time     :: bool :: include TOSDB_DateTime objects 
+        labels        :: bool :: include item and topic labels
+        data_str_max  :: int  :: maximum length of string data returned
+        label_str_max :: int  :: maximum length of label strings returned 
+
+        if labels == date_time == True:  returns -> dict of namedtuple of 2-tuple**
+        elif labels == True:             returns -> dict of namedtuple**
+        elif date_time == True:          returns -> list of list of 2-tuple**
+        else:                            returns -> list of list**
+
+        **data are ALL of type str (frame can contain topics of differnt type)
+
+        throws TOSDB_DataTimeError, TOSDB_CLibError     
         """
         p = _partial(self.topic_frame, date_time=date_time, labels=labels, 
                      data_str_max=data_str_max, label_str_max=label_str_max)

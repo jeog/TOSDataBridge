@@ -27,15 +27,14 @@ RAND_SEQ_SZ = 512
 _vAUTH_SUCCESS = 'AUTH_SUCCESS'
 _vAUTH_FAILURE = 'AUTH_FAILURE'
 
-
 _AES=None
 _SHA256=None
 # hold of on importing pycrypto as late as possible
 # don't force dependency outside the std lib unless it's needed
 def try_import_pycrypto():
-    """try to import pycrypto library at runtime (if needed)
+    """try to import pycrypto library (if needed)
 
-    throws TOSDB_VirtualizationError if import fails
+    throws TOSDB_VirtualizationError
     """
     global _AES, _SHA256
     try:
@@ -56,7 +55,11 @@ def do_i_have_pycrypto():
 def check_password(password):
     """check the password string is valid
 
-    password :: str
+    check_password(password)
+
+    password :: str :: password string
+
+    throws ValueError
     """   
     if len(password) < MIN_PASSWORD_SZ:
         raise ValueError("password must be at least %i characters" % MIN_PASSWORD_SZ)
@@ -67,11 +70,14 @@ def check_password(password):
 def handle_auth_cli(my_sock,password):
     """handle authentication for the client side of the virtual connection
 
-    my_sock  ::  socket.socket that is making the authentication attempt
-    password ::  str used for authentication
+    handle_auth_cli(my_sock,password)
+    
+    my_sock  :: socket :: socket that is making the authentication attempt
+    password :: str    :: password used for authentication
 
-    returns  ::  True/False on success/failure
-    throws   ::  TOSDB_VirtualizationError if authentication mechanism fails
+    returns -> bool
+    
+    throws  TOSDB_VirtualizationError 
     """
 
     #hash/overwite password
@@ -107,11 +113,14 @@ def handle_auth_cli(my_sock,password):
 def handle_auth_serv(my_conn,password):
     """handle authentication for the server side of the virtual connection
 
-    my_conn  ::  connected socket.socket that is recieving the authentication attempt
-    password ::  str used for authentication
+    handle_auth_serv(my_conn,password)
+    
+    my_conn  :: socket :: connected socket that is recieving the authentication attempt
+    password :: str    :: password used for authentication
 
-    returns  ::  True/False on success/failure
-    throws   ::  TOSDB_VirtualizationError if authentication mechanism fails
+    returns -> bool
+    
+    throws  TOSDB_VirtualizationError 
     """
 
     my_sock, my_addr = my_conn

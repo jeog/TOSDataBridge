@@ -31,7 +31,7 @@ Next, get a 'total frame' from the block.
 
 ![](./../res/tosdb_tut4.png)
 
-Or, just get an 'item frame' or a 'topic frame'.
+Or, just get an 'item frame' or a 'topic frame'. Notice that total frames and topic frames return all data as strings because they can contain multiple topics of different types.
 
 ![](./../res/tosdb_tut5.png)
 

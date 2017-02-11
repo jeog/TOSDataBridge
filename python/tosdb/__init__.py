@@ -154,8 +154,9 @@ _vCONN_ADMIN = 'CONN_ADMIN'
 _vREQUIRE_AUTH = 'REQUIRE_AUTH'
 _vREQUIRE_AUTH_NO = 'REQUIRE_AUTH_NO'
 
-_vALLOWED_ADMIN = ('init','connect','connected','clean_up','get_block_limit', 
-                   'set_block_limit','get_block_count','type_bits','type_string')
+_vALLOWED_ADMIN = ('init','connect','connected','connection_state','clean_up',
+                   'get_block_limit', 'set_block_limit','get_block_count',
+                   'type_bits','type_string')
 
 ## !! _vDELIM MUST NOT HAVE THE SAME VALUE AS _vEEXOR !! ##
 _vDELIM = b'\x7E' 
@@ -168,10 +169,20 @@ _vEEXOR = chr(ord(_vESC) ^ ord(_vESC)).encode() # 0
 # we can load both on the windows side for easier debugging,
 
 def vinit(dllpath=None, root="C:\\", bypass_check=False):
-    """ Initialize the underlying tos-databridge Windows DLL
+    """ Initialize the underlying tos-databridge Windows DLL, try to connect.
 
-    dllpath: string of the exact path of the DLL
-    root: string of the directory to start walking/searching to find the DLL
+    Returns True if library was successfully loaded, not necessarily that
+    it was also able to connect. Details are sent to stdout on Windows side.
+    
+    vinit(dllpath=None, root="C:\\", bypass_check=False)
+    
+    dllpath      :: str  :: exact path of the DLL -or-
+    root         :: str  :: directory to start walking/searching to find the DLL
+    bypass_check :: bool :: used by virtual layer implementation (DO NOT SET)
+
+    returns -> bool 
+
+    throws TOSDB_VirtualizationError TOSDB_ImplErrorWrapper
     """
     if not bypass_check and dllpath is None and root == "C:\\":
         if abort_init_after_warn():
@@ -180,17 +191,55 @@ def vinit(dllpath=None, root="C:\\", bypass_check=False):
 
 
 def vconnect():
-    """ Attempts to connect the underlying Windows Library/Service """
+    """ Attempts to connect to the underlying Windows engine and TOS Platform
+
+    vconnect()
+
+    returns -> bool
+
+    throws TOSDB_VirtualizationError TOSDB_ImplErrorWrapper
+    """
     return _admin_call('connect')
 
 
 def vconnected():
-    """ True if an active connection to the Library/Service exists """
+    """ Returns True if there is an active connection to the engine AND TOS platform
+
+    vconnected()
+
+    returns -> bool
+
+    throws TOSDB_VirtualizationError TOSDB_ImplErrorWrapper
+    """
     return _admin_call('connected')
     
+
+def vconnection_state():
+    """ Returns the connection state between the client lib, engine and TOS platform
+
+    vconnection_state()
     
+    if NOT connected to the engine:                         returns -> CONN_NONE
+    elif connected to the engine BUT NOT the TOS platform:  returns -> CONN_ENGINE
+    elif connected to the engine AND the TOS platform:      returns -> CONN_ENGINE_TOS
+
+    throws TOSDB_VirtualizationError TOSDB_ImplErrorWrapper
+    """
+    return _admin_call('connection_state')
+
+
 def vclean_up():
-    """ Clean up shared resources. (!! ON THE WINDOWS SIDE !!) """
+    """ Clean up shared resources.  
+
+    *** CALL BEFORE EXITING INTERPRETER ***
+    
+    Attempts to close the underlying block and disconnect gracefully so
+    streams aren't orphaned/leaked. 
+    
+    clean_up()
+
+    throws TOSDB_VirtualizationError TOSDB_ImplErrorWrapper
+    """
     _admin_call('clean_up')
 
 
@@ -211,34 +260,68 @@ def VInit(address, dllpath=None, root="C:\\", bypass_check=False,
 
 
 def vget_block_limit():
-    """ Returns the block limit of C/C++ RawDataBlock factory """
+    """ Returns the block limit imposed by the C Lib
+
+    vget_block_limit()
+
+    returns -> int
+
+    throws TOSDB_VirtualizationError TOSDB_ImplErrorWrapper
+    """
     return _admin_call('get_block_limit')
 
 
 def vset_block_limit(new_limit):
-    """ Changes the block limit of C/C++ RawDataBlock factory """
+    """ Changes the block limit imposed by the C Lib 
+
+    vset_block_limit(new_limit)
+
+    new_limit :: int :: new block limit
+
+    throws TOSDB_VirtualizationError TOSDB_ImplErrorWrapper
+    """
     _admin_call('set_block_limit', new_limit) 
 
 
 def vget_block_count():
-    """ Returns the count of current instantiated blocks """
+    """ Returns the current count of instantiated blocks (according to C Lib)
+
+    vget_block_count()
+
+    returns -> int
+
+    throws TOSDB_VirtualizationError TOSDB_ImplErrorWrapper
+    """
     return _admin_call('get_block_count')
 
 
 def vtype_bits(topic):
-    """ Returns the type bits for a particular 'topic'
+    """ Returns the type bits for a particular topic
 
-    topic: string representing a TOS data field('LAST','ASK', etc)
-    returns -> value that can be logical &'d with type bit contstants 
-    (ex. QUAD_BIT)
+    These type bits can be logical &'d with type bit contstants (ex. QUAD_BIT)
+    to determine the underlying type of the topic.
+
+    vtype_bits(topic)
+
+    topic :: str :: topic string ('LAST','ASK', etc)
+
+    returns -> int
+
+    throws TOSDB_VirtualizationError TOSDB_ImplErrorWrapper
     """  
     return _admin_call('type_bits', topic)
 
 
 def vtype_string(topic):
-    """ Returns a platform-dependent string of the type of a particular 'topic'
+    """ Returns a platform-dependent string of the type of a particular topic
 
-    topic: string representing a TOS data field('LAST','ASK', etc)
+    vtype_string(topic)
+
+    topic :: str :: topic string ('LAST','ASK', etc)
+
+    returns -> str
+
+    throws TOSDB_VirtualizationError TOSDB_ImplErrorWrapper    
     """
     return _admin_call('type_string', topic) 
 
@@ -255,8 +338,14 @@ def admin_close(): # do we need to signal the server ?
 def admin_init(address, password=None, poll_interval=DEF_TIMEOUT):
     """ Initialize virtual admin calls (e.g vinit(), vconnect()) 
 
-    address:: tuple(str,int) :: (host/address of the windows implementation, port)
-    password:: str :: password for authentication(None for no authentication)
+    admin_init(address, password=None, poll_interval=DEF_TIMEOUT)
+    
+    address  :: (str,int) :: (host/address of the windows implementation, port)
+    password :: str       :: password for authentication(None for no authentication)
+
+    returns -> bool
+
+    throws TOSDB_VirtualizationError TOSDB_ImplErrorWrapper 
     """  
     global _virtual_hub_addr, _virtual_admin_sock
     if _virtual_admin_sock:
@@ -307,13 +396,18 @@ def _handle_req_from_server(sock,password):
 class VTOSDB_DataBlock(_TOSDB_DataBlock):
     """ The main object for storing TOS data. (VIRTUAL)   
 
-    address:: tuple(str,int) :: (host/address of the windows implementation, port)
-    password:: str :: password for authentication(None for no authentication)
-    size: how much historical data to save
-    date_time: should block include date-time stamp with each data-point?
-    timeout: how long to wait for responses from TOS-DDE server (milliseconds)
+    __init__(self, address, password=None, size=1000, date_time=False, 
+             timeout=DEF_TIMEOUT)
+                 
+    address   :: (str,int) :: (host/address of the windows implementation, port)
+    password  :: str       :: password for authentication(None for no authentication)
+    size      :: int       :: how much historical data can be inserted
+    date_time :: bool      :: should block include date-time with each data-point?
+    timeout   :: int       :: how long to wait for responses from engine,
+                              TOS-DDE server, internal IPC/Concurrency mechanisms,
+                              and network communication (milliseconds)
 
-    Please review the attached README.html for details.
+    throws TOSDB_VirtualizationError TOSDB_ImplErrorWrapper
     """  
     def __init__(self, address, password=None, size=1000, date_time=False, 
                  timeout=DEF_TIMEOUT):         
@@ -491,8 +585,12 @@ class VTOSDB_DataBlock(_TOSDB_DataBlock):
 def enable_virtualization(address, password=None, poll_interval=DEF_TIMEOUT):
     """ enable virtualization on host system
 
-    address:: tuple(str,int) :: (address of the host system, port)
-    password:: str :: password for authentication(None for no authentication)
+    enable_virtualization(address, password=None, poll_interval=DEF_TIMEOUT)
+    
+    address  :: (str,int) :: (address of the host system, port)
+    password :: str       :: password for authentication(None for no authentication)
+
+    throws TOSDB_VirtualizationError 
     """  
     global _virtual_hub   
 
@@ -510,7 +608,12 @@ def enable_virtualization(address, password=None, poll_interval=DEF_TIMEOUT):
 
 
 def disable_virtualization():
-    """ disable virtualization on host system """ 
+    """ disable virtualization on host system
+
+    disable_virtualization()
+
+    throws TOSDB_VirtualizationError
+    """ 
     global _virtual_hub
     try:
         if _virtual_hub is not None:
