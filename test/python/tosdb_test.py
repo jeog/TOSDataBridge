@@ -55,8 +55,7 @@ def init():
             return False
         vaddr = v[0]
         v += (int(raw[2]),) if len(raw) > 2 else ()
-        if args.auth:
-            v = v[:2] + (args.auth,) + v[2:]
+        v = v[:1] + (args.auth,) + v[1:]
         try:
             tosdb.admin_init(*v)        
             print('+ admin_init successful')

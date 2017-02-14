@@ -182,7 +182,7 @@ def connect():
 
 
 def connected():
-    """ Returns true if there is an active connection to the engine AND TOS platform
+    """ Returns True if there is an active connection to the engine AND TOS platform
 
     connected()
 
@@ -196,7 +196,7 @@ def connected():
 
 
 def connection_state():
-    """ Returns the connection state between the client lib, engine and TOS platform
+    """ Returns the connection state between the C lib, engine and TOS platform
 
     connection_state()
     
@@ -239,9 +239,27 @@ _on_exit(clean_up)  # try automatically on exit (NO GUARANTEE)
 
 
 @_contextmanager
-def Init(dllpath=None, root="C:\\", bypass_check=False):
+def Init(dllpath=None, root="C:\\"):
+    """ Manage a 'session' with the C lib, engine, and TOS platform.
+
+    The context manager handles initialization of the library and tries to
+    connect to the engine and TOS platform. On exiting the context block it
+    automatically cleans up.
+
+    with Init(...):
+        # (automatically initializes, connects etc.)
+        # use admin interface, create data blocks etc.
+        # (automatically cleans up, closes etc.)
+
+    def Init(dllpath=None, root="C:\\")             
+          
+    dllpath :: str :: exact path of the DLL -or-
+    root    :: str :: directory to start walking/searching to find the DLL    
+    
+    throws TOSDB_InitError    
+    """
     try:
-        if not init(dllpath, root, bypass_check):
+        if not init(dllpath, root):
             raise TODB_InitError("failed to initilize library")
         if not connected():      
             if not connect(): # try again

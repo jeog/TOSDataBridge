@@ -14,57 +14,65 @@
 #   'LICENSE.txt', along with this program.  If not, see 
 #   <http://www.gnu.org/licenses/>.
 
-"""tosdb/  :  A front-end / wrapper for the TOSDataBridge C/C++ library
+"""tosdb/:  A front-end / wrapper for the TOSDataBridge C library
 
 Please refer to README.md for an explanation of the C/C++ library, tutorial.md 
 for a walk-through of the basics, and virtualization_tutorial.md for example 
 usage on non-Windows systems.
 
+class TOSDB_DataBlock(WINDOWS ONLY):
+    very similar to the 'block' approach of the underlying C/C++ library except
+    the interface is explicitly object-oriented. It abstracts away the underlying
+    type complexity, raising TOSDB_CLibError on internal library errors.
 
-*** OBJECTS ***
+class VTOSDB_DataBlock:
+    same interface as TOSDB_DataBlock except it utilizes a thin virtualization
+    layer over TCP, passing serialized method calls to a windows machine running
+    the core implemenataion.
 
-class TOSDB_DataBlock(windows only): very similar to the 'block' approach of the
-underlying C/C++ library except the interface is explicitly object-oriented. It 
-abstracts away the underlying type complexity, raising TOSDB_CLibError on 
-internal library errors.
+ABC _TOSDB_DataBlock:
+    abstract base class of TOSDB_DataBlock and VTOSDB_DataBlock
 
-class VTOSDB_DataBlock: same interface as TOSDB_DataBlock except it utilizes a 
-thin virtualization layer over TCP, passing serialized method calls to a windows 
-machine running the core implemenataion.
+Init:
+    context manager that handles initialization and clean-up
 
-ABC _TOSDB_DataBlock: abstract base class of TOSDB_DataBlock and VTOSDB_DataBlock
+VInit:
+    version of Init for the virtual layer
 
-Init: context manager that handles initialization and clean-up
+admin_init():
+    initializes the vitual library calls (e.g vinit(), vconnect())
 
-VInit: version of Init for the virtual layer
+init()/vinit():
+    tell the windows implementation to initialize the underlying C/C++ library
+    and attempt to connect
 
+connect()/vconnect():
+    tell the windows implementation to connect to the underlying C/C++ library
+    if init fails to do this automatically
 
-*** ADMIN CALLS ***
+connected()/vconnected():
+    is the windows implementation connected to the engine AND TOS platform?
 
-admin_init() : initializes the vitual library calls (e.g vinit(), vconnect())
+connection_state()/vconnection_state()
+    what connection state is the windows implementation in?
 
-init() / vinit() : tell the windows implementation to initialize the 
-                   underlying C/C++ library (attempt to connect)
+clean_up()/vclean_up() (IMPORTANT):
+    de-allocates shared resources of the underlying C lib and engine.
+    Resources are cleaned-up automatically on exit but there's no guarantee.
+    HIGHLY RECOMMENDED YOU CALL THIS BEFORE EXITING.
 
-connect() / vconnect() : tell the windows implementation to connect to the 
-                         underlying C/C++ library (init attemps this for you)
+getblockcount()/vgetblockcount():
+    number of instantiated blocks in the C lib
+    
+getblocklimit()/vgetblocklimit():
+    get max number of blocks allowed by C lib
+    
+setblocklimit()/vsetblocklimit():
+    set max number of blocks allowed by C lib
 
-connected() /vconnected() : is the windows implementation connected
+* * *
 
-clean_up() / vclean_up() : *** IMPORTANT *** de-allocates shared resources of the 
-                           underlying C/C++ library and Service. We attempt to clean 
-                           up resources automatically on exit but in certain cases 
-                           it's not guaranteed to happen. HIGHLY RECOMMENDED YOU 
-                           CALL THIS BEFORE EXITING.
-
-getblockcount() / vgetblockcount() : number of (created) blocks in the C/C++ lib
-getblocklimit() / vgetblocklimit() : get max number of blocks you can create 
-setblocklimit() / vsetblocklimit() : set max number of blocks you can create 
-                     
-
-*** INITIALIZATION ***
-
-* Please refer to python/virtualization_tutorial.md for example usage
+Ways to initialize via virtual layer:
 
 --------------------------------------------------------------------------------
           [ local(windows) side ]        |         [ remote side ]
@@ -168,30 +176,29 @@ _vEEXOR = chr(ord(_vESC) ^ ord(_vESC)).encode() # 0
 # NOTE: for time being preface virtual calls and objects with 'v' so
 # we can load both on the windows side for easier debugging,
 
-def vinit(dllpath=None, root="C:\\", bypass_check=False):
-    """ Initialize the underlying tos-databridge Windows DLL, try to connect.
-
+def vinit(dllpath=None, root="C:\\"):
+    """ Initialize the underlying tos-databridge DLL on host, try to connect.  
+    
     Returns True if library was successfully loaded, not necessarily that
     it was also able to connect. Details are sent to stdout on Windows side.
     
-    vinit(dllpath=None, root="C:\\", bypass_check=False)
+    vinit(dllpath=None, root="C:\\")
     
-    dllpath      :: str  :: exact path of the DLL -or-
-    root         :: str  :: directory to start walking/searching to find the DLL
-    bypass_check :: bool :: used by virtual layer implementation (DO NOT SET)
+    dllpath :: str :: exact path (on host) of the DLL -or-
+    root    :: str :: directory (on host) to start walking/searching to find the DLL    
 
     returns -> bool 
 
     throws TOSDB_VirtualizationError TOSDB_ImplErrorWrapper
     """
-    if not bypass_check and dllpath is None and root == "C:\\":
+    if dllpath is None and root == "C:\\":
         if abort_init_after_warn():
             return False
     return _admin_call('init', dllpath, root, True)
 
 
 def vconnect():
-    """ Attempts to connect to the underlying Windows engine and TOS Platform
+    """ Attempts to connect to the underlying engine and TOS Platform on host.
 
     vconnect()
 
@@ -203,7 +210,7 @@ def vconnect():
 
 
 def vconnected():
-    """ Returns True if there is an active connection to the engine AND TOS platform
+    """ Returns True if there is an active connection to the engine AND TOS platform on host.
 
     vconnected()
 
@@ -215,7 +222,7 @@ def vconnected():
     
 
 def vconnection_state():
-    """ Returns the connection state between the client lib, engine and TOS platform
+    """ Returns the connection state between the client lib, engine and TOS platform on host.
 
     vconnection_state()
     
@@ -229,7 +236,7 @@ def vconnection_state():
 
 
 def vclean_up():
-    """ Clean up shared resources.  
+    """ Clean up shared resources on host.  
 
     *** CALL BEFORE EXITING INTERPRETER ***
     
@@ -244,11 +251,32 @@ def vclean_up():
 
 
 @_contextmanager
-def VInit(address, dllpath=None, root="C:\\", bypass_check=False, 
-          poll_interval=DEF_TIMEOUT):
+def VInit(address, dllpath=None, root="C:\\", password=None, timeout=DEF_TIMEOUT):
+    """ Manage a virtual 'session' with a host system's C lib, engine, and TOS platform.
+
+    The context manager handles initialization of the virtual admin interface
+    and the host C Lib, then tries to connect the latter with the engine and
+    TOS platform on the host. On exiting the context block it automatically
+    cleans up the host system and closes down the connection.
+
+    with VInit(...):
+        # (automatically initializes, connects etc.)
+        # use virtual admin interface, create data blocks etc.
+        # (automatically cleans up, closes etc.)
+
+    VInit(address, dllpath=None, root="C:\\", password=None, timeout=DEF_TIMEOUT)
+
+    address      :: (str,int) :: (address of the host system, port)     
+    dllpath      :: str       :: exact path of the DLL -or-
+    root         :: str       :: directory to start walking/searching to find the DLL
+    password     :: str       :: password for authentication(None for no authentication)      
+    timeout      :: int       :: timeout used by the underlying socket    
+
+    throws TOSDB_VirtualizationError TOSDB_InitError    
+    """
     try:
-        admin_init(address, poll_interval)
-        if not vinit(dllpath, root, bypass_check):
+        admin_init(address, password, timeout)
+        if not vinit(dllpath, root):
             raise TODB_InitError("failed to initilize library (virtual)")
         if not vconnected():      
             if not vconnect(): # try again
@@ -260,7 +288,7 @@ def VInit(address, dllpath=None, root="C:\\", bypass_check=False,
 
 
 def vget_block_limit():
-    """ Returns the block limit imposed by the C Lib
+    """ Returns the block limit imposed by the C Lib on host.
 
     vget_block_limit()
 
@@ -272,7 +300,7 @@ def vget_block_limit():
 
 
 def vset_block_limit(new_limit):
-    """ Changes the block limit imposed by the C Lib 
+    """ Changes the block limit imposed by the C Lib on host.
 
     vset_block_limit(new_limit)
 
@@ -284,7 +312,7 @@ def vset_block_limit(new_limit):
 
 
 def vget_block_count():
-    """ Returns the current count of instantiated blocks (according to C Lib)
+    """ Returns the current count of instantiated blocks (according to C Lib) on host.
 
     vget_block_count()
 
@@ -296,7 +324,7 @@ def vget_block_count():
 
 
 def vtype_bits(topic):
-    """ Returns the type bits for a particular topic
+    """ Returns the type bits for a particular topic from host.
 
     These type bits can be logical &'d with type bit contstants (ex. QUAD_BIT)
     to determine the underlying type of the topic.
@@ -313,7 +341,7 @@ def vtype_bits(topic):
 
 
 def vtype_string(topic):
-    """ Returns a platform-dependent string of the type of a particular topic
+    """ Returns a platform-dependent string of the type of a particular topic from host.
 
     vtype_string(topic)
 
@@ -327,7 +355,7 @@ def vtype_string(topic):
 
 
 def admin_close(): # do we need to signal the server ?
-    """ Close connection created by admin_init """  
+    """ Close admin connection created by admin_init """  
     global _virtual_hub_addr, _virtual_admin_sock
     if _virtual_admin_sock:
         _virtual_admin_sock.close()
@@ -335,14 +363,19 @@ def admin_close(): # do we need to signal the server ?
     _virtual_admin_sock = None 
 
 
-def admin_init(address, password=None, poll_interval=DEF_TIMEOUT):
-    """ Initialize virtual admin calls (e.g vinit(), vconnect()) 
+def admin_init(address, password=None, timeout=DEF_TIMEOUT):
+    """ Initialize virtual admin calls. 
 
-    admin_init(address, password=None, poll_interval=DEF_TIMEOUT)
+    This establishes a stateful connection with the host system, allowing
+    the admin calls(e.g vinit(), vconnect()) to communicate with their
+    siblings(e.g init(), connect()) on the host side.
+    
+    admin_init(address, password=None, timeout=DEF_TIMEOUT)
     
     address  :: (str,int) :: (host/address of the windows implementation, port)
     password :: str       :: password for authentication(None for no authentication)
-
+    timeout  :: int       :: timeout used by the underlying socket
+    
     returns -> bool
 
     throws TOSDB_VirtualizationError TOSDB_ImplErrorWrapper 
@@ -354,7 +387,7 @@ def admin_init(address, password=None, poll_interval=DEF_TIMEOUT):
         check_password(password)
     _virtual_hub_addr = _check_and_resolve_address(address)
     _virtual_admin_sock = _socket.socket()
-    _virtual_admin_sock.settimeout(poll_interval / 1000) 
+    _virtual_admin_sock.settimeout(timeout / 1000) 
     try: 
         _virtual_admin_sock.connect(_virtual_hub_addr) 
         _handle_req_from_server(_virtual_admin_sock,password)
@@ -582,14 +615,24 @@ class VTOSDB_DataBlock(_TOSDB_DataBlock):
                      
 
             
-def enable_virtualization(address, password=None, poll_interval=DEF_TIMEOUT):
-    """ enable virtualization on host system
+def enable_virtualization(address, password=None, timeout=DEF_TIMEOUT):
+    """ enable virtualization, making *this* the host system.
 
-    enable_virtualization(address, password=None, poll_interval=DEF_TIMEOUT)
+    This will start a background thread (_VTOS_Hub) to listen for virtual
+    'clients' looking to use the admin calls (via Thread _VTOS_AdminServer)
+    or data blocks (via Thread(s) _VTOS_BlockServer).
+
+    The virtual client call will serlialize it's arguments, sending them
+    to the host. On success the local/host version of the call will be
+    executed by its respective Server. Finally, a return value/exception
+    will be serialized and sent back to the client.
+    
+    enable_virtualization(address, password=None, timeout=DEF_TIMEOUT)
     
     address  :: (str,int) :: (address of the host system, port)
     password :: str       :: password for authentication(None for no authentication)
-
+    timeout  :: int       :: timeout(s) used by the underlying socket(s)
+    
     throws TOSDB_VirtualizationError 
     """  
     global _virtual_hub   
@@ -601,14 +644,14 @@ def enable_virtualization(address, password=None, poll_interval=DEF_TIMEOUT):
         if _virtual_hub is None:
             if password is not None:
                 check_password(password)
-            _virtual_hub = _VTOS_Hub(address, password, poll_interval)
+            _virtual_hub = _VTOS_Hub(address, password, timeout)
             _virtual_hub.start()    
     except Exception as e:
         raise TOSDB_VirtualizationError("enable virtualization error", e)
 
 
 def disable_virtualization():
-    """ disable virtualization on host system
+    """ disable virtualization on host system.
 
     disable_virtualization()
 
@@ -624,12 +667,12 @@ def disable_virtualization():
 
 
 class _VTOS_BlockServer(_Thread):    
-    def __init__(self, conn, poll_interval, stop_callback):
+    def __init__(self, conn, timeout, stop_callback):
         super().__init__(daemon=True)
         self._my_sock = conn[0]
         self._cli_addr = conn[1]
-        self._poll_interval = poll_interval
-        self._my_sock.settimeout(poll_interval / 1000)
+        self._timeout = timeout
+        self._my_sock.settimeout(timeout / 1000)
         self._blk = None
         self._rflag = False
         self._stop_callback = stop_callback
@@ -704,12 +747,12 @@ class _VTOS_BlockServer(_Thread):
   
 
 class _VTOS_AdminServer(_Thread):    
-    def __init__(self, conn, poll_interval):
+    def __init__(self, conn, timeout):
         super().__init__(daemon=True)
         self._my_sock = conn[0]
         self._cli_addr = conn[1]
-        self._poll_interval = poll_interval
-        self._my_sock.settimeout(poll_interval / 1000)
+        self._timeout = timeout
+        self._my_sock.settimeout(timeout / 1000)
         self._rflag = False
         self._globals = globals()
       
@@ -749,14 +792,14 @@ class _VTOS_AdminServer(_Thread):
   
   
 class _VTOS_Hub(_Thread):
-    def __init__(self, address, password, poll_interval):
+    def __init__(self, address, password, timeout):
         super().__init__(daemon=True)  
         self._my_addr = _check_and_resolve_address(address)   
         self._rflag = False
         self._password = password
-        self._poll_interval = poll_interval
+        self._timeout = timeout
         self._my_sock = _socket.socket()
-        self._my_sock.settimeout(poll_interval / 1000)
+        self._my_sock.settimeout(timeout / 1000)
         self._my_sock.bind(self._my_addr)
         self._my_sock.listen(0)
         self._virtual_block_servers = set()
@@ -777,7 +820,7 @@ class _VTOS_Hub(_Thread):
             try:          
                 dat = _unpack_msg(dat)[0].decode()          
                 if dat == _vCONN_BLOCK:    
-                    vserv = _VTOS_BlockServer(conn, self._poll_interval,
+                    vserv = _VTOS_BlockServer(conn, self._timeout,
                                               self._virtual_block_servers.discard)
                     self._virtual_block_servers.add(vserv)
                     vserv.start()
@@ -785,7 +828,7 @@ class _VTOS_Hub(_Thread):
                     if self._virtual_admin_server:
                         self._virtual_admin_server.stop()            
                     self._virtual_admin_server = \
-                        _VTOS_AdminServer(conn, self._poll_interval)
+                        _VTOS_AdminServer(conn, self._timeout)
                     self._virtual_admin_server.start()
                 else:
                     raise TOSDB_VirtualizationError("connection init msg must be "
@@ -804,7 +847,7 @@ class _VTOS_Hub(_Thread):
                 # indicate whether client needs to authenticate              
                 amsg = _vREQUIRE_AUTH_NO if self._password is None else _vREQUIRE_AUTH
                 _send_tcp(conn[0], amsg.encode())
-                conn[0].settimeout(self._poll_interval / 1000)         
+                conn[0].settimeout(self._timeout / 1000)         
                 try:                    
                     if _recv_tcp(conn[0]) != _vACK.encode(): # get an ack or timeout
                         raise TOSDB_VirtualizationError('bad ack token received')
