@@ -108,7 +108,7 @@
       <SubSystem>Windows</SubSystem>
       <AdditionalLibraryDirectories>$(SolutionDir)..\bin\$(Configuration)\$(Platform)\</AdditionalLibraryDirectories>
       <ProgramDatabaseFile>$(SolutionDir)..\symbols\$(Configuration)\$(TargetName).pdb</ProgramDatabaseFile>
-      <AdditionalOptions>/export:NewStrings /export:DeleteStrings  /export:TOSDB_Log_ /export:TOSDB_LogEx_ /export:CheckIDLength /export:CheckStringLength /export:CheckStringLengths</AdditionalOptions>
+      <AdditionalOptions>/export:NewStrings /export:DeleteStrings  /export:TOSDB_Log_ /export:TOSDB_LogEx_ /export:CheckIDLength /export:CheckStringLength /export:CheckStringLengths /export:IsValidBlockSize /export:IsValidBlockID</AdditionalOptions>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -129,7 +129,7 @@
       <SubSystem>Windows</SubSystem>
       <AdditionalLibraryDirectories>$(SolutionDir)..\bin\$(Configuration)\$(Platform)\</AdditionalLibraryDirectories>
       <ProgramDatabaseFile>$(SolutionDir)..\symbols\$(Configuration)\$(TargetName).pdb</ProgramDatabaseFile>
-      <AdditionalOptions>/export:NewStrings /export:DeleteStrings  /export:TOSDB_Log_ /export:TOSDB_LogEx_ /export:CheckIDLength /export:CheckStringLength /export:CheckStringLengths</AdditionalOptions>
+      <AdditionalOptions>/export:NewStrings /export:DeleteStrings  /export:TOSDB_Log_ /export:TOSDB_LogEx_ /export:CheckIDLength /export:CheckStringLength /export:CheckStringLengths /export:IsValidBlockSize /export:IsValidBlockID</AdditionalOptions>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -154,7 +154,7 @@
       <SubSystem>Windows</SubSystem>
       <AdditionalLibraryDirectories>$(SolutionDir)..\bin\$(Configuration)\$(Platform)\</AdditionalLibraryDirectories>
       <ProgramDatabaseFile>$(SolutionDir)..\symbols\$(Configuration)\$(TargetName).pdb</ProgramDatabaseFile>
-      <AdditionalOptions>/export:NewStrings /export:DeleteStrings  /export:TOSDB_Log_ /export:TOSDB_LogEx_ /export:CheckIDLength /export:CheckStringLength /export:CheckStringLengths</AdditionalOptions>
+      <AdditionalOptions>/export:NewStrings /export:DeleteStrings  /export:TOSDB_Log_ /export:TOSDB_LogEx_ /export:CheckIDLength /export:CheckStringLength /export:CheckStringLengths /export:IsValidBlockSize /export:IsValidBlockID</AdditionalOptions>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -179,7 +179,7 @@
       <SubSystem>Windows</SubSystem>
       <AdditionalLibraryDirectories>$(SolutionDir)..\bin\$(Configuration)\$(Platform)\</AdditionalLibraryDirectories>
       <ProgramDatabaseFile>$(SolutionDir)..\symbols\$(Configuration)\$(TargetName).pdb</ProgramDatabaseFile>
-      <AdditionalOptions>/export:NewStrings /export:DeleteStrings  /export:TOSDB_Log_ /export:TOSDB_LogEx_ /export:CheckIDLength /export:CheckStringLength /export:CheckStringLengths</AdditionalOptions>
+      <AdditionalOptions>/export:NewStrings /export:DeleteStrings  /export:TOSDB_Log_ /export:TOSDB_LogEx_ /export:CheckIDLength /export:CheckStringLength /export:CheckStringLengths /export:IsValidBlockSize /export:IsValidBlockID</AdditionalOptions>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>

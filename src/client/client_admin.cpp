@@ -1031,7 +1031,7 @@ TOSDB_DumpSharedBufferStatus()
    before DLL_PROCESS_DETACH in DllMain is hit.)
 
    YOU NEED TO BE SURE THIS IS THE CASE OR YOU CAN CORRUPT THE UNDERLYING 
-   BUFFERS FOR ANY NUMBER OF CLIENT INSTANCES! */
+   BUFFERS FOR ANY OR ALL CLIENT INSTANCE(S)! */
 int           
 TOSDB_RemoveOrphanedStream(LPCSTR item, LPCSTR topic_str)
 {
@@ -1173,36 +1173,3 @@ GetBlockOrThrow(std::string id)
 }
 
 
-bool
-IsValidBlockSize(size_type sz)
-{
-    if(sz < 1){
-        TOSDB_LogH("BLOCK", "block size < 1");
-        return false; 
-    }        
-
-    if(sz > TOSDB_MAX_BLOCK_SZ){
-        TOSDB_LogH("BLOCK", ("block size (" + std::to_string(sz) + ") > TOSDB_MAX_BLOCK_SZ ("
-                             + std::to_string(TOSDB_MAX_BLOCK_SZ) + ")").c_str());
-        return false; 
-    } 
-
-    return true;
-}
-
-
-bool
-IsValidBlockID(std::string id)
-{
-    /* check length */
-    if(!CheckIDLength(id.c_str()))
-        return false;
-
-    /* check isn't reserved */
-    if(id == std::string(TOSDB_RESERVED_BLOCK_NAME)){        
-        TOSDB_LogH("BLOCK", ("block name '" + id + "' is reserved").c_str());
-        return false; 
-    }
-
-    return true;
-}

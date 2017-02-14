@@ -16,6 +16,7 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 */
 
 #include "tos_databridge.h"
+
 #include <fstream>
 #include <memory>
 #include <string>
@@ -63,6 +64,8 @@ DllMain(HINSTANCE mod, DWORD why, LPVOID res)
     return TRUE;
 }
 
+/* IMPLEMENTATION ONLY */
+
 std::string 
 CreateBufferName(std::string topic_str, std::string item)
 {     /* 
@@ -87,6 +90,28 @@ BuildLogPath(std::string name)
 {
     return std::string(TOSDB_LOG_PATH) + name;
 }
+
+
+void 
+ParseArgs(std::vector<std::string>& vec, std::string str)
+{
+    std::string::size_type i = str.find_first_of(' '); 
+
+    if( str.empty() ){ /* done */
+        return;
+    }else if(i == std::string::npos){ /* only 1 str */
+        vec.push_back(str);
+        return;
+    }else if(i == 0){ /* trim initial space(s) */
+        ParseArgs(vec, str.substr(1,-1));
+        return;
+    }else{ /* atleast 2 strings */
+        vec.push_back(str.substr(0,i));
+        ParseArgs(vec, str.substr(i+1,str.size()));
+    }
+}
+
+/* IMPLEMENTATION AND INTERFACE */
 
 char** 
 NewStrings(size_t num_strs, size_t strs_len)
@@ -162,21 +187,37 @@ CheckIDLength(LPCSTR id)
 }
 
 
-void 
-ParseArgs(std::vector<std::string>& vec, std::string str)
+unsigned int
+IsValidBlockSize(size_type sz)
 {
-    std::string::size_type i = str.find_first_of(' '); 
+    if(sz < 1){
+        TOSDB_LogH("BLOCK", "block size < 1");
+        return 0; 
+    }        
 
-    if( str.empty() ){ /* done */
-        return;
-    }else if(i == std::string::npos){ /* only 1 str */
-        vec.push_back(str);
-        return;
-    }else if(i == 0){ /* trim initial space(s) */
-        ParseArgs(vec, str.substr(1,-1));
-        return;
-    }else{ /* atleast 2 strings */
-        vec.push_back(str.substr(0,i));
-        ParseArgs(vec, str.substr(i+1,str.size()));
-    }
+    if(sz > TOSDB_MAX_BLOCK_SZ){
+        TOSDB_LogH("BLOCK", ("block size (" + std::to_string(sz) + ") > TOSDB_MAX_BLOCK_SZ ("
+                             + std::to_string(TOSDB_MAX_BLOCK_SZ) + ")").c_str());
+        return 0; 
+    } 
+
+    return 1;
 }
+
+
+unsigned int
+IsValidBlockID(const char* id)
+{
+    /* check length */
+    if( !CheckIDLength(id) )
+        return 0;
+
+    /* check isn't reserved */
+    if(std::string(id) == std::string(TOSDB_RESERVED_BLOCK_NAME)){        
+        TOSDB_LogH("BLOCK", ("block name '" + std::string(id) + "' is reserved").c_str());
+        return 0; 
+    }
+
+    return 1;
+}
+

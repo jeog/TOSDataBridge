@@ -1162,5 +1162,12 @@ CheckStringLength(LPCSTR str);
 EXT_C_SPEC  DLL_SPEC_IMPL unsigned int
 CheckStringLengths(LPCSTR* str, size_type items_len);
 
+EXT_C_SPEC  DLL_SPEC_IMPL unsigned int
+IsValidBlockSize(size_type sz);
+
+EXT_C_SPEC  DLL_SPEC_IMPL unsigned int
+IsValidBlockID(const char* id);
+
+
 #endif /* JO_TOSDB_DATABRIDGE */
 

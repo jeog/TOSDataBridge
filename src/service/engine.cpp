@@ -24,6 +24,7 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 #include <fstream>
 #include <iomanip>
 #include <cctype>
+
 #include "tos_databridge.h"
 #include "ipc.hpp"
 #include "concurrency.hpp"
@@ -140,10 +141,13 @@ int
 SetSecurityPolicy();   
 
 int  
-AddStream(TOS_Topics::TOPICS topic_t,std::string item, unsigned long timeout);
+AddStream(TOS_Topics::TOPICS topic_t,std::string item, unsigned long timeout, bool log=true);
 
 int
 CreateNewTopicStream(TOS_Topics::TOPICS topic_t, std::string item, unsigned long timeout);
+
+int
+CreateNewItemStream(TOS_Topics::TOPICS topic_t, std::string item, unsigned long timeout);
 
 int 
 RemoveStream(TOS_Topics::TOPICS topic_t,std::string item, unsigned long timeout);
@@ -392,14 +396,14 @@ RunMainCommLoop(IPCSlave *pslave)
 
 
 #define STREAM_CHECK_LOG_ERROR(e,call,topic,item,tout) do{ \
-    if(e){ \
-        std::stringstream err_s; \
-        err_s << "Error (" << std::to_string(e) << ") in " << call << " (" \
-              << TOS_Topics::map[topic] << ',' \
-              << item << ',' \
-              << std::to_string(tout) << ')'; \
-        TOSDB_LogH("STREAM-OP", err_s.str().c_str()); \
-    } \
+if(e){ \
+    std::stringstream err_s; \
+    err_s << "Error (" << std::to_string(e) << ") in " << call << " (" \
+          << TOS_Topics::map[topic] << ',' \
+          << item << ',' \
+          << std::to_string(tout) << ')'; \
+    TOSDB_LogH("STREAM-OP", err_s.str().c_str()); \
+} \
 }while(0)
 
 
@@ -554,7 +558,7 @@ CleanUpMain(int ret_code)
 int 
 TestStream(TOS_Topics::TOPICS topic_t,std::string item, unsigned long timeout)
 {
-    int a = AddStream(topic_t, item, timeout);
+    int a = AddStream(topic_t, item, timeout, false);
     if(a)
         return a;
 
@@ -571,7 +575,8 @@ TestStream(TOS_Topics::TOPICS topic_t,std::string item, unsigned long timeout)
 int 
 AddStream( TOS_Topics::TOPICS topic_t, 
            std::string item, 
-           unsigned long timeout )
+           unsigned long timeout,
+           bool log)
 {    
     bool ret;
     int err = 0;
@@ -579,25 +584,28 @@ AddStream( TOS_Topics::TOPICS topic_t,
     if(topic_t == TOS_Topics::TOPICS::NULL_TOPIC)
         return TOSDB_ERROR_BAD_TOPIC;
 
-    auto topic_iter = topic_refcounts.find(topic_t);  
+    auto topic_iter = topic_refcounts.find(topic_t);      
     if(topic_iter == topic_refcounts.end()) /* if topic isn't in our global mapping */
-    {     
+    { 
         err = CreateNewTopicStream(topic_t, item, timeout);
+        if(err && log){
+            TOSDB_LogEx("STREAM", "error creating new topic stream", err);        
+        }
     }
-    else /* if it already is */   
+    else /* if it already is */        
     { 
         auto item_iter = topic_iter->second.find(item); 
-        if(item_iter == topic_iter->second.end()) /* and it doesn't have that item yet */        
+        if(item_iter == topic_iter->second.end()) /* and it doesn't have that item yet */                
         { 
-            if( PostItem(item, topic_t, timeout) ){
-                topic_iter->second[item] = 1;                
-                if( !CreateBuffer(topic_t, item) )
-                    err = TOSDB_ERROR_SHEM_BUFFER;      
-            }else{
-                err = TOSDB_ERROR_DDE_POST;            
+            err = CreateNewItemStream(topic_t, item, timeout);           
+            if(err && log){
+                TOSDB_LogEx("STREAM", "error creating new item stream", err);  
             }
-        }else /* if both already there simply increment the ref-count */
+        }
+        else /* if both already there simply increment the ref-count */
+        {
             ++(item_iter->second);            
+        }
     }  
   
     /* unwind if it fails during creation */
@@ -614,6 +622,29 @@ AddStream( TOS_Topics::TOPICS topic_t,
     case TOSDB_ERROR_DDE_NO_ACK:        
         TearDownTopic(topic_t, timeout);   
     }    
+
+    return err;
+}
+
+
+int
+CreateNewItemStream( TOS_Topics::TOPICS topic_t, 
+                      std::string item, 
+                      unsigned long timeout )
+{
+    int err = 0;
+
+    if( PostItem(item, topic_t, timeout) )
+    {
+        topic_refcounts[topic_t][item] = 1;                
+        if( !CreateBuffer(topic_t, item) ){
+            err = TOSDB_ERROR_SHEM_BUFFER; 
+        }
+    }
+    else
+    {
+        err = TOSDB_ERROR_DDE_POST;            
+    }
 
     return err;
 }
@@ -652,8 +683,8 @@ CreateNewTopicStream( TOS_Topics::TOPICS topic_t,
     /* wait for ack from DDE server */
     ret = ack_signals.wait_for(TOS_Topics::map[topic_t], timeout);
     if(!ret){ /* are we sure about this? error unwind will call TearDownTopic 
-                   - whats the purpose if we never got the 'ack'? (maybe a late ack)
-                   - deadlock or corrupt 'convos' on sending WM_DDE_TERMINATE in this state?*/
+                 - whats the purpose if we never got the 'ack'? (maybe a late ack)
+                 - deadlock or corrupt 'convos' on sending WM_DDE_TERMINATE in this state?*/
         return TOSDB_ERROR_DDE_NO_ACK;       
     }
 
@@ -688,20 +719,25 @@ RemoveStream( TOS_Topics::TOPICS topic_t,
         return TOSDB_ERROR_BAD_TOPIC;
 
     auto topic_iter = topic_refcounts.find(topic_t);      
-    if(topic_iter == topic_refcounts.end()) /* if topic is not in our global mapping */  
+    /* if topic is not in our global mapping */
+    if(topic_iter == topic_refcounts.end())   
         return TOSDB_ERROR_ENGINE_NO_TOPIC;    
 
     auto item_iter = topic_iter->second.find(item);    
-    if(item_iter != topic_iter->second.end()){ /* if it has that item */
+    /* if it has that item */
+    if(item_iter != topic_iter->second.end()){ 
         /* decr the ref count */
         --(item_iter->second);
         /* if ref-count hits zero post close msg and destroy the buffer*/
         if(item_iter->second == 0){            
-            /* if we return error continue with remove but log it (below) */
-            if( !PostCloseItem(item, topic_t, timeout) )
+            /* if we return error, continue with remove but log it */
+            if( !PostCloseItem(item, topic_t, timeout) ){   
                 err = TOSDB_ERROR_DDE_POST;
-            if( !DestroyBuffer(topic_t, item) )
-                err = TOSDB_ERROR_SHEM_BUFFER;
+                TOSDB_LogH("DDE", "PostCloseItem failed, continue with RemoveStream");                
+            }
+            if( !DestroyBuffer(topic_t, item) ){
+                err = err ? err : TOSDB_ERROR_SHEM_BUFFER;                             
+            }
             topic_iter->second.erase(item_iter);                 
         }
     }else{
@@ -801,11 +837,14 @@ CreateBuffer(TOS_Topics::TOPICS topic_t,
                                    PAGE_READWRITE, 0, 
                                    buf.raw_sz, 
                                    name.c_str() ); 
-    if(!buf.hfile)
+    if(!buf.hfile){
+        TOSDB_LogEx("BUFFER", "CreateFileMapping failed", GetLastError());
         return false;
+    }
 
     buf.raw_addr = MapViewOfFile(buf.hfile, FILE_MAP_ALL_ACCESS, 0, 0, 0);     
     if(!buf.raw_addr){
+        TOSDB_LogEx("BUFFER", "MapViewOfFile failed", GetLastError());
         CloseHandle(buf.hfile);
         return false;   
     }
@@ -814,6 +853,7 @@ CreateBuffer(TOS_Topics::TOPICS topic_t,
 
     buf.hmtx = CreateMutex(&sec_attr[MUTEX1], FALSE, mtx_name.c_str());
     if(!buf.hmtx){
+        TOSDB_LogEx("BUFFER", "CreateMutex failed", GetLastError());
         CloseHandle(buf.hfile);
         UnmapViewOfFile(buf.raw_addr); 
         return false;
@@ -836,19 +876,29 @@ CreateBuffer(TOS_Topics::TOPICS topic_t,
 bool 
 DestroyBuffer(TOS_Topics::TOPICS topic_t, std::string item)
 {       
-    BUFFER_LOCK_GUARD;
-    /* ---CRITICAL SECTION --- */
     /* don't allow buffer to be destroyed while we're writing to it */
+    BUFFER_LOCK_GUARD;
+    /* ---CRITICAL SECTION --- */    
     auto buf_iter = buffers.find( buffer_id_ty(item,topic_t) );
-    if(buf_iter != buffers.end()){ 
-        BOOL b = 1;
-        b &= UnmapViewOfFile(buf_iter->second.raw_addr);
-        b &= CloseHandle(buf_iter->second.hfile);
-        b &= CloseHandle(buf_iter->second.hmtx);
-        buffers.erase(buf_iter);
-        return b == 1;
+    if(buf_iter == buffers.end())
+        return false;
+
+    bool b = true; 
+    if( !UnmapViewOfFile(buf_iter->second.raw_addr) ){        
+        TOSDB_LogEx("BUFFER", "UnmapViewOfFile failed", GetLastError());        
+        b = false;
     }
-    return false;
+    if( !CloseHandle(buf_iter->second.hfile) ){        
+        TOSDB_LogEx("BUFFER", "CloseHandle(hfile) failed", GetLastError());          
+        b = false;
+    }
+    if( !CloseHandle(buf_iter->second.hmtx) ){        
+        TOSDB_LogEx("BUFFER", "CloseHanlde(hmtx) failed", GetLastError());         
+        b = false;
+    }
+
+    buffers.erase(buf_iter);
+    return b; 
     /* ---CRITICAL SECTION --- */
 }
 
@@ -879,7 +929,7 @@ RouteToBuffer(DDE_Data<T> data)
     if(buf_iter == buffers.end()){
         /* serious issue with internal state... is it fatal? */
         TOSDB_LogH("BUFFER", ("Engine can't find buffer for item: " + data.item 
-                              + ", topic: " + data.item).c_str() );
+                              + ", topic: " + TOS_Topics::MAP()[data.topic]).c_str() );
         return;
     }
 

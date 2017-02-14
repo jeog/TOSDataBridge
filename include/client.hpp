@@ -52,10 +52,4 @@ GetBlockPtr(std::string id, bool log=true);
 const TOSDBlock*   
 GetBlockOrThrow(std::string id);
 
-bool
-IsValidBlockSize(size_type sz);
-
-bool
-IsValidBlockID(std::string id);
-
 #endif
