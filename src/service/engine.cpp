@@ -112,65 +112,8 @@ volatile bool shutdown_flag = false;
 template<typename T>
 class DDE_Data;
 
-template<typename T> 
-void 
-RouteToBuffer(DDE_Data<T> data); 
-
-int  
-MainCommLoop(); 
-
-void 
-TearDownTopic(TOS_Topics::TOPICS topic_t, unsigned long timeout);
-
-bool 
-DestroyBuffer(TOS_Topics::TOPICS topic_t, std::string item);
-
-void 
-HandleData(UINT msg, WPARAM wparam, LPARAM lparam);
-
-int  
-CleanUpMain(int ret_code);
-
-void 
-DumpBufferStatus();
-
-void 
-CloseAllStreams(unsigned long timeout);
-
-int  
-SetSecurityPolicy();   
-
-int  
-AddStream(TOS_Topics::TOPICS topic_t,std::string item, unsigned long timeout, bool log=true);
-
-int
-CreateNewTopicStream(TOS_Topics::TOPICS topic_t, std::string item, unsigned long timeout);
-
-int
-CreateNewItemStream(TOS_Topics::TOPICS topic_t, std::string item, unsigned long timeout);
-
-int 
-RemoveStream(TOS_Topics::TOPICS topic_t,std::string item, unsigned long timeout);
-  
-int 
-TestStream(TOS_Topics::TOPICS topic_t,std::string item, unsigned long timeout);
-
-bool 
-PostItem(std::string item,TOS_Topics::TOPICS topic_t, unsigned long timeout);
-
-bool 
-PostCloseItem(std::string item,TOS_Topics::TOPICS topic_t, unsigned long timeout);   
-
-bool 
-CreateBuffer(TOS_Topics::TOPICS topic_t, 
-             std::string item, 
-             unsigned int buffer_sz = TOSDB_SHEM_BUF_SZ);
-
 DWORD WINAPI     
 ThreadedWinInit(LPVOID lParam);
-
-LRESULT CALLBACK 
-WndProc(HWND, UINT, WPARAM, LPARAM);   
 
 int
 RunMainCommLoop(IPCSlave *pslave);
@@ -187,6 +130,64 @@ HandleGoodIPCMessage(unsigned int op,
                      TOS_Topics::TOPICS topic, 
                      std::string item, 
                      unsigned long timeout);
+
+int  
+CleanUpMain(int ret_code);
+
+int 
+TestStream(TOS_Topics::TOPICS topic_t,std::string item, unsigned long timeout);
+
+int  
+AddStream(TOS_Topics::TOPICS topic_t,std::string item, unsigned long timeout, bool log=true);
+
+int 
+RemoveStream(TOS_Topics::TOPICS topic_t,std::string item, unsigned long timeout);
+
+void 
+CloseAllStreams(unsigned long timeout);
+
+int
+CreateTopic(TOS_Topics::TOPICS topic_t, std::string item, unsigned long timeout);
+
+int
+CreateItem(TOS_Topics::TOPICS topic_t, std::string item, unsigned long timeout);
+
+void 
+CloseTopic(TOS_Topics::TOPICS topic_t, unsigned long timeout);
+
+int
+CloseItem(TOS_Topics::TOPICS topic_t, std::string item, unsigned long timeout);
+
+bool 
+PostItem(std::string item,TOS_Topics::TOPICS topic_t, unsigned long timeout);
+
+bool 
+PostCloseItem(std::string item,TOS_Topics::TOPICS topic_t, unsigned long timeout);   
+
+bool 
+CreateBuffer(TOS_Topics::TOPICS topic_t, 
+             std::string item, 
+             unsigned int buffer_sz = TOSDB_SHEM_BUF_SZ);
+
+bool 
+DestroyBuffer(TOS_Topics::TOPICS topic_t, std::string item);
+
+template<typename T> 
+void 
+RouteToBuffer(DDE_Data<T> data); 
+
+LRESULT CALLBACK 
+WndProc(HWND, UINT, WPARAM, LPARAM);  
+
+void 
+HandleData(UINT msg, WPARAM wparam, LPARAM lparam);
+
+void 
+DumpBufferStatus();
+
+int  
+SetSecurityPolicy();   
+
 };
 
 
@@ -352,7 +353,7 @@ RunMainCommLoop(IPCSlave *pslave)
     unsigned int cli_op;  
     int resp;        
     
-    TOSDB_Log("STARTUP", "entering MainCommLoop");
+    TOSDB_Log("STARTUP", "entering RunMainCommLoop");
     while(!shutdown_flag){     
 
         /* BLOCK until master is ready */           
@@ -585,25 +586,19 @@ AddStream( TOS_Topics::TOPICS topic_t,
         return TOSDB_ERROR_BAD_TOPIC;
 
     auto topic_iter = topic_refcounts.find(topic_t);      
-    if(topic_iter == topic_refcounts.end()) /* if topic isn't in our global mapping */
-    { 
-        err = CreateNewTopicStream(topic_t, item, timeout);
+    if(topic_iter == topic_refcounts.end()){ /* if topic isn't in our global mapping */    
+        err = CreateTopic(topic_t, item, timeout);
         if(err && log){
             TOSDB_LogEx("STREAM", "error creating new topic stream", err);        
         }
-    }
-    else /* if it already is */        
-    { 
+    }else{ /* if it already is */            
         auto item_iter = topic_iter->second.find(item); 
-        if(item_iter == topic_iter->second.end()) /* and it doesn't have that item yet */                
-        { 
-            err = CreateNewItemStream(topic_t, item, timeout);           
+        if(item_iter == topic_iter->second.end()){ /* and it doesn't have that item yet */                        
+            err = CreateItem(topic_t, item, timeout);           
             if(err && log){
                 TOSDB_LogEx("STREAM", "error creating new item stream", err);  
             }
-        }
-        else /* if both already there simply increment the ref-count */
-        {
+        }else{ /* if both already there simply increment the ref-count */        
             ++(item_iter->second);            
         }
     }  
@@ -620,29 +615,81 @@ AddStream( TOS_Topics::TOPICS topic_t,
         /* else 
             no break */
     case TOSDB_ERROR_DDE_NO_ACK:        
-        TearDownTopic(topic_t, timeout);   
+        CloseTopic(topic_t, timeout);   
     }    
 
     return err;
 }
 
 
+int 
+RemoveStream( TOS_Topics::TOPICS topic_t, 
+              std::string item, 
+              unsigned long timeout )
+{      
+    int err = 0;
+
+    if(topic_t == TOS_Topics::TOPICS::NULL_TOPIC)
+        return TOSDB_ERROR_BAD_TOPIC;
+
+    auto topic_iter = topic_refcounts.find(topic_t);      
+    /* if topic is not in our global mapping */
+    if(topic_iter == topic_refcounts.end())   
+        return TOSDB_ERROR_ENGINE_NO_TOPIC;    
+
+    auto item_iter = topic_iter->second.find(item);    
+    /* if it has that item */
+    if(item_iter != topic_iter->second.end()){ 
+        /* decr the ref count */
+        --(item_iter->second);
+        /* if ref-count hits zero post close msg and destroy the buffer*/
+        if(item_iter->second == 0){            
+            err = CloseItem(topic_t, item, timeout);
+            topic_iter->second.erase(item_iter);                 
+        }
+    }else{
+        err = TOSDB_ERROR_ENGINE_NO_ITEM;
+    }
+
+    /* if no items close the convo */
+    if(topic_iter->second.empty())       
+         CloseTopic(topic_t, timeout);  
+
+    return err;      
+}
+
+
+void 
+CloseAllStreams(unsigned long timeout)
+{ /* need to iterate through copies */  
+    std::map<TOS_Topics::TOPICS, item_refcounts_ty> t_copy;
+    item_refcounts_ty rc_copy;
+        
+    auto tii = std::inserter(t_copy, t_copy.begin());
+    std::copy(topic_refcounts.begin(), topic_refcounts.end(), tii);
+
+    for(const auto& topic: t_copy){
+        auto rii = std::inserter(rc_copy,rc_copy.begin());
+        std::copy(topic.second.begin(), topic.second.end(), rii);
+        for(const auto& item : rc_copy){
+            RemoveStream(topic.first, item.first, timeout);    
+        }
+        rc_copy.clear();
+    }
+}
+
+
 int
-CreateNewItemStream( TOS_Topics::TOPICS topic_t, 
-                      std::string item, 
-                      unsigned long timeout )
+CreateItem(TOS_Topics::TOPICS topic_t, std::string item, unsigned long timeout)
 {
     int err = 0;
 
-    if( PostItem(item, topic_t, timeout) )
-    {
+    if( PostItem(item, topic_t, timeout) ){
         topic_refcounts[topic_t][item] = 1;                
         if( !CreateBuffer(topic_t, item) ){
             err = TOSDB_ERROR_SHEM_BUFFER; 
         }
-    }
-    else
-    {
+    }else{
         err = TOSDB_ERROR_DDE_POST;            
     }
 
@@ -651,9 +698,7 @@ CreateNewItemStream( TOS_Topics::TOPICS topic_t,
 
 
 int
-CreateNewTopicStream( TOS_Topics::TOPICS topic_t, 
-                      std::string item, 
-                      unsigned long timeout )
+CreateTopic(TOS_Topics::TOPICS topic_t, std::string item, unsigned long timeout)
 {     
     std::string topic_str;
     ATOM topic_atom;
@@ -682,14 +727,14 @@ CreateNewTopicStream( TOS_Topics::TOPICS topic_t,
 
     /* wait for ack from DDE server */
     ret = ack_signals.wait_for(TOS_Topics::map[topic_t], timeout);
-    if(!ret){ /* are we sure about this? error unwind will call TearDownTopic 
+    if(!ret){ /* are we sure about this? error unwind will call CloseTopic 
                  - whats the purpose if we never got the 'ack'? (maybe a late ack)
                  - deadlock or corrupt 'convos' on sending WM_DDE_TERMINATE in this state?*/
         return TOSDB_ERROR_DDE_NO_ACK;       
     }
 
     /* once we get our ack set up/initialize our refcounts
-       we do it here because TearDownTopic will remove if we have error below */
+       we do it here because CloseTopic will remove if we have error below */
     topic_refcounts[topic_t] = item_refcounts_ty();
 
     ret = PostItem(item, topic_t, timeout);
@@ -708,67 +753,32 @@ CreateNewTopicStream( TOS_Topics::TOPICS topic_t,
 }
 
 
-int 
-RemoveStream( TOS_Topics::TOPICS topic_t, 
-              std::string item, 
-              unsigned long timeout )
-{      
+int
+CloseItem(TOS_Topics::TOPICS topic_t, std::string item, unsigned long timeout)
+{
     int err = 0;
 
-    if(topic_t == TOS_Topics::TOPICS::NULL_TOPIC)
-        return TOSDB_ERROR_BAD_TOPIC;
-
-    auto topic_iter = topic_refcounts.find(topic_t);      
-    /* if topic is not in our global mapping */
-    if(topic_iter == topic_refcounts.end())   
-        return TOSDB_ERROR_ENGINE_NO_TOPIC;    
-
-    auto item_iter = topic_iter->second.find(item);    
-    /* if it has that item */
-    if(item_iter != topic_iter->second.end()){ 
-        /* decr the ref count */
-        --(item_iter->second);
-        /* if ref-count hits zero post close msg and destroy the buffer*/
-        if(item_iter->second == 0){            
-            /* if we return error, continue with remove but log it */
-            if( !PostCloseItem(item, topic_t, timeout) ){   
-                err = TOSDB_ERROR_DDE_POST;
-                TOSDB_LogH("DDE", "PostCloseItem failed, continue with RemoveStream");                
-            }
-            if( !DestroyBuffer(topic_t, item) ){
-                err = err ? err : TOSDB_ERROR_SHEM_BUFFER;                             
-            }
-            topic_iter->second.erase(item_iter);                 
-        }
-    }else{
-        err = TOSDB_ERROR_ENGINE_NO_ITEM;
+    /* if we return error, continue with remove but log it */
+    if( !PostCloseItem(item, topic_t, timeout) ){   
+        err = TOSDB_ERROR_DDE_POST;
+        TOSDB_LogH("DDE", "PostCloseItem failed, continue with CloseItem");                
     }
 
-    /* if no items close the convo */
-    if(topic_iter->second.empty())       
-         TearDownTopic(topic_t, timeout);  
+    if( !DestroyBuffer(topic_t, item) ){
+        /* only set if PostCloseItem didn't fail */
+        err = err ? err : TOSDB_ERROR_SHEM_BUFFER;                             
+    }
 
-    return err;      
+    return err;
 }
 
 
 void 
-CloseAllStreams(unsigned long timeout)
-{ /* need to iterate through copies */  
-    std::map<TOS_Topics::TOPICS, item_refcounts_ty> t_copy;
-    item_refcounts_ty rc_copy;
-        
-    auto tii = std::inserter(t_copy, t_copy.begin());
-    std::copy(topic_refcounts.begin(), topic_refcounts.end(), tii);
-
-    for(const auto& topic: t_copy){
-        auto rii = std::inserter(rc_copy,rc_copy.begin());
-        std::copy(topic.second.begin(), topic.second.end(), rii);
-        for(const auto& item : rc_copy){
-            RemoveStream(topic.first, item.first, timeout);    
-        }
-        rc_copy.clear();
-    }
+CloseTopic(TOS_Topics::TOPICS topic_t, unsigned long timeout)
+{  
+    PostMessage(msg_window, CLOSE_CONVERSATION, (WPARAM)convos[topic_t], NULL);        
+    topic_refcounts.erase(topic_t); 
+    convos.remove(topic_t);  
 }
 
 
@@ -803,15 +813,6 @@ PostCloseItem(std::string item,
     PostMessage(msg_window, DELINK_DDE_ITEM, (WPARAM)convo, (LPARAM)(item.c_str()));  
 
     return ack_signals.wait_for(sid_id, timeout);
-}
-
-
-void 
-TearDownTopic(TOS_Topics::TOPICS topic_t, unsigned long timeout)
-{  
-    PostMessage(msg_window, CLOSE_CONVERSATION, (WPARAM)convos[topic_t], NULL);        
-    topic_refcounts.erase(topic_t); 
-    convos.remove(topic_t);  
 }
 
 
