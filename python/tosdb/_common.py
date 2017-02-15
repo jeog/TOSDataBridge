@@ -678,11 +678,12 @@ class TOSDB_DateTime( _namedtuple("DateTime",["micro","sec","min",
 
 
 def abort_init_after_warn():
-    print("*WARNING* by not supplying --root, --path, or --noinit(-n) arguments "
-          + "you are opting for a default search root of 'C:\\'. This will "
-          + "attempt to search the ENTIRE disk/drive for the tos-databridge "
-          + "library. It's recommended you restart the program with the library " 
-          + "path (after --path) or a narrower directory root (after --root).")    
+    print("***WARNING***")
+    print("By not supplying 'dllpath' or 'root' args to init/vinit you are opting for "
+          + "a default search root of 'C:\\'. This will attempt to search the ENTIRE "
+          + "disk/drive for the tos-databridge library. IT'S RECOMMENDED YOU PROVIDE "
+          + "AN EXACT PATH OR A MORE SPECIFIC DIRECTORY ROOT.")
+    print("***WARNING***")
     if input("Do you want to continue anyway?") in ['y','Y','YES','yes','Yes']:
         return False
     else:
