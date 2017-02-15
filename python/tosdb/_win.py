@@ -260,10 +260,10 @@ def Init(dllpath=None, root="C:\\"):
     """
     try:
         if not init(dllpath, root):
-            raise TODB_InitError("failed to initilize library")
+            raise TOSDB_InitError("failed to initilize library")
         if not connected():      
             if not connect(): # try again
-                raise TODB_InitError("failed to connect to library")
+                raise TOSDB_InitError("failed to connect to library")
         yield
     finally:
         clean_up()

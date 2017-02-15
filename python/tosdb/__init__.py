@@ -277,10 +277,10 @@ def VInit(address, dllpath=None, root="C:\\", password=None, timeout=DEF_TIMEOUT
     try:
         admin_init(address, password, timeout)
         if not vinit(dllpath, root):
-            raise TODB_InitError("failed to initilize library (virtual)")
+            raise TOSDB_InitError("failed to initilize library (virtual)")
         if not vconnected():      
             if not vconnect(): # try again
-                raise TODB_InitError("failed to connect to library (virtual)")
+                raise TOSDB_InitError("failed to connect to library (virtual)")
         yield
     finally:
         vclean_up()
