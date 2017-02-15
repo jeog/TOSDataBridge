@@ -705,6 +705,9 @@ TOSDB_IsMarkerDirty(LPCSTR id, LPCSTR item, LPCSTR topic_str, unsigned int* is_d
 EXT_C_SPEC DLL_SPEC_IFACE NO_THROW int           
 TOSDB_DumpSharedBufferStatus();
 
+/* WARNING - should only be used when you are certain a client lib has failed to 
+   close a stream during destruction of the containing block. If that's not the case 
+   YOU CAN CORRUPT THE UNDERLYING BUFFERS FOR ANY OR ALL CLIENT INSTANCE(S)! */
 EXT_C_SPEC DLL_SPEC_IFACE NO_THROW int           
 TOSDB_RemoveOrphanedStream(LPCSTR item, LPCSTR topic_str);
 
@@ -1133,8 +1136,8 @@ operator<<(std::ostream&, const std::pair<std::vector<std::string>,dts_vector_ty
 
 /* when building tos-databridge[].dll these calls need to be both imported( from _tosd-databridge-[].dll)
    and exported (from tos-databridge[].dll)  -  they must use /export:[func name] during link */ 
-/* if logging is not enabled high severity events will be sent to std::cerr */ 
 
+/* if logging is not enabled high severity events will be sent to std::cerr */ 
 /* use the macros (below) instead */
 EXT_C_SPEC  DLL_SPEC_IMPL void  
 TOSDB_Log_(Severity, LPCSTR, LPCSTR); 

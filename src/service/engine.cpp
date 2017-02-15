@@ -96,9 +96,6 @@ SignalManager ack_signals;
 /* !!! 'buffer_lock_guard_' is reserved inside this namespace !!! */
 #define BUFFER_LOCK_GUARD WinLockGuard buffer_lock_guard_(buffer_mtx)
 
-/* !!! 'topic_lock_guard_' is reserved inside this namespace !!! */
-#define TOPIC_LOCK_GUARD WinLockGuard topic_lock_guard_(topic_mtx)
-
 HANDLE init_event = NULL;
 HANDLE msg_thrd = NULL;
 HWND msg_window = NULL;
@@ -823,8 +820,13 @@ CreateBuffer(TOS_Topics::TOPICS topic_t,
 
     buffer_id_ty id(item, topic_t);  
 
-    if(buffers.find(id) != buffers.end())
-        return false;
+    /* Feb-15-2017 - protect the buffers map; write thread may try to access */
+    {
+        BUFFER_LOCK_GUARD;
+        /* --- CRITICAL SECTION --- */
+        if(buffers.find(id) != buffers.end())
+            return false;
+    }
 
     name = CreateBufferName(TOS_Topics::map[topic_t], item);
 
@@ -866,8 +868,12 @@ CreateBuffer(TOS_Topics::TOPICS topic_t,
                      + ((buf.raw_sz - ptmp->beg_offset) / ptmp->elem_size) 
                      * ptmp->elem_size ;
 
+    /* Feb-15-2017 - protect the buffers map; write thread may try to access */
+    BUFFER_LOCK_GUARD;
+    /* --- CRITICAL SECTION --- */
     buffers.insert( std::make_pair(id,buf) );
     return true;
+    /* --- CRITICAL SECTION --- */
 }
 
 
@@ -876,9 +882,10 @@ DestroyBuffer(TOS_Topics::TOPICS topic_t, std::string item)
 {   
     bool b = true; 
 
-    /* don't allow buffer to be destroyed while we're writing to it */
+    /* don't allow write attempt while buffer is being destroyed */
     BUFFER_LOCK_GUARD;
     /* ---CRITICAL SECTION --- */    
+
     auto buf_iter = buffers.find( buffer_id_ty(item,topic_t) );
     if(buf_iter == buffers.end())
         return false;
@@ -926,15 +933,20 @@ RouteToBuffer(DDE_Data<T> data)
 
     BUFFER_LOCK_GUARD;
     /* ---(INTRA-PROCESS) CRITICAL SECTION --- */
+
     auto buf_iter = buffers.find(buffer_id_ty(data.item,data.topic));
-    if(buf_iter == buffers.end())
+    if(buf_iter == buffers.end()){
+        /* simply aborting avoids the need for sync between the thread that 
+           creates/destroys buffers and the thread (this one) that writes them */
         return;    
+    }
 
     head = (pBufferHead)(buf_iter->second.raw_addr);
   
     WaitForSingleObject(buf_iter->second.hmtx, INFINITE);
     /* ---(INTER-PROCESS) CRITICAL SECTION --- */
     ValToBuf((void*)((char*)head + head->next_offset), data.data);
+
     *(pDateTimeStamp)((char*)head + head->next_offset 
                       + (head->elem_size - sizeof(DateTimeStamp))) = *data.time; 
 
@@ -944,8 +956,8 @@ RouteToBuffer(DDE_Data<T> data)
     }else{
         head->next_offset += head->elem_size;
     }
-    /* ---(INTER-PROCESS) CRITICAL SECTION --- */
 
+    /* ---(INTER-PROCESS) CRITICAL SECTION --- */
     ReleaseMutex(buf_iter->second.hmtx);
     /* ---(INTRA-PROCESS) CRITICAL SECTION --- */
 }
@@ -1412,21 +1424,16 @@ void DumpBufferStatus()
          << std::setw(log_col_width[2]) << std::left << "Ref-Count" 
          << std::endl;
 
-    {
-        TOPIC_LOCK_GUARD;
-        /* --- CRITICAL SECTION --- */
-        for(const auto & t : topic_refcounts){
-            for(const auto & i : t.second){
-                lout << std::setw(log_col_width[0]) << std::left 
-                     << TOS_Topics::map[t.first]
-                     << std::setw(log_col_width[1]) << std::left << i.first
-                     << std::setw(log_col_width[2]) << std::left << i.second       
-                     << std::endl;  
-            }
+    for(const auto & t : topic_refcounts){
+        for(const auto & i : t.second){
+            lout << std::setw(log_col_width[0]) << std::left 
+                  << TOS_Topics::map[t.first]
+                  << std::setw(log_col_width[1]) << std::left << i.first
+                  << std::setw(log_col_width[2]) << std::left << i.second       
+                  << std::endl;  
         }
-        /* --- CRITICAL SECTION --- */
     }
-
+  
     lout <<" --- BUFFER INFO --- " << std::endl;  
     lout << std::setw(log_col_width[3])<< std::left << "BufferName"
          << std::setw(log_col_width[4])<< std::left << "Handle" << std::endl;

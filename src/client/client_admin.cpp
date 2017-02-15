@@ -1041,11 +1041,13 @@ TOSDB_RemoveOrphanedStream(LPCSTR item, LPCSTR topic_str)
     }       
 
     TOS_Topics::TOPICS t = GetTopicEnum(topic_str);
-    if(t == TOS_Topics::TOPICS::NULL_TOPIC)
+    if(t == TOS_Topics::TOPICS::NULL_TOPIC){
         return TOSDB_ERROR_BAD_TOPIC; 
+    }
 
-    if( !_connected(true) )
+    if( !_connected(true) ){
         return TOSDB_ERROR_NOT_CONNECTED;
+    }
   
     GLOBAL_RLOCK_GUARD;
     /* --- CRITICAL SECTION --- */
