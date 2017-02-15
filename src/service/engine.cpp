@@ -108,17 +108,17 @@ LPCSTR msg_window_name = "TOSDB_ENGINE_MSG_WNDW";
 volatile bool pause_flag = false;
 volatile bool shutdown_flag = false;
 
-/* forward decl (see end of source) */
+/* forward decl */
 template<typename T>
 class DDE_Data;
 
 DWORD WINAPI     
 ThreadedWinInit(LPVOID lParam);
 
-int
+bool
 RunMainCommLoop(IPCSlave *pslave);
 
-int
+bool
 ParseIPCMessage(std::string msg, 
                 unsigned int *op, 
                 TOS_Topics::TOPICS *topic, 
@@ -134,9 +134,6 @@ HandleGoodIPCMessage(unsigned int op,
 int  
 CleanUpMain(int ret_code);
 
-int 
-TestStream(TOS_Topics::TOPICS topic_t,std::string item, unsigned long timeout);
-
 int  
 AddStream(TOS_Topics::TOPICS topic_t,std::string item, unsigned long timeout, bool log=true);
 
@@ -144,7 +141,10 @@ int
 RemoveStream(TOS_Topics::TOPICS topic_t,std::string item, unsigned long timeout);
 
 void 
-CloseAllStreams(unsigned long timeout);
+RemoveAllStreams(unsigned long timeout);
+
+int 
+TestStream(TOS_Topics::TOPICS topic_t,std::string item, unsigned long timeout);
 
 int
 CreateTopic(TOS_Topics::TOPICS topic_t, std::string item, unsigned long timeout);
@@ -185,7 +185,7 @@ HandleData(UINT msg, WPARAM wparam, LPARAM lparam);
 void 
 DumpBufferStatus();
 
-int  
+bool
 SetSecurityPolicy();   
 
 };
@@ -193,11 +193,9 @@ SetSecurityPolicy();
 
 int WINAPI 
 WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLn, int nShowCmd)
-{   
-    int err;   
+{     
     std::stringstream ss_args;
     std::vector<std::string> args;
-
     std::string logpath(TOSDB_LOG_PATH); 
 
 #ifdef REDIRECT_STDERR_TO_LOG
@@ -233,7 +231,8 @@ WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLn, int nShowCmd)
 
         TOSDB_LogH("STARTUP", "engine being run directly without NO_KERNEL_GLOBAL_NAMESPACE");
 #endif
-        if(MessageBox(NULL,warn_msg.c_str(),"Warning",MB_OKCANCEL | MB_ICONWARNING) == IDCANCEL){        
+        if(MessageBox(NULL,warn_msg.c_str(),"Warning",MB_OKCANCEL | MB_ICONWARNING) == IDCANCEL)
+        {        
             TOSDB_LogH("STARTUP", "Warning Box - Cancel; aborting startup");
             return 0;                
         }
@@ -258,11 +257,10 @@ WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLn, int nShowCmd)
     /* the other side of our IPC channel (see client_admin.cpp) */
     IPCSlave slave(TOSDB_COMM_CHANNEL);         
 
-    /* initialize our security objects */
-    err = SetSecurityPolicy();
-    if(err){
+    /* initialize our security objects for IPC */
+    if( !SetSecurityPolicy() ){
         TOSDB_LogH("STARTUP", "engine failed to initialize security objects");
-        return -1;
+        return TOSDB_ERROR_IPC;
     }
   
     /* setup our windows class that will run the engine */
@@ -278,7 +276,7 @@ WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLn, int nShowCmd)
        respond to return DDE messages from the TOS platform */
     msg_thrd = CreateThread(NULL, 0, ThreadedWinInit, NULL, 0, &msg_thrd_id);
     if(!msg_thrd)
-        return -1;  
+        return TOSDB_ERROR_CONCURRENCY;  
     
     init_event = CreateEvent(NULL, FALSE, FALSE, NULL); 
     
@@ -286,22 +284,22 @@ WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLn, int nShowCmd)
     switch( WaitForSingleObject(init_event,TOSDB_DEF_TIMEOUT) ){
     case WAIT_TIMEOUT:
        TOSDB_LogH("STARTUP","main thread timed out waiting for signal from msg thread");        
-       return CleanUpMain(-1);  
+       return CleanUpMain(TOSDB_ERROR_CONCURRENCY);  
     case WAIT_FAILED:
        TOSDB_LogH("STARTUP","main thread failed to receive signal from msg thread");        
-       return CleanUpMain(-1); 
+       return CleanUpMain(TOSDB_ERROR_CONCURRENCY); 
     }  
   
     GetSystemInfo(&sys_info);     
 
     /* Start the main communciation loop that client code and service will 
        use to communicate with the back-end; this will block until:
-           1) the slave's wait_for_master call returns false, OR
+           1) the slave's wait_for_master call returns false(IPC ERROR), OR
            2) TOSDB_SIG_STOP signal is received from client/service  */
-    err = RunMainCommLoop(&slave);
+    int err = RunMainCommLoop(&slave) ? 0 : TOSDB_ERROR_IPC;
 
     TOSDB_LogH("CONTROL","out of run loop (closing streams)");    
-    CloseAllStreams(TOSDB_DEF_TIMEOUT);  
+    RemoveAllStreams(TOSDB_DEF_TIMEOUT);  
     
     err = CleanUpMain(err);      
 
@@ -343,7 +341,7 @@ ThreadedWinInit(LPVOID lParam)
 }
 
 
-int
+bool
 RunMainCommLoop(IPCSlave *pslave)
 {
     TOS_Topics::TOPICS cli_topic;
@@ -351,48 +349,45 @@ RunMainCommLoop(IPCSlave *pslave)
     std::string ipc_msg;
     unsigned long cli_timeout; 
     unsigned int cli_op;  
+    bool good_msg;
     int resp;        
     
     TOSDB_Log("STARTUP", "entering RunMainCommLoop");
     while(!shutdown_flag){     
-
-        /* BLOCK until master is ready */           
-        if( !pslave->wait_for_master() )
-        {      
-            TOSDB_LogH("IPC", "wait_for_master failed");
+                      
+        /* BLOCK until master is ready */ 
+        if( !pslave->wait_for_master() ){           
             shutdown_flag = true;
-            return -1;
+            TOSDB_LogH("IPC", "wait_for_master failed");            
+            return false;
         }     
-                         
-        /* BLOCK until we get a message */        
-        if( !pslave->recv(&ipc_msg) )
-        {         
-            TOSDB_LogH("IPC", "recv failed");
+                          
+        /* BLOCK until we get a message */ 
+        if( !pslave->recv(&ipc_msg) ){       
             pslave->drop_master();
+            TOSDB_LogH("IPC", "recv failed");            
             continue;          
         }
 
         /* parse the received msg */     
-        if( ParseIPCMessage(ipc_msg, &cli_op, &cli_topic, &cli_item, &cli_timeout) )
-        {            
-            TOSDB_LogH("IPC", ("failed to parse message: " + ipc_msg).c_str());
-            resp = TOSDB_SIG_BAD;
-        }
-        else{ /* if good message */
+        good_msg = ParseIPCMessage(ipc_msg, &cli_op, &cli_topic, &cli_item, &cli_timeout);
+        if(good_msg){            
             resp = HandleGoodIPCMessage(cli_op, cli_topic, cli_item, cli_timeout);   
+        }else{
+            resp = TOSDB_ERROR_IPC_MSG;
+            TOSDB_LogH("IPC", ("failed to parse message: " + ipc_msg).c_str());            
         }
-
-        /* reply to MASTER */            
-        if( !pslave->send(std::to_string(resp)) )
-        {
+                            
+        /* reply to MASTER */
+        if( !pslave->send(std::to_string(resp)) ){
             TOSDB_LogH("IPC", "send/reply failed in main comm loop");                       
         }                  
          
         pslave->drop_master();
     }
-    TOSDB_Log("SHUTDOWN", "exiting MainCommLoop");
 
-    return 0;
+    TOSDB_Log("SHUTDOWN", "exiting MainCommLoop");
+    return true;
 }
 
 
@@ -400,8 +395,7 @@ RunMainCommLoop(IPCSlave *pslave)
 if(e){ \
     std::stringstream err_s; \
     err_s << "Error (" << std::to_string(e) << ") in " << call << " (" \
-          << TOS_Topics::map[topic] << ',' \
-          << item << ',' \
+          << TOS_Topics::map[topic] << ',' << item << ',' \
           << std::to_string(tout) << ')'; \
     TOSDB_LogH("STREAM-OP", err_s.str().c_str()); \
 } \
@@ -464,7 +458,8 @@ HandleGoodIPCMessage(unsigned int op,
 
 #undef STREAM_CHECK_LOG_ERROR
 
-int
+
+bool
 ParseIPCMessage(std::string msg, 
                 unsigned int *op, 
                 TOS_Topics::TOPICS *topic, 
@@ -472,68 +467,61 @@ ParseIPCMessage(std::string msg,
                 unsigned long *timeout)
 {  
     size_t mlen = msg.length();
-
-    if(mlen > IPCBase::MAX_MESSAGE_SZ){
-        std::string emsg = "message length (" + std::to_string(mlen) + ") > " 
-                         + "MAX_MESSAGE_SZ (" + std::to_string(IPCBase::MAX_MESSAGE_SZ) + ')';
-        TOSDB_LogH("IPC", emsg.c_str());
-        return -1;
+    if(mlen > IPCBase::MAX_MESSAGE_SZ)
+    {      
+        TOSDB_LogH("IPC", ("message length (" + std::to_string(mlen) + ") > MAX_MESSAGE_SZ (" 
+                           + std::to_string(IPCBase::MAX_MESSAGE_SZ) + ')').c_str());
+        return false;
     }
      
     std::vector<std::string> args;    
     ParseArgs(args, msg);
+
     size_t nargs = args.size();
-
-    if(nargs == 0){
-        std::string emsg = "ParseArgs returned 0 args, msg: " + msg;
-        TOSDB_LogH("IPC", emsg.c_str());
-        return -2;
+    if(nargs == 0){        
+        TOSDB_LogH("IPC", ("ParseArgs returned 0 args, msg: " + msg).c_str());
+        return false;
     }
-
-    /* first, get the opcode */
-    try{
+        
+    try{ /* first, get the opcode */
         *op = (unsigned int)std::stoul(args[0]); 
     }catch(...){
-        TOSDB_LogH("IPC", ("failed to get 'op' arg from msg, args[0]: " + args[0]).c_str() );
-        return -3;
+        TOSDB_LogH("IPC", ("failed to get 'op' arg from msg, args[0]: " + args[0]).c_str());
+        return false;
     }
 
-    /* break out if we just need an opcode */
-    switch(*op){     
+    switch(*op){ /* break out if we just need an opcode */    
     case TOSDB_SIG_PAUSE: 
     case TOSDB_SIG_CONTINUE: 
     case TOSDB_SIG_STOP: 
     case TOSDB_SIG_DUMP: 
-        return 0;        
+        return true;        
     };
-
-    /* if we we have a stream op check we have 4 args */
-    if(nargs != 4){
-        std::string emsg = "ParseArgs didn't return 4 args (" + std::to_string(nargs) + "), msg: " + msg;
-        TOSDB_LogH("IPC", emsg.c_str());
-        return -2;
+        
+    if(nargs != 4){ /* if we we have a stream op check we have 4 args */       
+        TOSDB_LogH("IPC", ("ParseArgs didn't return 4 args (" 
+                           + std::to_string(nargs) + "), msg: " + msg).c_str());
+        return false;
     }    
-
-    /* second, get the topic */
-    try{
+    
+    try{ /* second, get the topic */
         *topic = TOS_Topics::MAP()[args[1]];
     }catch(...){
-        TOSDB_LogH("IPC", ("failed to get 'topic' arg from msg, args[1]: " + args[1]).c_str() );
-        return -3;
+        TOSDB_LogH("IPC", ("failed to get 'topic' arg from msg, args[1]: " + args[1]).c_str());
+        return false;
     }
 
     /* third, the item */
     *item = args[2];
-
-    /* fourth, the timeout */
-    try{
+    
+    try{ /* fourth, the timeout */
         *timeout = std::stoul(args[3]);
     }catch(...){
-        TOSDB_LogH("IPC", ("failed to get 'timeout' arg from msg, args[3]: " + args[3]).c_str() );
-        return -3;
+        TOSDB_LogH("IPC", ("failed to get 'timeout' arg from msg, args[3]: " + args[3]).c_str());
+        return false;
     }
 
-    return 0;
+    return true;
 }
 
 
@@ -557,23 +545,6 @@ CleanUpMain(int ret_code)
 
 
 int 
-TestStream(TOS_Topics::TOPICS topic_t,std::string item, unsigned long timeout)
-{
-    int a = AddStream(topic_t, item, timeout, false);
-    if(a)
-        return a;
-
-    int r = RemoveStream(topic_t, item, timeout);
-    if(r){
-        TOSDB_LogEx("STREAM-OP", "failed to remove stream added during TestStream (stream leaked)", r);
-        return r;
-    }
-
-    return 0;
-}
-
-
-int 
 AddStream( TOS_Topics::TOPICS topic_t, 
            std::string item, 
            unsigned long timeout,
@@ -582,23 +553,30 @@ AddStream( TOS_Topics::TOPICS topic_t,
     bool ret;
     int err = 0;
 
-    if(topic_t == TOS_Topics::TOPICS::NULL_TOPIC)
+    if(topic_t == TOS_Topics::TOPICS::NULL_TOPIC){
         return TOSDB_ERROR_BAD_TOPIC;
+    }
 
-    auto topic_iter = topic_refcounts.find(topic_t);      
-    if(topic_iter == topic_refcounts.end()){ /* if topic isn't in our global mapping */    
+    auto topic_iter = topic_refcounts.find(topic_t);    
+    if(topic_iter == topic_refcounts.end()) /* if topic isn't in our global mapping */    
+    { 
         err = CreateTopic(topic_t, item, timeout);
         if(err && log){
             TOSDB_LogEx("STREAM", "error creating new topic stream", err);        
         }
-    }else{ /* if it already is */            
+    }
+    else /* if it already is */            
+    { 
         auto item_iter = topic_iter->second.find(item); 
-        if(item_iter == topic_iter->second.end()){ /* and it doesn't have that item yet */                        
+        if(item_iter == topic_iter->second.end()) /* and it doesn't have that item yet */                        
+        { 
             err = CreateItem(topic_t, item, timeout);           
             if(err && log){
                 TOSDB_LogEx("STREAM", "error creating new item stream", err);  
             }
-        }else{ /* if both already there simply increment the ref-count */        
+        }
+        else /* if it does, simply increment the ref-count */        
+        { 
             ++(item_iter->second);            
         }
     }  
@@ -660,7 +638,7 @@ RemoveStream( TOS_Topics::TOPICS topic_t,
 
 
 void 
-CloseAllStreams(unsigned long timeout)
+RemoveAllStreams(unsigned long timeout)
 { /* need to iterate through copies */  
     std::map<TOS_Topics::TOPICS, item_refcounts_ty> t_copy;
     item_refcounts_ty rc_copy;
@@ -679,21 +657,40 @@ CloseAllStreams(unsigned long timeout)
 }
 
 
+int 
+TestStream(TOS_Topics::TOPICS topic_t,std::string item, unsigned long timeout)
+{
+    int a = AddStream(topic_t, item, timeout, false);
+    if(a)
+        return a;
+
+    int r = RemoveStream(topic_t, item, timeout);
+    if(r){
+        TOSDB_LogEx("STREAM-OP", "failed to remove stream added during TestStream (stream leaked)", r);
+        return r;
+    }
+
+    return 0;
+}
+
+
 int
 CreateItem(TOS_Topics::TOPICS topic_t, std::string item, unsigned long timeout)
 {
-    int err = 0;
+    /* consider creating buffer before posting to avoid getting data messages 
+       before we have a data buffer to put them in */
 
-    if( PostItem(item, topic_t, timeout) ){
-        topic_refcounts[topic_t][item] = 1;                
-        if( !CreateBuffer(topic_t, item) ){
-            err = TOSDB_ERROR_SHEM_BUFFER; 
-        }
-    }else{
-        err = TOSDB_ERROR_DDE_POST;            
+    if( !PostItem(item, topic_t, timeout) ){
+        return TOSDB_ERROR_DDE_POST;
     }
 
-    return err;
+    topic_refcounts[topic_t][item] = 1;         
+
+    if( !CreateBuffer(topic_t, item) ){
+        return TOSDB_ERROR_SHEM_BUFFER;
+    }
+    
+    return 0;
 }
 
 
@@ -759,14 +756,14 @@ CloseItem(TOS_Topics::TOPICS topic_t, std::string item, unsigned long timeout)
     int err = 0;
 
     /* if we return error, continue with remove but log it */
-    if( !PostCloseItem(item, topic_t, timeout) ){   
+    if( !PostCloseItem(item, topic_t, timeout) )
+    {   
         err = TOSDB_ERROR_DDE_POST;
         TOSDB_LogH("DDE", "PostCloseItem failed, continue with CloseItem");                
     }
 
-    if( !DestroyBuffer(topic_t, item) ){
-        /* only set if PostCloseItem didn't fail */
-        err = err ? err : TOSDB_ERROR_SHEM_BUFFER;                             
+    if( !DestroyBuffer(topic_t, item) ){        
+        err = (err ? err : TOSDB_ERROR_SHEM_BUFFER);                             
     }
 
     return err;
@@ -876,23 +873,26 @@ CreateBuffer(TOS_Topics::TOPICS topic_t,
 
 bool 
 DestroyBuffer(TOS_Topics::TOPICS topic_t, std::string item)
-{       
+{   
+    bool b = true; 
+
     /* don't allow buffer to be destroyed while we're writing to it */
     BUFFER_LOCK_GUARD;
     /* ---CRITICAL SECTION --- */    
     auto buf_iter = buffers.find( buffer_id_ty(item,topic_t) );
     if(buf_iter == buffers.end())
         return false;
-
-    bool b = true; 
+        
     if( !UnmapViewOfFile(buf_iter->second.raw_addr) ){        
         TOSDB_LogEx("BUFFER", "UnmapViewOfFile failed", GetLastError());        
         b = false;
     }
+
     if( !CloseHandle(buf_iter->second.hfile) ){        
         TOSDB_LogEx("BUFFER", "CloseHandle(hfile) failed", GetLastError());          
         b = false;
     }
+
     if( !CloseHandle(buf_iter->second.hmtx) ){        
         TOSDB_LogEx("BUFFER", "CloseHanlde(hmtx) failed", GetLastError());         
         b = false;
@@ -927,12 +927,8 @@ RouteToBuffer(DDE_Data<T> data)
     BUFFER_LOCK_GUARD;
     /* ---(INTRA-PROCESS) CRITICAL SECTION --- */
     auto buf_iter = buffers.find(buffer_id_ty(data.item,data.topic));
-    if(buf_iter == buffers.end()){
-        /* serious issue with internal state... is it fatal? */
-        TOSDB_LogH("BUFFER", ("Engine can't find buffer for item: " + data.item 
-                              + ", topic: " + TOS_Topics::MAP()[data.topic]).c_str() );
-        return;
-    }
+    if(buf_iter == buffers.end())
+        return;    
 
     head = (pBufferHead)(buf_iter->second.raw_addr);
   
@@ -1090,9 +1086,8 @@ WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
             if(plo == 0x0000){
                 std::string sarg(std::to_string((size_t)(HWND)wParam)); 
-                ack_signals.signal(sarg + std::string(item_atom), false);
-                std::string serr("NEG ACK from server for item: ");
-                TOSDB_LogH("DDE", serr.append(item_atom).c_str());
+                ack_signals.signal(sarg + std::string(item_atom), false);                
+                TOSDB_LogH("DDE", ("NEG ACK from server for item: " + std::string(item_atom)).c_str());
             }else if(plo == 0x8000){
                 std::string sarg(std::to_string((size_t)(HWND)wParam));
                 ack_signals.signal(sarg + std::string(item_atom), true);   
@@ -1314,7 +1309,7 @@ HandleData(UINT msg, WPARAM wparam, LPARAM lparam)
 }
 
 
-int 
+bool
 SetSecurityPolicy() 
 {    
     SID_NAME_USE dummy;
@@ -1327,8 +1322,10 @@ SetSecurityPolicy()
     SmartBuffer<void>  sid(sid_sz);  
 
     ret = LookupAccountName(NULL, "Everyone", sid.get(), &sid_sz, dom_buf.get(), &dom_sz, &dummy);
-    if(!ret)    
-        return -1;
+    if(!ret){    
+        TOSDB_LogEx("ENGINE-SEC", "LookupAccountName failed", GetLastError());
+        return false;
+    }
    
     for(int i = 0; i < NSECURABLE; ++i){
         sec_attr[(Securable)i].nLength = sizeof(SECURITY_ATTRIBUTES);
@@ -1338,43 +1335,59 @@ SetSecurityPolicy()
         /* memcpy 'TRUE' is error */
         ret = memcpy_s( sids[(Securable)i].get(), SECURITY_MAX_SID_SIZE, 
                         sid.get(), SECURITY_MAX_SID_SIZE );
-        if(ret)
-            return -2;
+        if(ret){    
+            TOSDB_LogEx("ENGINE-SEC", "memcpy_s(sid) failed", GetLastError());
+            return false;
+        }
 
         ret = InitializeSecurityDescriptor(&sec_desc[(Securable)i], SECURITY_DESCRIPTOR_REVISION);
-        if(!ret)
-            return -3;
+        if(!ret){    
+            TOSDB_LogEx("ENGINE-SEC", "InitializeSecurityDescriptor failed", GetLastError());
+            return false;
+        }
 
         ret = SetSecurityDescriptorGroup(&sec_desc[(Securable)i], sids[(Securable)i].get(), FALSE);
-        if(!ret)
-            return -4;     
+        if(!ret){    
+            TOSDB_LogEx("ENGINE-SEC", "SetSecurityDescriptorGroup failed", GetLastError());
+            return false;
+        }    
 
         ret = InitializeAcl(acls[(Securable)i].get(), ACL_SIZE, ACL_REVISION);
-        if(!ret)
-            return -5;
+        if(!ret){    
+            TOSDB_LogEx("ENGINE-SEC", "InitializeAcl failed", GetLastError());
+            return false;
+        }
     }
  
     /* add ACEs individually */
 
     ret = AddAccessDeniedAce(acls[SHEM1].get(), ACL_REVISION, FILE_MAP_WRITE, sids[SHEM1].get());
-    if(!ret)
-        return -6;
+    if(!ret){    
+        TOSDB_LogEx("ENGINE-SEC", "AddAccessDeniedAce failed", GetLastError());
+        return false;
+    }
 
     ret = AddAccessAllowedAce(acls[SHEM1].get(), ACL_REVISION, FILE_MAP_READ, sids[SHEM1].get());
-    if(!ret)
-        return -6;
+    if(!ret){    
+        TOSDB_LogEx("ENGINE-SEC", "AddAccessAllowedAce(SHEM1) failed", GetLastError());
+        return false;
+    }
 
     ret = AddAccessAllowedAce(acls[MUTEX1].get(), ACL_REVISION, SYNCHRONIZE, sids[MUTEX1].get());
-    if(!ret)
-        return -6;
+    if(!ret){    
+        TOSDB_LogEx("ENGINE-SEC", "AddAccessAllowedAce(MUTEX1) failed", GetLastError());
+        return false;
+    }
 
     for(int i = 0; i < NSECURABLE; ++i){
         ret = SetSecurityDescriptorDacl( &sec_desc[(Securable)i], TRUE, acls[(Securable)i].get(), FALSE);
-        if(!ret)
-            return -7;
+        if(!ret){    
+            TOSDB_LogEx("ENGINE-SEC", "SetSecuirtyDescriptorDacl failed", GetLastError());
+            return false;
+        }
     }
 
-    return 0;
+    return true;
 }
   
 

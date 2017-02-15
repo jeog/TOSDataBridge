@@ -215,19 +215,20 @@ typedef struct{
 #define TOSDB_ERROR_BAD_ITEM -10
 #define TOSDB_ERROR_BAD_SIG -11
 #define TOSDB_ERROR_IPC -12
-#define TOSDB_ERROR_CONCURRENCY -13
-#define TOSDB_ERROR_ENGINE_NO_TOPIC -14
-#define TOSDB_ERROR_ENGINE_NO_ITEM -15
-#define TOSDB_ERROR_SERVICE -16
-#define TOSDB_ERROR_GET_DATA -17
-#define TOSDB_ERROR_GET_STATE -18
-#define TOSDB_ERROR_SET_STATE -19
-#define TOSDB_ERROR_DDE_POST -20
-#define TOSDB_ERROR_DDE_NO_ACK -21
-#define TOSDB_ERROR_SHEM_BUFFER -22
-#define TOSDB_ERROR_UNKNOWN -23
+#define TOSDB_ERROR_IPC_MSG -13
+#define TOSDB_ERROR_CONCURRENCY -14
+#define TOSDB_ERROR_ENGINE_NO_TOPIC -15
+#define TOSDB_ERROR_ENGINE_NO_ITEM -16
+#define TOSDB_ERROR_SERVICE -17
+#define TOSDB_ERROR_GET_DATA -18
+#define TOSDB_ERROR_GET_STATE -19
+#define TOSDB_ERROR_SET_STATE -20
+#define TOSDB_ERROR_DDE_POST -21
+#define TOSDB_ERROR_DDE_NO_ACK -22
+#define TOSDB_ERROR_SHEM_BUFFER -23
+#define TOSDB_ERROR_UNKNOWN -24
 /* this must be our last error because it can be decremented */
-#define TOSDB_ERROR_DECREMENT_BASE -24
+#define TOSDB_ERROR_DECREMENT_BASE -25
 
 /* the previous #defines contain names/values that are necessary
    for the python backage. BE CAREFUL CHANGING NAMES */

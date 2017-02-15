@@ -34,18 +34,19 @@ public class CError {
     public static final int ERROR_BAD_ITEM = -10;
     public static final int ERROR_BAD_SIG = -11;
     public static final int ERROR_IPC = -12;
-    public static final int ERROR_CONCURRENCY = -13;
-    public static final int ERROR_ENGINE_NO_TOPIC = -14;
-    public static final int ERROR_ENGINE_NO_ITEM = -15;
-    public static final int ERROR_SERVICE = -16;
-    public static final int ERROR_GET_DATA = -17;
-    public static final int ERROR_GET_STATE = -18;
-    public static final int ERROR_SET_STATE = -19;
-    public static final int ERROR_DDE_POST = -20;
-    public static final int ERROR_DDE_NO_ACK = -21;
-    public static final int ERROR_SHEM_BUFFER = -22;
-    public static final int ERROR_UNKNOWN = -23;
-    public static final int ERROR_DECREMENT_BASE = -24;
+    public static final int ERROR_IPC_MSG = -13;
+    public static final int ERROR_CONCURRENCY = -14;
+    public static final int ERROR_ENGINE_NO_TOPIC = -15;
+    public static final int ERROR_ENGINE_NO_ITEM = -16;
+    public static final int ERROR_SERVICE = -17;
+    public static final int ERROR_GET_DATA = -18;
+    public static final int ERROR_GET_STATE = -19;
+    public static final int ERROR_SET_STATE = -20;
+    public static final int ERROR_DDE_POST = -21;
+    public static final int ERROR_DDE_NO_ACK = -22;
+    public static final int ERROR_SHEM_BUFFER = -23;
+    public static final int ERROR_UNKNOWN = -24;
+    public static final int ERROR_DECREMENT_BASE = -25;
 
     public static final Map<Integer,String> LOOKUP = new HashMap<>();
     static{
@@ -61,18 +62,19 @@ public class CError {
         LOOKUP.put(-10, "ERROR_BAD_ITEM");
         LOOKUP.put(-11, "ERROR_BAD_SIG");
         LOOKUP.put(-12, "ERROR_IPC");
-        LOOKUP.put(-13, "ERROR_CONCURRENCY");
-        LOOKUP.put(-14, "ERROR_ENGINE_NO_TOPIC");
-        LOOKUP.put(-15, "ERROR_ENGINE_NO_ITEM");
-        LOOKUP.put(-16, "ERROR_SERVICE");
-        LOOKUP.put(-17, "ERROR_GET_DATA");
-        LOOKUP.put(-18, "ERROR_GET_STATE");
-        LOOKUP.put(-19, "ERROR_SET_STATE");
-        LOOKUP.put(-20, "ERROR_DDE_POST);
-        LOOKUP.put(-21, "ERROR_DDE_NO_ACK");
-        LOOKUP.put(-22, "ERROR_SHEM_BUFFER");
-        LOOKUP.put(-23, "ERROR_UNKNOWN");
-        LOOKUP.put(-24, "ERROR_DECREMENT_BASE");
+        LOOKUP.put(-13, "ERROR_IPC_MSG");
+        LOOKUP.put(-14, "ERROR_CONCURRENCY");
+        LOOKUP.put(-15, "ERROR_ENGINE_NO_TOPIC");
+        LOOKUP.put(-16, "ERROR_ENGINE_NO_ITEM");
+        LOOKUP.put(-17, "ERROR_SERVICE");
+        LOOKUP.put(-18, "ERROR_GET_DATA");
+        LOOKUP.put(-19, "ERROR_GET_STATE");
+        LOOKUP.put(-20, "ERROR_SET_STATE");
+        LOOKUP.put(-21, "ERROR_DDE_POST);
+        LOOKUP.put(-22, "ERROR_DDE_NO_ACK");
+        LOOKUP.put(-23, "ERROR_SHEM_BUFFER");
+        LOOKUP.put(-24, "ERROR_UNKNOWN");
+        LOOKUP.put(-25, "ERROR_DECREMENT_BASE");
     }
 
     public static String
