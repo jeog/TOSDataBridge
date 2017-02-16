@@ -78,7 +78,7 @@ public class CError {
         LOOKUP.put(-18, "ERROR_GET_DATA");
         LOOKUP.put(-19, "ERROR_GET_STATE");
         LOOKUP.put(-20, "ERROR_SET_STATE");
-        LOOKUP.put(-21, "ERROR_DDE_POST);
+        LOOKUP.put(-21, "ERROR_DDE_POST");
         LOOKUP.put(-22, "ERROR_DDE_NO_ACK");
         LOOKUP.put(-23, "ERROR_SHEM_BUFFER");
         LOOKUP.put(-24, "ERROR_UNKNOWN");
