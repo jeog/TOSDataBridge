@@ -21,9 +21,9 @@ The core implementation is not portable, but the python interface does provides 
 
 - **v0.5** \[branch 'v0.5'\] - 'stable' version that guarantees up-to-date binaries, signatures, and symbols (use the README from branch 'v0.5')
 
-- **v0.6** \[branch 'v0.6'\] - (PRE new_ipc branch merge) development version that may lack up-to-date binaries, signatures, and/or symbols
+- **v0.6** \[branch 'v0.6'\] - (PRE new_ipc/java_wrapper merges, engine/error-code improvements) development version that may lack up-to-date binaries, signatures, and/or symbols
 
-- **v0.7** \[branch 'master'\] - (POST new_ipc branch merge) development version that may lack up-to-date binaries, signatures, and/or symbols
+- **v0.7** \[branch 'master'\] - (POST new_ipc/java_wrapper merges, engine/error-code improvements) development version that may lack up-to-date binaries, signatures, and/or symbols
     
 ### Quick Setup
 - - -

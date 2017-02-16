@@ -109,6 +109,9 @@ volatile bool shutdown_flag = false;
 template<typename T>
 class DDE_Data;
 
+bool
+CheckExecType(LPSTR cmd);
+
 DWORD WINAPI     
 ThreadedWinInit(LPVOID lParam);
 
@@ -190,9 +193,7 @@ SetSecurityPolicy();
 
 int WINAPI 
 WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLn, int nShowCmd)
-{     
-    std::stringstream ss_args;
-    std::vector<std::string> args;
+{   
     std::string logpath(TOSDB_LOG_PATH); 
 
 #ifdef REDIRECT_STDERR_TO_LOG
@@ -203,53 +204,10 @@ WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLn, int nShowCmd)
     logpath.append(std::string(LOG_NAME));
     StartLogging( logpath.c_str() );
 
-    bool is_service = false;
-    bool is_spawned = false;
-
-    /* parse args */ 
-    ParseArgs(args, lpCmdLn);    
-
-    /* check whether we were spawned by service... */
-    if(!args.empty() && args[0] == "--spawned")
-        is_spawned=true; 
-
-    /* ...if not, warn */
-    if(!is_spawned){
-        std::string warn_msg("Running tos-databridge-engine directly is not recommended. "
-            "Inadequate privileges can cause connection issues with TOS or fatal errors. \n\n"
-            "Using 'tos-databridge-serv --noservice' to spawn the engine is recommended.\n\n");
-          
-#ifndef NO_KERNEL_GLOBAL_NAMESPACE
-        warn_msg.append(           
-            "NO_KERNEL_GLOBAL_NAMESPACE is not defined and you may not have the "
-            "necessary privileges to create global kernel objects. This may result "
-            " in a CRASH.\n\n"
-         );
-
-        TOSDB_LogH("STARTUP", "engine being run directly without NO_KERNEL_GLOBAL_NAMESPACE");
-#endif
-        if(MessageBox(NULL,warn_msg.c_str(),"Warning",MB_OKCANCEL | MB_ICONWARNING) == IDCANCEL)
-        {        
-            TOSDB_LogH("STARTUP", "Warning Box - Cancel; aborting startup");
-            return 0;                
-        }
-    };
-    
-    ss_args<< "lpCmdLn args: ";    
-    for(auto & a : args){ 
-        ss_args<< a << ' ';
-        /* if we get the service arg run as service, pure executable otherwise*/
-        if(a == "--service")
-            is_service = true;
+    /* check/log type of execution (service v. pure, spawned v. direct) */
+    if( !CheckExecType(lpCmdLn) ){
+        return 0; // only exit if user agrees (no error state)
     }
-
-    if(is_service && !is_spawned){
-        TOSDB_LogH("STARTUP", "can not run as 'unspawned' service; default to --noservice");
-        is_service = false;
-    }
-
-    TOSDB_Log("STARTUP", (is_service ? "is_service == true" : "is_service == false"));   
-    TOSDB_Log("STARTUP", ss_args.str().c_str());
 
     /* the other side of our IPC channel (see client_admin.cpp) */
     IPCSlave slave(TOSDB_COMM_CHANNEL);         
@@ -295,9 +253,8 @@ WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLn, int nShowCmd)
            2) TOSDB_SIG_STOP signal is received from client/service  */
     int err = RunMainCommLoop(&slave) ? 0 : TOSDB_ERROR_IPC;
 
-    TOSDB_LogH("CONTROL","out of run loop (closing streams)");    
-    RemoveAllStreams(TOSDB_DEF_TIMEOUT);  
-    
+    TOSDB_LogH("CONTROL","out of run loop (remove all streams, clean up)");    
+    RemoveAllStreams(TOSDB_DEF_TIMEOUT);
     err = CleanUpMain(err);      
 
     StopLogging();  
@@ -311,6 +268,61 @@ WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLn, int nShowCmd)
 
 
 namespace {        
+
+bool
+CheckExecType(LPSTR cmd)
+{   
+    bool is_service = false;
+    bool is_spawned = false;
+    
+    std::vector<std::string> args;
+    ParseArgs(args, cmd);    
+
+    /* check whether we were spawned by service... */
+    if(!args.empty() && args[0] == "--spawned")
+        is_spawned=true; 
+
+    /* ...if not, warn */
+    if(!is_spawned){
+        std::string warn_msg("Running tos-databridge-engine directly is not recommended. "
+            "Inadequate privileges can cause connection issues with TOS or fatal errors. \n\n"
+            "Using 'tos-databridge-serv --noservice' to spawn the engine is recommended.\n\n");
+          
+#ifndef NO_KERNEL_GLOBAL_NAMESPACE
+        warn_msg.append(           
+            "NO_KERNEL_GLOBAL_NAMESPACE is not defined and you may not have the "
+            "necessary privileges to create global kernel objects. This may result "
+            " in a CRASH.\n\n"
+         );
+
+        TOSDB_LogH("STARTUP", "engine being run directly without NO_KERNEL_GLOBAL_NAMESPACE");
+#endif
+        if(MessageBox(NULL,warn_msg.c_str(),"Warning",MB_OKCANCEL | MB_ICONWARNING) == IDCANCEL)
+        {        
+            TOSDB_LogH("STARTUP", "Warning Box - Cancel; aborting startup");
+            return false;                
+        }
+    };
+    
+    std::stringstream ss_args;
+    ss_args<< "lpCmdLn args: ";    
+    for(auto & a : args){ 
+        ss_args<< a << ' ';
+        /* if we get the service arg run as service, pure executable otherwise*/
+        if(a == "--service")
+            is_service = true;
+    }
+
+    if(is_service && !is_spawned){
+        TOSDB_LogH("STARTUP", "can not run as 'unspawned' service; default to --noservice");
+        is_service = false;
+    }
+
+    TOSDB_Log("STARTUP", (is_service ? "is_service == true" : "is_service == false"));   
+    TOSDB_Log("STARTUP", ss_args.str().c_str());
+
+    return true;
+}
 
 
 DWORD WINAPI 
@@ -400,10 +412,10 @@ if(e){ \
 
 
 int
-HandleGoodIPCMessage(unsigned int op, 
-                     TOS_Topics::TOPICS topic, 
-                     std::string item, 
-                     unsigned long timeout)
+HandleGoodIPCMessage( unsigned int op, 
+                      TOS_Topics::TOPICS topic, 
+                      std::string item, 
+                      unsigned long timeout )
 {
     int ret = TOSDB_SIG_BAD;
 
@@ -457,11 +469,11 @@ HandleGoodIPCMessage(unsigned int op,
 
 
 bool
-ParseIPCMessage(std::string msg, 
-                unsigned int *op, 
-                TOS_Topics::TOPICS *topic, 
-                std::string *item, 
-                unsigned long *timeout)
+ParseIPCMessage( std::string msg, 
+                 unsigned int *op, 
+                 TOS_Topics::TOPICS *topic, 
+                 std::string *item, 
+                 unsigned long *timeout )
 {  
     size_t mlen = msg.length();
     if(mlen > IPCBase::MAX_MESSAGE_SZ)
@@ -545,7 +557,7 @@ int
 AddStream( TOS_Topics::TOPICS topic_t, 
            std::string item, 
            unsigned long timeout,
-           bool log)
+           bool log )
 {    
     bool ret;
     int err = 0;
@@ -604,8 +616,9 @@ RemoveStream( TOS_Topics::TOPICS topic_t,
 {      
     int err = 0;
 
-    if(topic_t == TOS_Topics::TOPICS::NULL_TOPIC)
+    if(topic_t == TOS_Topics::TOPICS::NULL_TOPIC){
         return TOSDB_ERROR_BAD_TOPIC;
+    }
 
     auto topic_iter = topic_refcounts.find(topic_t);      
     /* if topic is not in our global mapping */
@@ -663,7 +676,7 @@ TestStream(TOS_Topics::TOPICS topic_t,std::string item, unsigned long timeout)
 
     int r = RemoveStream(topic_t, item, timeout);
     if(r){
-        TOSDB_LogEx("STREAM-OP", "failed to remove stream added during TestStream (stream leaked)", r);
+        TOSDB_LogEx("STREAM-OP", "TestStream failed to remove stream (stream leaked)", r);
         return r;
     }
 
@@ -759,6 +772,7 @@ CloseItem(TOS_Topics::TOPICS topic_t, std::string item, unsigned long timeout)
         TOSDB_LogH("DDE", "PostCloseItem failed, continue with CloseItem");                
     }
 
+    /* previous err code takes priority */
     if( !DestroyBuffer(topic_t, item) ){        
         err = (err ? err : TOSDB_ERROR_SHEM_BUFFER);                             
     }
@@ -819,9 +833,8 @@ CreateBuffer(TOS_Topics::TOPICS topic_t,
     std::string name;
 
     buffer_id_ty id(item, topic_t);  
-
-    /* Feb-15-2017 - protect the buffers map; write thread may try to access */
-    {
+       
+    {/* Feb-15-2017 - protect the buffers map; write thread may try to access */
         BUFFER_LOCK_GUARD;
         /* --- CRITICAL SECTION --- */
         if(buffers.find(id) != buffers.end())
@@ -890,17 +903,20 @@ DestroyBuffer(TOS_Topics::TOPICS topic_t, std::string item)
     if(buf_iter == buffers.end())
         return false;
         
-    if( !UnmapViewOfFile(buf_iter->second.raw_addr) ){        
+    if( !UnmapViewOfFile(buf_iter->second.raw_addr) )
+    {        
         TOSDB_LogEx("BUFFER", "UnmapViewOfFile failed", GetLastError());        
         b = false;
     }
 
-    if( !CloseHandle(buf_iter->second.hfile) ){        
+    if( !CloseHandle(buf_iter->second.hfile) )
+    {        
         TOSDB_LogEx("BUFFER", "CloseHandle(hfile) failed", GetLastError());          
         b = false;
     }
 
-    if( !CloseHandle(buf_iter->second.hmtx) ){        
+    if( !CloseHandle(buf_iter->second.hmtx) )
+    {        
         TOSDB_LogEx("BUFFER", "CloseHanlde(hmtx) failed", GetLastError());         
         b = false;
     }
@@ -937,7 +953,7 @@ RouteToBuffer(DDE_Data<T> data)
     auto buf_iter = buffers.find(buffer_id_ty(data.item,data.topic));
     if(buf_iter == buffers.end()){
         /* simply aborting avoids the need for sync between the thread that 
-           creates/destroys buffers and the thread (this one) that writes them */
+           creates/destroys buffers and the thread (this one) that writes to them */
         return;    
     }
 
@@ -1099,7 +1115,7 @@ WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             if(plo == 0x0000){
                 std::string sarg(std::to_string((size_t)(HWND)wParam)); 
                 ack_signals.signal(sarg + std::string(item_atom), false);                
-                TOSDB_LogH("DDE", ("NEG ACK from server for item: " + std::string(item_atom)).c_str());
+                TOSDB_LogH("DDE", ("NEG ACK for item: " + std::string(item_atom)).c_str());
             }else if(plo == 0x8000){
                 std::string sarg(std::to_string((size_t)(HWND)wParam));
                 ack_signals.signal(sarg + std::string(item_atom), true);   
@@ -1394,7 +1410,7 @@ SetSecurityPolicy()
     for(int i = 0; i < NSECURABLE; ++i){
         ret = SetSecurityDescriptorDacl( &sec_desc[(Securable)i], TRUE, acls[(Securable)i].get(), FALSE);
         if(!ret){    
-            TOSDB_LogEx("ENGINE-SEC", "SetSecuirtyDescriptorDacl failed", GetLastError());
+            TOSDB_LogEx("ENGINE-SEC", "SetSecurityDescriptorDacl failed", GetLastError());
             return false;
         }
     }
@@ -1427,10 +1443,10 @@ void DumpBufferStatus()
     for(const auto & t : topic_refcounts){
         for(const auto & i : t.second){
             lout << std::setw(log_col_width[0]) << std::left 
-                  << TOS_Topics::map[t.first]
-                  << std::setw(log_col_width[1]) << std::left << i.first
-                  << std::setw(log_col_width[2]) << std::left << i.second       
-                  << std::endl;  
+                 << TOS_Topics::map[t.first]
+                 << std::setw(log_col_width[1]) << std::left << i.first
+                 << std::setw(log_col_width[2]) << std::left << i.second       
+                 << std::endl;  
         }
     }
   

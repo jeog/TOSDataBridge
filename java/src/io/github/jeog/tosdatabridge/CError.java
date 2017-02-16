@@ -21,6 +21,14 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * CError.java
+ *
+ * Errors that can be returned by the C Lib.
+ * 
+ * @author Jonathon Ogden
+ * @version 0.7
+ */
 public class CError {
     public static final int ERROR_BAD_INPUT = -1;
     public static final int ERROR_BAD_INPUT_BUFFER = -2;

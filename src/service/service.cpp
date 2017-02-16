@@ -486,30 +486,35 @@ WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLn, int nShowCmd)
     
     /* populate the engine command and if --noservice is passed jump right into
        the engine via SpawnRestrictedProcess; otherwise Start the service which
-       will handle that for us 
-       
-       prepend '--spawned' so engine knows *we* called it; if someone
-       else passes '--spawned' they deserve what they get */
+       will handle that for us */      
 
-    if(no_service_pos > 0){       
+    if(no_service_pos > 0)
+    {       
         is_service = false;
-
         TOSDB_Log("STARTUP", "starting tos-databridge-engine.exe directly(NOT A SERVICE)");
+        /* prepend '--spawned' so engine knows *we* called it; 
+           if someone else passes '--spawned' they deserve what they get */
         good_engine = SpawnRestrictedProcess("--spawned --noservice", custom_session); 
-        if(!good_engine)        
-            TOSDB_LogH("STARTUP", ("failed to spawn " + engine_path + " --spawned --noservice").c_str());                 
-    }else{    
-        SERVICE_TABLE_ENTRY dtable[] = {{SERVICE_NAME,ServiceMain}, {NULL,NULL}};        
-
-        /* START SERVICE */	
-        if( !StartServiceCtrlDispatcher(dtable) ){
+        if(good_engine){
+            TOSDB_Log("STARTUP", ("SUCCESS spawning: " + engine_path + " --spawned --noservice").c_str());                  
+        }else{
+            TOSDB_LogH("STARTUP", ("FAILURE spawning: " + engine_path + " --spawned --noservice").c_str());                  
+        }
+    }
+    else
+    {    
+        SERVICE_TABLE_ENTRY dtable[] = {{SERVICE_NAME,ServiceMain}, {NULL,NULL}};       
+        /* BEGIN SERVICE */	
+        if( !StartServiceCtrlDispatcher(dtable) )
+        {
             TOSDB_LogH("STARTUP", "StartServiceCtrlDispatcher() failed. "  
                                   "(Be sure to use an appropriate Window's tool to start the service "
                                   "(e.g SC.exe, Services.msc) or pass '--noservice' to run directly.)");
-        }
+        }      
+        /* END SERVICE */	
     }
 
-    TOSDB_Log("SHUTDOWN","service exiting");
+    TOSDB_Log("SHUTDOWN","service exiting");        
     StopLogging();
 
 #ifdef REDIRECT_STDERR_TO_LOG
