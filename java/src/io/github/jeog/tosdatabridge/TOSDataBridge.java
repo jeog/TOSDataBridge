@@ -30,7 +30,7 @@ import java.io.File;
  * @author Jonathon Ogden
  * @version 0.7
  */
-public class TOSDataBridge{
+public final class TOSDataBridge{
     /* hardcode for time being */
     public static final int CONN_NONE = 0;
     public static final int CONN_ENGINE = 1;
@@ -51,36 +51,37 @@ public class TOSDataBridge{
     public static final int MARKER_MARGIN_OF_SAFETY = 100;
 
     public static class LibraryNotLoaded extends Exception{
-        public LibraryNotLoaded(){
+        LibraryNotLoaded(){
             super("library not loaded");
         }
     }
 
     public static class CLibException extends Exception{
-        public CLibException(String callStr, int errorCode){
+        CLibException(String callStr, int errorCode){
             super("CLib call [" + callStr + "] failed; " + CError.errorLookup(errorCode));
         }
     }
 
     public static class DataBlockException extends Exception{
-        public DataBlockException(String info){
+        DataBlockException(String info){
             super(info);
         }
     }
+
     public static class DateTimeNotSupported extends DataBlockException{
-        public DateTimeNotSupported() {
+        DateTimeNotSupported() {
             super("DataBlock instance doesn't support DateTime");
         }
     }
 
     public static class DataIndexException extends DataBlockException{
-        public DataIndexException(String info) {
+        DataIndexException(String info) {
             super(info);
         }
     }
 
     public static class DirtyMarkerException extends DataBlockException{
-        public DirtyMarkerException() {
+        DirtyMarkerException() {
             super("data was lost behind the marker "
                     + "(set throwIfDataLost to false avoid this exception");
         }

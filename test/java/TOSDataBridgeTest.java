@@ -16,6 +16,7 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 */
 
 
+import io.github.jeog.tosdatabridge.Pair;
 import io.github.jeog.tosdatabridge.TOSDataBridge;
 import io.github.jeog.tosdatabridge.TOSDataBridge.*;
 import io.github.jeog.tosdatabridge.DataBlock;
@@ -63,7 +64,6 @@ public class TOSDataBridgeTest {
             throw new IllegalArgumentException("Arg0 is not a valid file");
         }
 
-        DataBlock block1 = null;
         try{
             if( !TOSDataBridge.init(args[0]) ){
                 System.err.println("Failed to load library (" + args[0] + ")");
@@ -77,7 +77,7 @@ public class TOSDataBridgeTest {
             int block1Timeout = 3000;
             System.out.println();
             System.out.println("CREATE BLOCK...");
-            block1 = new DataBlock(block1Sz, block1DateTime, block1Timeout);
+            DataBlock block1 = new DataBlock(block1Sz, block1DateTime, block1Timeout);
 
             if( !testBlockState(block1, block1Sz, block1DateTime, block1Timeout) ) {
                 // just break out of the try-block
@@ -211,15 +211,8 @@ public class TOSDataBridgeTest {
             System.out.println(t.toString());
             t.printStackTrace();
             // catch anything else so we can print fail message
-        }finally{
-            /* make sure DLLMain is handling automatic disconnection of blocks on dll detach */
-            /*
-            try {
-                block1.close();
-            }catch(Throwable t){
-            }
-            */
         }
+
         System.out.println();
         System.err.println("*** DONE (FAILURE) ***");
     }
@@ -238,7 +231,6 @@ public class TOSDataBridgeTest {
         System.out.println("CONNECTION STATE: " + String.valueOf(connState));
         if(connState != TOSDataBridge.CONN_ENGINE_TOS){
             System.out.println("INVALID CONNECTION STATE");
-            return;
         }
     }
 
@@ -466,6 +458,7 @@ public class TOSDataBridgeTest {
     testTotalFrameCalls(DataBlock block, boolean withDateTime)
             throws CLibException, LibraryNotLoaded, DateTimeNotSupported
     {
+        @SuppressWarnings("unchecked")
         Map<String,Map<Topic,T>> frame =
             (Map<String,Map<Topic,T>> )(withDateTime ? block.getTotalFrameWithDateTime()
                                                      : block.getTotalFrame());
@@ -474,6 +467,7 @@ public class TOSDataBridgeTest {
             Map<Topic,T> row = frame.get(i);
             for(Topic t : row.keySet()){
                 if(withDateTime){
+                    @SuppressWarnings("unchecked")
                     DateTimePair<String> p = (DateTimePair<String>)row.get(t);
                     System.out.print(String.format("%s %s %s  ", t, p.first, p.second.toString()));
                 }else {
@@ -490,12 +484,14 @@ public class TOSDataBridgeTest {
     {
         Set<Topic> topics = block.getTopics();
         for(Topic topic : topics) {
+            @SuppressWarnings("unchecked")
             Map<String, T> frame =
                 (Map<String, T>) (withDateTime ? block.getItemFrameWithDateTime(topic)
                                                : block.getItemFrame(topic));
             System.out.print(String.format("%-12s :::  ", topic));
             for(String item : frame.keySet()){
                 if(withDateTime){
+                    @SuppressWarnings("unchecked")
                     DateTimePair<String> p = (DateTimePair<String>)frame.get(item);
                     System.out.print(String.format("%s %s %s  ", item, p.first,
                             p.second.toString()));
@@ -513,12 +509,14 @@ public class TOSDataBridgeTest {
     {
         Set<String> items = block.getItems();
         for(String item : items) {
+            @SuppressWarnings("unchecked")
             Map<Topic, T> frame =
                 (Map<Topic, T>)(withDateTime ? block.getTopicFrameWithDateTime(item)
                                              : block.getTopicFrame(item));
             System.out.print(String.format("%-12s :::  ", item));
             for(Topic topic: frame.keySet()){
                 if(withDateTime){
+                    @SuppressWarnings("unchecked")
                     DateTimePair<String> p = (DateTimePair<String>)frame.get(topic);
                     System.out.print(String.format("%s %s %s  ", topic, p.first,
                             p.second.toString()));
@@ -541,12 +539,11 @@ public class TOSDataBridgeTest {
             return;
         }
         try {
+            @SuppressWarnings("unchecked")
             T r1 = (T)m.invoke(block,item,topic,indx,true);
             System.out.println(mname + "(" + item + "," + topic + "," + String.valueOf(indx)
                                      + "): " + r1.toString());
-        } catch (IllegalAccessException e) {
-            e.printStackTrace();
-        } catch (InvocationTargetException e) {
+        } catch (IllegalAccessException | InvocationTargetException e) {
             e.printStackTrace();
         }
     }
@@ -562,15 +559,14 @@ public class TOSDataBridgeTest {
             return;
         }
         try {
+            @SuppressWarnings("unchecked")
             T[] r1 = (T[])m.invoke(block,item,topic,end,beg);
             System.out.println(mname + "(" + item + "," + topic + "," + String.valueOf(beg)
                                + " to " + String.valueOf(end) + "): ");
             for(int i = r1.length-1; i >= 0; --i){
                  System.out.println(String.valueOf(i) + ": " + r1[i].toString());
             }
-        } catch (IllegalAccessException e) {
-            e.printStackTrace();
-        } catch (InvocationTargetException e) {
+        } catch (IllegalAccessException | InvocationTargetException e) {
             e.printStackTrace();
         }
     }
@@ -586,14 +582,13 @@ public class TOSDataBridgeTest {
             return;
         }
         try {
+            @SuppressWarnings("unchecked")
             T[] r1 = (T[])m.invoke(block,item,topic,beg);
             System.out.println(mname + "(" + item + "," + topic + "," + String.valueOf(beg) + "): ");
             for(int i = r1.length-1; i >= 0; --i){
                 System.out.println(String.valueOf(i) + ": " + r1[i].toString());
             }
-        } catch (IllegalAccessException e) {
-            e.printStackTrace();
-        } catch (InvocationTargetException e) {
+        } catch (IllegalAccessException | InvocationTargetException e) {
             e.printStackTrace();
         }
     }

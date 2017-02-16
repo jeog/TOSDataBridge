@@ -29,7 +29,7 @@ import java.util.Map;
  * @author Jonathon Ogden
  * @version 0.7
  */
-public class CError {
+public final class CError {
     public static final int ERROR_BAD_INPUT = -1;
     public static final int ERROR_BAD_INPUT_BUFFER = -2;
     public static final int ERROR_NOT_CONNECTED = -3;

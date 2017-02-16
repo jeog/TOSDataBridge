@@ -55,10 +55,6 @@ public class DataBlock {
         DateTimePair(T first, DateTime second){
             super(first, second);
         }
-        public
-        DateTimePair(){
-            super();
-        }
     }
 
     private String _name;
@@ -92,7 +88,6 @@ public class DataBlock {
             throw new CLibException("TOSDB_CreateBlock", err);
         }
     }
-
 
     public void
     close() throws CLibException, LibraryNotLoaded {
@@ -163,7 +158,7 @@ public class DataBlock {
 
     public Set<String>
     getItems() throws LibraryNotLoaded, CLibException {
-        return this.<String>_getItemTopicNames(true,false);
+        return _getItemTopicNames(true,false);
     }
 
     public Set<Topic>
@@ -842,11 +837,14 @@ public class DataBlock {
         Set<T> retVals = new HashSet<>();
         for(int i = 0; i < n; ++i){
             String s = arrayVals[i].getString(0);
-            retVals.add( (T)(useItemVersion ? s : Topic.toEnum(s)) );
+            @SuppressWarnings("unchecked")
+            T val = (T)(useItemVersion ? s : Topic.toEnum(s));
+            retVals.add(val);
         }
         return retVals;
     }
 
+    @SuppressWarnings("unchecked")
     private <T> T
     _get(String item, Topic topic,int indx, boolean checkIndx, boolean withDateTime,
             Class<?> valType) throws LibraryNotLoaded, CLibException, DataIndexException
@@ -898,6 +896,7 @@ public class DataBlock {
         }
     }
 
+    @SuppressWarnings("unchecked")
     private <T> T[]
     _getStreamSnapshot(String item, Topic topic, int end, int beg, boolean smartSize,
                        boolean withDateTime, Class<?> valType)
@@ -982,6 +981,8 @@ public class DataBlock {
         try {
             return _getStreamSnapshotFromMarker(item,topic,beg,false,withDateTime,valType);
         } catch (DirtyMarkerException e) {
+            // this call can't throw DirtyMarkerException
+            // allows us to remove from message signature
         }
         /* SHOULD NEVER GET HERE */
         throw new RuntimeException("...IgnoreDirty failed to ignore dirty marker");
@@ -1000,6 +1001,7 @@ public class DataBlock {
         return szGot;
     }
 
+    @SuppressWarnings("unchecked")
     private <T> T[]
     _getStreamSnapshotFromMarker(String item, Topic topic, int beg, boolean throwIfDataLost,
                                  boolean withDateTime, Class<?> valType)
@@ -1123,10 +1125,13 @@ public class DataBlock {
 
         Map<X,T> frame = new HashMap<>();
         for(int i = 0; i < n; ++i){
+            @SuppressWarnings("unchecked")
             T val = (T)(withDateTime ? new DateTimePair(arrayVals[i].getString(0), arrayDTS[i])
                                      : arrayVals[i].getString(0));
             String label = arrayLabels[i].getString(0);
-            frame.put((X)(itemFrame ? label : Topic.toEnum(label)), val);
+            @SuppressWarnings("unchecked")
+            X lab = (X)(itemFrame ? label : Topic.toEnum(label));
+            frame.put(lab, val);
         }
         return frame;
     }
