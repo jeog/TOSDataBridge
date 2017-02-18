@@ -18,7 +18,7 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 package io.github.jeog.tosdatabridge;
 
 /**
- * Pair.java
+ * Simple object that contains two objects of user-defined type.
  *
  * @author Jonathon Ogden
  * @version 0.7

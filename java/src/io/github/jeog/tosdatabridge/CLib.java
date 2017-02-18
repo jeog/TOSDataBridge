@@ -22,8 +22,6 @@ import com.sun.jna.NativeLong;
 import com.sun.jna.Pointer;
 
 /**
- * Clib.java
- *
  * JNA interface used to access the underlying C Lib.
  *
  * @author Jonathon Ogden

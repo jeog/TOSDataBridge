@@ -28,14 +28,46 @@ import java.lang.reflect.Array;
 import java.util.*;
 
 /**
- * DataBlock.java
- *
- * Object instantiated by clients to get data from the engine/TOS.
+ * DataBlocks are used to get real-time financial data from the TOS platform.
+ * They use the JNA interface(CLib.java) to access the C API, wrapping the
+ * underlying (conceptual) block of the C lib with an object-oriented java interface.
+ * <p>
+ * <strong>IMPORTANT:</strong> Before creating/using a DataBlock the underlying library
+ * must be loaded AND connected to the backend Service/Engine and the TOS platform.
+ * <ol>
+ * <li> be sure you've installed the C mods (tosdb-setup.bat)
+ * <li> start the Service/Engine (SC Start TOSDataBridge)
+ * <li> start the TOS Platform
+ * <li> call TOSDataBridge.init(...)
+ * <li> create DataBlock(s)
+ * </ol>
+ * <p>
+ * DataBlock works much the same as its python cousin (tosdb._win.TOSDB_DataBlock).
+ * It's instantiated with a size parameter to indicate how much historical data is saved,
+ * and a boolean to indicate whether it should record DateTime objects alongside its
+ * primary data.
+ * <p>
+ * Once created 'topics' (data fields found in the Topic enum) and 'items' (symbols)
+ * are added to create a matrix of 'streams', each the size of the block. The block can
+ * be though of as a 3D object with the following dimensions:
+ * <p>
+ * &nbsp&nbsp&nbsp&nbsp (# of topics) &nbsp x &nbsp (# of items) &nbsp x &nbsp (block size)
+ * <p>
+ * As data flows into these streams the various 'get' methods are then used to
+ * 1) examine the underlying state of the block/streams, and 2) pull data from
+ * the block/streams in myriad ways.
  *
  * @author Jonathon Ogden
  * @version 0.7
  * @throws CLibException   If C Lib returned a 'native' error (CError.java)
  * @throws LibraryNotLoaded  If native C Lib has not been loaded via init(...)
+ * @see TOSDataBridge
+ * @see Topic
+ * @see DateTime
+ * @see <a href="https://github.com/jeog/TOSDataBridge/blob/master/README.md"> README </a>
+ * @see <a href="https://github.com/jeog/TOSDataBridge/blob/master/README_JAVA.md"> README - JAVA API </a>
+ * @see <a href="https://github.com/jeog/TOSDataBridge/blob/master/README_API.md"> README - C API </a>
+ * @see <a href="https://github.com/jeog/TOSDataBridge/blob/master/README_SERVICE.md"> README - SERVICE </a>
  */
 public class DataBlock {
     /* max size of non-data (e.g topics, labels) strings (excluding \0)*/

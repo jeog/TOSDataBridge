@@ -373,16 +373,16 @@ _createBlock(LPCSTR id,
 {
     TOSDBlock* db;
 
+    if( !IsValidBlockSize(sz) )
+        return TOSDB_ERROR_BLOCK_SIZE;  
+
     GLOBAL_RLOCK_GUARD;
     /* --- CRITICAL SECTION --- */
 
     if( GetBlockPtr(id,false) ){
         TOSDB_LogH("BLOCK", ("block (" + std::string(id) + ") already exists").c_str());
         return TOSDB_ERROR_BLOCK_ALREADY_EXISTS; 
-    }
-
-    if( !IsValidBlockSize(sz) )
-        return TOSDB_ERROR_BLOCK_SIZE;             
+    }         
 
     db = new TOSDBlock;   
     db->timeout = std::max<unsigned long>(timeout,TOSDB_MIN_TIMEOUT);

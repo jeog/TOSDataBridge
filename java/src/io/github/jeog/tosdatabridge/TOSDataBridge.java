@@ -22,13 +22,22 @@ import com.sun.jna.Native;
 import java.io.File;
 
 /**
- * TOSDataBridge.java
- *
- * Core class for tosdatabridge.jar; contains constants, exceptions, a
- * package-private getter for the CLib, and high-level admin calls for the API.
- *
+ * Core class containing constants, exceptions, a (package-private) getter for the
+ * JNA C lib interface, and high-level admin calls for the API.
+ * <p>
+ * <strong>IMPORTANT:</strong> Before using the admin calls the underlying C library
+ * must be loaded.
+ * <ol>
+ * <li> be sure you've installed the C mods (tosdb-setup.bat)
+ * <li> call init(...)
+ * <li> use admin calls
+ * </ol>
  * @author Jonathon Ogden
  * @version 0.7
+ * @see Topic
+ * @see <a href="https://github.com/jeog/TOSDataBridge/blob/master/README.md"> README </a>
+ * @see <a href="https://github.com/jeog/TOSDataBridge/blob/master/README_JAVA.md"> README - JAVA API </a>
+ * @see <a href="https://github.com/jeog/TOSDataBridge/blob/master/README_API.md"> README - C API </a>
  */
 public final class TOSDataBridge{
     /* hardcode for time being */
@@ -98,8 +107,16 @@ public final class TOSDataBridge{
         return library;
     }
 
+    /**
+     * Initialize C lib via JNA.
+     *
+     * @param path path of the the tos-databridge DLL.
+     * @return <code>true</code> if library was loaded AND connected to engine
+     * @throws LibraryNotLoaded if library was not loaded
+     * @see <a href="https://github.com/jeog/TOSDataBridge/blob/master/README.md">README</a>
+     */
     public static boolean 
-    init(String path) {
+    init(String path) throws LibraryNotLoaded {
         if(library != null) {
             return true;
         }
@@ -119,43 +136,101 @@ public final class TOSDataBridge{
                 return false;
             }
         }catch(Throwable t){
-            System.err.println("TOSDataBridge init() failed: " + t.toString());
+            System.err.println("TOSDataBridge.init(..) failed to load library: " + t.toString());
             t.printStackTrace();
-            return false;
+            throw new LibraryNotLoaded();
         }
         return true;
     }
 
+    /**
+     * If the library is loaded try to connect the engine and TOS platform.
+     * (init(...) should do this automatically.)
+     *
+     * @return <code>true</code> if library connected to engine
+     * @throws LibraryNotLoaded if library is not loaded
+     * @see <a href="https://github.com/jeog/TOSDataBridge/blob/master/README.md">README</a>
+     */
     public static boolean
     connect() throws LibraryNotLoaded {
         return getCLibrary().TOSDB_Connect() == 0;
     }
 
+    /**
+     * Is the library connected to the engine and TOS platform?
+     *
+     * @return <code>true</code> if library is connected to engine and TOS platform
+     * @throws LibraryNotLoaded if library is not loaded
+     * @see <a href="https://github.com/jeog/TOSDataBridge/blob/master/README.md">README</a>
+     */
     public static boolean
     connected() throws LibraryNotLoaded {
         return getCLibrary().TOSDB_IsConnectedToEngineAndTOS() != 0;
     }
 
+    /**
+     * The current connection state between the library and Engine/TOS.
+     *
+     * @return state of the connection:
+     * <ul>
+     * <li> CONN_NONE: not connected to engine or TOS platform
+     * <li> CONN_ENGINE: connected to engine but not TOS platform
+     * <li> CONN_ENGINE_TOS: connected to engine and TOS platform
+     * </ul>
+     * @throws LibraryNotLoaded if library is not loaded
+     * @see <a href="https://github.com/jeog/TOSDataBridge/blob/master/README.md">README</a>
+     */
     public static int
     connectionState() throws LibraryNotLoaded {
         return getCLibrary().TOSDB_ConnectionState();
     }
 
+    /**
+     * Get block limit imposed by the C library.
+     *
+     * @return block limit
+     * @throws LibraryNotLoaded if library is not loaded
+     * @see <a href="https://github.com/jeog/TOSDataBridge/blob/master/README.md">README</a>
+     */
     public static int 
     getBlockLimit() throws LibraryNotLoaded {
         return getCLibrary().TOSDB_GetBlockLimit();
     }
 
+    /**
+     * Set block limit imposed by the C library.
+     *
+     * @param limit new block limit
+     * @return block limit
+     * @throws LibraryNotLoaded if library is not loaded
+     * @see <a href="https://github.com/jeog/TOSDataBridge/blob/master/README.md">README</a>
+     */
     public static int
     setBlockLimit(int limit) throws LibraryNotLoaded {
         return getCLibrary().TOSDB_SetBlockLimit(limit);
     }
 
+    /**
+     * Get current block count(according to C lib, not JRE).
+     *
+     * @return block count
+     * @throws LibraryNotLoaded if library is not loaded
+     * @see <a href="https://github.com/jeog/TOSDataBridge/blob/master/README.md">README</a>
+     */
     public static int
     getBlockCount() throws LibraryNotLoaded {
         return getCLibrary().TOSDB_GetBlockCount();
     }
 
+    /**
+     * Get type bits(as int) of a particular topic.
+     *
+     * @param topic topic to get type bits of
+     * @return type bits (as int)
+     * @throws LibraryNotLoaded if library is not loaded
+     * @throws CLibException if the C lib call returns an error
+     * @see <a href="https://github.com/jeog/TOSDataBridge/blob/master/README.md">README</a>
+     */
     public static int
     getTypeBits(Topic topic) throws LibraryNotLoaded, CLibException {
         byte[] bits = {0};
@@ -166,6 +241,20 @@ public final class TOSDataBridge{
         return bits[0] & 0xFF;
     }
 
+    /**
+     * Get constant representing the type of a particular topic.
+     *
+     * @param topic topic to get type constant of
+     * @return type constant
+     * <ul>
+     *     <li>TOPIC_IS_LONG</li>
+     *     <li>TOPIC_IS_DOUBLE</li>
+     *     <li>TOPIC_IS_STRING</li>
+     * </ul>
+     * @throws LibraryNotLoaded if library is not loaded
+     * @throws CLibException if the C lib call returns an error
+     * @see <a href="https://github.com/jeog/TOSDataBridge/blob/master/README.md">README</a>
+     */
     public static int
     getTopicType(Topic topic) throws CLibException, LibraryNotLoaded {
         switch(getTypeBits(topic)){
@@ -175,8 +264,10 @@ public final class TOSDataBridge{
             case QUAD_BIT:
             case 0:
                 return TOPIC_IS_DOUBLE;
-            default:
+            case STRING_BIT:
                 return TOPIC_IS_STRING;
+            default:
+                throw new RuntimeException("invalid type bits");
         }
     }
 

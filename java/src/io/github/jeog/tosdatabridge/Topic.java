@@ -1,9 +1,7 @@
 package io.github.jeog.tosdatabridge;
 
 /**
- * Topic.java
- *
- * Enumerated object containing all the valid 'Topics' the engine/TOS accepts.
+ * Enumerated object containing all the valid 'Topics' the Engine/TOS accepts.
  *
  * @author Jonathon Ogden
  * @version 0.7
@@ -80,7 +78,8 @@ public enum Topic {
         this.val = t;
     }
 
-    public static Topic
+    /* package-private */
+    static Topic
     toEnum(String val){
         /* 2 cases where .name() != .val */
         if(val.equals("52HIGH")) {

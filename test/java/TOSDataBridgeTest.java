@@ -66,8 +66,7 @@ public class TOSDataBridgeTest {
 
         try{
             if( !TOSDataBridge.init(args[0]) ){
-                System.err.println("Failed to load library (" + args[0] + ")");
-                throw new RuntimeException("failed to load library");
+                throw new RuntimeException("library failed to connect to Engine/TOS");
             }
             testConnection();
             testAdminCalls();

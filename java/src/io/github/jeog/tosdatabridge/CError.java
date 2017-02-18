@@ -22,9 +22,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * CError.java
- *
- * Errors that can be returned by the C Lib.
+ * Error codes that can be returned by the C Lib.
  * 
  * @author Jonathon Ogden
  * @version 0.7
@@ -56,42 +54,48 @@ public final class CError {
     public static final int ERROR_UNKNOWN = -24;
     public static final int ERROR_DECREMENT_BASE = -25;
 
-    public static final Map<Integer,String> LOOKUP = new HashMap<>();
+    private static final Map<Integer,String> ERROR_STRING_LOOKUP = new HashMap<>();
     static{
-        LOOKUP.put(-1, "ERROR_BAD_INPUT");
-        LOOKUP.put(-2, "ERROR_BAD_INPUT_BUFFER");
-        LOOKUP.put(-3, "ERROR_NOT_CONNECTED");
-        LOOKUP.put(-4, "ERROR_TIMEOUT");
-        LOOKUP.put(-5, "ERROR_BLOCK_ALREADY_EXISTS");
-        LOOKUP.put(-6, "ERROR_BLOCK_DOESNT_EXIST");
-        LOOKUP.put(-7, "ERROR_BLOCK_CREATION");
-        LOOKUP.put(-8, "ERROR_BLOCK_SIZE");
-        LOOKUP.put(-9, "ERROR_BAD_TOPIC");
-        LOOKUP.put(-10, "ERROR_BAD_ITEM");
-        LOOKUP.put(-11, "ERROR_BAD_SIG");
-        LOOKUP.put(-12, "ERROR_IPC");
-        LOOKUP.put(-13, "ERROR_IPC_MSG");
-        LOOKUP.put(-14, "ERROR_CONCURRENCY");
-        LOOKUP.put(-15, "ERROR_ENGINE_NO_TOPIC");
-        LOOKUP.put(-16, "ERROR_ENGINE_NO_ITEM");
-        LOOKUP.put(-17, "ERROR_SERVICE");
-        LOOKUP.put(-18, "ERROR_GET_DATA");
-        LOOKUP.put(-19, "ERROR_GET_STATE");
-        LOOKUP.put(-20, "ERROR_SET_STATE");
-        LOOKUP.put(-21, "ERROR_DDE_POST");
-        LOOKUP.put(-22, "ERROR_DDE_NO_ACK");
-        LOOKUP.put(-23, "ERROR_SHEM_BUFFER");
-        LOOKUP.put(-24, "ERROR_UNKNOWN");
-        LOOKUP.put(-25, "ERROR_DECREMENT_BASE");
+        ERROR_STRING_LOOKUP.put(-1, "ERROR_BAD_INPUT");
+        ERROR_STRING_LOOKUP.put(-2, "ERROR_BAD_INPUT_BUFFER");
+        ERROR_STRING_LOOKUP.put(-3, "ERROR_NOT_CONNECTED");
+        ERROR_STRING_LOOKUP.put(-4, "ERROR_TIMEOUT");
+        ERROR_STRING_LOOKUP.put(-5, "ERROR_BLOCK_ALREADY_EXISTS");
+        ERROR_STRING_LOOKUP.put(-6, "ERROR_BLOCK_DOESNT_EXIST");
+        ERROR_STRING_LOOKUP.put(-7, "ERROR_BLOCK_CREATION");
+        ERROR_STRING_LOOKUP.put(-8, "ERROR_BLOCK_SIZE");
+        ERROR_STRING_LOOKUP.put(-9, "ERROR_BAD_TOPIC");
+        ERROR_STRING_LOOKUP.put(-10, "ERROR_BAD_ITEM");
+        ERROR_STRING_LOOKUP.put(-11, "ERROR_BAD_SIG");
+        ERROR_STRING_LOOKUP.put(-12, "ERROR_IPC");
+        ERROR_STRING_LOOKUP.put(-13, "ERROR_IPC_MSG");
+        ERROR_STRING_LOOKUP.put(-14, "ERROR_CONCURRENCY");
+        ERROR_STRING_LOOKUP.put(-15, "ERROR_ENGINE_NO_TOPIC");
+        ERROR_STRING_LOOKUP.put(-16, "ERROR_ENGINE_NO_ITEM");
+        ERROR_STRING_LOOKUP.put(-17, "ERROR_SERVICE");
+        ERROR_STRING_LOOKUP.put(-18, "ERROR_GET_DATA");
+        ERROR_STRING_LOOKUP.put(-19, "ERROR_GET_STATE");
+        ERROR_STRING_LOOKUP.put(-20, "ERROR_SET_STATE");
+        ERROR_STRING_LOOKUP.put(-21, "ERROR_DDE_POST");
+        ERROR_STRING_LOOKUP.put(-22, "ERROR_DDE_NO_ACK");
+        ERROR_STRING_LOOKUP.put(-23, "ERROR_SHEM_BUFFER");
+        ERROR_STRING_LOOKUP.put(-24, "ERROR_UNKNOWN");
+        ERROR_STRING_LOOKUP.put(-25, "ERROR_DECREMENT_BASE");
     }
 
+    /**
+     * Return error string from error code.
+     *
+     * @param errorCode error code
+     * @return error string
+     */
     public static String
     errorLookup(int errorCode){
-        String errorStr = LOOKUP.get(errorCode);
+        String errorStr = ERROR_STRING_LOOKUP.get(errorCode);
         if(errorStr != null) {
             return errorStr;
         }
-        int baseError = Collections.min(LOOKUP.keySet());
+        int baseError = Collections.min(ERROR_STRING_LOOKUP.keySet());
         if(errorCode < baseError) {
             return "ERROR_DECREMENT_BASE(" + String.valueOf(errorCode - baseError) + ")";
         }else {
