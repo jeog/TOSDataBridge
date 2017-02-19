@@ -43,10 +43,7 @@ import java.util.*;
  * </ol>
  * <p>
  * DataBlock works much the same as its python cousin (tosdb._win.TOSDB_DataBlock).
- * It's instantiated with a size parameter to indicate how much historical data is saved,
- * and a boolean to indicate whether it should record DateTime objects alongside its
- * primary data.
- * <p>
+ * It's instantiated with a size parameter to indicate how much historical data is saved.
  * Once created 'topics' (data fields found in the Topic enum) and 'items' (symbols)
  * are added to create a matrix of 'streams', each the size of the block. The block can
  * be though of as a 3D object with the following dimensions:
@@ -59,14 +56,15 @@ import java.util.*;
  *
  * @author Jonathon Ogden
  * @version 0.7
- * @throws CLibException   If C Lib returned a 'native' error (CError.java)
- * @throws LibraryNotLoaded  If native C Lib has not been loaded via init(...)
- * @see TOSDataBridge
+ * @throws CLibException error code returned by C lib   
+ * @throws LibraryNotLoaded C lib has not been loaded
+ * @see TOSDataBridge 
  * @see Topic
  * @see DateTime
  * @see <a href="https://github.com/jeog/TOSDataBridge/blob/master/README.md"> README </a>
  * @see <a href="https://github.com/jeog/TOSDataBridge/blob/master/README_JAVA.md"> README - JAVA API </a>
  * @see <a href="https://github.com/jeog/TOSDataBridge/blob/master/README_API.md"> README - C API </a>
+ * @see <a href="https://github.com/jeog/TOSDataBridge/blob/master/README_PYTHON.md"> README - PYTHON API </a>
  * @see <a href="https://github.com/jeog/TOSDataBridge/blob/master/README_SERVICE.md"> README - SERVICE </a>
  */
 public class DataBlock {
@@ -104,8 +102,8 @@ public class DataBlock {
      * DataBlock Constructor.
      *
      * @param size maximum amount of historical data block can hold
-     * @throws CLibException
-     * @throws LibraryNotLoaded
+     * @throws CLibException error code returned by C lib
+     * @throws LibraryNotLoaded C lib has not been loaded  
      */
     public
     DataBlock(int size) throws CLibException, LibraryNotLoaded {
@@ -117,8 +115,8 @@ public class DataBlock {
      *
      * @param size maximum amount of historical data block can hold
      * @param timeout timeout of internal IPC and DDE mechanisms (milliseconds)
-     * @throws LibraryNotLoaded
-     * @throws CLibException
+     * @throws LibraryNotLoaded C lib has not been loaded  
+     * @throws CLibException error code returned by C lib
      */
     public
     DataBlock(int size, int timeout) throws LibraryNotLoaded, CLibException {
@@ -144,8 +142,8 @@ public class DataBlock {
     /**
      * Close the underlying C lib block.
      *
-     * @throws CLibException
-     * @throws LibraryNotLoaded
+     * @throws CLibException error code returned by C lib
+     * @throws LibraryNotLoaded C lib has not been loaded  
      */
     public void
     close() throws CLibException, LibraryNotLoaded {
@@ -162,6 +160,15 @@ public class DataBlock {
         } finally {
             super.finalize();
         }
+    }
+
+    /**
+     * Name of block (implementation detail).
+     * @return name string
+     */
+    public String
+    getName() {
+        return _name;
     }
 
     /**
@@ -186,8 +193,8 @@ public class DataBlock {
      * Return maximum amount of data that can be stored in the block.
      *
      * @return block size
-     * @throws LibraryNotLoaded
-     * @throws CLibException
+     * @throws LibraryNotLoaded C lib has not been loaded  
+     * @throws CLibException error code returned by C lib
      */
     public int
     getBlockSize() throws LibraryNotLoaded, CLibException {
@@ -206,8 +213,8 @@ public class DataBlock {
      * Set maximum amount of data that can be stored in the block.
      *
      * @param size
-     * @throws LibraryNotLoaded
-     * @throws CLibException
+     * @throws LibraryNotLoaded C lib has not been loaded  
+     * @throws CLibException error code returned by C lib
      */
     public void
     setBlockSize(int size) throws LibraryNotLoaded, CLibException {
@@ -224,8 +231,8 @@ public class DataBlock {
      * @param item
      * @param topic
      * @return size
-     * @throws CLibException
-     * @throws LibraryNotLoaded
+     * @throws CLibException error code returned by C lib
+     * @throws LibraryNotLoaded C lib has not been loaded  
      */
     public int
     getStreamOccupancy(String item, Topic topic) throws CLibException, LibraryNotLoaded {
@@ -244,8 +251,8 @@ public class DataBlock {
      * Return items currently in the block.
      *
      * @return set of item strings
-     * @throws LibraryNotLoaded
-     * @throws CLibException
+     * @throws LibraryNotLoaded C lib has not been loaded  
+     * @throws CLibException error code returned by C lib
      */
     public Set<String>
     getItems() throws LibraryNotLoaded, CLibException {
@@ -256,8 +263,8 @@ public class DataBlock {
      * Return topics currently in the block.
      *
      * @return set of Topics
-     * @throws LibraryNotLoaded
-     * @throws CLibException
+     * @throws LibraryNotLoaded C lib has not been loaded  
+     * @throws CLibException error code returned by C lib
      */
     public Set<Topic>
     getTopics() throws LibraryNotLoaded, CLibException {
@@ -268,8 +275,8 @@ public class DataBlock {
      * Return items currently in the block's pre-cache.
      *
      * @return set of item strings
-     * @throws LibraryNotLoaded
-     * @throws CLibException
+     * @throws LibraryNotLoaded C lib has not been loaded  
+     * @throws CLibException error code returned by C lib
      */
     public Set<String>
     getItemsPreCached() throws LibraryNotLoaded, CLibException {
@@ -280,8 +287,8 @@ public class DataBlock {
      * Return topics currently in the block's pre-cache
      *
      * @return set of Topics
-     * @throws LibraryNotLoaded
-     * @throws CLibException
+     * @throws LibraryNotLoaded C lib has not been loaded  
+     * @throws CLibException error code returned by C lib
      */
     public Set<Topic>
     getTopicsPreCached() throws LibraryNotLoaded, CLibException {
@@ -292,8 +299,8 @@ public class DataBlock {
      * Add item string to the block.
      *
      * @param item
-     * @throws LibraryNotLoaded
-     * @throws CLibException
+     * @throws LibraryNotLoaded C lib has not been loaded  
+     * @throws CLibException error code returned by C lib
      */
     public void
     addItem(String item) throws LibraryNotLoaded, CLibException {
@@ -316,8 +323,8 @@ public class DataBlock {
      * Add Topic to the block.
      *
      * @param topic
-     * @throws LibraryNotLoaded
-     * @throws CLibException
+     * @throws LibraryNotLoaded C lib has not been loaded  
+     * @throws CLibException error code returned by C lib
      */
     public void
     addTopic(Topic topic) throws LibraryNotLoaded, CLibException {
@@ -340,8 +347,8 @@ public class DataBlock {
      * Remove item string from the block.
      *
      * @param item
-     * @throws LibraryNotLoaded
-     * @throws CLibException
+     * @throws LibraryNotLoaded C lib has not been loaded  
+     * @throws CLibException error code returned by C lib
      */
     public void
     removeItem(String item) throws LibraryNotLoaded, CLibException {
@@ -364,8 +371,8 @@ public class DataBlock {
      * Remove Topic from the block.
      *
      * @param topic
-     * @throws LibraryNotLoaded
-     * @throws CLibException
+     * @throws LibraryNotLoaded C lib has not been loaded  
+     * @throws CLibException error code returned by C lib
      */
     public void
     removeTopic(Topic topic) throws LibraryNotLoaded, CLibException {
@@ -391,9 +398,9 @@ public class DataBlock {
      * @param topic Topic enum of stream
      * @param checkIndx throw if data doesn't exist at this index/position yet
      * @return data-point at position 'indx'
-     * @throws CLibException
-     * @throws LibraryNotLoaded
-     * @throws DataIndexException
+     * @throws CLibException error code returned by C lib
+     * @throws LibraryNotLoaded C lib has not been loaded  
+     * @throws DataIndexException invalid index/position value
      */
     public Long
     getLong(String item, Topic topic, boolean checkIndx)
@@ -409,9 +416,9 @@ public class DataBlock {
      * @param indx index/position of data-point
      * @param checkIndx throw if data doesn't exist at this index/position yet
      * @return data-point at position 'indx'
-     * @throws CLibException
-     * @throws LibraryNotLoaded
-     * @throws DataIndexException
+     * @throws CLibException error code returned by C lib
+     * @throws LibraryNotLoaded C lib has not been loaded  
+     * @throws DataIndexException invalid index/position value
      */
     public Long
     getLong(String item, Topic topic,int indx, boolean checkIndx)
@@ -426,9 +433,9 @@ public class DataBlock {
      * @param topic Topic enum of stream
      * @param checkIndx throw if data doesn't exist at this index/position yet
      * @return data-point at position 'indx'
-     * @throws CLibException
-     * @throws LibraryNotLoaded
-     * @throws DataIndexException
+     * @throws CLibException error code returned by C lib
+     * @throws LibraryNotLoaded C lib has not been loaded  
+     * @throws DataIndexException invalid index/position value
      */
     public Double
     getDouble(String item, Topic topic, boolean checkIndx)
@@ -444,9 +451,9 @@ public class DataBlock {
      * @param indx index/position of data-point
      * @param checkIndx throw if data doesn't exist at this index/position yet
      * @return data-point at position 'indx'
-     * @throws CLibException
-     * @throws LibraryNotLoaded
-     * @throws DataIndexException
+     * @throws CLibException error code returned by C lib
+     * @throws LibraryNotLoaded C lib has not been loaded  
+     * @throws DataIndexException invalid index/position value
      */
     public Double
     getDouble(String item, Topic topic,int indx, boolean checkIndx)
@@ -461,9 +468,9 @@ public class DataBlock {
      * @param topic Topic enum of stream
      * @param checkIndx throw if data doesn't exist at this index/position yet
      * @return data-point at position 'indx'
-     * @throws CLibException
-     * @throws LibraryNotLoaded
-     * @throws DataIndexException
+     * @throws CLibException error code returned by C lib
+     * @throws LibraryNotLoaded C lib has not been loaded  
+     * @throws DataIndexException invalid index/position value
      */
     public String
     getString(String item, Topic topic, boolean checkIndx)
@@ -479,9 +486,9 @@ public class DataBlock {
      * @param indx index/position of data-point
      * @param checkIndx throw if data doesn't exist at this index/position yet
      * @return data-point at position 'indx'
-     * @throws CLibException
-     * @throws LibraryNotLoaded
-     * @throws DataIndexException
+     * @throws CLibException error code returned by C lib
+     * @throws LibraryNotLoaded C lib has not been loaded  
+     * @throws DataIndexException invalid index/position value
      */
     public String
     getString(String item, Topic topic,int indx, boolean checkIndx)
@@ -495,14 +502,15 @@ public class DataBlock {
      * @param item item string of stream
      * @param topic Topic enum of stream
      * @return all data-points in the stream
-     * @throws LibraryNotLoaded
-     * @throws CLibException
-     * @throws DataIndexException
+     * @throws LibraryNotLoaded C lib has not been loaded  
+     * @throws CLibException error code returned by C lib
      */
     public Long[]
     getStreamSnapshotLongs(String item, Topic topic)
-            throws LibraryNotLoaded, CLibException, DataIndexException {
-        return getStreamSnapshot(item,topic,-1,0,true, false,Long.class);
+            throws LibraryNotLoaded, CLibException
+    {
+        return getStreamSnapshotAll(item, topic, false, Long.class);
+        //return getStreamSnapshot(item,topic,-1,0,true, false,Long.class);
     }
 
     /**
@@ -512,9 +520,9 @@ public class DataBlock {
      * @param topic Topic enum of the stream
      * @param end least recent index/position from which data is pulled
      * @return data-points between most recent and 'end'
-     * @throws LibraryNotLoaded
-     * @throws CLibException
-     * @throws DataIndexException
+     * @throws LibraryNotLoaded C lib has not been loaded  
+     * @throws CLibException error code returned by C lib
+     * @throws DataIndexException invalid index/position value
      */
     public Long[]
     getStreamSnapshotLongs(String item, Topic topic, int end)
@@ -531,9 +539,9 @@ public class DataBlock {
      * @param end least recent index/position from which data is pulled
      * @param beg most recent index/position from which data is pulled
      * @return data-points between 'beg' and 'end'
-     * @throws LibraryNotLoaded
-     * @throws CLibException
-     * @throws DataIndexException
+     * @throws LibraryNotLoaded C lib has not been loaded  
+     * @throws CLibException error code returned by C lib
+     * @throws DataIndexException invalid index/position value
      */
     public Long[]
     getStreamSnapshotLongs(String item, Topic topic, int end, int beg)
@@ -547,14 +555,15 @@ public class DataBlock {
      * @param item item string of stream
      * @param topic Topic enum of stream
      * @return all data-points in the stream
-     * @throws LibraryNotLoaded
-     * @throws CLibException
-     * @throws DataIndexException
+     * @throws LibraryNotLoaded C lib has not been loaded  
+     * @throws CLibException error code returned by C lib
      */
     public Double[]
     getStreamSnapshotDoubles(String item, Topic topic)
-            throws LibraryNotLoaded, CLibException, DataIndexException {
-        return getStreamSnapshot(item,topic,-1,0,true, false,Double.class);
+            throws LibraryNotLoaded, CLibException
+    {
+        return getStreamSnapshotAll(item, topic, false, Double.class);
+        //return getStreamSnapshot(item,topic,-1,0,true, false,Double.class);
     }
 
     /**
@@ -564,9 +573,9 @@ public class DataBlock {
      * @param topic Topic enum of the stream
      * @param end least recent index/position from which data is pulled
      * @return data-points between most recent and 'end'
-     * @throws LibraryNotLoaded
-     * @throws CLibException
-     * @throws DataIndexException
+     * @throws LibraryNotLoaded C lib has not been loaded 
+     * @throws CLibException error code returned by C lib
+     * @throws DataIndexException invalid index/position value
      */
     public Double[]
     getStreamSnapshotDoubles(String item, Topic topic, int end)
@@ -583,9 +592,9 @@ public class DataBlock {
      * @param end least recent index/position from which data is pulled
      * @param beg most recent index/position from which data is pulled
      * @return data-points between 'beg' and 'end'
-     * @throws LibraryNotLoaded
-     * @throws CLibException
-     * @throws DataIndexException
+     * @throws LibraryNotLoaded C lib has not been loaded 
+     * @throws CLibException error code returned by C lib
+     * @throws DataIndexException invalid index/position value
      */
     public Double[]
     getStreamSnapshotDoubles(String item, Topic topic, int end, int beg)
@@ -599,14 +608,15 @@ public class DataBlock {
      * @param item item string of stream
      * @param topic Topic enum of stream
      * @return all data-points in the stream
-     * @throws LibraryNotLoaded
-     * @throws CLibException
-     * @throws DataIndexException
+     * @throws LibraryNotLoaded C lib has not been loaded 
+     * @throws CLibException error code returned by C lib
      */
     public String[]
     getStreamSnapshotStrings(String item, Topic topic)
-            throws LibraryNotLoaded, CLibException, DataIndexException {
-        return getStreamSnapshot(item,topic,-1,0,true,false,String.class);
+            throws LibraryNotLoaded, CLibException
+    {
+        return getStreamSnapshotAll(item, topic, false, String.class);
+        //return getStreamSnapshot(item,topic,-1,0,true,false,String.class);
     }
 
     /**
@@ -616,9 +626,9 @@ public class DataBlock {
      * @param topic Topic enum of the stream
      * @param end least recent index/position from which data is pulled
      * @return data-points between most recent and 'end'
-     * @throws LibraryNotLoaded
-     * @throws CLibException
-     * @throws DataIndexException
+     * @throws LibraryNotLoaded C lib has not been loaded 
+     * @throws CLibException error code returned by C lib
+     * @throws DataIndexException invalid index/position value
      */
     public String[]
     getStreamSnapshotStrings(String item, Topic topic, int end)
@@ -635,9 +645,9 @@ public class DataBlock {
      * @param end least recent index/position from which data is pulled
      * @param beg most recent index/position from which data is pulled
      * @return data-points between 'beg' and 'end'
-     * @throws LibraryNotLoaded
-     * @throws CLibException
-     * @throws DataIndexException
+     * @throws LibraryNotLoaded C lib has not been loaded 
+     * @throws CLibException error code returned by C lib
+     * @throws DataIndexException invalid index/position value
      */
     public String[]
     getStreamSnapshotStrings(String item, Topic topic, int end, int beg)
@@ -651,14 +661,16 @@ public class DataBlock {
      * @param item item string of stream
      * @param topic Topic enum of stream
      * @return all data-points up to 'atomic' marker
-     * @throws LibraryNotLoaded
-     * @throws CLibException
-     * @throws DataIndexException
+     * @throws LibraryNotLoaded C lib has not been loaded 
+     * @throws CLibException error code returned by C lib
+     * @throws DirtyMarkerException  marker is 'dirty' (data lost behind it)
      */
     public Long[]
     getStreamSnapshotLongsFromMarker(String item, Topic topic)
-            throws LibraryNotLoaded, CLibException, DataIndexException, DirtyMarkerException {
-        return getStreamSnapshotFromMarker(item,topic,0,true,false,Long.class);
+            throws LibraryNotLoaded, CLibException, DirtyMarkerException
+    {
+        return getStreamSnapshotFromMarkerToMostRecent(item,topic,false,Long.class);
+        //return getStreamSnapshotFromMarker(item,topic,0,true,false,Long.class);
     }
 
     /**
@@ -666,11 +678,12 @@ public class DataBlock {
      *
      * @param item item string of stream
      * @param topic Topic enum of stream
+     * @param beg most recent index/position from which data is pulled
      * @return all data-points from 'beg' to 'atomic' marker
-     * @throws LibraryNotLoaded
-     * @throws CLibException
-     * @throws DataIndexException
-     * @throws DirtyMarkerException
+     * @throws LibraryNotLoaded C lib has not been loaded 
+     * @throws CLibException error code returned by C lib
+     * @throws DataIndexException invalid index/position value
+     * @throws DirtyMarkerException  marker is 'dirty' (data lost behind it)
      */
     public Long[]
     getStreamSnapshotLongsFromMarker(String item, Topic topic, int beg)
@@ -684,15 +697,16 @@ public class DataBlock {
      * @param item item string of stream
      * @param topic Topic enum of stream
      * @return all data-points up to 'atomic' marker
-     * @throws LibraryNotLoaded
-     * @throws CLibException
-     * @throws DataIndexException
-     * @throws DirtyMarkerException
+     * @throws LibraryNotLoaded C lib has not been loaded 
+     * @throws CLibException error code returned by C lib
+     * @throws DirtyMarkerException  marker is 'dirty' (data lost behind it)
      */
     public Double[]
     getStreamSnapshotDoublesFromMarker(String item, Topic topic)
-            throws LibraryNotLoaded, CLibException, DataIndexException, DirtyMarkerException {
-        return getStreamSnapshotFromMarker(item,topic,0,true,false,Double.class);
+            throws LibraryNotLoaded, CLibException, DirtyMarkerException
+    {
+        return getStreamSnapshotFromMarkerToMostRecent(item,topic,false,Double.class);
+        //return getStreamSnapshotFromMarker(item,topic,0,true,false,Double.class);
     }
 
     /**
@@ -700,11 +714,12 @@ public class DataBlock {
      *
      * @param item item string of stream
      * @param topic Topic enum of stream
+     * @param beg most recent index/position from which data is pulled
      * @return all data-points from 'beg' to 'atomic' marker
-     * @throws LibraryNotLoaded
-     * @throws CLibException
-     * @throws DataIndexException
-     * @throws DirtyMarkerException
+     * @throws LibraryNotLoaded C lib has not been loaded 
+     * @throws CLibException error code returned by C lib
+     * @throws DataIndexException invalid index/position value
+     * @throws DirtyMarkerException  marker is 'dirty' (data lost behind it)
      */
     public Double[]
     getStreamSnapshotDoublesFromMarker(String item, Topic topic, int beg)
@@ -718,15 +733,16 @@ public class DataBlock {
      * @param item item string of stream
      * @param topic Topic enum of stream
      * @return all data-points up to 'atomic' marker
-     * @throws LibraryNotLoaded
-     * @throws CLibException
-     * @throws DataIndexException
-     * @throws DirtyMarkerException
+     * @throws LibraryNotLoaded C lib has not been loaded 
+     * @throws CLibException error code returned by C lib
+     * @throws DirtyMarkerException  marker is 'dirty' (data lost behind it)
      */
     public String[]
     getStreamSnapshotStringsFromMarker(String item, Topic topic)
-            throws LibraryNotLoaded, CLibException, DataIndexException, DirtyMarkerException {
-        return getStreamSnapshotFromMarker(item,topic,0,true,false,String.class);
+            throws LibraryNotLoaded, CLibException, DirtyMarkerException
+    {
+        return getStreamSnapshotFromMarkerToMostRecent(item,topic,false,String.class);
+        //return getStreamSnapshotFromMarker(item,topic,0,true,false,String.class);
     }
 
     /**
@@ -734,11 +750,12 @@ public class DataBlock {
      *
      * @param item item string of stream
      * @param topic Topic enum of stream
+     * @param beg most recent index/position from which data is pulled
      * @return all data-points from 'beg' to 'atomic' marker
-     * @throws LibraryNotLoaded
-     * @throws CLibException
-     * @throws DataIndexException
-     * @throws DirtyMarkerException
+     * @throws LibraryNotLoaded C lib has not been loaded 
+     * @throws CLibException error code returned by C lib
+     * @throws DataIndexException invalid index/position value
+     * @throws DirtyMarkerException  marker is 'dirty' (data lost behind it)
      */
     public String[]
     getStreamSnapshotStringsFromMarker(String item, Topic topic, int beg)
@@ -752,14 +769,15 @@ public class DataBlock {
      * @param item item string of stream
      * @param topic Topic enum of stream
      * @return all data-points up to 'atomic' marker
-     * @throws LibraryNotLoaded
-     * @throws CLibException
-     * @throws DataIndexException
+     * @throws LibraryNotLoaded C lib has not been loaded 
+     * @throws CLibException error code returned by C lib
      */
     public Long[]
     getStreamSnapshotLongsFromMarkerIgnoreDirty(String item, Topic topic)
-            throws LibraryNotLoaded, CLibException, DataIndexException {
-        return getStreamSnapshotFromMarkerIgnoreDirty(item,topic,0,false,Long.class);
+            throws LibraryNotLoaded, CLibException
+    {
+        return getStreamSnapshotFromMarkerToMostRecentIgnoreDirty(item,topic,false,Long.class);
+        //return getStreamSnapshotFromMarkerIgnoreDirty(item,topic,0,false,Long.class);
     }
 
     /**
@@ -767,10 +785,11 @@ public class DataBlock {
      *
      * @param item item string of stream
      * @param topic Topic enum of stream
+     * @param beg most recent index/position from which data is pulled
      * @return all data-points from 'beg' to 'atomic' marker
-     * @throws LibraryNotLoaded
-     * @throws CLibException
-     * @throws DataIndexException
+     * @throws LibraryNotLoaded C lib has not been loaded 
+     * @throws CLibException error code returned by C lib
+     * @throws DataIndexException invalid index/position value
      */
     public Long[]
     getStreamSnapshotLongsFromMarkerIgnoreDirty(String item, Topic topic, int beg)
@@ -784,14 +803,15 @@ public class DataBlock {
      * @param item item string of stream
      * @param topic Topic enum of stream
      * @return all data-points up to 'atomic' marker
-     * @throws LibraryNotLoaded
-     * @throws CLibException
-     * @throws DataIndexException
+     * @throws LibraryNotLoaded C lib has not been loaded 
+     * @throws CLibException error code returned by C lib
      */
     public Double[]
     getStreamSnapshotDoublesFromMarkerIgnoreDirty(String item, Topic topic)
-            throws LibraryNotLoaded, CLibException, DataIndexException {
-        return getStreamSnapshotFromMarkerIgnoreDirty(item,topic,0,false,Double.class);
+            throws LibraryNotLoaded, CLibException
+    {
+        return getStreamSnapshotFromMarkerToMostRecentIgnoreDirty(item,topic,false,Double.class);
+        //return getStreamSnapshotFromMarkerIgnoreDirty(item,topic,0,false,Double.class);
     }
 
     /**
@@ -799,10 +819,11 @@ public class DataBlock {
      *
      * @param item item string of stream
      * @param topic Topic enum of stream
+     * @param beg most recent index/position from which data is pulled
      * @return all data-points from 'beg' to 'atomic' marker
-     * @throws LibraryNotLoaded
-     * @throws CLibException
-     * @throws DataIndexException
+     * @throws LibraryNotLoaded C lib has not been loaded 
+     * @throws CLibException error code returned by C lib
+     * @throws DataIndexException invalid index/position value
      */
     public Double[]
     getStreamSnapshotDoublesFromMarkerIgnoreDirty(String item, Topic topic, int beg)
@@ -816,14 +837,15 @@ public class DataBlock {
      * @param item item string of stream
      * @param topic Topic enum of stream
      * @return all data-points up to 'atomic' marker
-     * @throws LibraryNotLoaded
-     * @throws CLibException
-     * @throws DataIndexException
+     * @throws LibraryNotLoaded C lib has not been loaded 
+     * @throws CLibException error code returned by C lib
      */
     public String[]
     getStreamSnapshotStringsFromMarkerIgnoreDirty(String item, Topic topic)
-            throws LibraryNotLoaded, CLibException, DataIndexException {
-        return getStreamSnapshotFromMarkerIgnoreDirty(item,topic,0,false,String.class);
+            throws LibraryNotLoaded, CLibException
+    {
+        return getStreamSnapshotFromMarkerToMostRecentIgnoreDirty(item,topic,false,String.class);
+        //return getStreamSnapshotFromMarkerIgnoreDirty(item,topic,0,false,String.class);
     }
 
     /**
@@ -831,10 +853,11 @@ public class DataBlock {
      *
      * @param item item string of stream
      * @param topic Topic enum of stream
+     * @param beg most recent index/position from which data is pulled
      * @return all data-points from 'beg' to 'atomic' marker
-     * @throws LibraryNotLoaded
-     * @throws CLibException
-     * @throws DataIndexException
+     * @throws LibraryNotLoaded C lib has not been loaded 
+     * @throws CLibException error code returned by C lib
+     * @throws DataIndexException invalid index/position value
      */
     public String[]
     getStreamSnapshotStringsFromMarkerIgnoreDirty(String item, Topic topic, int beg)
@@ -847,8 +870,8 @@ public class DataBlock {
      *
      * @param topic Topic enum of streams
      * @return Mapping of item names to values
-     * @throws CLibException
-     * @throws LibraryNotLoaded
+     * @throws CLibException error code returned by C lib
+     * @throws LibraryNotLoaded C lib has not been loaded 
      */
     public Map<String,String>
     getItemFrame(Topic topic) throws CLibException, LibraryNotLoaded {
@@ -857,10 +880,11 @@ public class DataBlock {
 
     /**
      * Get all topic values, as strings, for a particular item.
+     *
      * @param item item string of streams
      * @return Mapping of topic names to values
-     * @throws CLibException
-     * @throws LibraryNotLoaded
+     * @throws CLibException error code returned by C lib
+     * @throws LibraryNotLoaded C lib has not been loaded 
      */
     public Map<Topic,String>
     getTopicFrame(String item) throws CLibException, LibraryNotLoaded {
@@ -868,11 +892,11 @@ public class DataBlock {
     }
 
     /**
-     * Get all topic AND item values of the block.
+     * Get all topic AND item values, as strings, of the block.
      *
      * @return Mapping of item names to Mapping of Topic enums to values
-     * @throws LibraryNotLoaded
-     * @throws CLibException
+     * @throws LibraryNotLoaded C lib has not been loaded 
+     * @throws CLibException error code returned by C lib
      */
     public Map<String, Map<Topic,String>>
     getTotalFrame() throws LibraryNotLoaded, CLibException {
@@ -957,6 +981,19 @@ public class DataBlock {
         }
         return (T)(withDateTime ? new DateTimePair<>(Native.toString(ptrVal),ptrDTS)
                 : Native.toString(ptrVal));
+    }
+
+    /* suppress DataIndexException */
+    protected final <T> T[]
+    getStreamSnapshotAll(String item, Topic topic, boolean withDateTime, Class<?> valType)
+            throws LibraryNotLoaded, CLibException
+    {
+        try {
+            return getStreamSnapshot(item,topic,-1,0,true,withDateTime,valType);
+        } catch (DataIndexException e) {
+            /* SHOULD NEVER GET HERE */
+            throw new RuntimeException("getStreamSnapshotAll failed to suppress DataIndexException");
+        }
     }
 
     @SuppressWarnings("unchecked")
@@ -1066,6 +1103,7 @@ public class DataBlock {
         return data;
     }
 
+    /* suppress DirtyMarkerException */
     protected final <T> T[]
     getStreamSnapshotFromMarkerIgnoreDirty(String item, Topic topic, int beg, boolean withDateTime,
                                            Class<?> valType)
@@ -1074,11 +1112,44 @@ public class DataBlock {
         try {
             return getStreamSnapshotFromMarker(item,topic,beg,false,withDateTime,valType);
         } catch (DirtyMarkerException e) {
-            // this call can't throw DirtyMarkerException
-            // allows us to remove from message signature
+            /* SHOULD NEVER GET HERE */
+            throw new RuntimeException("getStreamSnapshotFromMarkerIgnoreDirty " +
+                    "failed to ignore dirty marker");
         }
-        /* SHOULD NEVER GET HERE */
-        throw new RuntimeException("...IgnoreDirty failed to ignore dirty marker");
+    }
+
+    /* suppress DataIndexException */
+    protected final <T> T[]
+    getStreamSnapshotFromMarkerToMostRecent(String item, Topic topic, boolean withDateTime,
+                                            Class<?> valType)
+            throws LibraryNotLoaded, CLibException, DirtyMarkerException
+    {
+        try {
+            return getStreamSnapshotFromMarker(item,topic,0,true,withDateTime,valType);
+        } catch (DataIndexException e) {
+            /* SHOULD NEVER GET HERE */
+            throw new RuntimeException("getStreamSnapshotFromMarkerToMostRecent" +
+                    " failed to suppress DataIndexException");
+        }
+    }
+
+    /* suppress DataIndexException */
+    protected final <T> T[]
+    getStreamSnapshotFromMarkerToMostRecentIgnoreDirty(String item, Topic topic,
+                                                       boolean withDateTime, Class<?> valType)
+            throws LibraryNotLoaded, CLibException
+    {
+        try {
+            return getStreamSnapshotFromMarker(item,topic,0,false,withDateTime,valType);
+        } catch (DataIndexException e){
+            /* SHOULD NEVER GET HERE */
+            throw new RuntimeException("getStreamSnapshotFromMarkerToMostRecentIgnoreDirty" +
+                    " failed to suppress DataIndexException");
+        } catch (DirtyMarkerException e) {
+            /* SHOULD NEVER GET HERE */
+            throw new RuntimeException("getStreamSnapshotFromMarkerToMostRecentIgnoreDirty" +
+                    " failed to ignore dirty marker");
+        }
     }
 
     @SuppressWarnings("unchecked")

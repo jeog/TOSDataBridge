@@ -454,7 +454,7 @@ public class TOSDataBridgeTest {
     {
         Method m;
         try {
-            m = block.getClass().getMethod((withDateTime ? "getTotalFrameWithDateTime" : "GetTotalFrame"));
+            m = block.getClass().getMethod((withDateTime ? "getTotalFrameWithDateTime" : "getTotalFrame"));
         } catch (NoSuchMethodException e) {
             e.printStackTrace();
             return;
@@ -489,7 +489,7 @@ public class TOSDataBridgeTest {
     {
         Method m;
         try {
-            m = block.getClass().getMethod((withDateTime ? "getItemFrameWithDateTime" : "GetItemFrame"),
+            m = block.getClass().getMethod((withDateTime ? "getItemFrameWithDateTime" : "getItemFrame"),
                     Topic.class);
         } catch (NoSuchMethodException e) {
             e.printStackTrace();
