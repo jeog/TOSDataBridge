@@ -392,108 +392,99 @@ public class DataBlock {
     }
 
     /**
-     * Get most recent data-point as Long.
+     * Get most recent data-point as Long (or null if no data in stream yet).
      *
      * @param item item string of stream
      * @param topic Topic enum of stream
-     * @param checkIndx throw if data doesn't exist at this index/position yet
-     * @return data-point at position 'indx'
+     * @return data-point (or null) at position 'indx'
+     * @throws CLibException error code returned by C lib
+     * @throws LibraryNotLoaded C lib has not been loaded
+     */
+    public Long
+    getLong(String item, Topic topic) throws CLibException, LibraryNotLoaded {
+        return getMostRecent(item,topic,false,Long.class);
+        //return get(item,topic,0, checkIndx, false, Long.class);
+    }
+
+    /**
+     * Get single data-point as Long (or null if no data at that position/index in stream yet).
+     *
+     * @param item item string of stream
+     * @param topic Topic enum of stream
+     * @param indx index/position of data-point
+     * @return data-point (or null) at position 'indx'
      * @throws CLibException error code returned by C lib
      * @throws LibraryNotLoaded C lib has not been loaded  
      * @throws DataIndexException invalid index/position value
      */
     public Long
-    getLong(String item, Topic topic, boolean checkIndx)
+    getLong(String item, Topic topic,int indx)
             throws CLibException, LibraryNotLoaded, DataIndexException {
-        return get(item,topic,0, checkIndx, false, Long.class);
+        return get(item,topic, indx, false, Long.class);
     }
 
     /**
-     * Get single data-point as Long.
+     * Get most recent data-point as Double (or null if no data in stream yet).
+     *
+     * @param item item string of stream
+     * @param topic Topic enum of stream
+     * @return data-point (or null) at position 'indx'
+     * @throws CLibException error code returned by C lib
+     * @throws LibraryNotLoaded C lib has not been loaded
+     */
+    public Double
+    getDouble(String item, Topic topic) throws CLibException, LibraryNotLoaded {
+        return getMostRecent(item,topic,false,Double.class);
+        //return get(item,topic,0, checkIndx, false, Double.class);
+    }
+
+    /**
+     * Get single data-point as Double (or null if no data at that position/index in stream yet).
      *
      * @param item item string of stream
      * @param topic Topic enum of stream
      * @param indx index/position of data-point
-     * @param checkIndx throw if data doesn't exist at this index/position yet
-     * @return data-point at position 'indx'
-     * @throws CLibException error code returned by C lib
-     * @throws LibraryNotLoaded C lib has not been loaded  
-     * @throws DataIndexException invalid index/position value
-     */
-    public Long
-    getLong(String item, Topic topic,int indx, boolean checkIndx)
-            throws CLibException, LibraryNotLoaded, DataIndexException {
-        return get(item,topic, indx, checkIndx, false, Long.class);
-    }
-
-    /**
-     * Get most recent data-point as Double.
-     *
-     * @param item item string of stream
-     * @param topic Topic enum of stream
-     * @param checkIndx throw if data doesn't exist at this index/position yet
-     * @return data-point at position 'indx'
+     * @return data-point (or null) at position 'indx'
      * @throws CLibException error code returned by C lib
      * @throws LibraryNotLoaded C lib has not been loaded  
      * @throws DataIndexException invalid index/position value
      */
     public Double
-    getDouble(String item, Topic topic, boolean checkIndx)
+    getDouble(String item, Topic topic,int indx)
             throws CLibException, LibraryNotLoaded, DataIndexException {
-        return get(item,topic,0, checkIndx, false, Double.class);
+        return get(item,topic, indx, false, Double.class);
     }
 
     /**
-     * Get single data-point as Double.
+     * Get most recent data-point as String (or null if no data in stream yet).
+     *
+     * @param item item string of stream
+     * @param topic Topic enum of stream
+     * @return data-point (or null) at position 'indx'
+     * @throws CLibException error code returned by C lib
+     * @throws LibraryNotLoaded C lib has not been loaded
+     */
+    public String
+    getString(String item, Topic topic) throws CLibException, LibraryNotLoaded {
+        return getMostRecent(item,topic,false,String.class);
+        //return get(item,topic,0, checkIndx, false, String.class);
+    }
+
+    /**
+     * Get single data-point as String (or null if no data at that position/index in stream yet).
      *
      * @param item item string of stream
      * @param topic Topic enum of stream
      * @param indx index/position of data-point
-     * @param checkIndx throw if data doesn't exist at this index/position yet
-     * @return data-point at position 'indx'
-     * @throws CLibException error code returned by C lib
-     * @throws LibraryNotLoaded C lib has not been loaded  
-     * @throws DataIndexException invalid index/position value
-     */
-    public Double
-    getDouble(String item, Topic topic,int indx, boolean checkIndx)
-            throws CLibException, LibraryNotLoaded, DataIndexException {
-        return get(item,topic, indx, checkIndx, false, Double.class);
-    }
-
-    /**
-     * Get most recent data-point as String.
-     *
-     * @param item item string of stream
-     * @param topic Topic enum of stream
-     * @param checkIndx throw if data doesn't exist at this index/position yet
-     * @return data-point at position 'indx'
+     * @return data-point (or null) at position 'indx'
      * @throws CLibException error code returned by C lib
      * @throws LibraryNotLoaded C lib has not been loaded  
      * @throws DataIndexException invalid index/position value
      */
     public String
-    getString(String item, Topic topic, boolean checkIndx)
+    getString(String item, Topic topic,int indx)
             throws CLibException, LibraryNotLoaded, DataIndexException {
-        return get(item,topic,0, checkIndx, false, String.class);
-    }
-
-    /**
-     * Get single data-point as String.
-     *
-     * @param item item string of stream
-     * @param topic Topic enum of stream
-     * @param indx index/position of data-point
-     * @param checkIndx throw if data doesn't exist at this index/position yet
-     * @return data-point at position 'indx'
-     * @throws CLibException error code returned by C lib
-     * @throws LibraryNotLoaded C lib has not been loaded  
-     * @throws DataIndexException invalid index/position value
-     */
-    public String
-    getString(String item, Topic topic,int indx, boolean checkIndx)
-            throws CLibException, LibraryNotLoaded, DataIndexException {
-        return get(item,topic, indx, checkIndx, false, String.class);
+        return get(item,topic, indx, false, String.class);
     }
 
     /**
@@ -908,10 +899,23 @@ public class DataBlock {
         return frame;
     }
 
+    /* suppress DataIndexException */
+    protected final <T> T
+    getMostRecent(String item, Topic topic, boolean withDateTime, Class<?> valType)
+            throws LibraryNotLoaded, CLibException
+    {
+        try {
+            return get(item,topic,0,withDateTime,valType);
+        } catch (DataIndexException e) {
+            /* SHOULD NEVER GET HERE */
+            throw new RuntimeException("getMostRecent failed to suppress DataIndexException");
+        }
+    }
+
     @SuppressWarnings("unchecked")
     protected final <T> T
-    get(String item, Topic topic,int indx, boolean checkIndx, boolean withDateTime,
-            Class<?> valType) throws LibraryNotLoaded, CLibException, DataIndexException
+    get(String item, Topic topic,int indx, boolean withDateTime, Class<?> valType)
+            throws LibraryNotLoaded, CLibException, DataIndexException
     {
         final CLib lib = TOSDataBridge.getCLibrary();
         item = item.toUpperCase();
@@ -926,10 +930,8 @@ public class DataBlock {
         }
 
         int occ = getStreamOccupancy(item, topic);
-        if(checkIndx && indx >= occ) {
-            throw new DataIndexException("Can not get data at indx: " + String.valueOf(indx)
-                    + ", occupancy only: " + String.valueOf(occ));
-        }
+        if(indx >= occ)
+            return null;
 
         if( valType.equals(Long.class) ) {
             return _getLong(item,topic,indx,withDateTime,lib);

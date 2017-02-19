@@ -97,113 +97,104 @@ public class DataBlockWithDateTime extends DataBlock {
 
     /**
      * Get most recent data-point as DateTimePair&lt;Long&gt;.
+     * (or null if no data in stream yet).
      *
      * @param item item string of stream
      * @param topic Topic enum of stream
-     * @param checkIndx throw if data doesn't exist at this index/position yet
      * @return data-point and DateTime at position 'indx'
      * @throws CLibException error code returned by C lib
      * @throws LibraryNotLoaded C lib has not been loaded
-     * @throws DataIndexException invalid index/position value
      */
     public DateTimePair<Long>
-    getLongWithDateTime(String item, Topic topic, boolean checkIndx)
-            throws CLibException, LibraryNotLoaded, DataIndexException
-    {
-        return get(item,topic,0, checkIndx, true, Long.class);
+    getLongWithDateTime(String item, Topic topic) throws CLibException, LibraryNotLoaded {
+        return getMostRecent(item,topic,true,Long.class);
+        //return get(item,topic,0, checkIndx, true, Long.class);
     }
 
     /**
-     * Get single data-point as DateTimePair&lt;Long&gt;.
+     * Get single data-point as DateTimePair&lt;Long&gt;
+     * (or null if no data at that position/index in stream yet).
      *
      * @param item item string of stream
      * @param topic Topic enum of stream
      * @param indx index/position of data-point
-     * @param checkIndx throw if data doesn't exist at this index/position yet
-     * @return data-point and DateTime at position 'indx'
+     * @return data-point and DateTime (or null) at position 'indx'
      * @throws CLibException error code returned by C lib
      * @throws LibraryNotLoaded C lib has not been loaded
      * @throws DataIndexException invalid index/position value
      */
     public DateTimePair<Long>
-    getLongWithDateTime(String item, Topic topic,int indx, boolean checkIndx)
-            throws CLibException, LibraryNotLoaded, DataIndexException
-    {
-        return get(item,topic, indx, checkIndx, true, Long.class);
+    getLongWithDateTime(String item, Topic topic,int indx)
+            throws CLibException, LibraryNotLoaded, DataIndexException {
+        return get(item,topic, indx, true, Long.class);
     }
 
     /**
      * Get most recent data-point as DateTimePair&lt;Double&gt;.
+     * (or null if no data in stream yet).
      *
      * @param item item string of stream
      * @param topic Topic enum of stream
-     * @param checkIndx throw if data doesn't exist at this index/position yet
-     * @return data-point and DateTime at position 'indx'
+     * @return data-point and DateTime (or null) at position 'indx'
      * @throws CLibException error code returned by C lib
      * @throws LibraryNotLoaded C lib has not been loaded
-     * @throws DataIndexException invalid index/position value
      */
     public DateTimePair<Double>
-    getDoubleWithDateTime(String item, Topic topic, boolean checkIndx)
-            throws CLibException, LibraryNotLoaded, DataIndexException
-    {
-        return get(item,topic,0, checkIndx, true, Double.class);
+    getDoubleWithDateTime(String item, Topic topic) throws CLibException, LibraryNotLoaded {
+        return getMostRecent(item,topic,true,Double.class);
+        //return get(item,topic,0, checkIndx, true, Double.class);
     }
 
     /**
-     * Get single data-point as DateTimePair&lt;Double&gt;.
+     * Get single data-point as DateTimePair&lt;Double&gt;
+     * (or null if no data at that position/index in stream yet).
      *
      * @param item item string of stream
      * @param topic Topic enum of stream
      * @param indx index/position of data-point
-     * @param checkIndx throw if data doesn't exist at this index/position yet
-     * @return data-point and DateTime at position 'indx'
+     * @return data-point and DateTime (or null) at position 'indx'
      * @throws CLibException error code returned by C lib
      * @throws LibraryNotLoaded C lib has not been loaded
      * @throws DataIndexException invalid index/position value
      */
     public DateTimePair<Double>
-    getDoubleWithDateTime(String item, Topic topic,int indx, boolean checkIndx)
-            throws CLibException, LibraryNotLoaded, DataIndexException
-    {
-        return get(item,topic, indx, checkIndx, true, Double.class);
+    getDoubleWithDateTime(String item, Topic topic,int indx)
+            throws CLibException, LibraryNotLoaded, DataIndexException {
+        return get(item,topic, indx, true, Double.class);
     }
 
     /**
      * Get most recent data-point as DateTimePair&lt;String&gt;.
+     * (or null if no data in stream yet).
      *
      * @param item item string of stream
      * @param topic Topic enum of stream
-     * @param checkIndx throw if data doesn't exist at this index/position yet
-     * @return data-point and DateTime at position 'indx'
+     * @return data-point and DateTime (or null) at position 'indx'
      * @throws CLibException error code returned by C lib
      * @throws LibraryNotLoaded C lib has not been loaded
-     * @throws DataIndexException invalid index/position value
      */
     public DateTimePair<String>
-    getStringWithDateTime(String item, Topic topic, boolean checkIndx)
-            throws CLibException, LibraryNotLoaded, DataIndexException
-    {
-        return get(item,topic,0, checkIndx, true, String.class);
+    getStringWithDateTime(String item, Topic topic) throws CLibException, LibraryNotLoaded {
+        return getMostRecent(item,topic,true,String.class);
+        //return get(item,topic,0, checkIndx, true, String.class);
     }
 
     /**
-     * Get single data-point as DateTimePair&lt;String&gt;.
+     * Get single data-point as DateTimePair&lt;String&gt;
+     * (or null if no data at that position/index in stream yet).
      *
      * @param item item string of stream
      * @param topic Topic enum of stream
      * @param indx index/position of data-point
-     * @param checkIndx throw if data doesn't exist at this index/position yet
-     * @return data-point and DateTime at position 'indx'
+     * @return data-point and DateTime (or null) at position 'indx'
      * @throws CLibException error code returned by C lib
      * @throws LibraryNotLoaded C lib has not been loaded
      * @throws DataIndexException invalid index/position value
      */
     public DateTimePair<String>
-    getStringWithDateTime(String item, Topic topic,int indx, boolean checkIndx)
-            throws CLibException, LibraryNotLoaded, DataIndexException
-    {
-        return get(item,topic, indx, checkIndx, true, String.class);
+    getStringWithDateTime(String item, Topic topic,int indx)
+            throws CLibException, LibraryNotLoaded, DataIndexException {
+        return get(item,topic, indx, true, String.class);
     }
 
     /**
