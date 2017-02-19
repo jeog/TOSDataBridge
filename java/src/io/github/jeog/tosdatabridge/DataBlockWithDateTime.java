@@ -27,7 +27,7 @@ import java.lang.reflect.Array;
 import java.util.*;
 
 /**
- * Extends DataBlock, adding DateTime objects alongside primary data.
+ * Extends DataBlock, adding DateTime objects to primary primary data.
  *
  * @author Jonathon Ogden
  * @version 0.7

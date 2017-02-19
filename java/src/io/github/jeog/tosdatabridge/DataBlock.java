@@ -141,6 +141,12 @@ public class DataBlock {
         }
     }
 
+    /**
+     * Close the underlying C lib block.
+     *
+     * @throws CLibException
+     * @throws LibraryNotLoaded
+     */
     public void
     close() throws CLibException, LibraryNotLoaded {
         int err = TOSDataBridge.getCLibrary().TOSDB_CloseBlock(_name);
@@ -158,21 +164,31 @@ public class DataBlock {
         }
     }
 
-    public String
-    getName() {
-        return _name;
-    }
-
+    /**
+     * Is block storing DateTime objects alongside primary data.
+     * @returns boolean
+     */
     public boolean
     isUsingDateTime() {
         return _dateTime;
     }
 
+    /**
+     * What timeout (in milliseconds) is the underlying block using for IPC/DDE.
+     * @return timeout
+     */
     public int
     getTimeout() {
         return _timeout;
     }
 
+    /**
+     * Return maximum amount of data that can be stored in the block.
+     *
+     * @return block size
+     * @throws LibraryNotLoaded
+     * @throws CLibException
+     */
     public int
     getBlockSize() throws LibraryNotLoaded, CLibException {
         int[] size = {0};
@@ -186,6 +202,13 @@ public class DataBlock {
         return size[0];
     }
 
+    /**
+     * Set maximum amount of data that can be stored in the block.
+     *
+     * @param size
+     * @throws LibraryNotLoaded
+     * @throws CLibException
+     */
     public void
     setBlockSize(int size) throws LibraryNotLoaded, CLibException {
         int err = TOSDataBridge.getCLibrary().TOSDB_SetBlockSize(_name, size);
@@ -195,6 +218,15 @@ public class DataBlock {
         _size = size;
     }
 
+    /**
+     * Get current amount of data current in the stream.
+     *
+     * @param item
+     * @param topic
+     * @return size
+     * @throws CLibException
+     * @throws LibraryNotLoaded
+     */
     public int
     getStreamOccupancy(String item, Topic topic) throws CLibException, LibraryNotLoaded {
         item = item.toUpperCase();
@@ -208,26 +240,61 @@ public class DataBlock {
         return occ[0];
     }
 
+    /**
+     * Return items currently in the block.
+     *
+     * @return set of item strings
+     * @throws LibraryNotLoaded
+     * @throws CLibException
+     */
     public Set<String>
     getItems() throws LibraryNotLoaded, CLibException {
         return _getItemTopicNames(true,false);
     }
 
+    /**
+     * Return topics currently in the block.
+     *
+     * @return set of Topics
+     * @throws LibraryNotLoaded
+     * @throws CLibException
+     */
     public Set<Topic>
     getTopics() throws LibraryNotLoaded, CLibException {
         return _getItemTopicNames(false,false);
     }
 
+    /**
+     * Return items currently in the block's pre-cache.
+     *
+     * @return set of item strings
+     * @throws LibraryNotLoaded
+     * @throws CLibException
+     */
     public Set<String>
     getItemsPreCached() throws LibraryNotLoaded, CLibException {
         return _getItemTopicNames(true,true);
     }
 
+    /**
+     * Return topics currently in the block's pre-cache
+     *
+     * @return set of Topics
+     * @throws LibraryNotLoaded
+     * @throws CLibException
+     */
     public Set<Topic>
     getTopicsPreCached() throws LibraryNotLoaded, CLibException {
         return _getItemTopicNames(false,true);
     }
 
+    /**
+     * Add item string to the block.
+     *
+     * @param item
+     * @throws LibraryNotLoaded
+     * @throws CLibException
+     */
     public void
     addItem(String item) throws LibraryNotLoaded, CLibException {
         /* check we are consistent with C lib */
@@ -245,6 +312,13 @@ public class DataBlock {
         _items = getItems();
     }
 
+    /**
+     * Add Topic to the block.
+     *
+     * @param topic
+     * @throws LibraryNotLoaded
+     * @throws CLibException
+     */
     public void
     addTopic(Topic topic) throws LibraryNotLoaded, CLibException {
         /* check we are consistent with C lib */
@@ -262,6 +336,13 @@ public class DataBlock {
         _topics = getTopics();
     }
 
+    /**
+     * Remove item string from the block.
+     *
+     * @param item
+     * @throws LibraryNotLoaded
+     * @throws CLibException
+     */
     public void
     removeItem(String item) throws LibraryNotLoaded, CLibException {
         /* check we are consistent with C lib */
@@ -279,6 +360,13 @@ public class DataBlock {
         }
     }
 
+    /**
+     * Remove Topic from the block.
+     *
+     * @param topic
+     * @throws LibraryNotLoaded
+     * @throws CLibException
+     */
     public void
     removeTopic(Topic topic) throws LibraryNotLoaded, CLibException {
         /* check we are consistent with C lib */
@@ -296,178 +384,496 @@ public class DataBlock {
         }
     }
 
+    /**
+     * Get most recent data-point as Long.
+     *
+     * @param item item string of stream
+     * @param topic Topic enum of stream
+     * @param checkIndx throw if data doesn't exist at this index/position yet
+     * @return data-point at position 'indx'
+     * @throws CLibException
+     * @throws LibraryNotLoaded
+     * @throws DataIndexException
+     */
     public Long
     getLong(String item, Topic topic, boolean checkIndx)
             throws CLibException, LibraryNotLoaded, DataIndexException {
         return get(item,topic,0, checkIndx, false, Long.class);
     }
 
+    /**
+     * Get single data-point as Long.
+     *
+     * @param item item string of stream
+     * @param topic Topic enum of stream
+     * @param indx index/position of data-point
+     * @param checkIndx throw if data doesn't exist at this index/position yet
+     * @return data-point at position 'indx'
+     * @throws CLibException
+     * @throws LibraryNotLoaded
+     * @throws DataIndexException
+     */
     public Long
     getLong(String item, Topic topic,int indx, boolean checkIndx)
             throws CLibException, LibraryNotLoaded, DataIndexException {
         return get(item,topic, indx, checkIndx, false, Long.class);
     }
 
+    /**
+     * Get most recent data-point as Double.
+     *
+     * @param item item string of stream
+     * @param topic Topic enum of stream
+     * @param checkIndx throw if data doesn't exist at this index/position yet
+     * @return data-point at position 'indx'
+     * @throws CLibException
+     * @throws LibraryNotLoaded
+     * @throws DataIndexException
+     */
     public Double
     getDouble(String item, Topic topic, boolean checkIndx)
             throws CLibException, LibraryNotLoaded, DataIndexException {
         return get(item,topic,0, checkIndx, false, Double.class);
     }
 
+    /**
+     * Get single data-point as Double.
+     *
+     * @param item item string of stream
+     * @param topic Topic enum of stream
+     * @param indx index/position of data-point
+     * @param checkIndx throw if data doesn't exist at this index/position yet
+     * @return data-point at position 'indx'
+     * @throws CLibException
+     * @throws LibraryNotLoaded
+     * @throws DataIndexException
+     */
     public Double
     getDouble(String item, Topic topic,int indx, boolean checkIndx)
             throws CLibException, LibraryNotLoaded, DataIndexException {
         return get(item,topic, indx, checkIndx, false, Double.class);
     }
 
+    /**
+     * Get most recent data-point as String.
+     *
+     * @param item item string of stream
+     * @param topic Topic enum of stream
+     * @param checkIndx throw if data doesn't exist at this index/position yet
+     * @return data-point at position 'indx'
+     * @throws CLibException
+     * @throws LibraryNotLoaded
+     * @throws DataIndexException
+     */
     public String
     getString(String item, Topic topic, boolean checkIndx)
             throws CLibException, LibraryNotLoaded, DataIndexException {
         return get(item,topic,0, checkIndx, false, String.class);
     }
 
+    /**
+     * Get single data-point as String.
+     *
+     * @param item item string of stream
+     * @param topic Topic enum of stream
+     * @param indx index/position of data-point
+     * @param checkIndx throw if data doesn't exist at this index/position yet
+     * @return data-point at position 'indx'
+     * @throws CLibException
+     * @throws LibraryNotLoaded
+     * @throws DataIndexException
+     */
     public String
     getString(String item, Topic topic,int indx, boolean checkIndx)
             throws CLibException, LibraryNotLoaded, DataIndexException {
         return get(item,topic, indx, checkIndx, false, String.class);
     }
 
+    /**
+     * Get all data-points currently in stream, as array of Longs.
+     *
+     * @param item item string of stream
+     * @param topic Topic enum of stream
+     * @return all data-points in the stream
+     * @throws LibraryNotLoaded
+     * @throws CLibException
+     * @throws DataIndexException
+     */
     public Long[]
     getStreamSnapshotLongs(String item, Topic topic)
             throws LibraryNotLoaded, CLibException, DataIndexException {
         return getStreamSnapshot(item,topic,-1,0,true, false,Long.class);
     }
 
+    /**
+     * Get multiple data-points, between most recent and 'end', as array of Longs
+     *
+     * @param item item string of the stream
+     * @param topic Topic enum of the stream
+     * @param end least recent index/position from which data is pulled
+     * @return data-points between most recent and 'end'
+     * @throws LibraryNotLoaded
+     * @throws CLibException
+     * @throws DataIndexException
+     */
     public Long[]
     getStreamSnapshotLongs(String item, Topic topic, int end)
             throws LibraryNotLoaded, CLibException, DataIndexException {
         return getStreamSnapshot(item,topic,end,0,true, false,Long.class);
     }
 
+    /**
+     *
+     * Get multiple data-points, between 'beg' and 'end', as array of Longs.
+     *
+     * @param item item string of stream
+     * @param topic Topic enum of stream
+     * @param end least recent index/position from which data is pulled
+     * @param beg most recent index/position from which data is pulled
+     * @return data-points between 'beg' and 'end'
+     * @throws LibraryNotLoaded
+     * @throws CLibException
+     * @throws DataIndexException
+     */
     public Long[]
     getStreamSnapshotLongs(String item, Topic topic, int end, int beg)
             throws LibraryNotLoaded, CLibException, DataIndexException {
         return getStreamSnapshot(item,topic,end,beg,true,false,Long.class);
     }
 
+    /**
+     * Get all data-points currently in stream, as array of Doubles.
+     *
+     * @param item item string of stream
+     * @param topic Topic enum of stream
+     * @return all data-points in the stream
+     * @throws LibraryNotLoaded
+     * @throws CLibException
+     * @throws DataIndexException
+     */
     public Double[]
     getStreamSnapshotDoubles(String item, Topic topic)
             throws LibraryNotLoaded, CLibException, DataIndexException {
         return getStreamSnapshot(item,topic,-1,0,true, false,Double.class);
     }
 
+    /**
+     * Get multiple data-points, between most recent and 'end', as array of Doubles.
+     *
+     * @param item item string of the stream
+     * @param topic Topic enum of the stream
+     * @param end least recent index/position from which data is pulled
+     * @return data-points between most recent and 'end'
+     * @throws LibraryNotLoaded
+     * @throws CLibException
+     * @throws DataIndexException
+     */
     public Double[]
     getStreamSnapshotDoubles(String item, Topic topic, int end)
             throws LibraryNotLoaded, CLibException, DataIndexException {
         return getStreamSnapshot(item,topic,end,0,true, false,Double.class);
     }
 
+    /**
+     *
+     * Get multiple data-points, between 'beg' and 'end', as array of Doubles.
+     *
+     * @param item item string of stream
+     * @param topic Topic enum of stream
+     * @param end least recent index/position from which data is pulled
+     * @param beg most recent index/position from which data is pulled
+     * @return data-points between 'beg' and 'end'
+     * @throws LibraryNotLoaded
+     * @throws CLibException
+     * @throws DataIndexException
+     */
     public Double[]
     getStreamSnapshotDoubles(String item, Topic topic, int end, int beg)
             throws LibraryNotLoaded, CLibException, DataIndexException {
         return getStreamSnapshot(item,topic,end,beg,true,false,Double.class);
     }
 
+    /**
+     * Get all data-points currently in stream, as array of Strings.
+     *
+     * @param item item string of stream
+     * @param topic Topic enum of stream
+     * @return all data-points in the stream
+     * @throws LibraryNotLoaded
+     * @throws CLibException
+     * @throws DataIndexException
+     */
     public String[]
     getStreamSnapshotStrings(String item, Topic topic)
             throws LibraryNotLoaded, CLibException, DataIndexException {
         return getStreamSnapshot(item,topic,-1,0,true,false,String.class);
     }
 
+    /**
+     * Get multiple data-points, between most recent and 'end', as array of Strings.
+     *
+     * @param item item string of the stream
+     * @param topic Topic enum of the stream
+     * @param end least recent index/position from which data is pulled
+     * @return data-points between most recent and 'end'
+     * @throws LibraryNotLoaded
+     * @throws CLibException
+     * @throws DataIndexException
+     */
     public String[]
     getStreamSnapshotStrings(String item, Topic topic, int end)
             throws LibraryNotLoaded, CLibException, DataIndexException {
         return getStreamSnapshot(item,topic,end,0,true,false,String.class);
     }
 
+    /**
+     *
+     * Get multiple data-points, between 'beg' and 'end', as array of Strings.
+     *
+     * @param item item string of stream
+     * @param topic Topic enum of stream
+     * @param end least recent index/position from which data is pulled
+     * @param beg most recent index/position from which data is pulled
+     * @return data-points between 'beg' and 'end'
+     * @throws LibraryNotLoaded
+     * @throws CLibException
+     * @throws DataIndexException
+     */
     public String[]
     getStreamSnapshotStrings(String item, Topic topic, int end, int beg)
             throws LibraryNotLoaded, CLibException, DataIndexException {
         return getStreamSnapshot(item,topic,end,beg,true,false,String.class);
     }
 
+    /**
+     * Get all data-points up to 'atomic' marker, as array of Longs.
+     *
+     * @param item item string of stream
+     * @param topic Topic enum of stream
+     * @return all data-points up to 'atomic' marker
+     * @throws LibraryNotLoaded
+     * @throws CLibException
+     * @throws DataIndexException
+     */
     public Long[]
     getStreamSnapshotLongsFromMarker(String item, Topic topic)
             throws LibraryNotLoaded, CLibException, DataIndexException, DirtyMarkerException {
         return getStreamSnapshotFromMarker(item,topic,0,true,false,Long.class);
     }
 
+    /**
+     * Get all data-points from 'beg' to 'atomic' marker, as array of Longs.
+     *
+     * @param item item string of stream
+     * @param topic Topic enum of stream
+     * @return all data-points from 'beg' to 'atomic' marker
+     * @throws LibraryNotLoaded
+     * @throws CLibException
+     * @throws DataIndexException
+     * @throws DirtyMarkerException
+     */
     public Long[]
     getStreamSnapshotLongsFromMarker(String item, Topic topic, int beg)
             throws LibraryNotLoaded, CLibException, DataIndexException, DirtyMarkerException {
         return getStreamSnapshotFromMarker(item,topic,beg,true,false,Long.class);
     }
 
+    /**
+     * Get all data-points up to 'atomic' marker, as array of Doubles.
+     *
+     * @param item item string of stream
+     * @param topic Topic enum of stream
+     * @return all data-points up to 'atomic' marker
+     * @throws LibraryNotLoaded
+     * @throws CLibException
+     * @throws DataIndexException
+     * @throws DirtyMarkerException
+     */
     public Double[]
     getStreamSnapshotDoublesFromMarker(String item, Topic topic)
             throws LibraryNotLoaded, CLibException, DataIndexException, DirtyMarkerException {
         return getStreamSnapshotFromMarker(item,topic,0,true,false,Double.class);
     }
 
+    /**
+     * Get all data-points from 'beg' to 'atomic' marker, as array of Doubles.
+     *
+     * @param item item string of stream
+     * @param topic Topic enum of stream
+     * @return all data-points from 'beg' to 'atomic' marker
+     * @throws LibraryNotLoaded
+     * @throws CLibException
+     * @throws DataIndexException
+     * @throws DirtyMarkerException
+     */
     public Double[]
     getStreamSnapshotDoublesFromMarker(String item, Topic topic, int beg)
             throws LibraryNotLoaded, CLibException, DataIndexException, DirtyMarkerException {
         return getStreamSnapshotFromMarker(item,topic,beg,true,false,Double.class);
     }
 
+    /**
+     * Get all data-points up to 'atomic' marker, as array of Strings.
+     *
+     * @param item item string of stream
+     * @param topic Topic enum of stream
+     * @return all data-points up to 'atomic' marker
+     * @throws LibraryNotLoaded
+     * @throws CLibException
+     * @throws DataIndexException
+     * @throws DirtyMarkerException
+     */
     public String[]
     getStreamSnapshotStringsFromMarker(String item, Topic topic)
             throws LibraryNotLoaded, CLibException, DataIndexException, DirtyMarkerException {
         return getStreamSnapshotFromMarker(item,topic,0,true,false,String.class);
     }
 
+    /**
+     * Get all data-points from 'beg' to 'atomic' marker, as array of Strings.
+     *
+     * @param item item string of stream
+     * @param topic Topic enum of stream
+     * @return all data-points from 'beg' to 'atomic' marker
+     * @throws LibraryNotLoaded
+     * @throws CLibException
+     * @throws DataIndexException
+     * @throws DirtyMarkerException
+     */
     public String[]
     getStreamSnapshotStringsFromMarker(String item, Topic topic, int beg)
             throws LibraryNotLoaded, CLibException, DataIndexException, DirtyMarkerException {
         return getStreamSnapshotFromMarker(item,topic,beg,true,false,String.class);
     }
 
+    /**
+     * Get all data-points up to 'atomic' marker, as array of Longs. IGNORE DIRTY MARKER.
+     *
+     * @param item item string of stream
+     * @param topic Topic enum of stream
+     * @return all data-points up to 'atomic' marker
+     * @throws LibraryNotLoaded
+     * @throws CLibException
+     * @throws DataIndexException
+     */
     public Long[]
     getStreamSnapshotLongsFromMarkerIgnoreDirty(String item, Topic topic)
             throws LibraryNotLoaded, CLibException, DataIndexException {
         return getStreamSnapshotFromMarkerIgnoreDirty(item,topic,0,false,Long.class);
     }
 
+    /**
+     * Get all data-points from 'beg' to 'atomic' marker, as array of Longs. IGNORE DIRTY MARKER.
+     *
+     * @param item item string of stream
+     * @param topic Topic enum of stream
+     * @return all data-points from 'beg' to 'atomic' marker
+     * @throws LibraryNotLoaded
+     * @throws CLibException
+     * @throws DataIndexException
+     */
     public Long[]
     getStreamSnapshotLongsFromMarkerIgnoreDirty(String item, Topic topic, int beg)
             throws LibraryNotLoaded, CLibException, DataIndexException {
         return getStreamSnapshotFromMarkerIgnoreDirty(item,topic,beg,false,Long.class);
     }
 
+    /**
+     * Get all data-points up to 'atomic' marker, as array of Doubles. IGNORE DIRTY MARKER.
+     *
+     * @param item item string of stream
+     * @param topic Topic enum of stream
+     * @return all data-points up to 'atomic' marker
+     * @throws LibraryNotLoaded
+     * @throws CLibException
+     * @throws DataIndexException
+     */
     public Double[]
     getStreamSnapshotDoublesFromMarkerIgnoreDirty(String item, Topic topic)
             throws LibraryNotLoaded, CLibException, DataIndexException {
         return getStreamSnapshotFromMarkerIgnoreDirty(item,topic,0,false,Double.class);
     }
 
+    /**
+     * Get all data-points from 'beg' to 'atomic' marker, as array of Doubles. INGORE DIRTY MARKER.
+     *
+     * @param item item string of stream
+     * @param topic Topic enum of stream
+     * @return all data-points from 'beg' to 'atomic' marker
+     * @throws LibraryNotLoaded
+     * @throws CLibException
+     * @throws DataIndexException
+     */
     public Double[]
     getStreamSnapshotDoublesFromMarkerIgnoreDirty(String item, Topic topic, int beg)
             throws LibraryNotLoaded, CLibException, DataIndexException {
         return getStreamSnapshotFromMarkerIgnoreDirty(item, topic, beg, false, Double.class);
     }
 
+    /**
+     * Get all data-points up to 'atomic' marker, as array of Strings. IGNORE DIRTY MARKER.
+     *
+     * @param item item string of stream
+     * @param topic Topic enum of stream
+     * @return all data-points up to 'atomic' marker
+     * @throws LibraryNotLoaded
+     * @throws CLibException
+     * @throws DataIndexException
+     */
     public String[]
     getStreamSnapshotStringsFromMarkerIgnoreDirty(String item, Topic topic)
             throws LibraryNotLoaded, CLibException, DataIndexException {
         return getStreamSnapshotFromMarkerIgnoreDirty(item,topic,0,false,String.class);
     }
 
+    /**
+     * Get all data-points from 'beg' to 'atomic' marker, as array of Strings. IGNORE DIRTY MARKER.
+     *
+     * @param item item string of stream
+     * @param topic Topic enum of stream
+     * @return all data-points from 'beg' to 'atomic' marker
+     * @throws LibraryNotLoaded
+     * @throws CLibException
+     * @throws DataIndexException
+     */
     public String[]
     getStreamSnapshotStringsFromMarkerIgnoreDirty(String item, Topic topic, int beg)
             throws LibraryNotLoaded, CLibException, DataIndexException {
         return getStreamSnapshotFromMarkerIgnoreDirty(item,topic,beg,false,String.class);
     }
 
+    /**
+     * Get all item values, as strings, for a particular topic.
+     *
+     * @param topic Topic enum of streams
+     * @return Mapping of item names to values
+     * @throws CLibException
+     * @throws LibraryNotLoaded
+     */
     public Map<String,String>
     getItemFrame(Topic topic) throws CLibException, LibraryNotLoaded {
         return _getFrame(topic, true, false);
     }
 
+    /**
+     * Get all topic values, as strings, for a particular item.
+     * @param item item string of streams
+     * @return Mapping of topic names to values
+     * @throws CLibException
+     * @throws LibraryNotLoaded
+     */
     public Map<Topic,String>
     getTopicFrame(String item) throws CLibException, LibraryNotLoaded {
         return _getFrame(item, false, false);
     }
 
+    /**
+     * Get all topic AND item values of the block.
+     *
+     * @return Mapping of item names to Mapping of Topic enums to values
+     * @throws LibraryNotLoaded
+     * @throws CLibException
+     */
     public Map<String, Map<Topic,String>>
     getTotalFrame() throws LibraryNotLoaded, CLibException {
         Map<String, Map<Topic, String>> frame = new HashMap<>();
