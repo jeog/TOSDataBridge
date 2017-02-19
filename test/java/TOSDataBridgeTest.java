@@ -16,11 +16,12 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 */
 
 
-import io.github.jeog.tosdatabridge.Pair;
+
 import io.github.jeog.tosdatabridge.TOSDataBridge;
 import io.github.jeog.tosdatabridge.TOSDataBridge.*;
 import io.github.jeog.tosdatabridge.DataBlock;
 import io.github.jeog.tosdatabridge.DataBlock.*;
+import io.github.jeog.tosdatabridge.DataBlockWithDateTime;
 import io.github.jeog.tosdatabridge.Topic;
 
 import java.io.File;
@@ -72,13 +73,12 @@ public class TOSDataBridgeTest {
             testAdminCalls();
 
             int block1Sz = 1000;
-            boolean block1DateTime = true;
             int block1Timeout = 3000;
             System.out.println();
             System.out.println("CREATE BLOCK...");
-            DataBlock block1 = new DataBlock(block1Sz, block1DateTime, block1Timeout);
+            DataBlockWithDateTime block1 = new DataBlockWithDateTime(block1Sz, block1Timeout);
 
-            if( !testBlockState(block1, block1Sz, block1DateTime, block1Timeout) ) {
+            if( !testBlockState(block1, block1Sz, true, block1Timeout) ) {
                 // just break out of the try-block
                 throw new IllegalStateException("testBlockState(...) failed");
             }else {
@@ -195,10 +195,6 @@ public class TOSDataBridgeTest {
             e.printStackTrace();
         }catch(CLibException e){
             System.out.println("EXCEPTION: CLibException");
-            System.out.println(e.toString());
-            e.printStackTrace();
-        } catch (DateTimeNotSupported e) {
-            System.out.println("EXCEPTION: DateTimeNotSupported");
             System.out.println(e.toString());
             e.printStackTrace();
         } catch (InterruptedException e) {
@@ -325,8 +321,7 @@ public class TOSDataBridgeTest {
     }
 
     private static void
-    testGetCalls(DataBlock block, boolean withDateTime)
-            throws CLibException, LibraryNotLoaded, DateTimeNotSupported
+    testGetCalls(DataBlock block, boolean withDateTime) throws CLibException, LibraryNotLoaded
     {
         Random rand = new Random(Double.doubleToLongBits(Math.random()));
         String dtSuffix = withDateTime ? "WithDateTime" : "";
@@ -373,7 +368,7 @@ public class TOSDataBridgeTest {
 
     private static void
     testStreamSnapshotCalls(DataBlock block, int sz, boolean withDateTime)
-            throws CLibException, LibraryNotLoaded, DateTimeNotSupported
+            throws CLibException, LibraryNotLoaded
     {
         if(sz < 1) {
             throw new IllegalArgumentException("sz < 1");
@@ -413,8 +408,7 @@ public class TOSDataBridgeTest {
 
     private static void
     testStreamSnapshotFromMarkerCalls(DataBlock block, int passes, int wait, boolean withDateTime,
-                                      boolean ignoreDirty)
-            throws CLibException, LibraryNotLoaded, DateTimeNotSupported
+                                      boolean ignoreDirty) throws CLibException, LibraryNotLoaded
     {
         if(passes < 1) {
             throw new IllegalArgumentException("passes < 1");
@@ -453,14 +447,25 @@ public class TOSDataBridgeTest {
         }
     }
 
+    @SuppressWarnings("unchecked")
     private static <T> void
     testTotalFrameCalls(DataBlock block, boolean withDateTime)
-            throws CLibException, LibraryNotLoaded, DateTimeNotSupported
+            throws CLibException, LibraryNotLoaded
     {
-        @SuppressWarnings("unchecked")
-        Map<String,Map<Topic,T>> frame =
-            (Map<String,Map<Topic,T>> )(withDateTime ? block.getTotalFrameWithDateTime()
-                                                     : block.getTotalFrame());
+        Method m;
+        try {
+            m = block.getClass().getMethod((withDateTime ? "getTotalFrameWithDateTime" : "GetTotalFrame"));
+        } catch (NoSuchMethodException e) {
+            e.printStackTrace();
+            return;
+        }
+        Map<String,Map<Topic,T>> frame;
+        try{
+            frame = (Map<String,Map<Topic,T>>)m.invoke(block);
+        } catch (IllegalAccessException | InvocationTargetException e) {
+            e.printStackTrace();
+            return;
+        }
         for(String i : frame.keySet()){
             System.out.print(String.format("%-12s :::  ", i));
             Map<Topic,T> row = frame.get(i);
@@ -477,16 +482,29 @@ public class TOSDataBridgeTest {
         }
     }
 
+    @SuppressWarnings("unchecked")
     private static <T> void
     testItemFrameCalls(DataBlock block, boolean withDateTime)
-            throws CLibException, LibraryNotLoaded, DateTimeNotSupported
+            throws CLibException, LibraryNotLoaded
     {
+        Method m;
+        try {
+            m = block.getClass().getMethod((withDateTime ? "getItemFrameWithDateTime" : "GetItemFrame"),
+                    Topic.class);
+        } catch (NoSuchMethodException e) {
+            e.printStackTrace();
+            return;
+        }
+
         Set<Topic> topics = block.getTopics();
         for(Topic topic : topics) {
-            @SuppressWarnings("unchecked")
-            Map<String, T> frame =
-                (Map<String, T>) (withDateTime ? block.getItemFrameWithDateTime(topic)
-                                               : block.getItemFrame(topic));
+            Map<String, T> frame;
+            try{
+                frame = (Map<String, T>)m.invoke(block, topic);
+            } catch (IllegalAccessException | InvocationTargetException e) {
+                e.printStackTrace();
+                return;
+            }
             System.out.print(String.format("%-12s :::  ", topic));
             for(String item : frame.keySet()){
                 if(withDateTime){
@@ -502,20 +520,32 @@ public class TOSDataBridgeTest {
         }
     }
 
+    @SuppressWarnings("unchecked")
     private static <T> void
     testTopicFrameCalls(DataBlock block,  boolean withDateTime)
-            throws CLibException, LibraryNotLoaded, DateTimeNotSupported
+            throws CLibException, LibraryNotLoaded
     {
+        Method m;
+        try {
+            m = block.getClass().getMethod((withDateTime ? "getTopicFrameWithDateTime" : "GetTopicFrame"),
+                    String.class);
+        } catch (NoSuchMethodException e) {
+            e.printStackTrace();
+            return;
+        }
+
         Set<String> items = block.getItems();
         for(String item : items) {
-            @SuppressWarnings("unchecked")
-            Map<Topic, T> frame =
-                (Map<Topic, T>)(withDateTime ? block.getTopicFrameWithDateTime(item)
-                                             : block.getTopicFrame(item));
+            Map<Topic, T> frame;
+            try{
+                frame = (Map<Topic, T>)m.invoke(block, item);
+            } catch (IllegalAccessException | InvocationTargetException e) {
+                e.printStackTrace();
+                return;
+            }
             System.out.print(String.format("%-12s :::  ", item));
             for(Topic topic: frame.keySet()){
                 if(withDateTime){
-                    @SuppressWarnings("unchecked")
                     DateTimePair<String> p = (DateTimePair<String>)frame.get(topic);
                     System.out.print(String.format("%s %s %s  ", topic, p.first,
                             p.second.toString()));
@@ -529,7 +559,8 @@ public class TOSDataBridgeTest {
 
     private static <T> void
     printGet(DataBlock block, String item, Topic topic, int indx, String mname)
-            throws CLibException, LibraryNotLoaded, DateTimeNotSupported {
+            throws CLibException, LibraryNotLoaded
+    {
         Method m;
         try {
             m = block.getClass().getMethod(mname,String.class,Topic.class,int.class,boolean.class);
@@ -549,7 +580,8 @@ public class TOSDataBridgeTest {
 
     private static <T> void
     printGetStreamSnapshot(DataBlock block, String item, Topic topic, int end, int beg, String mname)
-            throws CLibException, LibraryNotLoaded, DateTimeNotSupported {
+            throws CLibException, LibraryNotLoaded
+    {
         Method m;
         try {
             m = block.getClass().getMethod(mname,String.class,Topic.class,int.class,int.class);
@@ -572,7 +604,8 @@ public class TOSDataBridgeTest {
 
     private static <T> void
     printGetStreamSnapshotFromMarker(DataBlock block, String item, Topic topic, int beg, String mname)
-            throws CLibException, LibraryNotLoaded, DateTimeNotSupported {
+            throws CLibException, LibraryNotLoaded
+    {
         Method m;
         try {
             m = block.getClass().getMethod(mname,String.class,Topic.class,int.class);

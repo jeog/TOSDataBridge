@@ -75,10 +75,13 @@ Like the C/C++ interfaces we have type-specific calls. If you call the wrong ver
     switch( TOSDataBridge.getTopicType(topic) ){
     case TOPIC_IS_LONG:
         // use 'Long' version
+        break;
     case TOPIC_IS_DOUBLE:
         // use 'Double' version
+        break;
     case TOPIC_IS_STRING:
         //use 'String version
+        break;
     } 
 
 Methods with 'WithDateTime' appended return a Pair containing the underlying type AND a DateTime object: 
@@ -90,7 +93,7 @@ Methods with 'WithDateTime' appended return a Pair containing the underlying typ
 
 Methods with a plural type in the name(e.g getStreamSnapshotLongs(...)) return an array:
 
-    DataBlock block = DataBlock(...);
+    DataBlock block = new DataBlock(...);
 
     Long[] l =  block.getStreamSnapshotLongs(item,topic);
     DateTimePair<Long>[] ll = block.getStreamSnanshotLongsWithDateTime(item,topic);
@@ -102,15 +105,18 @@ StreamSnapshotFromMarker(...) calls provide client code a guarantee that it won'
     import io.github.jeog.tosdatabridge.TOSDataBridge;
 
     // path to the C Lib; tries to load lib and calls connect() 
-    TOSDataBridge.init("C:\...\TOSDataBridge\bin\Release\x64\tos-databridge-0.7-x64.dll);
+    TOSDataBridge.init(".\bin\Release\x64\tos-databridge-0.7-x64.dll");
 
     switch( TOSDataBridge.connectionState() ){
     case TOSDataBridge.CONN_NONN:
         // Not connected to engine
+        break;
     case TOSDataBridge.CONN_ENGINE:
         // Only connected to Engine (only access to admin calls)    
+        break;
     case TOSDataBridge.CONN_ENGINE_TOS:
         // Connected to Engine AND TOS Platform (can get data from engine/platform)
+        break;
     }
       
 ##### Create a Data Block
@@ -118,7 +124,7 @@ StreamSnapshotFromMarker(...) calls provide client code a guarantee that it won'
     import io.github.jeog.tosdatabridge.DataBlock;
 
     // can hold up to 1000 data-points with DateTime, default timeout 
-    DataBlock block = DataBlock(1000, True); 
+    DataBlock block = new DataBlock(1000, True); 
 
 ##### Add Items/Topics
 
@@ -153,7 +159,7 @@ StreamSnapshotFromMarker(...) calls provide client code a guarantee that it won'
             // array of 10 most recent data-points (index 0 to 9, inclusive)
             Double[] dd = block.getStreamSnapshotDoubles("SPY", Topic.LAST, 9, 0); 
 
-            // array of all valid data-points, with date time smap
+            // array of all valid data-points, with date-time
             DateTimePair<Double>[] ddDT = 
                 block.getStreamSnapshotDoublesWithDateTime("SPY", Topic.LAST) 
 

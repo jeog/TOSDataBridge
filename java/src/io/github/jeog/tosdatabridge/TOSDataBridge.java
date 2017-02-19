@@ -77,12 +77,6 @@ public final class TOSDataBridge{
         }
     }
 
-    public static class DateTimeNotSupported extends DataBlockException{
-        DateTimeNotSupported() {
-            super("DataBlock instance doesn't support DateTime");
-        }
-    }
-
     public static class DataIndexException extends DataBlockException{
         DataIndexException(String info) {
             super(info);
