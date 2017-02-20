@@ -527,7 +527,7 @@ public class TOSDataBridgeTest {
     {
         Method m;
         try {
-            m = block.getClass().getMethod((withDateTime ? "getTopicFrameWithDateTime" : "GetTopicFrame"),
+            m = block.getClass().getMethod((withDateTime ? "getTopicFrameWithDateTime" : "getTopicFrame"),
                     String.class);
         } catch (NoSuchMethodException e) {
             e.printStackTrace();
@@ -563,14 +563,14 @@ public class TOSDataBridgeTest {
     {
         Method m;
         try {
-            m = block.getClass().getMethod(mname,String.class,Topic.class,int.class,boolean.class);
+            m = block.getClass().getMethod(mname,String.class,Topic.class,int.class);
         } catch (NoSuchMethodException e) {
             e.printStackTrace();
             return;
         }
         try {
             @SuppressWarnings("unchecked")
-            T r1 = (T)m.invoke(block,item,topic,indx,true);
+            T r1 = (T)m.invoke(block,item,topic,indx);
             System.out.println(mname + "(" + item + "," + topic + "," + String.valueOf(indx)
                                      + "): " + r1.toString());
         } catch (IllegalAccessException | InvocationTargetException e) {

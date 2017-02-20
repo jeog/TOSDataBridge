@@ -1,4 +1,4 @@
-### Java Wrapper *(Alpha version)*
+### Java Wrapper 
 - - -
 
 ***WARNING: Still in early development:***
@@ -45,60 +45,12 @@ As mentioned, the java wrapper mirrors the python wrapper in many important ways
 
 - **DataBlock.java**: user-instantiated object used to pull data from the engine/platform (very similar to python's TOSDB_DataBlock)
 
-- **Topic.java**: enum that holds all the topics(LAST, BID, VOLUME etc.) that can be added to the block
+- **DataBlockWithDateTime.java**: user-instantiated object used to pull data - that includes a DateTime object - from the engine/platform (very similar to python's TOSDB_DataBlock)
 
 - **DateTime.java**: datetime object that wraps the C tm struct with an added millisecond field; returned in DateTimePair<Type> by the ...WithDateTime methods
 
+- **Topic.java**: enum that holds all the topics(LAST, BID, VOLUME etc.) that can be added to the block
 
-##### Important Details
-
-The way java handles type-checking, default function args, and exceptions force us to be much more explicit in the methods provided. For instance, in python, within TOSDB_DataBlock, we have a single stream_snapshot_from_marker() method that takes a number of different arguments, throws a number of exceptions, and returns a number of different, contingent types. In the java wrapper we have the following methods (all overloaded 2x, 24 in total) for the same functionality:
-
-    getStreamSnapshotLongsFromMarker(...);
-    getStreamSnapshotDoublesFromMarker(...); 
-    getStreamSnapshotStringsFromMarker(...); 
-
-    getStreamSnapshotLongsFromMarkerWithDateTime(...);
-    getStreamSnapshotDoublesFromMarkerWithDateTime(...); 
-    getStreamSnapshotStringsFromMarkerWithDateTime(...); 
-
-    getStreamSnapshotLongsFromMarkerIgnoreDirty(...); 
-    getStreamSnapshotDoublesFromMarkerIgnoreDirty(...); 
-    getStreamSnapshotStringsFromMarkerIgnoreDirty(...); 
-
-    getStreamSnapshotLongsFromMarkerWithDateTimeIgnoreDirty(...);
-    getStreamSnapshotDoublesFromMarkerWithDateTimeIgnoreDirty(...); 
-    getStreamSnapshotStringsFromMarkerWithDateTimeIgnoreDirty(...); 
-
-Like the C/C++ interfaces we have type-specific calls. If you call the wrong version the C lib will try to (safely) cast the value for you. If it can't it will return ERROR_GET_DATA and java will throw CLibException: 
-
-    switch( TOSDataBridge.getTopicType(topic) ){
-    case TOPIC_IS_LONG:
-        // use 'Long' version
-        break;
-    case TOPIC_IS_DOUBLE:
-        // use 'Double' version
-        break;
-    case TOPIC_IS_STRING:
-        //use 'String version
-        break;
-    } 
-
-Methods with 'WithDateTime' appended return a Pair containing the underlying type AND a DateTime object: 
-
-    public static class DateTimePair<T> extends Pair<T,DateTime>{
-        public final T first; // inherited
-        public final DateTime second; //inherited
-    }
-
-Methods with a plural type in the name(e.g getStreamSnapshotLongs(...)) return an array:
-
-    DataBlock block = new DataBlock(...);
-
-    Long[] l =  block.getStreamSnapshotLongs(item,topic);
-    DateTimePair<Long>[] ll = block.getStreamSnanshotLongsWithDateTime(item,topic);
-
-StreamSnapshotFromMarker(...) calls provide client code a guarantee that it won't miss data between calls, assuming the 'marker' doesn't hit the back of the stream, becoming 'dirty'. The standard call will throw once the stream becomes 'dirty' to indicate old data has been dropped and the guarantee has been broken. Use the 'IgnoreDirty' versions, or keep the marker moving, to prevent the exception from being thrown. (See python and C/C++ docs for a complete explanation.)
 
 ##### Connect to Native Library
 
@@ -118,27 +70,109 @@ StreamSnapshotFromMarker(...) calls provide client code a guarantee that it won'
         // Connected to Engine AND TOS Platform (can get data from engine/platform)
         break;
     }
-      
-##### Create a Data Block
+
+
+##### Create DataBlocks
+
+There are two types of objects used to pull data from the Engine/TOS:
 
     import io.github.jeog.tosdatabridge.DataBlock;
+    import io.github.jeog.tosdatabridge.DataBlockWithDateTime;
 
-    // can hold up to 1000 data-points with DateTime, default timeout 
-    DataBlock block = new DataBlock(1000, True); 
+    int blockSz = 10000;
+
+    // only primary data
+    DataBlock block = new DataBlock(blockSz);
+
+    /* include a DateTime object with each primary data-point
+       extends DataBlock, adds 'WithDateTime' versions of the get methods */
+    DataBlock blockDT = new DataBlockWithDateTime(blockSz);
+
 
 ##### Add Items/Topics
 
+To start getting data we need 'streams' in the block. Streams are created internally as a result of topics and items being added. 
+
+If we add two topics and three items we have six streams:
+
+        SPY  QQQ  GOOG
+LAST     1    2    3
+VOLUME   4    5    6
+
+Clearly we need items AND topics. Items(topics) added before any topics(items) exist in the block will be pre-cached, i.e they will be visible to the back-end but not to the interface until a topic(item) is added; likewise if all the items(topics) are removed, thereby leaving only topics(items). See [Important Details and Provisos](README_DETAILS.md). 
+
     import io.github.jeog.tosdatabridge.Topic
 
-    block.addItem("SPY"); // goes into 'pre-cache' (see python/C/C++ docs)
-    block.addItem("QQQ"); // goes into 'pre-cache' (see python/C/C++ docs)
-    block.addTopic(Topic.LAST); // pulls items out of pre-cache (see python/C/C++ docs)
-    block.removeItem("QQQ");
- 
-    Set<String> myItems = block.getItems();
-    Set<Topic> myTopics = block.getTopics();
+    blockDT.addItem("SPY"); // goes into pre-cache 
+    blockDT.addItem("QQQ"); // goes into pre-cache 
 
-##### Get Data
+    Set<String> myPrecachedItems = blockDT.getItemsPreCached() // {'SPY','QQQ'}
+
+    blockDT.addTopic(Topic.LAST); // pulls items out of pre-cache 
+     
+    Set<String> myItems = blockDT.getItems(); // {'SPY','QQQ'}
+    Set<Topic> myTopics = blockDT.getTopics(); // {Topic.LAST}
+    myPrecachedItems = blockDT.getItemsPreCached() // { }
+
+    blockDT.removeTopic(Topic.LAST); // items go back into pre-cache
+
+
+#### Get (individual) Data-Points from a Stream
+
+Like the C/C++ interfaces we have type-specific calls. If you call the wrong version the C lib will try to (safely) cast the value for you. If it can't it will return ERROR_GET_DATA and java will throw CLibException.
+
+    import io.github.jeog.tosdatabridge.DataBlock.DateTimePair;
+
+    try{
+        switch( TOSDataBridge.getTopicType(Topic.LAST) ){
+
+        case TOSDataBridge.TOPIC_IS_LONG:
+            ...
+            break;
+
+        case TOSDataBridge.TOPIC_IS_DOUBLE: /* Topic.LAST stores doubles ... */
+            
+            // most recent 'LAST' for 'SPY'
+            Double d = blockDT.getDouble("SPY", Topic.LAST); 
+            if(d == null){
+                // no data in block yet
+            } 
+
+            // 10 data-points ago, with DateTime
+            DateTimePair<Double> dDT = blockDT.getDoubleWithDateTime("SPY", Topic.LAST, 9); 
+            if(dDT == null){
+                // no data at this index/position yet
+            } 
+            break;
+
+        case TOSDataBridge.TOPIC_IS_STRING:
+            ...
+            break;
+       }
+    }catch(LibraryNotLoaded){
+        // init(...) was not successfull or the library was freed (all methods can throw this)
+    }catch(CLibException){
+        // an error was thrown from the C Lib (see CError.java) (all methods can throw this)
+    }catch(DataIndexException){
+        // we tried to access data in a position that isn't possible for that block size
+    }
+
+'WithDateTime' versions return DateTimePair object(s):
+
+    public static class DateTimePair<T> extends Pair<T,DateTime>{
+        public final T first; // inherited
+        public final DateTime second; //inherited
+    }
+
+
+
+#### Get (multiple) Data-Points from a Stream
+
+Methods with a plural type in the name(e.g getStreamSnapshotLongs) return an array.
+
+'StreamSnapshot' calls return an array of data between 'beg' and 'end', with a number of overloads.
+
+'StreamSnapshotFromMarker' calls provide client code a guarantee that it won't miss data between calls, assuming the 'marker' doesn't hit the back of the stream, becoming 'dirty'. (See python and C/C++ docs for a complete explanation.)
 
     import io.github.jeog.tosdatabridge.DataBlock.DateTimePair;
 
@@ -148,20 +182,14 @@ StreamSnapshotFromMarker(...) calls provide client code a guarantee that it won'
             ...
             break;
 
-        case TOSDataBridge.TOPIC_IS_DOUBLE: /* Topic.LAST stores doubles ... */
-            
-            // most recent data-point
-            Double d = block.getDouble("SPY", Topic.LAST); 
-
-            // 10 data-points ago, with datetime stamp
-            DateTimePair<Double> dDT = block.getDoubleWithDateTime("SPY", Topic.LAST, 9); 
+        case TOSDataBridge.TOPIC_IS_DOUBLE: /* Topic.LAST stores doubles ... */          
 
             // array of 10 most recent data-points (index 0 to 9, inclusive)
-            Double[] dd = block.getStreamSnapshotDoubles("SPY", Topic.LAST, 9, 0); 
+            Double[] dd = blockDT.getStreamSnapshotDoubles("SPY", Topic.LAST, 9, 0); 
 
-            // array of all valid data-points, with date-time
+            // array of ALL valid data-points, with DateTime
             DateTimePair<Double>[] ddDT = 
-                block.getStreamSnapshotDoublesWithDateTime("SPY", Topic.LAST) 
+                blockDT.getStreamSnapshotDoublesWithDateTime("SPY", Topic.LAST) 
 
             /*
              *  use 'FromMarker' methods (below) to guarantee contiguous data BETWEEN calls 
@@ -171,7 +199,7 @@ StreamSnapshotFromMarker(...) calls provide client code a guarantee that it won'
             // get 10 most recent values - THIS MOVES THE MARKER to 'beg' index (0 in this case)
             List<DateTimePair<Double>> oldLasts =  
                 new ArrayList<>(Arrays.asList( 
-                    block.getStreamSnapshotDoublesWithDateTime("SPY", Topic.LAST, 9) )); 
+                    blockDT.getStreamSnapshotDoublesWithDateTime("SPY", Topic.LAST, 9) )); 
 
             // add some time between the calls so data can come into stream            
             Thread.sleep(1000);            
@@ -180,7 +208,7 @@ StreamSnapshotFromMarker(...) calls provide client code a guarantee that it won'
             // get all the data-points up to the marker - THIS ALSO MOVES THE MARKER (as above)
             List<DateTimePair<Double>> newLasts = 
                 new ArrayList<>(Arrays.asList( 
-                    block.getStreamSnapshotDoublesFromMarkerWithDateTime("SPY", Topic.LAST) ));          
+                    blockDT.getStreamSnapshotDoublesFromMarkerWithDateTime("SPY", Topic.LAST) ));          
 
             // concatenating the two arrays will guarantee we got ALL the data
             newLasts.addAll(oldLasts); // most recent first
@@ -205,12 +233,33 @@ StreamSnapshotFromMarker(...) calls provide client code a guarantee that it won'
     }catch(CLibException){
         // an error was thrown from the C Lib (see CError.java) (all methods can throw this)
     }catch(DataIndexException){
-        // we tried to access data that doesn't (or can't) exist (all methods can throw this)
-    }catch(DateTimeNotSupported){
-        // we are using a 'WithDateTime' call and our block doesn't support DateTime
+        // we tried to access data in a position that isn't possible for that block size
     }catch((DirtyMarkerException){
-        // we are NOT using an 'IgnoreDirty' call and getStreamSnapshotFromMarker has a 'dirty' marker (see python/C/C++ docs)
+        // we are NOT using an 'IgnoreDirty' version and getStreamSnapshotFromMarker has a 'dirty' marker (see python/C/C++ docs)
     }
+
+
+#### Get (multiple, most-recent) Data-Points from Block
+
+    import java.util.Map;
+
+    try{
+
+        // get most-recent 'LAST' vals (as strings) for ALL items in the block
+        Map<String,String> itemFrame = blockDT.getItemFrame(Topic.LAST)
+
+        // get ALL most-recent topic vals (as strings) for 'SPY'
+        Map<Topic, String> topicFrame = blockDT.getTopicFrame('SPY')
+
+        // get 'matrix' of ALL most-recent topic and item vals (as strings)
+        Map<String, Map<Topic,String>> totalFrame = blockDT.getTotalFrame();
+
+    }catch(LibraryNotLoaded){
+        // init(...) was not successfull or the library was freed (all methods can throw this)
+    }catch(CLibException){
+        // an error was thrown from the C Lib (see CError.java) (all methods can throw this)
+    }
+
 
 ##### Close
 
@@ -219,7 +268,7 @@ StreamSnapshotFromMarker(...) calls provide client code a guarantee that it won'
      *  guarantee when/if that will happend; IT'S RECOMMENDED you explicitly tell 
      *  the C Lib to close the underlying block when you're done with it. 
      */
-    block.close();
+    blockDT.close();
     
 
 

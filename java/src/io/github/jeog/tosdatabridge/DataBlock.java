@@ -27,6 +27,7 @@ import com.sun.jna.Pointer;
 import java.lang.reflect.Array;
 import java.util.*;
 
+
 /**
  * DataBlocks are used to get real-time financial data from the TOS platform.
  * They use the JNA interface(CLib.java) to access the C API, wrapping the
