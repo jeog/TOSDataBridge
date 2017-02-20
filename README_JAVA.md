@@ -45,9 +45,9 @@ As mentioned, the java wrapper mirrors the python wrapper in many important ways
 
 - **DataBlock.java**: user-instantiated object used to pull data from the engine/platform (very similar to python's TOSDB_DataBlock)
 
-- **DataBlockWithDateTime.java**: user-instantiated object used to pull data - that includes a DateTime object - from the engine/platform (very similar to python's TOSDB_DataBlock)
+- **DataBlockWithDateTime.java**: extends DataBlock, includes a DateTime object with each primary data-point
 
-- **DateTime.java**: datetime object that wraps the C tm struct with an added millisecond field; returned in DateTimePair<Type> by the ...WithDateTime methods
+- **DateTime.java**: date-time object that wraps the C tm struct with an added millisecond field; returned in DateTimePair&lt;Type&gt; by the 'WithDateTime' methods
 
 - **Topic.java**: enum that holds all the topics(LAST, BID, VOLUME etc.) that can be added to the block
 
@@ -74,32 +74,33 @@ As mentioned, the java wrapper mirrors the python wrapper in many important ways
 
 ##### Create DataBlocks
 
-There are two types of objects used to pull data from the Engine/TOS:
+There are two types of objects used to get real-time data. Both require a size paramater to indicate the maximum number of (historical) data-points the block can hold.
 
     import io.github.jeog.tosdatabridge.DataBlock;
     import io.github.jeog.tosdatabridge.DataBlockWithDateTime;
 
     int blockSz = 10000;
 
-    // only primary data
+    /* only primary data */
     DataBlock block = new DataBlock(blockSz);
 
     /* include a DateTime object with each primary data-point
        extends DataBlock, adds 'WithDateTime' versions of the get methods */
-    DataBlock blockDT = new DataBlockWithDateTime(blockSz);
+    DataBlockWithDateTime blockDT = new DataBlockWithDateTime(blockSz);
 
 
 ##### Add Items/Topics
 
-To start getting data we need 'streams' in the block. Streams are created internally as a result of topics and items being added. 
+Data are stored in 'streams' which are created internally as a result of topics and items being added. 
 
 If we add two topics and three items we have six streams:
 
-        SPY  QQQ  GOOG
-LAST     1    2    3
-VOLUME   4    5    6
+.          | SPY | QQQ | GOOG
+-----------|-----|-----|-----
+**LAST**   |&nbsp;&nbsp;X  |  &nbsp;&nbsp;&nbsp;X  |  &nbsp;&nbsp;&nbsp;&nbsp;X
+**VOLUME** |  &nbsp;&nbsp;X  |  &nbsp;&nbsp;&nbsp;X  |  &nbsp;&nbsp;&nbsp;&nbsp;X
 
-Clearly we need items AND topics. Items(topics) added before any topics(items) exist in the block will be pre-cached, i.e they will be visible to the back-end but not to the interface until a topic(item) is added; likewise if all the items(topics) are removed, thereby leaving only topics(items). See [Important Details and Provisos](README_DETAILS.md). 
+Clearly we need items AND topics. Items(topics) added before any topics(items) exist in the block will be pre-cached, i.e they won't be visible to the interface until a topic(item) is added; likewise if all the items(topics) are removed, thereby leaving only topics(items).
 
     import io.github.jeog.tosdatabridge.Topic
 
@@ -117,7 +118,7 @@ Clearly we need items AND topics. Items(topics) added before any topics(items) e
     blockDT.removeTopic(Topic.LAST); // items go back into pre-cache
 
 
-#### Get (individual) Data-Points from a Stream
+##### Get Data-Point from a Stream
 
 Like the C/C++ interfaces we have type-specific calls. If you call the wrong version the C lib will try to (safely) cast the value for you. If it can't it will return ERROR_GET_DATA and java will throw CLibException.
 
@@ -125,7 +126,6 @@ Like the C/C++ interfaces we have type-specific calls. If you call the wrong ver
 
     try{
         switch( TOSDataBridge.getTopicType(Topic.LAST) ){
-
         case TOSDataBridge.TOPIC_IS_LONG:
             ...
             break;
@@ -159,14 +159,18 @@ Like the C/C++ interfaces we have type-specific calls. If you call the wrong ver
 
 'WithDateTime' versions return DateTimePair object(s):
 
-    public static class DateTimePair<T> extends Pair<T,DateTime>{
-        public final T first; // inherited
-        public final DateTime second; //inherited
+    public class DataBlock {
+    //...
+        public static class DateTimePair<T> extends Pair<T,DateTime>{
+            public final T first; // inherited
+            public final DateTime second; //inherited
+       }
+    //...
     }
 
 
 
-#### Get (multiple) Data-Points from a Stream
+##### Get (Contiguous) Data-Points from a Stream
 
 Methods with a plural type in the name(e.g getStreamSnapshotLongs) return an array.
 
@@ -239,12 +243,17 @@ Methods with a plural type in the name(e.g getStreamSnapshotLongs) return an arr
     }
 
 
-#### Get (multiple, most-recent) Data-Points from Block
+##### Get (Most Recent) Data-Points from Block
 
+Frame methods are used to get most recent data (as strings) in some 'logical' way:
+
+1. All the values (getTotalFrame)  
+2. All the topic values for an item (getTopicFrame)  
+3. All the item values for a topic (getItemFrame)  
+```
     import java.util.Map;
 
     try{
-
         // get most-recent 'LAST' vals (as strings) for ALL items in the block
         Map<String,String> itemFrame = blockDT.getItemFrame(Topic.LAST)
 
@@ -259,7 +268,7 @@ Methods with a plural type in the name(e.g getStreamSnapshotLongs) return an arr
     }catch(CLibException){
         // an error was thrown from the C Lib (see CError.java) (all methods can throw this)
     }
-
+```
 
 ##### Close
 
@@ -268,6 +277,7 @@ Methods with a plural type in the name(e.g getStreamSnapshotLongs) return an arr
      *  guarantee when/if that will happend; IT'S RECOMMENDED you explicitly tell 
      *  the C Lib to close the underlying block when you're done with it. 
      */
+    block.close();
     blockDT.close();
     
 
