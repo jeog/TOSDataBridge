@@ -138,7 +138,7 @@ public final class TOSDataBridge{
     }
 
     /**
-     * If the library is loaded try to connect the engine and TOS platform.
+     * If the library is loaded try to connect to the Engine and TOS platform.
      * (init(...) should do this automatically.)
      *
      * @return <code>true</code> if library connected to engine
@@ -151,7 +151,7 @@ public final class TOSDataBridge{
     }
 
     /**
-     * Is the library connected to the engine and TOS platform?
+     * Is the library connected to the Engine and TOS platform?
      *
      * @return <code>true</code> if library is connected to engine and TOS platform
      * @throws LibraryNotLoaded if library is not loaded

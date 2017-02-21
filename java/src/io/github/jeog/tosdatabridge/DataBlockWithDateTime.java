@@ -27,10 +27,8 @@ import java.lang.reflect.Array;
 import java.util.*;
 
 /**
- * DataBlockWithDateTime(s) are used to get real-time financial data from the TOS
- * platform. They extend DataBlock, attaching a DateTime object to each data-point.
- * They use the JNA interface(CLib.java) to access the C API, wrapping the
- * underlying (conceptual) block of the C lib with an object-oriented java interface.
+ * DataBlockWithDateTime is used to get real-time financial data from the TOS
+ * platform. It extends DataBlock, attaching a DateTime object to each data-point.
  * <p>
  * <strong>IMPORTANT:</strong> Before creating/using a DataBlockWithDateTime the
  * underlying library must be loaded AND connected to the backend Service/Engine
@@ -47,7 +45,7 @@ import java.util.*;
  * (tosdb._win.TOSDB_DataBlock). It's instantiated with a size parameter to indicate
  * how much historical data is saved. Once created 'topics' (data fields found in the
  * Topic enum) and 'items' (symbols) are added to create a matrix of 'streams', each
- * the size of the block. The block can be though of as a 3D object with the following
+ * the size of the block. The block can be thought of as a 3D object with the following
  * dimensions:
  * <p>
  * &nbsp&nbsp&nbsp&nbsp (# of topics) &nbsp x &nbsp (# of items) &nbsp x &nbsp (block size)
@@ -80,7 +78,7 @@ public class DataBlockWithDateTime extends DataBlock {
      * @throws LibraryNotLoaded C lib has not been loaded
      */
     public DataBlockWithDateTime(int size) throws CLibException, LibraryNotLoaded {
-        super(size, DEF_TIMEOUT);
+        super(size, DEF_TIMEOUT); // use the public base constructor
     }
 
     /**
@@ -96,7 +94,7 @@ public class DataBlockWithDateTime extends DataBlock {
     }
 
     /**
-     * Get most recent data-point as DateTimePair&lt;Long&gt;.
+     * Get most recent data-point as DateTimePair&lt;Long&gt;
      * (or null if no data in stream yet).
      *
      * @param item item string of stream
@@ -107,8 +105,7 @@ public class DataBlockWithDateTime extends DataBlock {
      */
     public DateTimePair<Long>
     getLongWithDateTime(String item, Topic topic) throws CLibException, LibraryNotLoaded {
-        return getMostRecent(item,topic,true,Long.class);
-        //return get(item,topic,0, checkIndx, true, Long.class);
+        return getMostRecent(item, topic, true, Long.class);
     }
 
     /**
@@ -130,7 +127,7 @@ public class DataBlockWithDateTime extends DataBlock {
     }
 
     /**
-     * Get most recent data-point as DateTimePair&lt;Double&gt;.
+     * Get most recent data-point as DateTimePair&lt;Double&gt;
      * (or null if no data in stream yet).
      *
      * @param item item string of stream
@@ -141,8 +138,7 @@ public class DataBlockWithDateTime extends DataBlock {
      */
     public DateTimePair<Double>
     getDoubleWithDateTime(String item, Topic topic) throws CLibException, LibraryNotLoaded {
-        return getMostRecent(item,topic,true,Double.class);
-        //return get(item,topic,0, checkIndx, true, Double.class);
+        return getMostRecent(item, topic, true, Double.class);
     }
 
     /**
@@ -164,7 +160,7 @@ public class DataBlockWithDateTime extends DataBlock {
     }
 
     /**
-     * Get most recent data-point as DateTimePair&lt;String&gt;.
+     * Get most recent data-point as DateTimePair&lt;String&gt;
      * (or null if no data in stream yet).
      *
      * @param item item string of stream
@@ -175,8 +171,7 @@ public class DataBlockWithDateTime extends DataBlock {
      */
     public DateTimePair<String>
     getStringWithDateTime(String item, Topic topic) throws CLibException, LibraryNotLoaded {
-        return getMostRecent(item,topic,true,String.class);
-        //return get(item,topic,0, checkIndx, true, String.class);
+        return getMostRecent(item, topic, true, String.class);
     }
 
     /**
@@ -194,11 +189,11 @@ public class DataBlockWithDateTime extends DataBlock {
     public DateTimePair<String>
     getStringWithDateTime(String item, Topic topic,int indx)
             throws CLibException, LibraryNotLoaded, DataIndexException {
-        return get(item,topic, indx, true, String.class);
+        return get(item, topic, indx, true, String.class);
     }
 
     /**
-     * Get all data-points currently in stream, as array of DateTimePair&lt;Long&gt;.
+     * Get all data-points currently in stream, as array of DateTimePair&lt;Long&gt;
      *
      * @param item item string of stream
      * @param topic Topic enum of stream
@@ -208,15 +203,13 @@ public class DataBlockWithDateTime extends DataBlock {
      */
     public DateTimePair<Long>[]
     getStreamSnapshotLongsWithDateTime(String item, Topic topic)
-            throws LibraryNotLoaded, CLibException
-    {
+            throws LibraryNotLoaded, CLibException {
         return getStreamSnapshotAll(item, topic, true, Long.class);
-        //return getStreamSnapshot(item, topic, -1, 0, true, true, Long.class);
     }
 
     /**
      * Get multiple data-points, between most recent and 'end', as array of
-     * DateTimePair&lt;Long&gt;.
+     * DateTimePair&lt;Long&gt;
      *
      * @param item item string of the stream
      * @param topic Topic enum of the stream
@@ -228,15 +221,13 @@ public class DataBlockWithDateTime extends DataBlock {
      */
     public DateTimePair<Long>[]
     getStreamSnapshotLongsWithDateTime(String item, Topic topic, int end)
-            throws LibraryNotLoaded, CLibException, DataIndexException
-    {
-        return getStreamSnapshot(item,topic,end,0,true, true,Long.class);
+            throws LibraryNotLoaded, CLibException, DataIndexException {
+        return getStreamSnapshot(item, topic, end, 0, true, true, Long.class);
     }
 
-    /**
-     *
+    /**    
      * Get multiple data-points, between 'beg' and 'end', as array of
-     * DateTimePair&lt;Long&gt;.
+     * DateTimePair&lt;Long&gt;
      *
      * @param item item string of stream
      * @param topic Topic enum of stream
@@ -249,14 +240,13 @@ public class DataBlockWithDateTime extends DataBlock {
      */
     public DateTimePair<Long>[]
     getStreamSnapshotLongsWithDateTime(String item, Topic topic, int end, int beg)
-            throws LibraryNotLoaded, CLibException, DataIndexException
-    {
-        return getStreamSnapshot(item,topic,end,beg,true,true,Long.class);
+            throws LibraryNotLoaded, CLibException, DataIndexException {
+        return getStreamSnapshot(item, topic, end, beg, true, true, Long.class);
     }
 
     /**
      * Get all data-points currently in stream, as array of
-     * DateTimePair&lt;Double&gt;.
+     * DateTimePair&lt;Double&gt;
      *
      * @param item item string of stream
      * @param topic Topic enum of stream
@@ -266,15 +256,13 @@ public class DataBlockWithDateTime extends DataBlock {
      */
     public DateTimePair<Double>[]
     getStreamSnapshotDoublesWithDateTime(String item, Topic topic)
-            throws LibraryNotLoaded, CLibException
-    {
-        return getStreamSnapshotAll(item, topic, true, Double.class);
-        //return getStreamSnapshot(item,topic,-1,0,true, true,Double.class);
+            throws LibraryNotLoaded, CLibException {
+        return getStreamSnapshotAll(item, topic, true, Double.class);        
     }
 
     /**
      * Get multiple data-points, between most recent and 'end', as array of
-     * DateTimePair&lt;Double&gt;.
+     * DateTimePair&lt;Double&gt;
      *
      * @param item item string of the stream
      * @param topic Topic enum of the stream
@@ -286,15 +274,13 @@ public class DataBlockWithDateTime extends DataBlock {
      */
     public DateTimePair<Double>[]
     getStreamSnapshotDoublesWithDateTime(String item, Topic topic, int end)
-            throws LibraryNotLoaded, CLibException, DataIndexException
-    {
-        return getStreamSnapshot(item,topic,end,0,true, true,Double.class);
+            throws LibraryNotLoaded, CLibException, DataIndexException {
+        return getStreamSnapshot(item, topic, end, 0, true, true, Double.class);
     }
 
-    /**
-     *
+    /**     
      * Get multiple data-points, between 'beg' and 'end', as array of
-     * DateTimePair&lt;Double&gt;.
+     * DateTimePair&lt;Double&gt;
      *
      * @param item item string of stream
      * @param topic Topic enum of stream
@@ -307,13 +293,12 @@ public class DataBlockWithDateTime extends DataBlock {
      */
     public DateTimePair<Double>[]
     getStreamSnapshotDoublesWithDateTime(String item, Topic topic, int end, int beg)
-            throws LibraryNotLoaded, CLibException, DataIndexException
-    {
-        return getStreamSnapshot(item,topic,end,beg,true,true,Double.class);
+            throws LibraryNotLoaded, CLibException, DataIndexException {
+        return getStreamSnapshot(item, topic, end, beg, true, true, Double.class);
     }
 
     /**
-     * Get all data-points currently in stream, as array of DateTimePair&lt;String&gt;.
+     * Get all data-points currently in stream, as array of DateTimePair&lt;String&gt;
      *
      * @param item item string of stream
      * @param topic Topic enum of stream
@@ -322,16 +307,14 @@ public class DataBlockWithDateTime extends DataBlock {
      * @throws CLibException error code returned by C lib
      */
     public DateTimePair<String>[]
-    getStreamSnapshotStringsWithDateTime(String item, Topic topic)
-            throws LibraryNotLoaded, CLibException
-    {
-        return getStreamSnapshotAll(item, topic, true, String.class);
-        //return getStreamSnapshot(item,topic,-1,0,true, true, String.class);
+    getStreamSnapshotStringsWithDateTime(String item, Topic topic) 
+            throws LibraryNotLoaded, CLibException {
+        return getStreamSnapshotAll(item, topic, true, String.class);        
     }
 
     /**
      * Get multiple data-points, between most recent and 'end', as array of
-     * DateTimePair&lt;String&gt;.
+     * DateTimePair&lt;String&gt;
      *
      * @param item item string of the stream
      * @param topic Topic enum of the stream
@@ -343,15 +326,13 @@ public class DataBlockWithDateTime extends DataBlock {
      */
     public DateTimePair<String>[]
     getStreamSnapshotStringsWithDateTime(String item, Topic topic, int end)
-            throws LibraryNotLoaded, CLibException, DataIndexException
-    {
-        return getStreamSnapshot(item,topic,end,0,true,true,String.class);
+            throws LibraryNotLoaded, CLibException, DataIndexException {
+        return getStreamSnapshot(item, topic, end, 0, true, true, String.class);
     }
 
     /**
-     *
      * Get multiple data-points, between 'beg' and 'end', as array of
-     * DateTimePair&lt;String&gt;.
+     * DateTimePair&lt;String&gt;
      *
      * @param item item string of stream
      * @param topic Topic enum of stream
@@ -364,36 +345,33 @@ public class DataBlockWithDateTime extends DataBlock {
      */
     public DateTimePair<String>[]
     getStreamSnapshotStringsWithDateTime(String item, Topic topic, int end, int beg)
-            throws LibraryNotLoaded, CLibException, DataIndexException
-    {
-        return getStreamSnapshot(item,topic,end,beg,true,true,String.class);
+            throws LibraryNotLoaded, CLibException, DataIndexException {
+        return getStreamSnapshot(item, topic, end, beg, true, true, String.class);
     }
 
     /**
-     * Get all data-points up to 'atomic' marker, as array of DateTimePair&lt;Long&gt;.
+     * Get all data-points up to atomic marker, as array of DateTimePair&lt;Long&gt;
      *
      * @param item item string of stream
      * @param topic Topic enum of stream
-     * @return all data-points and DateTimes up to 'atomic' marker
+     * @return all data-points and DateTimes up to atomic marker
      * @throws LibraryNotLoaded C lib has not been loaded
      * @throws CLibException error code returned by C lib
      */
     public DateTimePair<Long>[]
     getStreamSnapshotLongsFromMarkerWithDateTime(String item, Topic topic)
-            throws LibraryNotLoaded, CLibException, DirtyMarkerException
-    {
-        return getStreamSnapshotFromMarkerToMostRecent(item,topic,true,Long.class);
-        //return getStreamSnapshotFromMarker(item,topic,0,true,true,Long.class);
+            throws LibraryNotLoaded, CLibException, DirtyMarkerException {
+        return getStreamSnapshotFromMarkerToMostRecent(item, topic, true, Long.class);        
     }
 
     /**
-     * Get all data-points from 'beg' to 'atomic' marker, as array of
-     * DateTimePair&lt;Long&gt;.
+     * Get all data-points from 'beg' to atomic marker, as array of
+     * DateTimePair&lt;Long&gt;
      *
      * @param item item string of stream
      * @param topic Topic enum of stream
      * @param beg most recent index/position from which data is pulled
-     * @return all data-points and DateTimes from 'beg' to 'atomic' marker
+     * @return all data-points and DateTimes from 'beg' to atomic marker
      * @throws LibraryNotLoaded C lib has not been loaded
      * @throws CLibException error code returned by C lib
      * @throws DataIndexException invalid index/position value
@@ -401,38 +379,35 @@ public class DataBlockWithDateTime extends DataBlock {
      */
     public DateTimePair<Long>[]
     getStreamSnapshotLongsFromMarkerWithDateTime(String item, Topic topic, int beg)
-            throws LibraryNotLoaded, CLibException, DataIndexException, DirtyMarkerException
-    {
-        return getStreamSnapshotFromMarker(item,topic,beg,true,true,Long.class);
+            throws LibraryNotLoaded, CLibException, DataIndexException, DirtyMarkerException {
+        return getStreamSnapshotFromMarker(item, topic, beg, true, true, Long.class);
     }
 
     /**
-     * Get all data-points up to 'atomic' marker, as array of
-     * DateTimePair&lt;Double&gt;.
+     * Get all data-points up to atomic marker, as array of
+     * DateTimePair&lt;Double&gt;
      *
      * @param item item string of stream
      * @param topic Topic enum of stream
-     * @return all data-points and DateTimes up to 'atomic' marker
+     * @return all data-points and DateTimes up to atomic marker
      * @throws LibraryNotLoaded C lib has not been loaded
      * @throws CLibException error code returned by C lib
      * @throws DirtyMarkerException  marker is 'dirty' (data lost behind it)
      */
     public DateTimePair<Double>[]
     getStreamSnapshotDoublesFromMarkerWithDateTime(String item, Topic topic)
-            throws LibraryNotLoaded, CLibException, DirtyMarkerException
-    {
-        return getStreamSnapshotFromMarkerToMostRecent(item,topic,true,Double.class);
-        //return getStreamSnapshotFromMarker(item,topic,0,true,true,Double.class);
+            throws LibraryNotLoaded, CLibException, DirtyMarkerException {
+        return getStreamSnapshotFromMarkerToMostRecent(item, topic, true, Double.class);
     }
 
     /**
-     * Get all data-points from 'beg' to 'atomic' marker, as array of
-     * DateTimePair&lt;Double&gt;.
+     * Get all data-points from 'beg' to atomic marker, as array of
+     * DateTimePair&lt;Double&gt;
      *
      * @param item item string of stream
      * @param topic Topic enum of stream
      * @param beg most recent index/position from which data is pulled
-     * @return all data-points and DateTimes from 'beg' to 'atomic' marker
+     * @return all data-points and DateTimes from 'beg' to atomic marker
      * @throws LibraryNotLoaded C lib has not been loaded
      * @throws CLibException error code returned by C lib
      * @throws DataIndexException invalid index/position value
@@ -440,37 +415,34 @@ public class DataBlockWithDateTime extends DataBlock {
      */
     public DateTimePair<Double>[]
     getStreamSnapshotDoublesFromMarkerWithDateTime(String item, Topic topic, int beg)
-            throws LibraryNotLoaded, CLibException, DataIndexException, DirtyMarkerException
-    {
-        return getStreamSnapshotFromMarker(item,topic,beg,true,true,Double.class);
+            throws LibraryNotLoaded, CLibException, DataIndexException, DirtyMarkerException {
+        return getStreamSnapshotFromMarker(item, topic, beg, true, true, Double.class);
     }
 
     /**
-     * Get all data-points up to 'atomic' marker, as array of DateTimePair&lt;String&gt;.
+     * Get all data-points up to atomic marker, as array of DateTimePair&lt;String&gt;
      *
      * @param item item string of stream
      * @param topic Topic enum of stream
-     * @return all data-points and DateTimes up to 'atomic' marker
+     * @return all data-points and DateTimes up to atomic marker
      * @throws LibraryNotLoaded C lib has not been loaded
      * @throws CLibException error code returned by C lib
      * @throws DirtyMarkerException  marker is 'dirty' (data lost behind it)
      */
     public DateTimePair<String>[]
     getStreamSnapshotStringsFromMarkerWithDateTime(String item, Topic topic)
-            throws LibraryNotLoaded, CLibException, DirtyMarkerException
-    {
-        return getStreamSnapshotFromMarkerToMostRecent(item,topic,true,String.class);
-        //return getStreamSnapshotFromMarker(item,topic,0,true,true,String.class);
+            throws LibraryNotLoaded, CLibException, DirtyMarkerException {
+        return getStreamSnapshotFromMarkerToMostRecent(item, topic, true, String.class);
     }
 
     /**
-     * Get all data-points from 'beg' to 'atomic' marker, as array of
-     * DateTimePair&lt;String&gt;.
+     * Get all data-points from 'beg' to atomic marker, as array of
+     * DateTimePair&lt;String&gt;
      *
      * @param item item string of stream
      * @param topic Topic enum of stream
      * @param beg most recent index/position from which data is pulled
-     * @return all data-points and DateTimes from 'beg' to 'atomic' marker
+     * @return all data-points and DateTimes from 'beg' to atomic marker
      * @throws LibraryNotLoaded C lib has not been loaded
      * @throws CLibException error code returned by C lib
      * @throws DataIndexException invalid index/position value
@@ -478,120 +450,110 @@ public class DataBlockWithDateTime extends DataBlock {
      */
     public DateTimePair<String>[]
     getStreamSnapshotStringsFromMarkerWithDateTime(String item, Topic topic, int beg)
-            throws LibraryNotLoaded, CLibException, DataIndexException, DirtyMarkerException
-    {
-        return getStreamSnapshotFromMarker(item,topic,beg,true,true,String.class);
+            throws LibraryNotLoaded, CLibException, DataIndexException, DirtyMarkerException {
+        return getStreamSnapshotFromMarker(item, topic, beg, true, true, String.class);
     }
 
     /**
-     * Get all data-points up to 'atomic' marker, as array of DateTimePair&lt;Long&gt;
-     * - IGNORE DIRTY MARKER.
+     * Get all data-points up to atomic marker, as array of DateTimePair&lt;Long&gt;.
+     *  IGNORE DIRTY MARKER.
      *
      * @param item item string of stream
      * @param topic Topic enum of stream
-     * @return all data-points and DateTimes up to 'atomic' marker
+     * @return all data-points and DateTimes up to atomic marker
      * @throws LibraryNotLoaded C lib has not been loaded
      * @throws CLibException error code returned by C lib
      */
     public DateTimePair<Long>[]
     getStreamSnapshotLongsFromMarkerWithDateTimeIgnoreDirty(String item, Topic topic)
-            throws LibraryNotLoaded, CLibException
-    {
-        return getStreamSnapshotFromMarkerToMostRecentIgnoreDirty(item,topic,true,Long.class);
-        //return getStreamSnapshotFromMarkerIgnoreDirty(item,topic,0,true,Long.class);
+            throws LibraryNotLoaded, CLibException {
+        return getStreamSnapshotFromMarkerToMostRecentIgnoreDirty(item, topic, true, Long.class);
     }
 
     /**
-     * Get all data-points from 'beg' to 'atomic' marker, as array of DateTimePair&lt;Long&gt;
-     * - IGNORE DIRTY MARKER.
+     * Get all data-points from 'beg' to atomic marker, as array of DateTimePair&lt;Long&gt;.
+     *  IGNORE DIRTY MARKER.
      *
      * @param item item string of stream
      * @param topic Topic enum of stream
      * @param beg most recent index/position from which data is pulled
-     * @return all data-points and DateTimes from 'beg' to 'atomic' marker
+     * @return all data-points and DateTimes from 'beg' to atomic marker
      * @throws LibraryNotLoaded C lib has not been loaded
      * @throws CLibException error code returned by C lib
      * @throws DataIndexException invalid index/position value
      */
     public DateTimePair<Long>[]
     getStreamSnapshotLongsFromMarkerWithDateTimeIgnoreDirty(String item, Topic topic, int beg)
-            throws LibraryNotLoaded, CLibException, DataIndexException
-    {
-        return getStreamSnapshotFromMarkerIgnoreDirty(item,topic,beg,true,Long.class);
+            throws LibraryNotLoaded, CLibException, DataIndexException {
+        return getStreamSnapshotFromMarkerIgnoreDirty(item, topic, beg, true, Long.class);
     }
 
     /**
-     * Get all data-points up to 'atomic' marker, as array of DateTimePair&lt;Double&gt;
-     * - IGNORE DIRTY MARKER.
+     * Get all data-points up to atomic marker, as array of DateTimePair&lt;Double&gt;.
+     *  IGNORE DIRTY MARKER.
      *
      * @param item item string of stream
      * @param topic Topic enum of stream
-     * @return all data-points and DateTimes up to 'atomic' marker
+     * @return all data-points and DateTimes up to atomic marker
      * @throws LibraryNotLoaded C lib has not been loaded
      * @throws CLibException error code returned by C lib
      */
     public DateTimePair<Double>[]
     getStreamSnapshotDoublesFromMarkerWithDateTimeIgnoreDirty(String item, Topic topic)
-            throws LibraryNotLoaded, CLibException
-    {
-        return getStreamSnapshotFromMarkerToMostRecentIgnoreDirty(item,topic,true,Double.class);
-        //return getStreamSnapshotFromMarkerIgnoreDirty(item,topic,0,true,Double.class);
+            throws LibraryNotLoaded, CLibException {
+        return getStreamSnapshotFromMarkerToMostRecentIgnoreDirty(item, topic, true, Double.class);
     }
 
     /**
-     * Get all data-points from 'beg' to 'atomic' marker, as array of DateTimePair&lt;Double&gt;
-     * - INGORE DIRTY MARKER.
+     * Get all data-points from 'beg' to atomic marker, as array of DateTimePair&lt;Double&gt;.
+     *  IGNORE DIRTY MARKER.
      *
      * @param item item string of stream
      * @param topic Topic enum of stream
      * @param beg most recent index/position from which data is pulled
-     * @return all data-points and DateTimes from 'beg' to 'atomic' marker
+     * @return all data-points and DateTimes from 'beg' to atomic marker
      * @throws LibraryNotLoaded C lib has not been loaded
      * @throws CLibException error code returned by C lib
      * @throws DataIndexException invalid index/position value
      */
     public DateTimePair<Double>[]
     getStreamSnapshotDoublesFromMarkerWithDateTimeIgnoreDirty(String item, Topic topic, int beg)
-            throws LibraryNotLoaded, CLibException, DataIndexException
-    {
-        return getStreamSnapshotFromMarkerIgnoreDirty(item,topic,beg,true,Double.class);
+            throws LibraryNotLoaded, CLibException, DataIndexException {
+        return getStreamSnapshotFromMarkerIgnoreDirty(item, topic, beg, true, Double.class);
     }
 
     /**
-     * Get all data-points up to 'atomic' marker, as array of DateTimePair&lt;String&gt;
-     * - IGNORE DIRTY MARKER.
+     * Get all data-points up to atomic marker, as array of DateTimePair&lt;String&gt;.
+     *  IGNORE DIRTY MARKER.
      *
      * @param item item string of stream
      * @param topic Topic enum of stream
-     * @return all data-points and DateTimes up to 'atomic' marker
+     * @return all data-points and DateTimes up to atomic marker
      * @throws LibraryNotLoaded C lib has not been loaded
      * @throws CLibException error code returned by C lib
      */
     public DateTimePair<String>[]
     getStreamSnapshotStringsFromMarkerWithDateTimeIgnoreDirty(String item, Topic topic)
-            throws LibraryNotLoaded, CLibException
-    {
-        return getStreamSnapshotFromMarkerToMostRecentIgnoreDirty(item,topic,true,String.class);
-        //return getStreamSnapshotFromMarkerIgnoreDirty(item,topic,0,true,String.class);
+            throws LibraryNotLoaded, CLibException {
+        return getStreamSnapshotFromMarkerToMostRecentIgnoreDirty(item, topic, true, String.class);
     }
 
     /**
-     * Get all data-points from 'beg' to 'atomic' marker, as array of
-     * DateTimePair&lt;String&gt; - IGNORE DIRTY MARKER.
+     * Get all data-points from 'beg' to atomic marker, as array of
+     * DateTimePair&lt;String&gt;. IGNORE DIRTY MARKER.
      *
      * @param item item string of stream
      * @param topic Topic enum of stream
      * @param beg most recent index/position from which data is pulled
-     * @return all data-points and DateTimes from 'beg' to 'atomic' marker
+     * @return all data-points and DateTimes from 'beg' to atomic marker
      * @throws LibraryNotLoaded C lib has not been loaded
      * @throws CLibException error code returned by C lib
      * @throws DataIndexException invalid index/position value
      */
     public DateTimePair<String>[]
     getStreamSnapshotStringsFromMarkerWithDateTimeIgnoreDirty(String item, Topic topic, int beg)
-            throws LibraryNotLoaded, CLibException, DataIndexException
-    {
-        return getStreamSnapshotFromMarkerIgnoreDirty(item,topic,beg,true,String.class);
+            throws LibraryNotLoaded, CLibException, DataIndexException {
+        return getStreamSnapshotFromMarkerIgnoreDirty(item, topic, beg, true, String.class);
     }
 
     /**
@@ -603,9 +565,7 @@ public class DataBlockWithDateTime extends DataBlock {
      * @throws LibraryNotLoaded C lib has not been loaded
      */
     public Map<String,DateTimePair<String>>
-    getItemFrameWithDateTime(Topic topic)
-            throws CLibException, LibraryNotLoaded
-    {
+    getItemFrameWithDateTime(Topic topic) throws CLibException, LibraryNotLoaded {
         return _getFrame(topic, true,true);
     }
 
@@ -618,9 +578,7 @@ public class DataBlockWithDateTime extends DataBlock {
      * @throws LibraryNotLoaded C lib has not been loaded
      */
     public Map<Topic,DateTimePair<String>>
-    getTopicFrameWithDateTime(String item)
-            throws CLibException, LibraryNotLoaded
-    {
+    getTopicFrameWithDateTime(String item) throws CLibException, LibraryNotLoaded {
         return _getFrame(item, false,true);
     }
 
@@ -632,8 +590,7 @@ public class DataBlockWithDateTime extends DataBlock {
      * @throws CLibException error code returned by C lib
      */
     public Map<String, Map<Topic,DateTimePair<String>>>
-    getTotalFrameWithDateTime() throws LibraryNotLoaded, CLibException
-    {
+    getTotalFrameWithDateTime() throws LibraryNotLoaded, CLibException {
         Map<String, Map<Topic,DateTimePair<String>>> frame = new HashMap<>();
         for(String item : getItems()){
             Map<Topic,DateTimePair<String>> tf = getTopicFrameWithDateTime(item);

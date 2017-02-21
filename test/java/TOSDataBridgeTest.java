@@ -71,129 +71,16 @@ public class TOSDataBridgeTest {
             }
             testConnection();
             testAdminCalls();
-
-            int block1Sz = 1000;
-            int block1Timeout = 3000;
-            System.out.println();
-            System.out.println("CREATE BLOCK...");
-            DataBlockWithDateTime block1 = new DataBlockWithDateTime(block1Sz, block1Timeout);
-
-            if( !testBlockState(block1, block1Sz, true, block1Timeout) ) {
-                // just break out of the try-block
-                throw new IllegalStateException("testBlockState(...) failed");
-            }else {
-                System.out.println("Successfully created block: " + block1.getName());
-            }
-            System.out.println();
-            System.out.println("Double block size...");
-            block1.setBlockSize(block1.getBlockSize() * 2);
-            if(block1.getBlockSize() != 2 * block1Sz){
-                System.err.println("failed to double block size");
-                throw new Exception();
-            }
-
-            String item1 = "SPY";
-            String item2 = "QQQ";
-            Topic topic1 = Topic.LAST; // double
-            Topic topic2 = Topic.VOLUME; // long
-            Topic topic3 = Topic.LASTX; // string
-
-            System.out.println("Add item: " + item1);
-            block1.addItem(item1);
-            printBlockItemsTopics(block1);
-
-            System.out.println("Add item: " + item2);
-            block1.addItem(item2);
-            printBlockItemsTopics(block1);
-
-            System.out.println("Add topic: " + topic1);
-            block1.addTopic(topic1);
-            printBlockItemsTopics(block1);
-
-            System.out.println("Remove item: " + item1);
-            block1.removeItem(item1);
-            printBlockItemsTopics(block1);
-
-            System.out.println("Remove Topic: " + topic1);
-            block1.removeTopic(topic1);
-            printBlockItemsTopics(block1);
-
-            System.out.println("Add ALL items");
-            block1.addItem(item1);
-            block1.addItem(item2);
-            printBlockItemsTopics(block1);
-
-            System.out.println("Add ALL topics");
-            block1.addTopic(topic1);
-            block1.addTopic(topic2);
-            block1.addTopic(topic3);
-            printBlockItemsTopics(block1);
-
-            System.out.println("***SLEEP FOR " + String.valueOf(SLEEP_PERIOD*3) + " MILLISECONDS***");
-            Thread.sleep(SLEEP_PERIOD*3);
-            System.out.println();
-
-            System.out.println("TEST GET CALLS, BLOCK: " + block1.getName());
-            testGetCalls(block1,false);
-            System.out.println();
-
-            System.out.println("TEST GET CALLS (WITH DATETIME), BLOCK: " + block1.getName());
-            testGetCalls(block1,true);
-            System.out.println();
-
-            System.out.println("TEST STREAM SNAPSHOT CALLS, BLOCK: " + block1.getName());
-            testStreamSnapshotCalls(block1,5,false);
-            System.out.println();
-
-            System.out.println("TEST STREAM SNAPSHOT CALLS (WITH DATETIME), BLOCK: " + block1.getName());
-            testStreamSnapshotCalls(block1,3,true);
-            System.out.println();
-
-            System.out.println();
-            System.out.println("***SLEEP FOR " + String.valueOf(SLEEP_PERIOD) + " MILLISECONDS***");
-            Thread.sleep(SLEEP_PERIOD);
-            System.out.println();
-
-            System.out.println("TEST STREAM SNAPSHOT FROM MARKER CALLS, BLOCK: " + block1.getName());
-            testStreamSnapshotFromMarkerCalls(block1,3,SLEEP_PERIOD,false,false);
-            System.out.println();
-
-            System.out.println("TEST STREAM SNAPSHOT FROM MARKER (WITH DATETIME) CALLS, BLOCK: " + block1.getName());
-            testStreamSnapshotFromMarkerCalls(block1,3,SLEEP_PERIOD,true,true);
-            System.out.println();
-
-            System.out.println("TEST TOTAL FRAME CALLS: " + block1.getName());
-            testTotalFrameCalls(block1, false);
-            System.out.println();
-
-            System.out.println("TEST TOTAL FRAME (WITH DATETIME) CALLS, BLOCK: " + block1.getName());
-            testTotalFrameCalls(block1, true);
-            System.out.println();
-
-            System.out.println("TEST ITEM FRAME CALLS: " + block1.getName());
-            testItemFrameCalls(block1, false);
-            System.out.println();
-
-            System.out.println("TEST ITEM FRAME (WITH DATETIME) CALLS, BLOCK: " + block1.getName());
-            testItemFrameCalls(block1, true);
-            System.out.println();
-
-            System.out.println("TEST TOPIC FRAME CALLS: " + block1.getName());
-            testTopicFrameCalls(block1, false);
-            System.out.println();
-
-            System.out.println("TEST TOPIC FRAME (WITH DATETIME) CALLS, BLOCK: " + block1.getName());
-            testTopicFrameCalls(block1, true);
-            System.out.println();
-
+            testBlock1();
+            testBlock2();
             System.out.println();
             System.out.println("*** DONE (SUCCESS) ***");
             return;
-        }catch(LibraryNotLoaded e){
+        } catch (LibraryNotLoaded e) {
             System.out.println("EXCEPTION: LibraryNotLoaded");
             System.out.println(e.toString());
             e.printStackTrace();
-        }catch(CLibException e){
+        } catch (CLibException e) {
             System.out.println("EXCEPTION: CLibException");
             System.out.println(e.toString());
             e.printStackTrace();
@@ -211,6 +98,254 @@ public class TOSDataBridgeTest {
         System.out.println();
         System.err.println("*** DONE (FAILURE) ***");
     }
+
+    private static void 
+    testBlock1() throws LibraryNotLoaded, CLibException, NoSuchMethodException, IllegalAccessException,
+            InvocationTargetException, InterruptedException, DataIndexException {
+        int sz = 100000;
+        System.out.println();
+        System.out.println("CREATE BLOCK 1...");
+        DataBlock block = new DataBlock(sz);
+
+        if( !testBlockState(block, sz, false, TOSDataBridge.DEF_TIMEOUT) ) {
+            // just break out of the try-block
+            throw new IllegalStateException("testBlockState(...) failed");
+        }else {
+            System.out.println("Successfully created block: " + block.getName());
+        }
+
+        Set<String> items = new HashSet<>(Arrays.asList("XLF","XLE"));
+        Set<Topic> topics = new HashSet<>(Arrays.asList(Topic.DESCRIPTION, Topic.BID, Topic.LAST_SIZE));
+
+        System.out.println("Add items: " + items.toString());
+        for( String s : items ) {
+            block.addItem(s);
+        }
+        printBlockItemsTopics(block);
+
+        // check pre-cache
+        if(!block.getItemsPreCached().contains("XLF")
+                || !block.getItemsPreCached().contains("XLE")){
+            System.err.println("Item pre-cache test failed");
+            throw new RuntimeException("Item pre-cache test failed");
+        }
+        System.out.println("Item pre-cache looks good: " + block.getItemsPreCached().toString());
+
+        // add bad topic
+        try{
+            block.addTopic(Topic.NULL_TOPIC);
+            throw new RuntimeException("Add NULL_TOPIC/CLIbException test failed");
+        }catch(TOSDataBridge.CLibException e){
+            System.out.println("Successfully caught exception from adding NULL_TOPIC: " + e.toString() );
+        }
+
+        //add good topics
+        System.out.println("Add Topics: " + topics.toString());
+        for( Topic t : topics ) {
+            block.addTopic(t);
+        }
+        printBlockItemsTopics(block);
+
+        System.out.println("***SLEEP FOR " + String.valueOf(SLEEP_PERIOD) + " MILLISECONDS***");
+        Thread.sleep(SLEEP_PERIOD);
+        System.out.println();
+
+        //NEED TO TEST DIRTY MARKER BEFORE ANY OTHER GET CALLS
+        System.out.println("TEST DIRTY MARKER EXCEPTION: " + block.getName());
+        testDirtyMarkerExceptions(block, false);
+        System.out.println();
+
+        System.out.println("TEST DATA INDEX EXCEPTION: " + block.getName());
+        testDataIndexExceptions(block, false);
+        System.out.println();
+
+        System.out.println("***SLEEP FOR " + String.valueOf(SLEEP_PERIOD) + " MILLISECONDS***");
+        Thread.sleep(SLEEP_PERIOD);
+        System.out.println();
+
+        System.out.println("TEST GET CALLS, BLOCK: " + block.getName());
+        testGetCalls(block,false);
+        System.out.println();
+
+        System.out.println("TEST GET CALLS NULL/EXCEPTION BEHAVIOR, BLOCK: " + block.getName());
+        testGetCallsExcNullBehavior(block,false);
+        System.out.println();
+
+        System.out.println("***SLEEP FOR " + String.valueOf(SLEEP_PERIOD) + " MILLISECONDS***");
+        Thread.sleep(SLEEP_PERIOD);
+        System.out.println();
+
+        System.out.println("TEST STREAM SNAPSHOT CALLS, BLOCK: " + block.getName());
+        testStreamSnapshotCalls(block,5,false);
+        System.out.println();
+
+        System.out.println();
+        System.out.println("***SLEEP FOR " + String.valueOf(SLEEP_PERIOD) + " MILLISECONDS***");
+        Thread.sleep(SLEEP_PERIOD);
+        System.out.println();
+
+        System.out.println("TEST STREAM SNAPSHOT FROM MARKER CALLS, BLOCK: " + block.getName());
+        testStreamSnapshotFromMarkerCalls(block,3,SLEEP_PERIOD,false,false);
+        System.out.println();
+
+        System.out.println("TEST TOTAL FRAME CALLS: " + block.getName());
+        testTotalFrameCalls(block, false);
+        System.out.println();
+
+        System.out.println("TEST ITEM FRAME CALLS: " + block.getName());
+        testItemFrameCalls(block, false);
+        System.out.println();
+
+        System.out.println("TEST TOPIC FRAME CALLS: " + block.getName());
+        testTopicFrameCalls(block, false);
+        System.out.println();
+
+    }
+
+    private static void
+    testBlock2() throws LibraryNotLoaded, CLibException, InterruptedException, DataIndexException,
+            NoSuchMethodException, IllegalAccessException, InvocationTargetException {
+        int sz = 1000;
+        int timeout = 3000;
+        System.out.println();
+        System.out.println("CREATE BLOCK 2...");
+        DataBlockWithDateTime block = new DataBlockWithDateTime(sz, timeout);
+
+        if( !testBlockState(block, sz, true, timeout) ) {
+            // just break out of the try-block
+            throw new IllegalStateException("testBlockState(...) failed");
+        }else {
+            System.out.println("Successfully created block: " + block.getName());
+        }
+        System.out.println();
+        System.out.println("Double block size...");
+        block.setBlockSize(block.getBlockSize() * 2);
+        if(block.getBlockSize() != 2 * sz){
+            System.err.println("failed to double block size");
+            throw new IllegalStateException();
+        }
+
+        String item1 = "SPY";
+        String item2 = "QQQ";
+        Topic topic1 = Topic.LAST; // double
+        Topic topic2 = Topic.VOLUME; // long
+        Topic topic3 = Topic.LASTX; // string
+
+        System.out.println("Add item: " + item1);
+        block.addItem(item1);
+        printBlockItemsTopics(block);
+
+        System.out.println("Add item: " + item2);
+        block.addItem(item2);
+        printBlockItemsTopics(block);
+
+        System.out.println("Add topic: " + topic1);
+        block.addTopic(topic1);
+        printBlockItemsTopics(block);
+
+        System.out.println("Remove item: " + item1);
+        block.removeItem(item1);
+        printBlockItemsTopics(block);
+
+        System.out.println("Remove Topic: " + topic1);
+        block.removeTopic(topic1);
+        printBlockItemsTopics(block);
+
+        System.out.println("Add ALL items");
+        block.addItem(item1);
+        block.addItem(item2);
+        printBlockItemsTopics(block);
+
+        System.out.println("Add ALL topics");
+        block.addTopic(topic1);
+        block.addTopic(topic2);
+        block.addTopic(topic3);
+        printBlockItemsTopics(block);
+
+        System.out.println("***SLEEP FOR " + String.valueOf(SLEEP_PERIOD) + " MILLISECONDS***");
+        Thread.sleep(SLEEP_PERIOD);
+        System.out.println();
+
+        //NEED TO TEST DIRTY MARKER BEFORE ANY OTHER GET CALLS
+        System.out.println("TEST DIRTY MARKER EXCEPTION (WITH DATETIME): " + block.getName());
+        testDirtyMarkerExceptions(block, true);
+        System.out.println();
+
+        System.out.println("TEST DATA INDEX EXCEPTION (WITH DATETIME): " + block.getName());
+        testDataIndexExceptions(block, true);
+        System.out.println();
+
+        System.out.println("***SLEEP FOR " + String.valueOf(SLEEP_PERIOD) + " MILLISECONDS***");
+        Thread.sleep(SLEEP_PERIOD);
+        System.out.println();
+
+        System.out.println("TEST GET CALLS, BLOCK: " + block.getName());
+        testGetCalls(block,false);
+        System.out.println();
+
+        System.out.println("TEST GET CALLS (WITH DATETIME), BLOCK: " + block.getName());
+        testGetCalls(block,true);
+        System.out.println();
+
+        System.out.println("TEST GET CALLS NULL/EXCEPTION BEHAVIOR, BLOCK: " + block.getName());
+        testGetCallsExcNullBehavior(block,false);
+        System.out.println();
+
+        System.out.println("TEST GET CALLS NULL/EXCEPTION BEHAVIOR (WITH DATETIME), BLOCK: " + block.getName());
+        testGetCallsExcNullBehavior(block,true);
+        System.out.println();
+
+        System.out.println("***SLEEP FOR " + String.valueOf(SLEEP_PERIOD) + " MILLISECONDS***");
+        Thread.sleep(SLEEP_PERIOD);
+        System.out.println();
+
+        System.out.println("TEST STREAM SNAPSHOT CALLS, BLOCK: " + block.getName());
+        testStreamSnapshotCalls(block,5,false);
+        System.out.println();
+
+        System.out.println("TEST STREAM SNAPSHOT CALLS (WITH DATETIME), BLOCK: " + block.getName());
+        testStreamSnapshotCalls(block,3,true);
+        System.out.println();
+
+        System.out.println();
+        System.out.println("***SLEEP FOR " + String.valueOf(SLEEP_PERIOD) + " MILLISECONDS***");
+        Thread.sleep(SLEEP_PERIOD);
+        System.out.println();
+
+        System.out.println("TEST STREAM SNAPSHOT FROM MARKER CALLS, BLOCK: " + block.getName());
+        testStreamSnapshotFromMarkerCalls(block,3,SLEEP_PERIOD,false,false);
+        System.out.println();
+
+        System.out.println("TEST STREAM SNAPSHOT FROM MARKER (WITH DATETIME) CALLS, BLOCK: " + block.getName());
+        testStreamSnapshotFromMarkerCalls(block,3,SLEEP_PERIOD,true,true);
+        System.out.println();
+
+        System.out.println("TEST TOTAL FRAME CALLS: " + block.getName());
+        testTotalFrameCalls(block, false);
+        System.out.println();
+
+        System.out.println("TEST TOTAL FRAME (WITH DATETIME) CALLS, BLOCK: " + block.getName());
+        testTotalFrameCalls(block, true);
+        System.out.println();
+
+        System.out.println("TEST ITEM FRAME CALLS: " + block.getName());
+        testItemFrameCalls(block, false);
+        System.out.println();
+
+        System.out.println("TEST ITEM FRAME (WITH DATETIME) CALLS, BLOCK: " + block.getName());
+        testItemFrameCalls(block, true);
+        System.out.println();
+
+        System.out.println("TEST TOPIC FRAME CALLS: " + block.getName());
+        testTopicFrameCalls(block, false);
+        System.out.println();
+
+        System.out.println("TEST TOPIC FRAME (WITH DATETIME) CALLS, BLOCK: " + block.getName());
+        testTopicFrameCalls(block, true);
+        System.out.println();
+
+    }
+
 
     private static void
     testConnection() throws LibraryNotLoaded {
@@ -321,8 +456,7 @@ public class TOSDataBridgeTest {
     }
 
     private static void
-    testGetCalls(DataBlock block, boolean withDateTime) throws CLibException, LibraryNotLoaded
-    {
+    testGetCalls(DataBlock block, boolean withDateTime) throws CLibException, LibraryNotLoaded, DataIndexException {
         Random rand = new Random(Double.doubleToLongBits(Math.random()));
         String dtSuffix = withDateTime ? "WithDateTime" : "";
         Set<String> items = block.getItems();
@@ -360,6 +494,61 @@ public class TOSDataBridgeTest {
                         printGet(block, item, topic, i, "getString" + dtSuffix);
                         break;
                     }
+                }
+            }
+        }
+
+    }
+
+    private static <T> void
+    testGetExcNull(DataBlock block, String item, Topic topic, String fname)
+            throws CLibException, LibraryNotLoaded, NoSuchMethodException,
+            IllegalAccessException, InvocationTargetException {
+        String outBndl = "(" + fname + "," + item + "," + topic + ")";
+        try {
+            //test null behavior of get calls
+            T l = genericGet(block,item,topic,-1,fname);
+            if(l != null){
+                throw new RuntimeException("get from indx -1 failed to return null: " + outBndl );
+            }else{
+                System.out.println("get from indx -1 successfully returned null: " + outBndl);
+            }
+            //test exc behavior of get calls
+            try {
+                l = genericGet(block, item, topic, block.getBlockSize() + 1, fname);
+            }catch(InvocationTargetException e){
+                Throwable t = e.getCause();
+                if (t.getClass().equals(DataIndexException.class)) {
+                    throw (DataIndexException)t;
+                }
+            }
+            throw new RuntimeException("DataIndexException test failed for get failed: " + outBndl);
+        }catch( DataIndexException e){
+            System.out.println("Successfully caught DataIndexException for get: " + outBndl );
+        }
+    }
+
+    private static void
+    testGetCallsExcNullBehavior(DataBlock block, boolean withDateTime)
+            throws CLibException, LibraryNotLoaded, NoSuchMethodException, IllegalAccessException,
+            InvocationTargetException
+    {
+        String dtSuffix = withDateTime ? "WithDateTime" : "";
+        Set<String> items = block.getItems();
+        Set<Topic> topics = block.getTopics();
+        for(Topic topic : topics){
+            int tType = TOSDataBridge.getTopicType(topic);
+            for(String item : items) {
+                switch (tType) {
+                    case TOSDataBridge.TOPIC_IS_LONG:
+                        testGetExcNull(block,item,topic,"getLong" + dtSuffix);
+                        break;
+                    case TOSDataBridge.TOPIC_IS_DOUBLE:
+                        testGetExcNull(block,item,topic,"getDouble" + dtSuffix);
+                        break;
+                    case TOSDataBridge.TOPIC_IS_STRING:
+                        testGetExcNull(block,item,topic,"getString" + dtSuffix);
+                        break;
                 }
             }
         }
@@ -442,6 +631,112 @@ public class TOSDataBridgeTest {
                     } catch (InterruptedException e) {
                         e.printStackTrace();
                     }
+                }
+            }
+        }
+    }
+
+    private static void
+    testDirtyMarkerExceptions(DataBlock block, boolean withDateTime) throws CLibException, LibraryNotLoaded
+    {
+        Set<String> items = block.getItems();
+        Set<Topic> topics = block.getTopics();
+        int sz = block.getBlockSize();
+        for(Topic topic : topics){
+            int tType = TOSDataBridge.getTopicType(topic);
+            for(String item : items) {
+                int occ = block.getStreamOccupancy(item,topic);
+                if(occ < 2) {
+                    System.err.println("occ < 2, can't test DirtyMarkerException: " + item + "," + topic);
+                    continue;
+                }
+                block.setBlockSize(occ); //force a dirty marker by shrinking block
+                if( !block.isDirty(item,topic) ){
+                    try {
+                        Thread.sleep(SLEEP_PERIOD);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                    if( !block.isDirty(item,topic) ) {
+                        System.err.println("stream did not become dirty after wait: " + item + "," + topic);
+                        continue;
+                    }
+                }
+                try {
+                    switch (tType) {
+                        case TOSDataBridge.TOPIC_IS_LONG:
+                            if(withDateTime) {
+                                ((DataBlockWithDateTime)block)
+                                        .getStreamSnapshotLongsFromMarkerWithDateTime(item, topic);
+                            }else {
+                                block.getStreamSnapshotLongsFromMarker(item, topic);
+                            }
+                            break;
+                        case TOSDataBridge.TOPIC_IS_DOUBLE:
+                            if(withDateTime) {
+                                ((DataBlockWithDateTime)block)
+                                        .getStreamSnapshotDoublesFromMarkerWithDateTime(item, topic);
+                            }else {
+                                block.getStreamSnapshotDoublesFromMarker(item, topic);
+                            }
+                            break;
+                        case TOSDataBridge.TOPIC_IS_STRING:
+                            if(withDateTime) {
+                                ((DataBlockWithDateTime)block)
+                                        .getStreamSnapshotStringsFromMarkerWithDateTime(item, topic);
+                            }else {
+                                block.getStreamSnapshotStringsFromMarker(item, topic);
+                            }
+                            break;
+                    }
+                    System.out.println("Failed to throw/catch DirtyMarkerExeption: " + item + "," + topic);
+                }catch(DirtyMarkerException e) {
+                    System.out.println("Successfully caught DirtyMarkerException: " + item + "," + topic);
+                }
+            }
+        }
+        block.setBlockSize(sz);
+    }
+
+    private static void
+    testDataIndexExceptions(DataBlock block, boolean withDateTime) throws CLibException, LibraryNotLoaded
+    {
+        Set<String> items = block.getItems();
+        Set<Topic> topics = block.getTopics();
+        int sz = block.getBlockSize();
+        for(Topic topic : topics){
+            int tType = TOSDataBridge.getTopicType(topic);
+            for(String item : items) {
+                try {
+                    switch (tType) {
+                        case TOSDataBridge.TOPIC_IS_LONG:
+                            if(withDateTime) {
+                                ((DataBlockWithDateTime)block)
+                                        .getStreamSnapshotLongsWithDateTime(item, topic,sz);
+                            }else {
+                                block.getStreamSnapshotLongs(item, topic, sz-1, -sz -1);
+                            }
+                            break;
+                        case TOSDataBridge.TOPIC_IS_DOUBLE:
+                            if(withDateTime) {
+                                ((DataBlockWithDateTime)block)
+                                        .getStreamSnapshotDoublesWithDateTime(item, topic, sz-1, -sz -1);
+                            }else {
+                                block.getStreamSnapshotDoubles(item, topic,sz);
+                            }
+                            break;
+                        case TOSDataBridge.TOPIC_IS_STRING:
+                            if(withDateTime) {
+                                ((DataBlockWithDateTime)block)
+                                        .getStreamSnapshotStringsWithDateTime(item, topic,sz);
+                            }else {
+                                block.getStreamSnapshotStrings(item, topic, sz-1, -sz -1);
+                            }
+                            break;
+                    }
+                    System.out.println("Failed to throw/catch DataIndexException: " + item + "," + topic);
+                }catch(DataIndexException e) {
+                    System.out.println("Successfully caught DataIndexException: " + item + "," + topic);
                 }
             }
         }
@@ -557,23 +852,26 @@ public class TOSDataBridgeTest {
         }
     }
 
+    @SuppressWarnings("unchecked")
+    private static <T> T
+    genericGet(DataBlock block, String item, Topic topic, int indx, String mname)
+            throws CLibException, LibraryNotLoaded, NoSuchMethodException,
+            InvocationTargetException, IllegalAccessException, DataIndexException
+    {
+        Method m = block.getClass().getMethod(mname,String.class,Topic.class,int.class);
+        return (T)m.invoke(block,item,topic,indx);
+    }
+
     private static <T> void
     printGet(DataBlock block, String item, Topic topic, int indx, String mname)
-            throws CLibException, LibraryNotLoaded
-    {
-        Method m;
+            throws CLibException, LibraryNotLoaded, DataIndexException {
         try {
-            m = block.getClass().getMethod(mname,String.class,Topic.class,int.class);
-        } catch (NoSuchMethodException e) {
-            e.printStackTrace();
-            return;
-        }
-        try {
-            @SuppressWarnings("unchecked")
-            T r1 = (T)m.invoke(block,item,topic,indx);
+            T r1 = genericGet(block,item,topic,indx,mname);
             System.out.println(mname + "(" + item + "," + topic + "," + String.valueOf(indx)
                                      + "): " + r1.toString());
         } catch (IllegalAccessException | InvocationTargetException e) {
+            e.printStackTrace();
+        } catch (NoSuchMethodException e) {
             e.printStackTrace();
         }
     }
