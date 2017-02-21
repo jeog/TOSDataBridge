@@ -868,7 +868,7 @@ public class DataBlock {
      */
     public Map<String,String>
     getItemFrame(Topic topic) throws CLibException, LibraryNotLoaded {
-        return _getFrame(topic, true, false);
+        return getFrame(topic, true, false);
     }
 
     /**
@@ -881,7 +881,7 @@ public class DataBlock {
      */
     public Map<Topic,String>
     getTopicFrame(String item) throws CLibException, LibraryNotLoaded {
-        return _getFrame(item, false, false);
+        return getFrame(item, false, false);
     }
 
     /**
@@ -1276,7 +1276,7 @@ public class DataBlock {
 
 
     protected final <T,E,X> Map<X,T>
-    _getFrame(E e, boolean itemFrame, boolean withDateTime)
+    getFrame(E e, boolean itemFrame, boolean withDateTime)
             throws CLibException, LibraryNotLoaded
     {
         final CLib lib = TOSDataBridge.getCLibrary();

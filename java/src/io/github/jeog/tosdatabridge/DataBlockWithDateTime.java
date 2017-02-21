@@ -566,7 +566,7 @@ public class DataBlockWithDateTime extends DataBlock {
      */
     public Map<String,DateTimePair<String>>
     getItemFrameWithDateTime(Topic topic) throws CLibException, LibraryNotLoaded {
-        return _getFrame(topic, true,true);
+        return getFrame(topic, true,true);
     }
 
     /**
@@ -579,7 +579,7 @@ public class DataBlockWithDateTime extends DataBlock {
      */
     public Map<Topic,DateTimePair<String>>
     getTopicFrameWithDateTime(String item) throws CLibException, LibraryNotLoaded {
-        return _getFrame(item, false,true);
+        return getFrame(item, false,true);
     }
 
     /**
