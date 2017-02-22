@@ -127,14 +127,16 @@ public class DataBlock {
      * INTERNAL CONSTRUCTOR
      */
     protected
-    DataBlock(int size, boolean dateTime, int timeout) throws LibraryNotLoaded, CLibException {
+    DataBlock(int size, boolean dateTime, int timeout)
+            throws LibraryNotLoaded, CLibException {
         _size = size;
         _timeout = timeout;
         _name = UUID.randomUUID().toString();
         _items = new HashSet<>();
         _topics = new HashSet<>();
 
-        int err = TOSDataBridge.getCLibrary().TOSDB_CreateBlock(_name, size, dateTime, timeout);
+        int err = TOSDataBridge.getCLibrary()
+                .TOSDB_CreateBlock(_name, size, dateTime, timeout);
         if (err != 0) {
             throw new CLibException("TOSDB_CreateBlock", err);
         }
@@ -241,7 +243,8 @@ public class DataBlock {
         _isValidItem(item);
         _isValidTopic(topic);
         int occ[] = {0};
-        int err = TOSDataBridge.getCLibrary().TOSDB_GetStreamOccupancy(_name,item,topic.val,occ);
+        int err = TOSDataBridge.getCLibrary()
+                .TOSDB_GetStreamOccupancy(_name,item,topic.val,occ);
         if(err != 0) {
             throw new CLibException("TOSDB_GetStreamOccupancy", err);
         }
@@ -751,9 +754,9 @@ public class DataBlock {
         item = item.toUpperCase();
         _isValidItem(item);
         _isValidTopic(topic);
-
         int[] ptrIsDirty = {0};
-        int err = TOSDataBridge.getCLibrary().TOSDB_IsMarkerDirty(_name, item, topic.val, ptrIsDirty);
+        int err = TOSDataBridge.getCLibrary()
+                .TOSDB_IsMarkerDirty(_name, item, topic.val, ptrIsDirty);
         if(err != 0) {
             throw new CLibException("TOSDB_IsMarkerDirty", err);
         }
@@ -917,79 +920,79 @@ public class DataBlock {
     get(String item, Topic topic,int indx, boolean withDateTime, Class<?> valType)
             throws LibraryNotLoaded, CLibException, DataIndexException
     {
-        final CLib lib = TOSDataBridge.getCLibrary();
         item = item.toUpperCase();
         _isValidItem(item);
         _isValidTopic(topic);
 
-        if(indx < 0) {
+        if(indx < 0){
             indx += _size;
         }
-        if(indx >= _size) {
+        if(indx >= _size){
             throw new DataIndexException("indx >= _size in DataBlock");
         }
-
-        int occ = getStreamOccupancy(item, topic);
-        if(indx >= occ)
+        if(indx >= getStreamOccupancy(item, topic)){
             return null;
+        }
 
         if( valType.equals(Long.class) ) {
-            return _getLong(item,topic,indx,withDateTime,lib);
+            return _getLong(item,topic,indx,withDateTime);
         }else if( valType.equals(Double.class) ) {
-            return _getDouble(item,topic,indx,withDateTime,lib);
+            return _getDouble(item,topic,indx,withDateTime);
         }else {
-            return _getString(item,topic,indx,withDateTime,lib);
+            return _getString(item,topic,indx,withDateTime);
         }
     }
 
     @SuppressWarnings("unchecked")
     private <T> T
-    _getLong(String item, Topic topic,int indx, boolean withDateTime, final CLib lib)
-            throws CLibException
+    _getLong(String item, Topic topic,int indx, boolean withDateTime)
+            throws CLibException, LibraryNotLoaded
     {
         DateTime ptrDTS =  withDateTime ? new DateTime() : null;
         long[] ptrVal = {0};
-        int err = lib.TOSDB_GetLongLong(_name, item, topic.val, indx, ptrVal, ptrDTS);
+        int err = TOSDataBridge.getCLibrary()
+                .TOSDB_GetLongLong(_name, item, topic.val, indx, ptrVal, ptrDTS);
         if(err != 0) {
-            throw new CLibException("TOSDB_GetLongLongs", err);
+            throw new CLibException("TOSDB_GetLongLong", err);
         }
         return (T)(withDateTime ? new DateTimePair<>(ptrVal[0],ptrDTS) : ptrVal[0]);
     }
 
     @SuppressWarnings("unchecked")
     private <T> T
-    _getDouble(String item, Topic topic,int indx, boolean withDateTime, final CLib lib)
-            throws CLibException
+    _getDouble(String item, Topic topic,int indx, boolean withDateTime)
+            throws CLibException, LibraryNotLoaded
     {
         DateTime ptrDTS =  withDateTime ? new DateTime() : null;
         double[] ptrVal = {0};
-        int err = lib.TOSDB_GetDouble(_name, item, topic.val, indx, ptrVal, ptrDTS);
+        int err = TOSDataBridge.getCLibrary()
+                .TOSDB_GetDouble(_name, item, topic.val, indx, ptrVal, ptrDTS);
         if(err != 0) {
-            throw new CLibException("TOSDB_GetDoubles", err);
+            throw new CLibException("TOSDB_GetDouble", err);
         }
         return (T)(withDateTime ? new DateTimePair<>(ptrVal[0],ptrDTS) : ptrVal[0]);
     }
 
     @SuppressWarnings("unchecked")
     private <T> T
-    _getString(String item, Topic topic,int indx, boolean withDateTime, final CLib lib)
-            throws CLibException
+    _getString(String item, Topic topic,int indx, boolean withDateTime)
+            throws CLibException, LibraryNotLoaded
     {
         DateTime ptrDTS =  withDateTime ? new DateTime() : null;
         byte[] ptrVal = new byte[STR_DATA_SZ + 1];
-        int err = lib.TOSDB_GetString(_name, item, topic.val, indx, ptrVal, STR_DATA_SZ + 1, ptrDTS);
+        int err = TOSDataBridge.getCLibrary()
+                .TOSDB_GetString(_name, item, topic.val, indx, ptrVal, STR_DATA_SZ + 1, ptrDTS);
         if(err != 0) {
-            throw new CLibException("TOSDB_GetStrings", err);
+            throw new CLibException("TOSDB_GetString", err);
         }
         return (T)(withDateTime ? new DateTimePair<>(Native.toString(ptrVal),ptrDTS)
-                : Native.toString(ptrVal));
+                                : Native.toString(ptrVal));
     }
 
     /* suppress DataIndexException */
     protected final <T> T[]
     getStreamSnapshotAll(String item, Topic topic, boolean withDateTime, Class<?> valType)
-            throws LibraryNotLoaded, CLibException
-    {
+            throws LibraryNotLoaded, CLibException {
         try {
             return getStreamSnapshot(item,topic,-1,0,true,withDateTime,valType);
         } catch (DataIndexException e) {
@@ -1004,7 +1007,6 @@ public class DataBlock {
                       boolean withDateTime, Class<?> valType)
             throws LibraryNotLoaded, CLibException, DataIndexException
     {
-        final CLib lib = TOSDataBridge.getCLibrary();
         item = item.toUpperCase();
         _isValidItem(item);
         _isValidTopic(topic);
@@ -1016,16 +1018,14 @@ public class DataBlock {
             beg += _size;
         }
         int size = end - beg + 1;
-        if(beg < 0 || end < 0
-                || beg >= _size || end >= _size
-                || size <= 0){
+        if((beg < 0) || (end < 0) || (beg >= _size) || (end >= _size) || (size <= 0)){
             throw new DataIndexException("invalid 'beg' and/or 'end' index");
         }
 
         if(smartSize){
             int occ = getStreamOccupancy(item, topic);
-            if(occ == 0 || occ <= beg) {
-                return (T[]) (withDateTime ? new DateTimePair[]{} : Array.newInstance(valType, 0));
+            if(occ <= beg){
+                return (T[])(withDateTime ? new DateTimePair[]{} : Array.newInstance(valType, 0));
             }
             end = Math.min(end, occ-1);
             beg = Math.min(beg, occ-1);
@@ -1033,30 +1033,33 @@ public class DataBlock {
         }
 
         if( valType.equals(Long.class) ){
-            return _getStreamSnapshotLongs(item, topic, end, beg, withDateTime, size, lib);
+            return _getStreamSnapshotLongs(item, topic, end, beg, withDateTime, size);
         }else if( valType.equals(Double.class) ){
-            return _getStreamSnapshotDoubles(item, topic, end, beg, withDateTime, size, lib);
+            return _getStreamSnapshotDoubles(item, topic, end, beg, withDateTime, size);
         }else{
-            return _getStreamSnapshotStrings(item, topic, end, beg, withDateTime, size, lib);
+            return _getStreamSnapshotStrings(item, topic, end, beg, withDateTime, size);
         }
     }
 
     @SuppressWarnings("unchecked")
     protected  <T> T[]
     _getStreamSnapshotLongs(String item, Topic topic, int end, int beg, boolean withDateTime,
-                            int size, final CLib lib)
+                            int size)
             throws LibraryNotLoaded, CLibException, DataIndexException
     {
         DateTime[] arrayDTS = (withDateTime ? new DateTime[size] : null);
         long[] arrayVals = new long[size];
-        int err = lib.TOSDB_GetStreamSnapshotLongLongs(_name, item, topic.val, arrayVals, size,
-                arrayDTS, end, beg);
+        int err = TOSDataBridge.getCLibrary()
+                .TOSDB_GetStreamSnapshotLongLongs(_name, item, topic.val, arrayVals,
+                        size, arrayDTS, end, beg);
         if(err != 0) {
             throw new CLibException("TOSDB_GetStreamSnapshotLongs", err);
         }
+
         T[] data = (T[])(withDateTime ? new DateTimePair[size] : new Long[size]);
         for(int i = 0; i < size; ++i) {
-            data[i] = (T)(withDateTime ? new DateTimePair<>(arrayVals[i], arrayDTS[i]) : arrayVals[i]);
+            data[i] = (T)(withDateTime ? new DateTimePair<>(arrayVals[i], arrayDTS[i])
+                                       : arrayVals[i]);
         }
         return data;
     }
@@ -1064,19 +1067,22 @@ public class DataBlock {
     @SuppressWarnings("unchecked")
     protected  <T> T[]
     _getStreamSnapshotDoubles(String item, Topic topic, int end, int beg, boolean withDateTime,
-                              int size, final CLib lib)
+                              int size)
             throws LibraryNotLoaded, CLibException, DataIndexException
     {
         DateTime[] arrayDTS = (withDateTime ? new DateTime[size] : null);
         double[] arrayVals = new double[size];
-        int err = lib.TOSDB_GetStreamSnapshotDoubles(_name, item, topic.val, arrayVals, size,
-                arrayDTS, end, beg);
+        int err = TOSDataBridge.getCLibrary()
+                .TOSDB_GetStreamSnapshotDoubles(_name, item, topic.val, arrayVals,
+                        size, arrayDTS, end, beg);
         if(err != 0) {
             throw new CLibException("TOSDB_GetStreamSnapshotDoubles", err);
         }
+
         T[] data = (T[])(withDateTime ? new DateTimePair[size] : new Double[size]);
         for(int i = 0; i < size; ++i) {
-            data[i] = (T)(withDateTime ? new DateTimePair<>(arrayVals[i], arrayDTS[i]) : arrayVals[i]);
+            data[i] = (T)(withDateTime ? new DateTimePair<>(arrayVals[i], arrayDTS[i])
+                                       : arrayVals[i]);
         }
         return data;
     }
@@ -1084,7 +1090,7 @@ public class DataBlock {
     @SuppressWarnings("unchecked")
     protected  <T> T[]
     _getStreamSnapshotStrings(String item, Topic topic, int end, int beg, boolean withDateTime,
-                              int size, final CLib lib)
+                              int size)
             throws LibraryNotLoaded, CLibException, DataIndexException
     {
         DateTime[] arrayDTS = (withDateTime ? new DateTime[size] : null);
@@ -1092,15 +1098,17 @@ public class DataBlock {
         for(int i = 0; i < size; ++i){
             arrayVals[i] = new Memory(STR_DATA_SZ+1);
         }
-        int err = lib.TOSDB_GetStreamSnapshotStrings(_name, item, topic.val, arrayVals,
-                size, STR_DATA_SZ + 1, arrayDTS, end, beg);
+        int err = TOSDataBridge.getCLibrary()
+                .TOSDB_GetStreamSnapshotStrings(_name, item, topic.val, arrayVals,
+                        size, STR_DATA_SZ + 1, arrayDTS, end, beg);
         if(err != 0) {
             throw new CLibException("TOSDB_GetStreamSnapshotStrings", err);
         }
+
         T[] data = (T[])(withDateTime ? new DateTimePair[size] : new String[size]);
         for(int i = 0; i < size; ++i) {
             data[i] = (T)(withDateTime ? new DateTimePair<>(arrayVals[i].getString(0), arrayDTS[i])
-                    : arrayVals[i].getString(0));
+                                       : arrayVals[i].getString(0));
         }
         return data;
     }
@@ -1109,8 +1117,7 @@ public class DataBlock {
     protected final <T> T[]
     getStreamSnapshotFromMarkerIgnoreDirty(String item, Topic topic, int beg, boolean withDateTime,
                                            Class<?> valType)
-            throws LibraryNotLoaded, CLibException, DataIndexException 
-    {
+            throws LibraryNotLoaded, CLibException, DataIndexException {
         try {
             return getStreamSnapshotFromMarker(item,topic,beg,false,withDateTime,valType);
         } catch (DirtyMarkerException e) {
@@ -1124,8 +1131,7 @@ public class DataBlock {
     protected final <T> T[]
     getStreamSnapshotFromMarkerToMostRecent(String item, Topic topic, boolean withDateTime,
                                             Class<?> valType)
-            throws LibraryNotLoaded, CLibException, DirtyMarkerException
-    {
+            throws LibraryNotLoaded, CLibException, DirtyMarkerException {
         try {
             return getStreamSnapshotFromMarker(item,topic,0,true,withDateTime,valType);
         } catch (DataIndexException e) {
@@ -1139,8 +1145,7 @@ public class DataBlock {
     protected final <T> T[]
     getStreamSnapshotFromMarkerToMostRecentIgnoreDirty(String item, Topic topic,
                                                        boolean withDateTime, Class<?> valType)
-            throws LibraryNotLoaded, CLibException
-    {
+            throws LibraryNotLoaded, CLibException {
         try {
             return getStreamSnapshotFromMarker(item,topic,0,false,withDateTime,valType);
         } catch (DataIndexException e){
@@ -1160,9 +1165,6 @@ public class DataBlock {
                                  boolean withDateTime, Class<?> valType)
             throws LibraryNotLoaded, CLibException, DataIndexException, DirtyMarkerException
     {
-        final CLib lib = TOSDataBridge.getCLibrary();
-        int err;
-
         item = item.toUpperCase();
         _isValidItem(item);
         _isValidTopic(topic);
@@ -1179,7 +1181,8 @@ public class DataBlock {
         }
 
         long[] ptrMarkerPos = {0};
-        err = lib.TOSDB_GetMarkerPosition(_name, item, topic.val, ptrMarkerPos);
+        int err = TOSDataBridge.getCLibrary()
+                .TOSDB_GetMarkerPosition(_name, item, topic.val, ptrMarkerPos);
         if(err != 0) {
             throw new CLibException("TOSDB_GetMarkerPosition", err);
         }
@@ -1192,34 +1195,37 @@ public class DataBlock {
 
         if( valType.equals(Long.class) ){
             return _getStreamSnapshotLongsFromMarker(item,topic,beg,withDateTime,
-                    throwIfDataLost,safeSz, lib);
+                    throwIfDataLost,safeSz);
         }else if( valType.equals(Double.class) ){
             return _getStreamSnapshotDoublesFromMarker(item,topic,beg,withDateTime,
-                    throwIfDataLost,safeSz, lib);
+                    throwIfDataLost,safeSz);
         }else {
             return _getStreamSnapshotStringsFromMarker(item, topic, beg, withDateTime,
-                    throwIfDataLost, safeSz, lib);
+                    throwIfDataLost, safeSz);
         }
     }
 
     @SuppressWarnings("unchecked")
     private <T> T[]
     _getStreamSnapshotLongsFromMarker(String item, Topic topic, int beg, boolean withDateTime,
-                                      boolean throwIfDataLost, int safeSz, final CLib lib)
+                                      boolean throwIfDataLost, int safeSz)
             throws CLibException, LibraryNotLoaded, DirtyMarkerException
     {
         DateTime[] arrayDTS = (withDateTime ? new DateTime[safeSz] : null);
         NativeLong[] ptrGetSz = {new NativeLong(0)};
         long[] arrayVals = new long[safeSz];
-        int err = lib.TOSDB_GetStreamSnapshotLongLongsFromMarker(
-                _name, item, topic.val, arrayVals, safeSz, arrayDTS, beg, ptrGetSz);
+        int err = TOSDataBridge.getCLibrary()
+                .TOSDB_GetStreamSnapshotLongLongsFromMarker(_name, item, topic.val,
+                        arrayVals, safeSz, arrayDTS, beg, ptrGetSz);
         if(err != 0) {
             throw new CLibException("TOSDB_GetStreamSnapshotLongsFromMarker", err);
         }
+
         int szGot = (int)_handleSzGotFromMarker(ptrGetSz[0],throwIfDataLost);
         T[] data = (T[])(withDateTime ? new DateTimePair[szGot] : new Long[szGot]);
         for(int i = 0; i < szGot; ++i) {
-            data[i] = (T)(withDateTime ? new DateTimePair<>(arrayVals[i], arrayDTS[i]) : arrayVals[i]);
+            data[i] = (T)(withDateTime ? new DateTimePair<>(arrayVals[i], arrayDTS[i])
+                                       : arrayVals[i]);
         }
         return data;
     }
@@ -1227,21 +1233,24 @@ public class DataBlock {
     @SuppressWarnings("unchecked")
     private <T> T[]
     _getStreamSnapshotDoublesFromMarker(String item, Topic topic, int beg, boolean withDateTime,
-                                        boolean throwIfDataLost, int safeSz, final CLib lib)
+                                        boolean throwIfDataLost, int safeSz)
             throws CLibException, LibraryNotLoaded, DirtyMarkerException
     {
         DateTime[] arrayDTS = (withDateTime ? new DateTime[safeSz] : null);
         NativeLong[] ptrGetSz = {new NativeLong(0)};
         double[] arrayVals = new double[safeSz];
-        int err = lib.TOSDB_GetStreamSnapshotDoublesFromMarker(
-                _name, item, topic.val, arrayVals, safeSz, arrayDTS, beg, ptrGetSz);
+        int err = TOSDataBridge.getCLibrary()
+                .TOSDB_GetStreamSnapshotDoublesFromMarker(_name, item, topic.val,
+                        arrayVals, safeSz, arrayDTS, beg, ptrGetSz);
         if(err != 0) {
             throw new CLibException("TOSDB_GetStreamSnapshotDoublesFromMarker", err);
         }
+
         int szGot = (int)_handleSzGotFromMarker(ptrGetSz[0],throwIfDataLost);
         T[] data = (T[])(withDateTime ? new DateTimePair[szGot] : new Double[szGot]);
         for(int i = 0; i < szGot; ++i) {
-            data[i] = (T)(withDateTime ? new DateTimePair<>(arrayVals[i], arrayDTS[i]) : arrayVals[i]);
+            data[i] = (T)(withDateTime ? new DateTimePair<>(arrayVals[i], arrayDTS[i])
+                                       : arrayVals[i]);
         }
         return data;
     }
@@ -1249,7 +1258,7 @@ public class DataBlock {
     @SuppressWarnings("unchecked")
     private <T> T[]
     _getStreamSnapshotStringsFromMarker(String item, Topic topic, int beg, boolean withDateTime,
-                                         boolean throwIfDataLost, int safeSz, final CLib lib)
+                                         boolean throwIfDataLost, int safeSz)
             throws CLibException, LibraryNotLoaded, DirtyMarkerException
     {
         Pointer[] arrayVals = new Pointer[safeSz];
@@ -1258,16 +1267,18 @@ public class DataBlock {
         for(int i = 0; i < safeSz; ++i){
             arrayVals[i] = new Memory(STR_DATA_SZ+1);
         }
-        int err = lib.TOSDB_GetStreamSnapshotStringsFromMarker(
-                _name, item, topic.val, arrayVals, safeSz, STR_DATA_SZ + 1, arrayDTS, beg, ptrGetSz);
+        int err = TOSDataBridge.getCLibrary()
+                .TOSDB_GetStreamSnapshotStringsFromMarker(_name, item, topic.val,
+                        arrayVals, safeSz, STR_DATA_SZ + 1, arrayDTS, beg, ptrGetSz);
         if(err != 0) {
             throw new CLibException("TOSDB_GetStreamSnapshotStringsFromMarker", err);
         }
+
         int szGot = (int)_handleSzGotFromMarker(ptrGetSz[0],throwIfDataLost);
         T[] data = (T[])(withDateTime ? new DateTimePair[szGot] : new String[szGot]);
         for(int i = 0; i < szGot; ++i) {
             data[i] = (T)(withDateTime ? new DateTimePair<>(arrayVals[i].getString(0), arrayDTS[i])
-                    : arrayVals[i].getString(0));
+                                       : arrayVals[i].getString(0));
         }
         return data;
     }
@@ -1277,8 +1288,6 @@ public class DataBlock {
     getFrame(E e, boolean itemFrame, boolean withDateTime)
             throws CLibException, LibraryNotLoaded
     {
-        final CLib lib = TOSDataBridge.getCLibrary();
-
         if(itemFrame) {
             _isValidTopic((Topic) e);
         }else {
@@ -1295,11 +1304,16 @@ public class DataBlock {
         }
         DateTime[] arrayDTS = (withDateTime ? new DateTime[n] : null);
 
-        int err = itemFrame
-                ? lib.TOSDB_GetItemFrameStrings(_name, ((Topic)e).toString(), arrayVals, n,
-                        STR_DATA_SZ + 1, arrayLabels, MAX_STR_SZ + 1, arrayDTS)
-                : lib.TOSDB_GetTopicFrameStrings(_name, ((String)e).toUpperCase(), arrayVals, n,
-                        STR_DATA_SZ + 1, arrayLabels, MAX_STR_SZ + 1, arrayDTS);
+        int err;
+        if (itemFrame) {
+            err = TOSDataBridge.getCLibrary()
+                    .TOSDB_GetItemFrameStrings(_name, ((Topic)e).toString(), arrayVals, n,
+                            STR_DATA_SZ + 1, arrayLabels, MAX_STR_SZ + 1, arrayDTS);
+        } else {
+            err = TOSDataBridge.getCLibrary()
+                    .TOSDB_GetTopicFrameStrings(_name, ((String)e).toUpperCase(), arrayVals, n,
+                            STR_DATA_SZ + 1, arrayLabels, MAX_STR_SZ + 1, arrayDTS);
+        }
         if(err != 0) {
             throw new CLibException("TOSDB_Get" + (itemFrame ? "Item" : "Topic") + "FrameStrings",
                     err);
@@ -1395,10 +1409,7 @@ public class DataBlock {
     _getItemTopicNames(boolean useItemVersion, boolean usePreCachedVersion)
             throws LibraryNotLoaded, CLibException
     {
-        final CLib lib = TOSDataBridge.getCLibrary();
-        int err;
         int n;
-
         if (useItemVersion) {
             n = usePreCachedVersion ? _getItemPreCachedCount() : _getItemCount();
         }else{
@@ -1413,15 +1424,20 @@ public class DataBlock {
             arrayVals[i] = new Memory(MAX_STR_SZ+1);
         }
 
+        int err;
         if (useItemVersion) {
             err = usePreCachedVersion
-                    ? lib.TOSDB_GetPreCachedItemNames(_name, arrayVals, n, MAX_STR_SZ)
-                    : lib.TOSDB_GetItemNames(_name, arrayVals, n, MAX_STR_SZ);
+                    ? TOSDataBridge.getCLibrary()
+                        .TOSDB_GetPreCachedItemNames(_name, arrayVals, n, MAX_STR_SZ)
+                    : TOSDataBridge.getCLibrary()
+                        .TOSDB_GetItemNames(_name, arrayVals, n, MAX_STR_SZ);
 
         }else{
             err = usePreCachedVersion
-                    ? lib.TOSDB_GetPreCachedTopicNames(_name, arrayVals, n, MAX_STR_SZ)
-                    : lib.TOSDB_GetTopicNames(_name, arrayVals, n, MAX_STR_SZ);
+                    ? TOSDataBridge.getCLibrary()
+                        .TOSDB_GetPreCachedTopicNames(_name, arrayVals, n, MAX_STR_SZ)
+                    : TOSDataBridge.getCLibrary()
+                        .TOSDB_GetTopicNames(_name, arrayVals, n, MAX_STR_SZ);
         }
         if(err != 0) {
             throw new CLibException("TOSDB_Get" + (usePreCachedVersion ? "PreCached" : "")
