@@ -95,7 +95,7 @@ Data are stored in 'streams' which are created internally as a result of topics 
 
 If we add two topics and three items we have six streams:
 
-.          | SPY | QQQ | GOOG
+&nbsp;     | SPY | QQQ | GOOG
 -----------|-----|-----|-----
 **LAST**   |&nbsp;&nbsp;X  |  &nbsp;&nbsp;&nbsp;X  |  &nbsp;&nbsp;&nbsp;&nbsp;X
 **VOLUME** |  &nbsp;&nbsp;X  |  &nbsp;&nbsp;&nbsp;X  |  &nbsp;&nbsp;&nbsp;&nbsp;X
@@ -138,7 +138,7 @@ Like the C/C++ interfaces we have type-specific calls. If you call the wrong ver
                 // no data in block yet
             } 
 
-            // 10 data-points ago, with DateTime
+            // 9 data-points older than most recent, with DateTime
             DateTimePair<Double> dDT = blockDT.getDoubleWithDateTime("SPY", Topic.LAST, 9); 
             if(dDT == null){
                 // no data at this index/position yet

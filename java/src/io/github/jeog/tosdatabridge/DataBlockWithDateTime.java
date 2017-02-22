@@ -94,6 +94,16 @@ public class DataBlockWithDateTime extends DataBlock {
     }
 
     /**
+     * Is block storing DateTime objects alongside primary data.
+     * @returns boolean
+     */
+    @Override
+    public boolean
+    isUsingDateTime() {
+        return true;
+    }
+
+    /**
      * Get most recent data-point as DateTimePair&lt;Long&gt;
      * (or null if no data in stream yet).
      *

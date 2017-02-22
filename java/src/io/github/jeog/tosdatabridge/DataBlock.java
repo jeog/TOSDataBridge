@@ -31,7 +31,7 @@ import java.util.*;
 /**
  * DataBlock is used to get real-time financial data from the TOS platform.
  * It uses the JNA interface(CLib.java) to access the C API, wrapping the
- * underlying (conceptual) block of the C lib with an object-oriented java interface.
+ * underlying (conceptual) block of the C lib with an object-oriented interface.
  * <p>
  * <strong>IMPORTANT:</strong> Before creating/using a DataBlock the underlying library
  * must be loaded AND connected to the backend Service/Engine and the TOS platform.
@@ -93,7 +93,6 @@ public class DataBlock {
     }
 
     private final String _name;
-    private final boolean _dateTime;
     private final int _timeout;
     private int _size;
     private Set<String> _items;
@@ -130,7 +129,6 @@ public class DataBlock {
     protected
     DataBlock(int size, boolean dateTime, int timeout) throws LibraryNotLoaded, CLibException {
         _size = size;
-        _dateTime = dateTime;
         _timeout = timeout;
         _name = UUID.randomUUID().toString();
         _items = new HashSet<>();
@@ -180,7 +178,7 @@ public class DataBlock {
      */
     public boolean
     isUsingDateTime() {
-        return _dateTime;
+        return false;
     }
 
     /**
