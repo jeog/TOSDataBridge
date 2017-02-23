@@ -122,7 +122,7 @@ Clearly we need items AND topics. Items(topics) added before any topics(items) e
 
 Like the C/C++ interfaces we have type-specific calls. If you call the wrong version the C lib will try to (safely) cast the value for you. If it can't it will return ERROR_GET_DATA and java will throw CLibException.
 
-    import io.github.jeog.tosdatabridge.DataBlock.DateTimePair;
+    import io.github.jeog.tosdatabridge.DateTime.DateTimePair;
 
     try{
         switch( TOSDataBridge.getTopicType(Topic.LAST) ){
@@ -159,7 +159,7 @@ Like the C/C++ interfaces we have type-specific calls. If you call the wrong ver
 
 'WithDateTime' versions return DateTimePair object(s):
 
-    public class DataBlock {
+    public class DateTime {
     //...
         public static class DateTimePair<T> extends Pair<T,DateTime>{
             public final T first; // inherited
@@ -172,13 +172,12 @@ Like the C/C++ interfaces we have type-specific calls. If you call the wrong ver
 
 ##### Get (Contiguous) Data-Points from a Stream
 
-Methods with a plural type in the name(e.g getStreamSnapshotLongs) return an array.
+Methods with a plural type in the name(e.g getStreamSnapshotLongs) return a List(ArrayList).
 
 'StreamSnapshot' calls return an array of data between 'beg' and 'end', with a number of overloads.
 
 'StreamSnapshotFromMarker' calls provide client code a guarantee that it won't miss data between calls, assuming the 'marker' doesn't hit the back of the stream, becoming 'dirty'. (See python and C/C++ docs for a complete explanation.)
-
-    import io.github.jeog.tosdatabridge.DataBlock.DateTimePair;
+    
 
     try{
         switch( TOSDataBridge.getTopicType(Topic.LAST) ){
@@ -188,33 +187,31 @@ Methods with a plural type in the name(e.g getStreamSnapshotLongs) return an arr
 
         case TOSDataBridge.TOPIC_IS_DOUBLE: /* Topic.LAST stores doubles ... */          
 
-            // array of 10 most recent data-points (index 0 to 9, inclusive)
-            Double[] dd = blockDT.getStreamSnapshotDoubles("SPY", Topic.LAST, 9, 0); 
+            // 10 most recent data-points (index 0 to 9, inclusive)
+            List<Double> dd = blockDT.getStreamSnapshotDoubles("SPY", Topic.LAST, 9, 0); 
 
-            // array of ALL valid data-points, with DateTime
-            DateTimePair<Double>[] ddDT = 
-                blockDT.getStreamSnapshotDoublesWithDateTime("SPY", Topic.LAST) 
+            // ALL valid data-points, with DateTime
+            List<DateTimePair<Double>> ddDT = 
+                blockDT.getStreamSnapshotDoublesWithDateTime("SPY", Topic.LAST); 
 
             /*
              *  use 'FromMarker' methods (below) to guarantee contiguous data BETWEEN calls 
              *  (see python and C/C++ docs for complete explanation)
              */
 
-            // get 10 most recent values - THIS MOVES THE MARKER to 'beg' index (0 in this case)
+            // 10 most recent values - THIS MOVES THE MARKER to 'beg' index (0 in this case)
             List<DateTimePair<Double>> oldLasts =  
-                new ArrayList<>(Arrays.asList( 
-                    blockDT.getStreamSnapshotDoublesWithDateTime("SPY", Topic.LAST, 9) )); 
+                blockDT.getStreamSnapshotDoublesWithDateTime("SPY", Topic.LAST, 9); 
 
             // add some time between the calls so data can come into stream            
             Thread.sleep(1000);            
             // as data comes into the stream the 'marker' is moving backwards
 
-            // get all the data-points up to the marker - THIS ALSO MOVES THE MARKER (as above)
+            // all the data-points up to the marker - THIS ALSO MOVES THE MARKER (as above)
             List<DateTimePair<Double>> newLasts = 
-                new ArrayList<>(Arrays.asList( 
-                    blockDT.getStreamSnapshotDoublesFromMarkerWithDateTime("SPY", Topic.LAST) ));          
+                blockDT.getStreamSnapshotDoublesFromMarkerWithDateTime("SPY", Topic.LAST);          
 
-            // concatenating the two arrays will guarantee we got ALL the data
+            // concatenating the two lists will guarantee we got ALL the data
             newLasts.addAll(oldLasts); // most recent first
             for(DateTimePair<Double> p : newLasts){
                 System.out.println(p);

@@ -18,16 +18,14 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 package io.github.jeog.tosdatabridge;
 
 import io.github.jeog.tosdatabridge.TOSDataBridge.*;
+import io.github.jeog.tosdatabridge.DateTime.DateTimePair;
 
 import com.sun.jna.Memory;
 import com.sun.jna.Native;
 import com.sun.jna.NativeLong;
 import com.sun.jna.Pointer;
 
-import java.lang.reflect.Array;
 import java.util.*;
-
-
 
 /**
  * DataBlock is used to get real-time financial data from the TOS platform.
@@ -60,7 +58,7 @@ import java.util.*;
  * @version 0.7
  * @throws CLibException error code returned by C lib   
  * @throws LibraryNotLoaded C lib has not been loaded
- * @see TOSDataBridge 
+ * @see TOSDataBridge
  * @see Topic
  * @see DateTime
  * @see <a href="https://github.com/jeog/TOSDataBridge/blob/master/README.md"> README </a>
@@ -82,21 +80,12 @@ public class DataBlock {
     /* default timeout for communicating with the engine/platform */
     public static final int DEF_TIMEOUT = TOSDataBridge.DEF_TIMEOUT;
 
-    /**
-     * Pair of primary data and DateTime object.
-     *
-     * @param <T> type of primary data
-     */
-    public static class DateTimePair<T> extends Pair<T, DateTime> {
-        public DateTimePair(T first, DateTime second) {
-            super(first, second);
-        }
-    }
-
-    private final DataBlockHelper helper = new DataBlockHelper();
+    /* an implementation layer (below API, above JNA) we want to share with classes that
+       may extend DataBlock within the package, but not with client code from outside it */
+    private final DataBlockSharedHelper helper = new DataBlockSharedHelper();
 
     /*package-private*/
-    final DataBlockHelper
+    final DataBlockSharedHelper
     getHelper(){
         return helper;
     }
@@ -506,7 +495,7 @@ public class DataBlock {
      * @throws LibraryNotLoaded C lib has not been loaded
      * @throws CLibException    error code returned by C lib
      */
-    public Long[]
+    public List<Long>
     getStreamSnapshotLongs(String item, Topic topic) throws LibraryNotLoaded, CLibException {
         return helper.getStreamSnapshotAll(item, topic, false, Long.class);
     }
@@ -522,7 +511,7 @@ public class DataBlock {
      * @throws CLibException      error code returned by C lib
      * @throws DataIndexException invalid index/position value
      */
-    public Long[]
+    public List<Long>
     getStreamSnapshotLongs(String item, Topic topic, int end)
             throws LibraryNotLoaded, CLibException, DataIndexException {
         return helper.getStreamSnapshot(item, topic, end, 0, true, false, Long.class);
@@ -540,7 +529,7 @@ public class DataBlock {
      * @throws CLibException      error code returned by C lib
      * @throws DataIndexException invalid index/position value
      */
-    public Long[]
+    public List<Long>
     getStreamSnapshotLongs(String item, Topic topic, int end, int beg)
             throws LibraryNotLoaded, CLibException, DataIndexException {
         return helper.getStreamSnapshot(item, topic, end, beg, true, false, Long.class);
@@ -555,7 +544,7 @@ public class DataBlock {
      * @throws LibraryNotLoaded C lib has not been loaded
      * @throws CLibException    error code returned by C lib
      */
-    public Double[]
+    public List<Double>
     getStreamSnapshotDoubles(String item, Topic topic) throws LibraryNotLoaded, CLibException {
         return helper.getStreamSnapshotAll(item, topic, false, Double.class);
     }
@@ -571,7 +560,7 @@ public class DataBlock {
      * @throws CLibException      error code returned by C lib
      * @throws DataIndexException invalid index/position value
      */
-    public Double[]
+    public List<Double>
     getStreamSnapshotDoubles(String item, Topic topic, int end)
             throws LibraryNotLoaded, CLibException, DataIndexException {
         return helper.getStreamSnapshot(item, topic, end, 0, true, false, Double.class);
@@ -589,7 +578,7 @@ public class DataBlock {
      * @throws CLibException      error code returned by C lib
      * @throws DataIndexException invalid index/position value
      */
-    public Double[]
+    public List<Double>
     getStreamSnapshotDoubles(String item, Topic topic, int end, int beg)
             throws LibraryNotLoaded, CLibException, DataIndexException {
         return helper.getStreamSnapshot(item, topic, end, beg, true, false, Double.class);
@@ -604,7 +593,7 @@ public class DataBlock {
      * @throws LibraryNotLoaded C lib has not been loaded
      * @throws CLibException    error code returned by C lib
      */
-    public String[]
+    public List<String>
     getStreamSnapshotStrings(String item, Topic topic) throws LibraryNotLoaded, CLibException {
         return helper.getStreamSnapshotAll(item, topic, false, String.class);
     }
@@ -620,7 +609,7 @@ public class DataBlock {
      * @throws CLibException      error code returned by C lib
      * @throws DataIndexException invalid index/position value
      */
-    public String[]
+    public List<String>
     getStreamSnapshotStrings(String item, Topic topic, int end)
             throws LibraryNotLoaded, CLibException, DataIndexException {
         return helper.getStreamSnapshot(item, topic, end, 0, true, false, String.class);
@@ -638,7 +627,7 @@ public class DataBlock {
      * @throws CLibException      error code returned by C lib
      * @throws DataIndexException invalid index/position value
      */
-    public String[]
+    public List<String>
     getStreamSnapshotStrings(String item, Topic topic, int end, int beg)
             throws LibraryNotLoaded, CLibException, DataIndexException {
         return helper.getStreamSnapshot(item, topic, end, beg, true, false, String.class);
@@ -654,7 +643,7 @@ public class DataBlock {
      * @throws CLibException        error code returned by C lib
      * @throws DirtyMarkerException marker is 'dirty' (data lost behind it)
      */
-    public Long[]
+    public List<Long>
     getStreamSnapshotLongsFromMarker(String item, Topic topic)
             throws LibraryNotLoaded, CLibException, DirtyMarkerException {
         return helper.getStreamSnapshotFromMarkerToMostRecent(item, topic, false, Long.class);
@@ -672,7 +661,7 @@ public class DataBlock {
      * @throws DataIndexException   invalid index/position value
      * @throws DirtyMarkerException marker is 'dirty' (data lost behind it)
      */
-    public Long[]
+    public List<Long>
     getStreamSnapshotLongsFromMarker(String item, Topic topic, int beg)
             throws LibraryNotLoaded, CLibException, DataIndexException, DirtyMarkerException {
         return helper.getStreamSnapshotFromMarker(item, topic, beg, true, false, Long.class);
@@ -688,7 +677,7 @@ public class DataBlock {
      * @throws CLibException        error code returned by C lib
      * @throws DirtyMarkerException marker is 'dirty' (data lost behind it)
      */
-    public Double[]
+    public List<Double>
     getStreamSnapshotDoublesFromMarker(String item, Topic topic)
             throws LibraryNotLoaded, CLibException, DirtyMarkerException {
         return helper.getStreamSnapshotFromMarkerToMostRecent(item, topic, false, Double.class);
@@ -706,7 +695,7 @@ public class DataBlock {
      * @throws DataIndexException   invalid index/position value
      * @throws DirtyMarkerException marker is 'dirty' (data lost behind it)
      */
-    public Double[]
+    public List<Double>
     getStreamSnapshotDoublesFromMarker(String item, Topic topic, int beg)
             throws LibraryNotLoaded, CLibException, DataIndexException, DirtyMarkerException {
         return helper.getStreamSnapshotFromMarker(item, topic, beg, true, false, Double.class);
@@ -722,7 +711,7 @@ public class DataBlock {
      * @throws CLibException        error code returned by C lib
      * @throws DirtyMarkerException marker is 'dirty' (data lost behind it)
      */
-    public String[]
+    public List<String>
     getStreamSnapshotStringsFromMarker(String item, Topic topic)
             throws LibraryNotLoaded, CLibException, DirtyMarkerException {
         return helper.getStreamSnapshotFromMarkerToMostRecent(item, topic, false, String.class);
@@ -740,7 +729,7 @@ public class DataBlock {
      * @throws DataIndexException   invalid index/position value
      * @throws DirtyMarkerException marker is 'dirty' (data lost behind it)
      */
-    public String[]
+    public List<String>
     getStreamSnapshotStringsFromMarker(String item, Topic topic, int beg)
             throws LibraryNotLoaded, CLibException, DataIndexException, DirtyMarkerException {
         return helper.getStreamSnapshotFromMarker(item, topic, beg, true, false, String.class);
@@ -780,7 +769,7 @@ public class DataBlock {
      * @throws LibraryNotLoaded C lib has not been loaded
      * @throws CLibException    error code returned by C lib
      */
-    public Long[]
+    public List<Long>
     getStreamSnapshotLongsFromMarkerIgnoreDirty(String item, Topic topic)
             throws LibraryNotLoaded, CLibException {
         return helper.getStreamSnapshotFromMarkerToMostRecentIgnoreDirty(item, topic, false, Long.class);
@@ -797,7 +786,7 @@ public class DataBlock {
      * @throws CLibException      error code returned by C lib
      * @throws DataIndexException invalid index/position value
      */
-    public Long[]
+    public List<Long>
     getStreamSnapshotLongsFromMarkerIgnoreDirty(String item, Topic topic, int beg)
             throws LibraryNotLoaded, CLibException, DataIndexException {
         return helper.getStreamSnapshotFromMarkerIgnoreDirty(item, topic, beg, false, Long.class);
@@ -812,7 +801,7 @@ public class DataBlock {
      * @throws LibraryNotLoaded C lib has not been loaded
      * @throws CLibException    error code returned by C lib
      */
-    public Double[]
+    public List<Double>
     getStreamSnapshotDoublesFromMarkerIgnoreDirty(String item, Topic topic)
             throws LibraryNotLoaded, CLibException {
         return helper.getStreamSnapshotFromMarkerToMostRecentIgnoreDirty(item, topic, false, Double.class);
@@ -829,7 +818,7 @@ public class DataBlock {
      * @throws CLibException      error code returned by C lib
      * @throws DataIndexException invalid index/position value
      */
-    public Double[]
+    public List<Double>
     getStreamSnapshotDoublesFromMarkerIgnoreDirty(String item, Topic topic, int beg)
             throws LibraryNotLoaded, CLibException, DataIndexException {
         return helper.getStreamSnapshotFromMarkerIgnoreDirty(item, topic, beg, false, Double.class);
@@ -844,7 +833,7 @@ public class DataBlock {
      * @throws LibraryNotLoaded C lib has not been loaded
      * @throws CLibException    error code returned by C lib
      */
-    public String[]
+    public List<String>
     getStreamSnapshotStringsFromMarkerIgnoreDirty(String item, Topic topic)
             throws LibraryNotLoaded, CLibException {
         return helper.getStreamSnapshotFromMarkerToMostRecentIgnoreDirty(item, topic, false, String.class);
@@ -861,7 +850,7 @@ public class DataBlock {
      * @throws CLibException      error code returned by C lib
      * @throws DataIndexException invalid index/position value
      */
-    public String[]
+    public List<String>
     getStreamSnapshotStringsFromMarkerIgnoreDirty(String item, Topic topic, int beg)
             throws LibraryNotLoaded, CLibException, DataIndexException {
         return helper.getStreamSnapshotFromMarkerIgnoreDirty(item, topic, beg, false, String.class);
@@ -911,14 +900,16 @@ public class DataBlock {
     }
 
     /**
-     * (package-private) inner class that houses a number of (unsafe) type operations
-     * that we only want to expose to DataBlock classes inside the package
+     * (package-private) inner class that houses a number of 'unsafe' type
+     * operations that we only want to expose to the implementation of the
+     * DataBlock hierarchy within the package. It allows for code reuse below
+     * the API calls but above many of the JNA calls because it still has
+     * access to DataBlock's private methods/fields. *The* private instance
+     * is accessed via DataBlock's getHelper() method.
      */
-    class DataBlockHelper {
-
+    class DataBlockSharedHelper {
         /* only allow DataBlock to instantiate */
-        private
-        DataBlockHelper(){
+        private DataBlockSharedHelper(){
         }
 
         /* suppress DataIndexException */
@@ -928,7 +919,7 @@ public class DataBlock {
             try {
                 return get(item, topic, 0, withDateTime, valType);
             } catch (DataIndexException e) {
-                    /* SHOULD NEVER GET HERE */
+                /* SHOULD NEVER GET HERE */
                 throw new RuntimeException("getMostRecent failed to suppress DataIndexException");
             }
         }
@@ -961,7 +952,7 @@ public class DataBlock {
         }
 
         /* suppress DataIndexException */
-        public final <T> T[]
+        public final <T> List<T>
         getStreamSnapshotAll(String item, Topic topic, boolean withDateTime, Class<?> valType)
                 throws LibraryNotLoaded, CLibException {
             try {
@@ -973,7 +964,7 @@ public class DataBlock {
         }
 
         @SuppressWarnings("unchecked")
-        public final <T> T[]
+        public final <T> List<T>
         getStreamSnapshot(String item, Topic topic, int end, int beg, boolean smartSize,
                           boolean withDateTime, Class<?> valType)
                 throws LibraryNotLoaded, CLibException, DataIndexException {
@@ -995,7 +986,7 @@ public class DataBlock {
             if (smartSize) {
                 int occ = getStreamOccupancy(item, topic);
                 if (occ == 0 || occ <= beg) { //redundant ?
-                    return (T[]) (withDateTime ? new DateTimePair[]{} : Array.newInstance(valType, 0));
+                    return new ArrayList<>();
                 }
                 end = Math.min(end, occ - 1);
                 beg = Math.min(beg, occ - 1);
@@ -1012,7 +1003,7 @@ public class DataBlock {
         }
 
         /* suppress DirtyMarkerException */
-        public final <T> T[]
+        public final <T> List<T>
         getStreamSnapshotFromMarkerIgnoreDirty(String item, Topic topic, int beg, boolean withDateTime,
                                                Class<?> valType)
                 throws LibraryNotLoaded, CLibException, DataIndexException {
@@ -1026,7 +1017,7 @@ public class DataBlock {
         }
 
         /* suppress DataIndexException */
-        public final <T> T[]
+        public final <T> List<T>
         getStreamSnapshotFromMarkerToMostRecent(String item, Topic topic, boolean withDateTime,
                                                 Class<?> valType)
                 throws LibraryNotLoaded, CLibException, DirtyMarkerException {
@@ -1040,7 +1031,7 @@ public class DataBlock {
         }
 
         /* suppress DataIndexException and DirtyMarkerException */
-        public final <T> T[]
+        public final <T> List<T>
         getStreamSnapshotFromMarkerToMostRecentIgnoreDirty(String item, Topic topic,
                                                            boolean withDateTime, Class<?> valType)
                 throws LibraryNotLoaded, CLibException {
@@ -1058,7 +1049,7 @@ public class DataBlock {
         }
 
         @SuppressWarnings("unchecked")
-        public final <T> T[]
+        public final <T> List<T>
         getStreamSnapshotFromMarker(String item, Topic topic, int beg, boolean throwIfDataLost,
                                     boolean withDateTime, Class<?> valType)
                 throws LibraryNotLoaded, CLibException, DataIndexException, DirtyMarkerException {
@@ -1084,7 +1075,7 @@ public class DataBlock {
             }
             long szFromMarker = markerPosition[0] - beg + 1;
             if (szFromMarker < 0) {
-                return (T[]) (withDateTime ? new DateTimePair[]{} : Array.newInstance(valType, 0));
+                return new ArrayList<>();
             }
 
             if (valType.equals(Long.class)) {
@@ -1145,7 +1136,7 @@ public class DataBlock {
             }
             return frame;
         }
-    } /* class DataBlockHelper */
+    } /* class DataBlockSharedHelper */
 
     private void
     _isValidItem(String item) throws IllegalArgumentException, CLibException, LibraryNotLoaded {
@@ -1228,17 +1219,13 @@ public class DataBlock {
         int err;
         if (useItemVersion) {
             err = usePreCachedVersion
-                    ? TOSDataBridge.getCLibrary()
-                    .TOSDB_GetPreCachedItemNames(_name, vals, n, MAX_STR_SZ)
-                    : TOSDataBridge.getCLibrary()
-                    .TOSDB_GetItemNames(_name, vals, n, MAX_STR_SZ);
+                ? TOSDataBridge.getCLibrary().TOSDB_GetPreCachedItemNames(_name,vals,n,MAX_STR_SZ)
+                : TOSDataBridge.getCLibrary().TOSDB_GetItemNames(_name,vals,n,MAX_STR_SZ);
 
         } else {
             err = usePreCachedVersion
-                    ? TOSDataBridge.getCLibrary()
-                    .TOSDB_GetPreCachedTopicNames(_name, vals, n, MAX_STR_SZ)
-                    : TOSDataBridge.getCLibrary()
-                    .TOSDB_GetTopicNames(_name, vals, n, MAX_STR_SZ);
+                ? TOSDataBridge.getCLibrary().TOSDB_GetPreCachedTopicNames(_name,vals,n,MAX_STR_SZ)
+                : TOSDataBridge.getCLibrary().TOSDB_GetTopicNames(_name,vals,n,MAX_STR_SZ);
         }
         if (err != 0) {
             throw new CLibException("TOSDB_Get" + (usePreCachedVersion ? "PreCached" : "")
@@ -1254,7 +1241,6 @@ public class DataBlock {
         }
         return names;
     }
-
 
     @SuppressWarnings("unchecked")
     private <T> T
@@ -1296,11 +1282,11 @@ public class DataBlock {
             throw new CLibException("TOSDB_GetString", err);
         }
         return (T) (withDateTime ? new DateTimePair<>(Native.toString(val), dt)
-                : Native.toString(val));
+                                 : Native.toString(val));
     }
 
     @SuppressWarnings("unchecked")
-    private <T> T[]
+    private <T> List<T>
     _getStreamSnapshotLongs(String item, Topic topic, int end, int beg, boolean withDateTime,
                             int size)
             throws LibraryNotLoaded, CLibException, DataIndexException {
@@ -1312,12 +1298,12 @@ public class DataBlock {
         if (err != 0) {
             throw new CLibException("TOSDB_GetStreamSnapshotLongs", err);
         }
-        return (T[]) (withDateTime ? primitiveArrayToObjectArray(vals, dts, size)
-                : primitiveArrayToObjectArray(vals, size));
+        return (List<T>)(withDateTime ? rawArraysToList(vals, dts, size)
+                                      : rawArraysToList(vals, size));
     }
 
     @SuppressWarnings("unchecked")
-    private <T> T[]
+    private <T> List<T>
     _getStreamSnapshotDoubles(String item, Topic topic, int end, int beg, boolean withDateTime,
                               int size)
             throws LibraryNotLoaded, CLibException, DataIndexException {
@@ -1329,12 +1315,12 @@ public class DataBlock {
         if (err != 0) {
             throw new CLibException("TOSDB_GetStreamSnapshotDoubles", err);
         }
-        return (T[]) (withDateTime ? primitiveArrayToObjectArray(vals, dts, size)
-                : primitiveArrayToObjectArray(vals, size));
+        return (List<T>)(withDateTime ? rawArraysToList(vals, dts, size)
+                                      : rawArraysToList(vals, size));
     }
 
     @SuppressWarnings("unchecked")
-    private <T> T[]
+    private <T> List<T>
     _getStreamSnapshotStrings(String item, Topic topic, int end, int beg, boolean withDateTime,
                               int size)
             throws LibraryNotLoaded, CLibException, DataIndexException {
@@ -1349,12 +1335,12 @@ public class DataBlock {
         if (err != 0) {
             throw new CLibException("TOSDB_GetStreamSnapshotStrings", err);
         }
-        return (T[]) (withDateTime ? primitiveArrayToObjectArray(vals, dts, size)
-                : primitiveArrayToObjectArray(vals, size));
+        return (List<T>)(withDateTime ? rawArraysToList(vals, dts, size)
+                                      : rawArraysToList(vals, size));
     }
 
     @SuppressWarnings("unchecked")
-    private <T> T[]
+    private <T> List<T>
     _getStreamSnapshotLongsFromMarker(String item, Topic topic, int beg, boolean withDateTime,
                                       boolean throwIfDataLost, int safeSz)
             throws CLibException, LibraryNotLoaded, DirtyMarkerException {
@@ -1369,12 +1355,12 @@ public class DataBlock {
         }
 
         int szGot = (int) _handleSzGotFromMarker(getSz[0], throwIfDataLost);
-        return (T[]) (withDateTime ? primitiveArrayToObjectArray(vals, dts, szGot)
-                : primitiveArrayToObjectArray(vals, szGot));
+        return (List<T>)(withDateTime ? rawArraysToList(vals, dts, szGot)
+                                      : rawArraysToList(vals, szGot));
     }
 
     @SuppressWarnings("unchecked")
-    private <T> T[]
+    private <T> List<T>
     _getStreamSnapshotDoublesFromMarker(String item, Topic topic, int beg, boolean withDateTime,
                                         boolean throwIfDataLost, int safeSz)
             throws CLibException, LibraryNotLoaded, DirtyMarkerException {
@@ -1389,12 +1375,12 @@ public class DataBlock {
         }
 
         int szGot = (int) _handleSzGotFromMarker(getSz[0], throwIfDataLost);
-        return (T[]) (withDateTime ? primitiveArrayToObjectArray(vals, dts, szGot)
-                : primitiveArrayToObjectArray(vals, szGot));
+        return (List<T>)(withDateTime ? rawArraysToList(vals, dts, szGot)
+                                      : rawArraysToList(vals, szGot));
     }
 
     @SuppressWarnings("unchecked")
-    private <T> T[]
+    private <T> List<T>
     _getStreamSnapshotStringsFromMarker(String item, Topic topic, int beg, boolean withDateTime,
                                         boolean throwIfDataLost, int safeSz)
             throws CLibException, LibraryNotLoaded, DirtyMarkerException {
@@ -1412,8 +1398,8 @@ public class DataBlock {
         }
 
         int szGot = (int) _handleSzGotFromMarker(getSz[0], throwIfDataLost);
-        return (T[]) (withDateTime ? primitiveArrayToObjectArray(vals, dts, szGot)
-                : primitiveArrayToObjectArray(vals, szGot));
+        return (List<T>)(withDateTime ? rawArraysToList(vals, dts, szGot)
+                                      : rawArraysToList(vals, szGot));
     }
 
     private long
@@ -1429,56 +1415,56 @@ public class DataBlock {
         return szGot;
     }
 
-    static private Long[]
-    primitiveArrayToObjectArray(long[] p, int sz) {
-        final Long[] o = new Long[sz];
+    static private List<Long>
+    rawArraysToList(long[] p, int sz) {
+        final List<Long> o = new ArrayList<>(sz);
         for (int i = 0; i < sz; ++i) {
-            o[i] = p[i];
+            o.add(p[i]);
         }
         return o;
     }
 
-    static private Double[]
-    primitiveArrayToObjectArray(double[] p, int sz) {
-        final Double[] o = new Double[sz];
+    static private List<Double>
+    rawArraysToList(double[] p, int sz) {
+        final List<Double> o = new ArrayList<>(sz);
         for (int i = 0; i < sz; ++i) {
-            o[i] = p[i];
+            o.add(p[i]);
         }
         return o;
     }
 
-    static private String[]
-    primitiveArrayToObjectArray(Pointer[] p, int sz) {
-        final String[] o = new String[sz];
+    static private List<String>
+    rawArraysToList(Pointer[] p, int sz) {
+        final List<String> o = new ArrayList<>(sz);
         for (int i = 0; i < sz; ++i) {
-            o[i] = p[i].getString(0);
+            o.add(p[i].getString(0));
         }
         return o;
     }
 
-    static private DateTimePair[]
-    primitiveArrayToObjectArray(long[] p, DateTime[] dt, int sz) {
-        final DateTimePair[] o = new DateTimePair[sz];
+    static private List<DateTimePair<Long>>
+    rawArraysToList(long[] p, DateTime[] dt, int sz) {
+        final List<DateTimePair<Long>> o = new ArrayList<>(sz);
         for (int i = 0; i < sz; ++i) {
-            o[i] = new DateTimePair<>(p[i], dt[i]);
+            o.add(new DateTimePair<>(p[i], dt[i]));
         }
         return o;
     }
 
-    static private DateTimePair[]
-    primitiveArrayToObjectArray(double[] p, DateTime[] dt, int sz) {
-        final DateTimePair[] o = new DateTimePair[sz];
+    static private List<DateTimePair<Double>>
+    rawArraysToList(double[] p, DateTime[] dt, int sz) {
+        final List<DateTimePair<Double>> o = new ArrayList<>(sz);
         for (int i = 0; i < sz; ++i) {
-            o[i] = new DateTimePair<>(p[i], dt[i]);
+            o.add(new DateTimePair<>(p[i], dt[i]));
         }
         return o;
     }
 
-    static private DateTimePair[]
-    primitiveArrayToObjectArray(Pointer[] p, DateTime[] dt, int sz) {
-        final DateTimePair[] o = new DateTimePair[sz];
+    static private List<DateTimePair<String>>
+    rawArraysToList(Pointer[] p, DateTime[] dt, int sz) {
+        final List<DateTimePair<String>> o = new ArrayList<>(sz);
         for (int i = 0; i < sz; ++i) {
-            o[i] = new DateTimePair<>(p[i].getString(0), dt[i]);
+            o.add(new DateTimePair<>(p[i].getString(0), dt[i]));
         }
         return o;
     }

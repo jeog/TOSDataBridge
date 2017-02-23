@@ -75,5 +75,34 @@ public class DateTime extends Structure {
                 + String.valueOf(microSeconds);
     }
 
+    /**
+     * Pair of primary data and DateTime object.
+     *
+     * @param <T> type of primary data
+     */
+    public static class DateTimePair<T> extends Pair<T, DateTime> {
+        public DateTimePair(T first, DateTime second) {
+            super(first, second);
+        }
+    }
+
+    /**
+     * Triple(3-tuple) of primary data, DateTime object, and secondary data.
+     *
+     * @param <T3> type of secondary data
+     */
+    public static class DateTimeTriple<T,T3> extends DateTimePair<T> {
+        public final T3 third;
+
+        public DateTimeTriple(T first, DateTime second, T3 third) {
+            super(first, second);
+            this.third = third;
+        }
+
+        public DateTimeTriple(DateTimePair<T> dateTimePair, T3 third){
+            super(dateTimePair.first, dateTimePair.second);
+            this.third = third;
+        }
+    }
     //TODO: implement add/subtract methods
 }

@@ -15,11 +15,12 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see http://www.gnu.org/licenses.
 */
 
-
-
-import io.github.jeog.tosdatabridge.*;
+import io.github.jeog.tosdatabridge.TOSDataBridge;
 import io.github.jeog.tosdatabridge.TOSDataBridge.*;
-import io.github.jeog.tosdatabridge.DataBlock.*;
+import io.github.jeog.tosdatabridge.DataBlock;
+import io.github.jeog.tosdatabridge.DataBlockWithDateTime;
+import io.github.jeog.tosdatabridge.DateTime.DateTimePair;
+import io.github.jeog.tosdatabridge.Topic;
 
 import java.io.File;
 import java.lang.reflect.InvocationTargetException;
@@ -34,7 +35,7 @@ import java.util.*;
  * 1) load native library and try to connect
  * 2) check connection state
  * 3) test admin calls
- * 4) create a DataBlock
+ * 4) create DataBlocks
  * 5) add/remove items/topics
  * 6) use different versions of 'get' methods
  * 7) use 'frame methods'
@@ -112,7 +113,7 @@ public class TOSDataBridgeTest {
         }
 
         Set<String> items = new HashSet<>(Arrays.asList("/ES","/ZN"));
-        Set<Topic> topics = new HashSet<>(Arrays.asList(Topic.DESCRIPTION, Topic.BID, Topic.LAST_SIZE));
+        Set<Topic> topics = new HashSet<>(Arrays.asList(Topic.LASTX, Topic.LAST, Topic.LAST_SIZE));
 
         System.out.println("Add items: " + items.toString());
         for( String s : items ) {
@@ -227,7 +228,7 @@ public class TOSDataBridgeTest {
         String item2 = "QQQ";
         Topic topic1 = Topic.LAST; // double
         Topic topic2 = Topic.VOLUME; // long
-        Topic topic3 = Topic.LASTX; // string
+        Topic topic3 = Topic.STRENGTH_METER; // string
 
         System.out.println("Add item: " + item1);
         block.addItem(item1);
@@ -887,11 +888,12 @@ public class TOSDataBridgeTest {
         }
         try {
             @SuppressWarnings("unchecked")
-            T[] r1 = (T[])m.invoke(block,item,topic,end,beg);
+            List<T> ret = (List<T>)m.invoke(block,item,topic,end,beg);
             System.out.println(mname + "(" + item + "," + topic + "," + String.valueOf(beg)
                                + " to " + String.valueOf(end) + "): ");
-            for(int i = r1.length-1; i >= 0; --i){
-                 System.out.println(String.valueOf(i) + ": " + r1[i].toString());
+            Collections.reverse(ret);
+            for (T r : ret){
+                 System.out.println( r.toString());
             }
         } catch (IllegalAccessException | InvocationTargetException e) {
             e.printStackTrace();
@@ -911,10 +913,11 @@ public class TOSDataBridgeTest {
         }
         try {
             @SuppressWarnings("unchecked")
-            T[] r1 = (T[])m.invoke(block,item,topic,beg);
+            List<T> ret = (List<T>)m.invoke(block,item,topic,beg);
             System.out.println(mname + "(" + item + "," + topic + "," + String.valueOf(beg) + "): ");
-            for(int i = r1.length-1; i >= 0; --i){
-                System.out.println(String.valueOf(i) + ": " + r1[i].toString());
+            Collections.reverse(ret);
+            for (T r : ret){
+                System.out.println( r.toString());
             }
         } catch (IllegalAccessException | InvocationTargetException e) {
             e.printStackTrace();
