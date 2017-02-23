@@ -111,7 +111,7 @@ public class TOSDataBridgeTest {
             System.out.println("Successfully created block: " + block.getName());
         }
 
-        Set<String> items = new HashSet<>(Arrays.asList("XLF","XLE"));
+        Set<String> items = new HashSet<>(Arrays.asList("/ES","/ZN"));
         Set<Topic> topics = new HashSet<>(Arrays.asList(Topic.DESCRIPTION, Topic.BID, Topic.LAST_SIZE));
 
         System.out.println("Add items: " + items.toString());
@@ -121,10 +121,11 @@ public class TOSDataBridgeTest {
         printBlockItemsTopics(block);
 
         // check pre-cache
-        if(!block.getItemsPreCached().contains("XLF")
-                || !block.getItemsPreCached().contains("XLE")){
-            System.err.println("Item pre-cache test failed");
-            throw new RuntimeException("Item pre-cache test failed");
+        for( String i : items ){
+            if(!block.getItemsPreCached().contains(i)) {
+                System.err.println("Item pre-cache test failed: " + i);
+                throw new RuntimeException("Item pre-cache test failed");
+            }
         }
         System.out.println("Item pre-cache looks good: " + block.getItemsPreCached().toString());
 

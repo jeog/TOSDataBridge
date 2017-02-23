@@ -115,7 +115,7 @@ public class DataBlockWithDateTime extends DataBlock {
      */
     public DateTimePair<Long>
     getLongWithDateTime(String item, Topic topic) throws CLibException, LibraryNotLoaded {
-        return getMostRecent(item, topic, true, Long.class);
+        return getHelper().getMostRecent(item, topic, true, Long.class);
     }
 
     /**
@@ -133,7 +133,7 @@ public class DataBlockWithDateTime extends DataBlock {
     public DateTimePair<Long>
     getLongWithDateTime(String item, Topic topic,int indx)
             throws CLibException, LibraryNotLoaded, DataIndexException {
-        return get(item,topic, indx, true, Long.class);
+        return getHelper().get(item,topic, indx, true, Long.class);
     }
 
     /**
@@ -148,7 +148,7 @@ public class DataBlockWithDateTime extends DataBlock {
      */
     public DateTimePair<Double>
     getDoubleWithDateTime(String item, Topic topic) throws CLibException, LibraryNotLoaded {
-        return getMostRecent(item, topic, true, Double.class);
+        return getHelper().getMostRecent(item, topic, true, Double.class);
     }
 
     /**
@@ -166,7 +166,7 @@ public class DataBlockWithDateTime extends DataBlock {
     public DateTimePair<Double>
     getDoubleWithDateTime(String item, Topic topic,int indx)
             throws CLibException, LibraryNotLoaded, DataIndexException {
-        return get(item,topic, indx, true, Double.class);
+        return getHelper().get(item,topic, indx, true, Double.class);
     }
 
     /**
@@ -181,7 +181,7 @@ public class DataBlockWithDateTime extends DataBlock {
      */
     public DateTimePair<String>
     getStringWithDateTime(String item, Topic topic) throws CLibException, LibraryNotLoaded {
-        return getMostRecent(item, topic, true, String.class);
+        return getHelper().getMostRecent(item, topic, true, String.class);
     }
 
     /**
@@ -199,7 +199,7 @@ public class DataBlockWithDateTime extends DataBlock {
     public DateTimePair<String>
     getStringWithDateTime(String item, Topic topic,int indx)
             throws CLibException, LibraryNotLoaded, DataIndexException {
-        return get(item, topic, indx, true, String.class);
+        return getHelper().get(item, topic, indx, true, String.class);
     }
 
     /**
@@ -214,7 +214,7 @@ public class DataBlockWithDateTime extends DataBlock {
     public DateTimePair<Long>[]
     getStreamSnapshotLongsWithDateTime(String item, Topic topic)
             throws LibraryNotLoaded, CLibException {
-        return getStreamSnapshotAll(item, topic, true, Long.class);
+        return getHelper().getStreamSnapshotAll(item, topic, true, Long.class);
     }
 
     /**
@@ -232,7 +232,7 @@ public class DataBlockWithDateTime extends DataBlock {
     public DateTimePair<Long>[]
     getStreamSnapshotLongsWithDateTime(String item, Topic topic, int end)
             throws LibraryNotLoaded, CLibException, DataIndexException {
-        return getStreamSnapshot(item, topic, end, 0, true, true, Long.class);
+        return getHelper().getStreamSnapshot(item, topic, end, 0, true, true, Long.class);
     }
 
     /**    
@@ -251,7 +251,7 @@ public class DataBlockWithDateTime extends DataBlock {
     public DateTimePair<Long>[]
     getStreamSnapshotLongsWithDateTime(String item, Topic topic, int end, int beg)
             throws LibraryNotLoaded, CLibException, DataIndexException {
-        return getStreamSnapshot(item, topic, end, beg, true, true, Long.class);
+        return getHelper().getStreamSnapshot(item, topic, end, beg, true, true, Long.class);
     }
 
     /**
@@ -267,7 +267,7 @@ public class DataBlockWithDateTime extends DataBlock {
     public DateTimePair<Double>[]
     getStreamSnapshotDoublesWithDateTime(String item, Topic topic)
             throws LibraryNotLoaded, CLibException {
-        return getStreamSnapshotAll(item, topic, true, Double.class);        
+        return getHelper().getStreamSnapshotAll(item, topic, true, Double.class);
     }
 
     /**
@@ -285,7 +285,7 @@ public class DataBlockWithDateTime extends DataBlock {
     public DateTimePair<Double>[]
     getStreamSnapshotDoublesWithDateTime(String item, Topic topic, int end)
             throws LibraryNotLoaded, CLibException, DataIndexException {
-        return getStreamSnapshot(item, topic, end, 0, true, true, Double.class);
+        return getHelper().getStreamSnapshot(item, topic, end, 0, true, true, Double.class);
     }
 
     /**     
@@ -304,7 +304,7 @@ public class DataBlockWithDateTime extends DataBlock {
     public DateTimePair<Double>[]
     getStreamSnapshotDoublesWithDateTime(String item, Topic topic, int end, int beg)
             throws LibraryNotLoaded, CLibException, DataIndexException {
-        return getStreamSnapshot(item, topic, end, beg, true, true, Double.class);
+        return getHelper().getStreamSnapshot(item, topic, end, beg, true, true, Double.class);
     }
 
     /**
@@ -319,7 +319,7 @@ public class DataBlockWithDateTime extends DataBlock {
     public DateTimePair<String>[]
     getStreamSnapshotStringsWithDateTime(String item, Topic topic) 
             throws LibraryNotLoaded, CLibException {
-        return getStreamSnapshotAll(item, topic, true, String.class);        
+        return getHelper().getStreamSnapshotAll(item, topic, true, String.class);
     }
 
     /**
@@ -337,7 +337,7 @@ public class DataBlockWithDateTime extends DataBlock {
     public DateTimePair<String>[]
     getStreamSnapshotStringsWithDateTime(String item, Topic topic, int end)
             throws LibraryNotLoaded, CLibException, DataIndexException {
-        return getStreamSnapshot(item, topic, end, 0, true, true, String.class);
+        return getHelper().getStreamSnapshot(item, topic, end, 0, true, true, String.class);
     }
 
     /**
@@ -356,7 +356,7 @@ public class DataBlockWithDateTime extends DataBlock {
     public DateTimePair<String>[]
     getStreamSnapshotStringsWithDateTime(String item, Topic topic, int end, int beg)
             throws LibraryNotLoaded, CLibException, DataIndexException {
-        return getStreamSnapshot(item, topic, end, beg, true, true, String.class);
+        return getHelper().getStreamSnapshot(item, topic, end, beg, true, true, String.class);
     }
 
     /**
@@ -371,7 +371,7 @@ public class DataBlockWithDateTime extends DataBlock {
     public DateTimePair<Long>[]
     getStreamSnapshotLongsFromMarkerWithDateTime(String item, Topic topic)
             throws LibraryNotLoaded, CLibException, DirtyMarkerException {
-        return getStreamSnapshotFromMarkerToMostRecent(item, topic, true, Long.class);        
+        return getHelper().getStreamSnapshotFromMarkerToMostRecent(item, topic, true, Long.class);
     }
 
     /**
@@ -390,7 +390,7 @@ public class DataBlockWithDateTime extends DataBlock {
     public DateTimePair<Long>[]
     getStreamSnapshotLongsFromMarkerWithDateTime(String item, Topic topic, int beg)
             throws LibraryNotLoaded, CLibException, DataIndexException, DirtyMarkerException {
-        return getStreamSnapshotFromMarker(item, topic, beg, true, true, Long.class);
+        return getHelper().getStreamSnapshotFromMarker(item, topic, beg, true, true, Long.class);
     }
 
     /**
@@ -407,7 +407,7 @@ public class DataBlockWithDateTime extends DataBlock {
     public DateTimePair<Double>[]
     getStreamSnapshotDoublesFromMarkerWithDateTime(String item, Topic topic)
             throws LibraryNotLoaded, CLibException, DirtyMarkerException {
-        return getStreamSnapshotFromMarkerToMostRecent(item, topic, true, Double.class);
+        return getHelper().getStreamSnapshotFromMarkerToMostRecent(item, topic, true, Double.class);
     }
 
     /**
@@ -426,7 +426,7 @@ public class DataBlockWithDateTime extends DataBlock {
     public DateTimePair<Double>[]
     getStreamSnapshotDoublesFromMarkerWithDateTime(String item, Topic topic, int beg)
             throws LibraryNotLoaded, CLibException, DataIndexException, DirtyMarkerException {
-        return getStreamSnapshotFromMarker(item, topic, beg, true, true, Double.class);
+        return getHelper().getStreamSnapshotFromMarker(item, topic, beg, true, true, Double.class);
     }
 
     /**
@@ -442,7 +442,7 @@ public class DataBlockWithDateTime extends DataBlock {
     public DateTimePair<String>[]
     getStreamSnapshotStringsFromMarkerWithDateTime(String item, Topic topic)
             throws LibraryNotLoaded, CLibException, DirtyMarkerException {
-        return getStreamSnapshotFromMarkerToMostRecent(item, topic, true, String.class);
+        return getHelper().getStreamSnapshotFromMarkerToMostRecent(item, topic, true, String.class);
     }
 
     /**
@@ -461,7 +461,7 @@ public class DataBlockWithDateTime extends DataBlock {
     public DateTimePair<String>[]
     getStreamSnapshotStringsFromMarkerWithDateTime(String item, Topic topic, int beg)
             throws LibraryNotLoaded, CLibException, DataIndexException, DirtyMarkerException {
-        return getStreamSnapshotFromMarker(item, topic, beg, true, true, String.class);
+        return getHelper().getStreamSnapshotFromMarker(item, topic, beg, true, true, String.class);
     }
 
     /**
@@ -477,7 +477,8 @@ public class DataBlockWithDateTime extends DataBlock {
     public DateTimePair<Long>[]
     getStreamSnapshotLongsFromMarkerWithDateTimeIgnoreDirty(String item, Topic topic)
             throws LibraryNotLoaded, CLibException {
-        return getStreamSnapshotFromMarkerToMostRecentIgnoreDirty(item, topic, true, Long.class);
+        return getHelper().getStreamSnapshotFromMarkerToMostRecentIgnoreDirty(item, topic,
+                true, Long.class);
     }
 
     /**
@@ -495,7 +496,8 @@ public class DataBlockWithDateTime extends DataBlock {
     public DateTimePair<Long>[]
     getStreamSnapshotLongsFromMarkerWithDateTimeIgnoreDirty(String item, Topic topic, int beg)
             throws LibraryNotLoaded, CLibException, DataIndexException {
-        return getStreamSnapshotFromMarkerIgnoreDirty(item, topic, beg, true, Long.class);
+        return getHelper().getStreamSnapshotFromMarkerIgnoreDirty(item, topic, beg, true,
+                Long.class);
     }
 
     /**
@@ -511,7 +513,8 @@ public class DataBlockWithDateTime extends DataBlock {
     public DateTimePair<Double>[]
     getStreamSnapshotDoublesFromMarkerWithDateTimeIgnoreDirty(String item, Topic topic)
             throws LibraryNotLoaded, CLibException {
-        return getStreamSnapshotFromMarkerToMostRecentIgnoreDirty(item, topic, true, Double.class);
+        return getHelper().getStreamSnapshotFromMarkerToMostRecentIgnoreDirty(item, topic,
+                true, Double.class);
     }
 
     /**
@@ -529,7 +532,8 @@ public class DataBlockWithDateTime extends DataBlock {
     public DateTimePair<Double>[]
     getStreamSnapshotDoublesFromMarkerWithDateTimeIgnoreDirty(String item, Topic topic, int beg)
             throws LibraryNotLoaded, CLibException, DataIndexException {
-        return getStreamSnapshotFromMarkerIgnoreDirty(item, topic, beg, true, Double.class);
+        return getHelper().getStreamSnapshotFromMarkerIgnoreDirty(item, topic, beg, true,
+                Double.class);
     }
 
     /**
@@ -545,7 +549,8 @@ public class DataBlockWithDateTime extends DataBlock {
     public DateTimePair<String>[]
     getStreamSnapshotStringsFromMarkerWithDateTimeIgnoreDirty(String item, Topic topic)
             throws LibraryNotLoaded, CLibException {
-        return getStreamSnapshotFromMarkerToMostRecentIgnoreDirty(item, topic, true, String.class);
+        return getHelper().getStreamSnapshotFromMarkerToMostRecentIgnoreDirty(item, topic,
+                true, String.class);
     }
 
     /**
@@ -563,7 +568,8 @@ public class DataBlockWithDateTime extends DataBlock {
     public DateTimePair<String>[]
     getStreamSnapshotStringsFromMarkerWithDateTimeIgnoreDirty(String item, Topic topic, int beg)
             throws LibraryNotLoaded, CLibException, DataIndexException {
-        return getStreamSnapshotFromMarkerIgnoreDirty(item, topic, beg, true, String.class);
+        return getHelper().getStreamSnapshotFromMarkerIgnoreDirty(item, topic, beg, true,
+                String.class);
     }
 
     /**
@@ -576,7 +582,7 @@ public class DataBlockWithDateTime extends DataBlock {
      */
     public Map<String,DateTimePair<String>>
     getItemFrameWithDateTime(Topic topic) throws CLibException, LibraryNotLoaded {
-        return getFrame(topic, true,true);
+        return getHelper().getFrame(topic, true,true);
     }
 
     /**
@@ -589,7 +595,7 @@ public class DataBlockWithDateTime extends DataBlock {
      */
     public Map<Topic,DateTimePair<String>>
     getTopicFrameWithDateTime(String item) throws CLibException, LibraryNotLoaded {
-        return getFrame(item, false,true);
+        return getHelper().getFrame(item, false,true);
     }
 
     /**
