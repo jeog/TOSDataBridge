@@ -9,7 +9,7 @@
    
 4. Determine if your TOS platform runs under elevated privileges (does it ask for an admin password before starting?)
    
-5. Determine if you need to run under a custom Session. The tos-databridge-engine.exe[] binary needs to run in the same session as the ThinkOrSwim platform. **MOST USERS SHOULDN'T WORRY ABOUT THIS** unless they plan to run in a non-standard environment (e.g an EC2 instance). 
+5. Determine if you need to run under a custom Session. The tos-databridge-engine-[build].exe binary needs to run in the same session as the ThinkOrSwim platform. **MOST USERS SHOULDN'T WORRY ABOUT THIS** unless they plan to run in a non-standard environment (e.g an EC2 instance). 
   
 6. Open a command shell with Admin Privileges (right-click on cmd.exe and click 'run as administrator'). Navigate to the tos-databridge root directory and run the tosdb-setup.bat setup script with the info from steps #2, #4, and #5:
     
@@ -26,13 +26,13 @@
     - make sure you have the appropriate -serv and -engine binaries in /bin
     - create the Windows Service.
  
-8. Before we continue, it's a good idea, possibly necessary, to add the tos-databridge binaries, or the whole directory, to your anti-virus's 'white-list'. ***If not tos-databridge-engine-[build].exe may be stopped and/or deleted. If you run into problems connecting to the service/engine module or the TOS platform your be sure to check the logs/settings.***
+8. Before we continue, it's a good idea, possibly necessary, to add the tos-databridge binaries, or the whole directory, to your anti-virus's 'white-list'. ***If not tos-databridge-engine-[build].exe may be stopped and/or deleted. If you run into problems connecting to the service/engine module or the TOS platform be sure to check the logs/settings.***
   
 9.  After the Windows Service has been successfully created run: 
 
     ```(Admin) C:\> SC start TOSDataBridge```  
 
-    Returned text and various system utilities should confirms the service is running, (see screen-shot below). Let's also configure the service to begin automatically on system start-up:
+    Returned text and various system utilities should confirms the service is running(see screen-shot below). Let's also configure the service to begin automatically on system start-up:
     
     ```(Admin) C:\> SC config TOSDataBridge start= auto``` (notice the space between '=' and 'auto')
     
@@ -49,5 +49,9 @@
 
 13. (***JAVA ONLY***) Add appropriate [Java API calls](README_JAVA.md) to you code. Build.
 
-14. Make sure the TOS Platform is running, execute your program or start the [python wrapper](README_PYTHON.md)
+14. (***PTHON ONLY***) [Install the tosdb package.](README_PYTHON.md#install)
+
+15. Start the TOS platform.
+
+16. Run your program or use the [python wrapper](README_PYTHON.md) interactively.
 
