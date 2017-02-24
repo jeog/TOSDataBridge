@@ -3,7 +3,7 @@
 
 1. Move the unzipped tos-databridge folder to its permanent location. If you change it in the future you'll need to redo some of these steps because the Service module relies on an absolute path.
 
-2. Determine the appropriate build you'll need: 32-bit(x86) or 64-bit(x64). ***Make sure you don't mix and match in future steps, python will automatically look for a version that matches its own build.***
+2. Determine the appropriate build you'll need: 32-bit(x86) or 64-bit(x64). ***Make sure you don't mix and match in future steps. It should match the python or Java Runtime(JRE) version if you plan on using the python or java wrappers, respectively.***
  
 3. (***Optional***) Compile the appropriate binaries if [building from source](README.md#build-optional).  
    
@@ -26,7 +26,7 @@
     - make sure you have the appropriate -serv and -engine binaries in /bin
     - create the Windows Service.
  
-8. Before we continue it's a good idea, possibly necessary, to add the tos-databridge binaries, or the whole directory, to your anti-virus's 'white-list'. ***There's a good chance that if you don't do this tos-databridge-engine[].exe, at the very least, may be stopped and/or deleted for 'suspicious' behavior.***
+8. Before we continue, it's a good idea, possibly necessary, to add the tos-databridge binaries, or the whole directory, to your anti-virus's 'white-list'. ***If not tos-databridge-engine-[build].exe may be stopped and/or deleted. If you run into problems connecting to the service/engine module or the TOS platform your be sure to check the logs/settings.***
   
 9.  After the Windows Service has been successfully created run: 
 
@@ -41,9 +41,13 @@
     (note: some of the particulars in these (older) screen-shots may be different for newer versions)    
     ![](./res/SCss1.png)
 
-10. (***C/C++ ONLY***) Include the tos_databridge.h header in your code ( if its C++ make sure the compiler can find containers.hpp, generic.hpp, and exceptions.hpp.) and adjust the link settings to import the tos-databridge-[version]-[build].lib stub. (If you run into trouble review the VisualStudio settings for tos-databridge-shell[].exe as they should resemble what you're trying to do.)
+10. (***C/C++ ONLY***) Include the tos_databridge.h header in your code. If C++ make sure the compiler can find containers.hpp, generic.hpp, and exceptions.hpp. Adjust the link settings to import the tos-databridge-[version]-[build].lib stub. (If you run into trouble review the VisualStudio settings for tos-databridge-shell-[build].exe as they should resemble what you're trying to do.)
    
-11. (***C/C++ ONLY***) Add appropriate [API calls](README_API.md) to your code.
-   
-12. Make sure the TOS Platform is running, execute your program or start the [python wrapper](README_PYTHON.md)
+11. (***C/C++ ONLY***) Add appropriate [C/C++ API calls](README_API.md) to your code. Build.
+
+12. (***JAVA ONLY***) Add java/tosdatabridge.jar to your classpath.
+
+13. (***JAVA ONLY***) Add appropriate [Java API calls](README_JAVA.md) to you code. Build.
+
+14. Make sure the TOS Platform is running, execute your program or start the [python wrapper](README_PYTHON.md)
 
