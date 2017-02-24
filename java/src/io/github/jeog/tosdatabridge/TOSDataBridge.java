@@ -105,7 +105,7 @@ public final class TOSDataBridge{
      * Initialize C lib via JNA.
      *
      * @param path path of the the tos-databridge DLL.
-     * @return <code>true</code> if library was loaded AND connected to engine
+     * @return if library was loaded AND connected to engine
      * @throws LibraryNotLoaded if library was not loaded
      * @see <a href="https://github.com/jeog/TOSDataBridge/blob/master/README.md">README</a>
      */
@@ -139,9 +139,9 @@ public final class TOSDataBridge{
 
     /**
      * If the library is loaded try to connect to the Engine and TOS platform.
-     * (init(...) should do this automatically.)
+     * (TOSDataBridge.init(...) should do this automatically.)
      *
-     * @return <code>true</code> if library connected to engine
+     * @return if library is connected to engine (not necessarily to TOS)
      * @throws LibraryNotLoaded if library is not loaded
      * @see <a href="https://github.com/jeog/TOSDataBridge/blob/master/README.md">README</a>
      */
@@ -151,9 +151,8 @@ public final class TOSDataBridge{
     }
 
     /**
-     * Is the library connected to the Engine and TOS platform?
+     * @return  if library is connected to engine and TOS platform
      *
-     * @return <code>true</code> if library is connected to engine and TOS platform
      * @throws LibraryNotLoaded if library is not loaded
      * @see <a href="https://github.com/jeog/TOSDataBridge/blob/master/README.md">README</a>
      */
@@ -163,14 +162,13 @@ public final class TOSDataBridge{
     }
 
     /**
-     * The current connection state between the library and Engine/TOS.
-     *
      * @return state of the connection:
      * <ul>
      * <li> CONN_NONE: not connected to engine or TOS platform
      * <li> CONN_ENGINE: connected to engine but not TOS platform
      * <li> CONN_ENGINE_TOS: connected to engine and TOS platform
      * </ul>
+     *
      * @throws LibraryNotLoaded if library is not loaded
      * @see <a href="https://github.com/jeog/TOSDataBridge/blob/master/README.md">README</a>
      */
@@ -180,9 +178,8 @@ public final class TOSDataBridge{
     }
 
     /**
-     * Get block limit imposed by the C library.
+     * @return block limit imposed by the C library.
      *
-     * @return block limit
      * @throws LibraryNotLoaded if library is not loaded
      * @see <a href="https://github.com/jeog/TOSDataBridge/blob/master/README.md">README</a>
      */
@@ -192,10 +189,10 @@ public final class TOSDataBridge{
     }
 
     /**
-     * Set block limit imposed by the C library.
+     * Set block limit to be imposed by the C library.
      *
      * @param limit new block limit
-     * @return block limit
+     * @return new block limit
      * @throws LibraryNotLoaded if library is not loaded
      * @see <a href="https://github.com/jeog/TOSDataBridge/blob/master/README.md">README</a>
      */
@@ -205,9 +202,8 @@ public final class TOSDataBridge{
     }
 
     /**
-     * Get current block count(according to C lib, not JRE).
+     * @return current block count(according to C lib, not necessarily JRE).
      *
-     * @return block count
      * @throws LibraryNotLoaded if library is not loaded
      * @see <a href="https://github.com/jeog/TOSDataBridge/blob/master/README.md">README</a>
      */
@@ -217,10 +213,9 @@ public final class TOSDataBridge{
     }
 
     /**
-     * Get type bits(as int) of a particular topic.
+     * @return type bits (as int) of a particular topic
      *
-     * @param topic topic to get type bits of
-     * @return type bits (as int)
+     * @param topic topic enum to get type bits of
      * @throws LibraryNotLoaded if library is not loaded
      * @throws CLibException if the C lib call returns an error
      * @see <a href="https://github.com/jeog/TOSDataBridge/blob/master/README.md">README</a>
@@ -236,15 +231,14 @@ public final class TOSDataBridge{
     }
 
     /**
-     * Get constant representing the type of a particular topic.
-     *
-     * @param topic topic to get type constant of
-     * @return type constant
+     * @return type constant representing the type of a particular topic.
      * <ul>
      *     <li>TOPIC_IS_LONG</li>
      *     <li>TOPIC_IS_DOUBLE</li>
      *     <li>TOPIC_IS_STRING</li>
      * </ul>
+     *
+     * @param topic topic enum to get type constant of
      * @throws LibraryNotLoaded if library is not loaded
      * @throws CLibException if the C lib call returns an error
      * @see <a href="https://github.com/jeog/TOSDataBridge/blob/master/README.md">README</a>

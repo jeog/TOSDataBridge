@@ -161,9 +161,7 @@ public class DataBlock {
     }
 
     /**
-     * Name of block (implementation detail).
-     *
-     * @return name string
+     * @return name of block (implementation detail).
      */
     public String
     getName() {
@@ -171,9 +169,7 @@ public class DataBlock {
     }
 
     /**
-     * Is block storing DateTime objects alongside primary data.
-     *
-     * @returns boolean
+     * @return if block is storing DateTime alongside primary data
      */
     public boolean
     isUsingDateTime() {
@@ -181,9 +177,7 @@ public class DataBlock {
     }
 
     /**
-     * What timeout (in milliseconds) is the underlying block using for IPC/DDE.
-     *
-     * @return timeout
+     * @return timeout the underlying block uses for IPC/DDE (milliseconds)
      */
     public int
     getTimeout() {
@@ -191,49 +185,49 @@ public class DataBlock {
     }
 
     /**
-     * Return maximum amount of data that can be stored in the block.
+     * @return maximum amount of data that can be stored in the block/streams.
      *
-     * @return block size
      * @throws LibraryNotLoaded C lib has not been loaded
      * @throws CLibException    error code returned by C lib
      */
     public int
     getBlockSize() throws LibraryNotLoaded, CLibException {
-        int[] size = {0};
-        int err = TOSDataBridge.getCLibrary().TOSDB_GetBlockSize(_name, size);
-        if (err != 0) {
-            throw new CLibException("TOSDB_GetBlockSize", err);
+        int sz = _getBlockSize();
+        if (sz != _size) {
+            throw new IllegalStateException("_getBlockSize() != _size");
         }
-        if (size[0] != _size) {
-            throw new IllegalStateException("size != _size");
-        }
-        return size[0];
+        return sz;
     }
 
     /**
-     * Set maximum amount of data that can be stored in the block.
+     * Set maximum amount of data that can be stored in the block/streams.
      *
-     * @param size
+     * @param size new size of the block
      * @throws LibraryNotLoaded C lib has not been loaded
      * @throws CLibException    error code returned by C lib
      */
     public void
     setBlockSize(int size) throws LibraryNotLoaded, CLibException {
         int err = TOSDataBridge.getCLibrary().TOSDB_SetBlockSize(_name, size);
+        /* need to update regardless */
+        _size = _getBlockSize();
         if (err != 0) {
             throw new CLibException("TOSDB_SetBlockSize", err);
         }
-        _size = size;
+        if (size != _size) {
+            throw new IllegalStateException("size != _size");
+        }
     }
 
     /**
-     * Get current amount of data current in the stream.
+     * Returns number of data-points currently in the stream.
      *
-     * @param item
-     * @param topic
-     * @return size
+     * @param item item string of the stream
+     * @param topic topic enum of the stream
+     * @return number of data-points currently in the stream
      * @throws CLibException    error code returned by C lib
      * @throws LibraryNotLoaded C lib has not been loaded
+     * @see Topic
      */
     public int
     getStreamOccupancy(String item, Topic topic) throws CLibException, LibraryNotLoaded {
@@ -250,9 +244,8 @@ public class DataBlock {
     }
 
     /**
-     * Return items currently in the block.
+     * @return items currently in the block
      *
-     * @return set of item strings
      * @throws LibraryNotLoaded C lib has not been loaded
      * @throws CLibException    error code returned by C lib
      */
@@ -262,11 +255,11 @@ public class DataBlock {
     }
 
     /**
-     * Return topics currently in the block.
+     * @return topics currently in the block
      *
-     * @return set of Topics
      * @throws LibraryNotLoaded C lib has not been loaded
      * @throws CLibException    error code returned by C lib
+     * @see Topic
      */
     public Set<Topic>
     getTopics() throws LibraryNotLoaded, CLibException {
@@ -274,9 +267,8 @@ public class DataBlock {
     }
 
     /**
-     * Return items currently in the block's pre-cache.
+     * @return items currently in the block's pre-cache
      *
-     * @return set of item strings
      * @throws LibraryNotLoaded C lib has not been loaded
      * @throws CLibException    error code returned by C lib
      */
@@ -286,11 +278,11 @@ public class DataBlock {
     }
 
     /**
-     * Return topics currently in the block's pre-cache
+     * @return topics currently in the block's pre-cache
      *
-     * @return set of Topics
      * @throws LibraryNotLoaded C lib has not been loaded
      * @throws CLibException    error code returned by C lib
+     * @see Topic
      */
     public Set<Topic>
     getTopicsPreCached() throws LibraryNotLoaded, CLibException {
@@ -298,9 +290,9 @@ public class DataBlock {
     }
 
     /**
-     * Add item string to the block.
+     * Add item to the block.
      *
-     * @param item
+     * @param item item string to be added to the block
      * @throws LibraryNotLoaded C lib has not been loaded
      * @throws CLibException    error code returned by C lib
      */
@@ -324,9 +316,10 @@ public class DataBlock {
     /**
      * Add Topic to the block.
      *
-     * @param topic
+     * @param topic topic enum to be added to the block
      * @throws LibraryNotLoaded C lib has not been loaded
      * @throws CLibException    error code returned by C lib
+     * @see Topic
      */
     public void
     addTopic(Topic topic) throws LibraryNotLoaded, CLibException {
@@ -346,9 +339,9 @@ public class DataBlock {
     }
 
     /**
-     * Remove item string from the block.
+     * Remove item from the block.
      *
-     * @param item
+     * @param item item string to be removed from the block
      * @throws LibraryNotLoaded C lib has not been loaded
      * @throws CLibException    error code returned by C lib
      */
@@ -372,9 +365,10 @@ public class DataBlock {
     /**
      * Remove Topic from the block.
      *
-     * @param topic
+     * @param topic topic enum to be removed from the block.
      * @throws LibraryNotLoaded C lib has not been loaded
      * @throws CLibException    error code returned by C lib
+     * @see Topic
      */
     public void
     removeTopic(Topic topic) throws LibraryNotLoaded, CLibException {
@@ -394,13 +388,14 @@ public class DataBlock {
     }
 
     /**
-     * Get most recent data-point as Long (or null if no data in stream yet).
+     * Returns most recent data-point of a stream, as Long (or null if no data).
      *
      * @param item  item string of stream
-     * @param topic Topic enum of stream
-     * @return data-point (or null) at position 'indx'
+     * @param topic topic enum of stream
+     * @return most recent data-point of stream (or null)
      * @throws CLibException    error code returned by C lib
      * @throws LibraryNotLoaded C lib has not been loaded
+     * @see Topic
      */
     public Long
     getLong(String item, Topic topic) throws CLibException, LibraryNotLoaded {
@@ -408,15 +403,16 @@ public class DataBlock {
     }
 
     /**
-     * Get single data-point as Long (or null if no data at that position/index in stream yet).
+     * Returns data-point of a stream, as Long (or null if no data at that position/index).
      *
      * @param item  item string of stream
-     * @param topic Topic enum of stream
+     * @param topic topic enum of stream
      * @param indx  index/position of data-point
-     * @return data-point (or null) at position 'indx'
+     * @return data-point of stream (or null)
      * @throws CLibException      error code returned by C lib
      * @throws LibraryNotLoaded   C lib has not been loaded
      * @throws DataIndexException invalid index/position value
+     * @see Topic
      */
     public Long
     getLong(String item, Topic topic, int indx)
@@ -425,13 +421,14 @@ public class DataBlock {
     }
 
     /**
-     * Get most recent data-point as Double (or null if no data in stream yet).
+     * Returns most recent data-point of a stream, as Double (or null if no data).
      *
      * @param item  item string of stream
-     * @param topic Topic enum of stream
-     * @return data-point (or null) at position 'indx'
+     * @param topic topic enum of stream
+     * @return most recent data-point of stream (or null)
      * @throws CLibException    error code returned by C lib
      * @throws LibraryNotLoaded C lib has not been loaded
+     * @see Topic
      */
     public Double
     getDouble(String item, Topic topic) throws CLibException, LibraryNotLoaded {
@@ -439,15 +436,16 @@ public class DataBlock {
     }
 
     /**
-     * Get single data-point as Double (or null if no data at that position/index in stream yet).
+     * Returns data-point of a stream, as Double (or null if no data at that position/index).
      *
      * @param item  item string of stream
-     * @param topic Topic enum of stream
+     * @param topic topic enum of stream
      * @param indx  index/position of data-point
-     * @return data-point (or null) at position 'indx'
+     * @return data-point of stream (or null)
      * @throws CLibException      error code returned by C lib
      * @throws LibraryNotLoaded   C lib has not been loaded
      * @throws DataIndexException invalid index/position value
+     * @see Topic
      */
     public Double
     getDouble(String item, Topic topic, int indx)
@@ -456,13 +454,14 @@ public class DataBlock {
     }
 
     /**
-     * Get most recent data-point as String (or null if no data in stream yet).
+     * Returns most recent data-point of a stream, as String (or null if no data).
      *
      * @param item  item string of stream
-     * @param topic Topic enum of stream
-     * @return data-point (or null) at position 'indx'
+     * @param topic topic enum of stream
+     * @return most recent data-point of stream (or null)
      * @throws CLibException    error code returned by C lib
      * @throws LibraryNotLoaded C lib has not been loaded
+     * @see Topic
      */
     public String
     getString(String item, Topic topic) throws CLibException, LibraryNotLoaded {
@@ -470,15 +469,16 @@ public class DataBlock {
     }
 
     /**
-     * Get single data-point as String (or null if no data at that position/index in stream yet).
+     * Returns data-point of a stream, as String (or null if no data at that position/index).
      *
      * @param item  item string of stream
-     * @param topic Topic enum of stream
-     * @param indx  index/position of data-point
-     * @return data-point (or null) at position 'indx'
+     * @param topic topic enum of stream
+     * @param indx  index/position of data-point 
+     * @return data-point of stream (or null)
      * @throws CLibException      error code returned by C lib
      * @throws LibraryNotLoaded   C lib has not been loaded
      * @throws DataIndexException invalid index/position value
+     * @see Topic
      */
     public String
     getString(String item, Topic topic, int indx)
@@ -487,13 +487,14 @@ public class DataBlock {
     }
 
     /**
-     * Get all data-points currently in stream, as array of Longs.
+     * Returns all data-points of a stream, as List&lt;Long&gt;.
      *
      * @param item  item string of stream
-     * @param topic Topic enum of stream
-     * @return all data-points in the stream
+     * @param topic topic enum of stream
+     * @return all data-points of stream
      * @throws LibraryNotLoaded C lib has not been loaded
      * @throws CLibException    error code returned by C lib
+     * @see Topic
      */
     public List<Long>
     getStreamSnapshotLongs(String item, Topic topic) throws LibraryNotLoaded, CLibException {
@@ -501,15 +502,17 @@ public class DataBlock {
     }
 
     /**
-     * Get multiple data-points, between most recent and 'end', as array of Longs
+     * Returns multiple contiguous data-points of a stream, from most recent, 
+     * as List&lt;Long&gt;. 
      *
      * @param item  item string of the stream
-     * @param topic Topic enum of the stream
+     * @param topic topic enum of the stream
      * @param end   least recent index/position from which data is pulled
-     * @return data-points between most recent and 'end'
+     * @return multiple contiguous data-points of stream
      * @throws LibraryNotLoaded   C lib has not been loaded
      * @throws CLibException      error code returned by C lib
      * @throws DataIndexException invalid index/position value
+     * @see Topic
      */
     public List<Long>
     getStreamSnapshotLongs(String item, Topic topic, int end)
@@ -518,16 +521,17 @@ public class DataBlock {
     }
 
     /**
-     * Get multiple data-points, between 'beg' and 'end', as array of Longs.
+     * Returns multiple contiguous data-points of a stream, as List&lt;Long&gt;. 
      *
      * @param item  item string of stream
-     * @param topic Topic enum of stream
+     * @param topic topic enum of stream
      * @param end   least recent index/position from which data is pulled
      * @param beg   most recent index/position from which data is pulled
-     * @return data-points between 'beg' and 'end'
+     * @return multiple contiguous data-points of stream
      * @throws LibraryNotLoaded   C lib has not been loaded
      * @throws CLibException      error code returned by C lib
      * @throws DataIndexException invalid index/position value
+     * @see Topic
      */
     public List<Long>
     getStreamSnapshotLongs(String item, Topic topic, int end, int beg)
@@ -536,13 +540,14 @@ public class DataBlock {
     }
 
     /**
-     * Get all data-points currently in stream, as array of Doubles.
+     * Returns all data-points of a stream, as List&lt;Double&gt;.
      *
      * @param item  item string of stream
-     * @param topic Topic enum of stream
-     * @return all data-points in the stream
+     * @param topic topic enum of stream
+     * @return all data-points of stream
      * @throws LibraryNotLoaded C lib has not been loaded
      * @throws CLibException    error code returned by C lib
+     * @see Topic
      */
     public List<Double>
     getStreamSnapshotDoubles(String item, Topic topic) throws LibraryNotLoaded, CLibException {
@@ -550,15 +555,17 @@ public class DataBlock {
     }
 
     /**
-     * Get multiple data-points, between most recent and 'end', as array of Doubles.
+     * Returns multiple contiguous data-points of a stream, from most recent, 
+     * as List&lt;Double&gt;. 
      *
      * @param item  item string of the stream
-     * @param topic Topic enum of the stream
+     * @param topic topic enum of the stream
      * @param end   least recent index/position from which data is pulled
-     * @return data-points between most recent and 'end'
+     * @return multiple contiguous data-points of stream
      * @throws LibraryNotLoaded   C lib has not been loaded
      * @throws CLibException      error code returned by C lib
      * @throws DataIndexException invalid index/position value
+     * @see Topic
      */
     public List<Double>
     getStreamSnapshotDoubles(String item, Topic topic, int end)
@@ -567,16 +574,17 @@ public class DataBlock {
     }
 
     /**
-     * Get multiple data-points, between 'beg' and 'end', as array of Doubles.
+     * Returns multiple contiguous data-points of a stream, as List&lt;Double&gt;. 
      *
      * @param item  item string of stream
-     * @param topic Topic enum of stream
+     * @param topic topic enum of stream
      * @param end   least recent index/position from which data is pulled
      * @param beg   most recent index/position from which data is pulled
-     * @return data-points between 'beg' and 'end'
+     * @return multiple contiguous data-points of stream
      * @throws LibraryNotLoaded   C lib has not been loaded
      * @throws CLibException      error code returned by C lib
      * @throws DataIndexException invalid index/position value
+     * @see Topic
      */
     public List<Double>
     getStreamSnapshotDoubles(String item, Topic topic, int end, int beg)
@@ -585,13 +593,14 @@ public class DataBlock {
     }
 
     /**
-     * Get all data-points currently in stream, as array of Strings.
+     * Returns all data-points of a stream, as List&lt;String&gt;.
      *
      * @param item  item string of stream
-     * @param topic Topic enum of stream
-     * @return all data-points in the stream
+     * @param topic topic enum of stream
+     * @return all data-points of stream
      * @throws LibraryNotLoaded C lib has not been loaded
      * @throws CLibException    error code returned by C lib
+     * @see Topic
      */
     public List<String>
     getStreamSnapshotStrings(String item, Topic topic) throws LibraryNotLoaded, CLibException {
@@ -599,15 +608,17 @@ public class DataBlock {
     }
 
     /**
-     * Get multiple data-points, between most recent and 'end', as array of Strings.
+     * Returns multiple contiguous data-points of a stream, from most recent, 
+     * as List&lt;String&gt;. 
      *
      * @param item  item string of the stream
-     * @param topic Topic enum of the stream
+     * @param topic topic enum of the stream
      * @param end   least recent index/position from which data is pulled
-     * @return data-points between most recent and 'end'
+     * @return multiple contiguous data-points of stream
      * @throws LibraryNotLoaded   C lib has not been loaded
      * @throws CLibException      error code returned by C lib
      * @throws DataIndexException invalid index/position value
+     * @see Topic
      */
     public List<String>
     getStreamSnapshotStrings(String item, Topic topic, int end)
@@ -616,16 +627,17 @@ public class DataBlock {
     }
 
     /**
-     * Get multiple data-points, between 'beg' and 'end', as array of Strings.
+     * Returns multiple contiguous data-points of a stream, as List&lt;String&gt;. 
      *
      * @param item  item string of stream
-     * @param topic Topic enum of stream
+     * @param topic topic enum of stream
      * @param end   least recent index/position from which data is pulled
      * @param beg   most recent index/position from which data is pulled
-     * @return data-points between 'beg' and 'end'
+     * @return multiple contiguous data-points of stream
      * @throws LibraryNotLoaded   C lib has not been loaded
      * @throws CLibException      error code returned by C lib
      * @throws DataIndexException invalid index/position value
+     * @see Topic
      */
     public List<String>
     getStreamSnapshotStrings(String item, Topic topic, int end, int beg)
@@ -634,14 +646,15 @@ public class DataBlock {
     }
 
     /**
-     * Get all data-points up to atomic marker, as array of Longs.
+     * Returns all data-points up to atomic marker of a stream, as List&lt;Long&gt;. 
      *
      * @param item  item string of stream
-     * @param topic Topic enum of stream
-     * @return all data-points up to atomic marker
+     * @param topic topic enum of stream
+     * @return all data-points up to atomic marker of stream
      * @throws LibraryNotLoaded     C lib has not been loaded
      * @throws CLibException        error code returned by C lib
      * @throws DirtyMarkerException marker is 'dirty' (data lost behind it)
+     * @see Topic
      */
     public List<Long>
     getStreamSnapshotLongsFromMarker(String item, Topic topic)
@@ -650,16 +663,18 @@ public class DataBlock {
     }
 
     /**
-     * Get all data-points from 'beg' to atomic marker, as array of Longs.
+     * Returns multiple contiguous data-points up to atomic marker of a stream, 
+     * as List&lt;Long&gt;. 
      *
      * @param item  item string of stream
-     * @param topic Topic enum of stream
+     * @param topic topic enum of stream
      * @param beg   most recent index/position from which data is pulled
-     * @return all data-points from 'beg' to atomic marker
+     * @return multiple contiguous data-points up to atomic marker of stream
      * @throws LibraryNotLoaded     C lib has not been loaded
      * @throws CLibException        error code returned by C lib
      * @throws DataIndexException   invalid index/position value
      * @throws DirtyMarkerException marker is 'dirty' (data lost behind it)
+     * @see Topic
      */
     public List<Long>
     getStreamSnapshotLongsFromMarker(String item, Topic topic, int beg)
@@ -668,14 +683,15 @@ public class DataBlock {
     }
 
     /**
-     * Get all data-points up to atomic marker, as array of Doubles.
+     * Returns all data-points up to atomic marker of a stream, as List&lt;Double&gt;. 
      *
      * @param item  item string of stream
-     * @param topic Topic enum of stream
-     * @return all data-points up to atomic marker
+     * @param topic topic enum of stream
+     * @return all data-points up to atomic marker of stream
      * @throws LibraryNotLoaded     C lib has not been loaded
      * @throws CLibException        error code returned by C lib
      * @throws DirtyMarkerException marker is 'dirty' (data lost behind it)
+     * @see Topic
      */
     public List<Double>
     getStreamSnapshotDoublesFromMarker(String item, Topic topic)
@@ -684,16 +700,18 @@ public class DataBlock {
     }
 
     /**
-     * Get all data-points from 'beg' to atomic marker, as array of Doubles.
+     * Returns multiple contiguous data-points up to atomic marker of a stream, 
+     * as List&lt;Double&gt;. 
      *
      * @param item  item string of stream
-     * @param topic Topic enum of stream
+     * @param topic topic enum of stream
      * @param beg   most recent index/position from which data is pulled
-     * @return all data-points from 'beg' to atomic marker
+     * @return multiple contiguous data-points up to atomic marker of stream
      * @throws LibraryNotLoaded     C lib has not been loaded
      * @throws CLibException        error code returned by C lib
      * @throws DataIndexException   invalid index/position value
      * @throws DirtyMarkerException marker is 'dirty' (data lost behind it)
+     * @see Topic
      */
     public List<Double>
     getStreamSnapshotDoublesFromMarker(String item, Topic topic, int beg)
@@ -702,14 +720,15 @@ public class DataBlock {
     }
 
     /**
-     * Get all data-points up to atomic marker, as array of Strings.
+     * Returns all data-points up to atomic marker of a stream, as List&lt;String&gt;. 
      *
      * @param item  item string of stream
-     * @param topic Topic enum of stream
-     * @return all data-points up to atomic marker
+     * @param topic topic enum of stream
+     * @return all data-points up to atomic marker of stream
      * @throws LibraryNotLoaded     C lib has not been loaded
      * @throws CLibException        error code returned by C lib
      * @throws DirtyMarkerException marker is 'dirty' (data lost behind it)
+     * @see Topic
      */
     public List<String>
     getStreamSnapshotStringsFromMarker(String item, Topic topic)
@@ -718,16 +737,18 @@ public class DataBlock {
     }
 
     /**
-     * Get all data-points from 'beg' to atomic marker, as array of Strings.
+     * Returns multiple contiguous data-points up to atomic marker of a stream, 
+     * as List&lt;String&gt;. 
      *
      * @param item  item string of stream
-     * @param topic Topic enum of stream
+     * @param topic topic enum of stream
      * @param beg   most recent index/position from which data is pulled
-     * @return all data-points from 'beg' to atomic marker
+     * @return multiple contiguous data-points up to atomic marker of stream
      * @throws LibraryNotLoaded     C lib has not been loaded
      * @throws CLibException        error code returned by C lib
      * @throws DataIndexException   invalid index/position value
      * @throws DirtyMarkerException marker is 'dirty' (data lost behind it)
+     * @see Topic
      */
     public List<String>
     getStreamSnapshotStringsFromMarker(String item, Topic topic, int beg)
@@ -736,15 +757,16 @@ public class DataBlock {
     }
 
     /**
-     * Determine if marker is currently in a 'dirty' state. NOTE: there is no
+     * Returns if marker is currently in a 'dirty' state. NOTE: there is no
      * guarantee it won't enter this state before another call is made.
      *
      * @param item  item string of stream
-     * @param topic Topic enum of stream
-     * @return is stream/marker dirty
+     * @param topic topic enum of stream
+     * @return if stream/marker is dirty
      * @throws LibraryNotLoaded C lib has not been loaded
      * @throws CLibException    error code returned by C lib
      * @see "StreamSnapshotFromMarker calls"
+     * @see Topic
      */
     public boolean
     isDirty(String item, Topic topic) throws LibraryNotLoaded, CLibException {
@@ -760,109 +782,129 @@ public class DataBlock {
         return ptrIsDirty[0] != 0;
     }
 
+
     /**
-     * Get all data-points up to atomic marker, as array of Longs. IGNORE DIRTY MARKER.
+     * Returns all data-points up to atomic marker of a stream, as List&lt;Long&gt;.
+     * Ignores 'dirty' marker/stream.
      *
      * @param item  item string of stream
-     * @param topic Topic enum of stream
-     * @return all data-points up to atomic marker
-     * @throws LibraryNotLoaded C lib has not been loaded
-     * @throws CLibException    error code returned by C lib
+     * @param topic topic enum of stream
+     * @return all data-points up to atomic marker of stream
+     * @throws LibraryNotLoaded     C lib has not been loaded
+     * @throws CLibException        error code returned by C lib     
+     * @see Topic
      */
     public List<Long>
     getStreamSnapshotLongsFromMarkerIgnoreDirty(String item, Topic topic)
             throws LibraryNotLoaded, CLibException {
-        return helper.getStreamSnapshotFromMarkerToMostRecentIgnoreDirty(item, topic, false, Long.class);
+        return helper.getStreamSnapshotFromMarkerToMostRecentIgnoreDirty(item, topic, false,
+                Long.class);
     }
 
     /**
-     * Get all data-points from 'beg' to atomic marker, as array of Longs. IGNORE DIRTY MARKER.
+     * Returns multiple contiguous data-points up to atomic marker of a stream, 
+     * as List&lt;Long&gt;. Ignores 'dirty' marker/stream. 
      *
      * @param item  item string of stream
-     * @param topic Topic enum of stream
+     * @param topic topic enum of stream
      * @param beg   most recent index/position from which data is pulled
-     * @return all data-points from 'beg' to atomic marker
-     * @throws LibraryNotLoaded   C lib has not been loaded
-     * @throws CLibException      error code returned by C lib
-     * @throws DataIndexException invalid index/position value
+     * @return multiple contiguous data-points up to atomic marker of stream
+     * @throws LibraryNotLoaded     C lib has not been loaded
+     * @throws CLibException        error code returned by C lib
+     * @throws DataIndexException   invalid index/position value     
+     * @see Topic
      */
     public List<Long>
     getStreamSnapshotLongsFromMarkerIgnoreDirty(String item, Topic topic, int beg)
             throws LibraryNotLoaded, CLibException, DataIndexException {
-        return helper.getStreamSnapshotFromMarkerIgnoreDirty(item, topic, beg, false, Long.class);
+        return helper.getStreamSnapshotFromMarkerIgnoreDirty(item, topic, beg, false, 
+                Long.class);
     }
 
     /**
-     * Get all data-points up to atomic marker, as array of Doubles. IGNORE DIRTY MARKER.
+     * Returns all data-points up to atomic marker of a stream, as List&lt;Double&gt;.
+     * Ignores 'dirty' marker/stream.
      *
      * @param item  item string of stream
-     * @param topic Topic enum of stream
-     * @return all data-points up to atomic marker
-     * @throws LibraryNotLoaded C lib has not been loaded
-     * @throws CLibException    error code returned by C lib
+     * @param topic topic enum of stream
+     * @return all data-points up to atomic marker of stream
+     * @throws LibraryNotLoaded     C lib has not been loaded
+     * @throws CLibException        error code returned by C lib     
+     * @see Topic
      */
     public List<Double>
     getStreamSnapshotDoublesFromMarkerIgnoreDirty(String item, Topic topic)
             throws LibraryNotLoaded, CLibException {
-        return helper.getStreamSnapshotFromMarkerToMostRecentIgnoreDirty(item, topic, false, Double.class);
+        return helper.getStreamSnapshotFromMarkerToMostRecentIgnoreDirty(item, topic, false, 
+                Double.class);
     }
 
     /**
-     * Get all data-points from 'beg' to atomic marker, as array of Doubles. IGNORE DIRTY MARKER.
+     * Returns multiple contiguous data-points up to atomic marker of a stream, 
+     * as List&lt;Double&gt;. Ignores 'dirty' marker/stream. 
      *
      * @param item  item string of stream
-     * @param topic Topic enum of stream
+     * @param topic topic enum of stream
      * @param beg   most recent index/position from which data is pulled
-     * @return all data-points from 'beg' to atomic marker
-     * @throws LibraryNotLoaded   C lib has not been loaded
-     * @throws CLibException      error code returned by C lib
-     * @throws DataIndexException invalid index/position value
+     * @return multiple contiguous data-points up to atomic marker of stream
+     * @throws LibraryNotLoaded     C lib has not been loaded
+     * @throws CLibException        error code returned by C lib
+     * @throws DataIndexException   invalid index/position value     
+     * @see Topic
      */
     public List<Double>
     getStreamSnapshotDoublesFromMarkerIgnoreDirty(String item, Topic topic, int beg)
             throws LibraryNotLoaded, CLibException, DataIndexException {
-        return helper.getStreamSnapshotFromMarkerIgnoreDirty(item, topic, beg, false, Double.class);
+        return helper.getStreamSnapshotFromMarkerIgnoreDirty(item, topic, beg, false, 
+                Double.class);
     }
 
     /**
-     * Get all data-points up to atomic marker, as array of Strings. IGNORE DIRTY MARKER.
+     * Returns all data-points up to atomic marker of a stream, as List&lt;String&gt;.
+     * Ignores 'dirty' marker/stream.
      *
      * @param item  item string of stream
-     * @param topic Topic enum of stream
-     * @return all data-points up to atomic marker
-     * @throws LibraryNotLoaded C lib has not been loaded
-     * @throws CLibException    error code returned by C lib
+     * @param topic topic enum of stream
+     * @return all data-points up to atomic marker of stream
+     * @throws LibraryNotLoaded     C lib has not been loaded
+     * @throws CLibException        error code returned by C lib     
+     * @see Topic
      */
     public List<String>
     getStreamSnapshotStringsFromMarkerIgnoreDirty(String item, Topic topic)
             throws LibraryNotLoaded, CLibException {
-        return helper.getStreamSnapshotFromMarkerToMostRecentIgnoreDirty(item, topic, false, String.class);
+        return helper.getStreamSnapshotFromMarkerToMostRecentIgnoreDirty(item, topic, false, 
+                String.class);
     }
 
     /**
-     * Get all data-points from 'beg' to atomic marker, as array of Strings. IGNORE DIRTY MARKER.
+     * Returns multiple contiguous data-points up to atomic marker of a stream, 
+     * as List&lt;String&gt;. Ignores 'dirty' marker/stream. 
      *
      * @param item  item string of stream
-     * @param topic Topic enum of stream
+     * @param topic topic enum of stream
      * @param beg   most recent index/position from which data is pulled
-     * @return all data-points from 'beg' to atomic marker
-     * @throws LibraryNotLoaded   C lib has not been loaded
-     * @throws CLibException      error code returned by C lib
-     * @throws DataIndexException invalid index/position value
+     * @return multiple contiguous data-points up to atomic marker of stream
+     * @throws LibraryNotLoaded     C lib has not been loaded
+     * @throws CLibException        error code returned by C lib
+     * @throws DataIndexException   invalid index/position value     
+     * @see Topic
      */
     public List<String>
     getStreamSnapshotStringsFromMarkerIgnoreDirty(String item, Topic topic, int beg)
             throws LibraryNotLoaded, CLibException, DataIndexException {
-        return helper.getStreamSnapshotFromMarkerIgnoreDirty(item, topic, beg, false, String.class);
+        return helper.getStreamSnapshotFromMarkerIgnoreDirty(item, topic, beg, false, 
+                String.class);
     }
 
     /**
-     * Get all item values, as strings, for a particular topic.
+     * Returns mapping of all item names to most recent item values for a particular topic.
      *
-     * @param topic Topic enum of streams
-     * @return Mapping of item names to values
+     * @param topic topic enum of streams
+     * @return mapping of item names to most recent item values
      * @throws CLibException    error code returned by C lib
      * @throws LibraryNotLoaded C lib has not been loaded
+     * @see Topic
      */
     public Map<String, String>
     getItemFrame(Topic topic) throws CLibException, LibraryNotLoaded {
@@ -870,10 +912,10 @@ public class DataBlock {
     }
 
     /**
-     * Get all topic values, as strings, for a particular item.
+     * Returns mapping of all topic enums to most recent topic values for a particular item.
      *
      * @param item item string of streams
-     * @return Mapping of topic names to values
+     * @return mapping of topic enums to most recent topic values
      * @throws CLibException    error code returned by C lib
      * @throws LibraryNotLoaded C lib has not been loaded
      */
@@ -883,9 +925,10 @@ public class DataBlock {
     }
 
     /**
-     * Get all topic AND item values, as strings, of the block.
+     * Returns mapping of all item strings to mappings of all topic enums to most recent topic
+     * values. This returns ALL the most recent data in the block.
      *
-     * @return Mapping of item names to Mapping of Topic enums to values
+     * @return mapping of item strings to mappings of topic enums to most recent topic values
      * @throws LibraryNotLoaded C lib has not been loaded
      * @throws CLibException    error code returned by C lib
      */
@@ -1137,6 +1180,16 @@ public class DataBlock {
             return frame;
         }
     } /* class DataBlockSharedHelper */
+
+    private int
+    _getBlockSize() throws LibraryNotLoaded, CLibException {
+        int[] size = {0};
+        int err = TOSDataBridge.getCLibrary().TOSDB_GetBlockSize(_name, size);
+        if (err != 0) {
+            throw new CLibException("TOSDB_GetBlockSize", err);
+        }
+        return size[0];
+    }
 
     private void
     _isValidItem(String item) throws IllegalArgumentException, CLibException, LibraryNotLoaded {
