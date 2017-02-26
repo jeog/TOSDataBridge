@@ -25,6 +25,8 @@ import com.sun.jna.Native;
 import com.sun.jna.NativeLong;
 import com.sun.jna.Pointer;
 
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.*;
 
 /**
@@ -82,12 +84,12 @@ public class DataBlock {
 
     /* an implementation layer (below API, above JNA) we want to share with classes that
        may extend DataBlock within the package, but not with client code from outside it */
-    private final DataBlockSharedHelper helper = new DataBlockSharedHelper();
+    private final DataBlockSharedHelper _helper = new DataBlockSharedHelper();
 
     /*package-private*/
     final DataBlockSharedHelper
     getHelper(){
-        return helper;
+        return _helper;
     }
 
     private final String _name;
@@ -123,7 +125,8 @@ public class DataBlock {
      * INTERNAL CONSTRUCTOR
      */
     protected DataBlock(int size, boolean dateTime, int timeout)
-            throws LibraryNotLoaded, CLibException {
+            throws LibraryNotLoaded, CLibException
+    {
         _size = size;
         _timeout = timeout;
         _name = UUID.randomUUID().toString();
@@ -399,7 +402,7 @@ public class DataBlock {
      */
     public Long
     getLong(String item, Topic topic) throws CLibException, LibraryNotLoaded {
-        return helper.getMostRecent(item, topic, false, Long.class);
+        return _helper.getMostRecent(item, topic, false, Long.class);
     }
 
     /**
@@ -417,7 +420,7 @@ public class DataBlock {
     public Long
     getLong(String item, Topic topic, int indx)
             throws CLibException, LibraryNotLoaded, DataIndexException {
-        return helper.get(item, topic, indx, false, Long.class);
+        return _helper.get(item, topic, indx, false, Long.class);
     }
 
     /**
@@ -432,7 +435,7 @@ public class DataBlock {
      */
     public Double
     getDouble(String item, Topic topic) throws CLibException, LibraryNotLoaded {
-        return helper.getMostRecent(item, topic, false, Double.class);
+        return _helper.getMostRecent(item, topic, false, Double.class);
     }
 
     /**
@@ -450,7 +453,7 @@ public class DataBlock {
     public Double
     getDouble(String item, Topic topic, int indx)
             throws CLibException, LibraryNotLoaded, DataIndexException {
-        return helper.get(item, topic, indx, false, Double.class);
+        return _helper.get(item, topic, indx, false, Double.class);
     }
 
     /**
@@ -465,7 +468,7 @@ public class DataBlock {
      */
     public String
     getString(String item, Topic topic) throws CLibException, LibraryNotLoaded {
-        return helper.getMostRecent(item, topic, false, String.class);
+        return _helper.getMostRecent(item, topic, false, String.class);
     }
 
     /**
@@ -483,7 +486,7 @@ public class DataBlock {
     public String
     getString(String item, Topic topic, int indx)
             throws CLibException, LibraryNotLoaded, DataIndexException {
-        return helper.get(item, topic, indx, false, String.class);
+        return _helper.get(item, topic, indx, false, String.class);
     }
 
     /**
@@ -498,7 +501,7 @@ public class DataBlock {
      */
     public List<Long>
     getStreamSnapshotLongs(String item, Topic topic) throws LibraryNotLoaded, CLibException {
-        return helper.getStreamSnapshotAll(item, topic, false, Long.class);
+        return _helper.getStreamSnapshotAll(item, topic, false, Long.class);
     }
 
     /**
@@ -517,7 +520,7 @@ public class DataBlock {
     public List<Long>
     getStreamSnapshotLongs(String item, Topic topic, int end)
             throws LibraryNotLoaded, CLibException, DataIndexException {
-        return helper.getStreamSnapshot(item, topic, end, 0, true, false, Long.class);
+        return _helper.getStreamSnapshot(item, topic, end, 0, true, false, Long.class);
     }
 
     /**
@@ -536,7 +539,7 @@ public class DataBlock {
     public List<Long>
     getStreamSnapshotLongs(String item, Topic topic, int end, int beg)
             throws LibraryNotLoaded, CLibException, DataIndexException {
-        return helper.getStreamSnapshot(item, topic, end, beg, true, false, Long.class);
+        return _helper.getStreamSnapshot(item, topic, end, beg, true, false, Long.class);
     }
 
     /**
@@ -551,7 +554,7 @@ public class DataBlock {
      */
     public List<Double>
     getStreamSnapshotDoubles(String item, Topic topic) throws LibraryNotLoaded, CLibException {
-        return helper.getStreamSnapshotAll(item, topic, false, Double.class);
+        return _helper.getStreamSnapshotAll(item, topic, false, Double.class);
     }
 
     /**
@@ -570,7 +573,7 @@ public class DataBlock {
     public List<Double>
     getStreamSnapshotDoubles(String item, Topic topic, int end)
             throws LibraryNotLoaded, CLibException, DataIndexException {
-        return helper.getStreamSnapshot(item, topic, end, 0, true, false, Double.class);
+        return _helper.getStreamSnapshot(item, topic, end, 0, true, false, Double.class);
     }
 
     /**
@@ -589,7 +592,7 @@ public class DataBlock {
     public List<Double>
     getStreamSnapshotDoubles(String item, Topic topic, int end, int beg)
             throws LibraryNotLoaded, CLibException, DataIndexException {
-        return helper.getStreamSnapshot(item, topic, end, beg, true, false, Double.class);
+        return _helper.getStreamSnapshot(item, topic, end, beg, true, false, Double.class);
     }
 
     /**
@@ -604,7 +607,7 @@ public class DataBlock {
      */
     public List<String>
     getStreamSnapshotStrings(String item, Topic topic) throws LibraryNotLoaded, CLibException {
-        return helper.getStreamSnapshotAll(item, topic, false, String.class);
+        return _helper.getStreamSnapshotAll(item, topic, false, String.class);
     }
 
     /**
@@ -623,7 +626,7 @@ public class DataBlock {
     public List<String>
     getStreamSnapshotStrings(String item, Topic topic, int end)
             throws LibraryNotLoaded, CLibException, DataIndexException {
-        return helper.getStreamSnapshot(item, topic, end, 0, true, false, String.class);
+        return _helper.getStreamSnapshot(item, topic, end, 0, true, false, String.class);
     }
 
     /**
@@ -642,7 +645,7 @@ public class DataBlock {
     public List<String>
     getStreamSnapshotStrings(String item, Topic topic, int end, int beg)
             throws LibraryNotLoaded, CLibException, DataIndexException {
-        return helper.getStreamSnapshot(item, topic, end, beg, true, false, String.class);
+        return _helper.getStreamSnapshot(item, topic, end, beg, true, false, String.class);
     }
 
     /**
@@ -659,7 +662,7 @@ public class DataBlock {
     public List<Long>
     getStreamSnapshotLongsFromMarker(String item, Topic topic)
             throws LibraryNotLoaded, CLibException, DirtyMarkerException {
-        return helper.getStreamSnapshotFromMarkerToMostRecent(item, topic, false, Long.class);
+        return _helper.getStreamSnapshotFromMarkerToMostRecent(item, topic, false, Long.class);
     }
 
     /**
@@ -679,7 +682,7 @@ public class DataBlock {
     public List<Long>
     getStreamSnapshotLongsFromMarker(String item, Topic topic, int beg)
             throws LibraryNotLoaded, CLibException, DataIndexException, DirtyMarkerException {
-        return helper.getStreamSnapshotFromMarker(item, topic, beg, true, false, Long.class);
+        return _helper.getStreamSnapshotFromMarker(item, topic, beg, true, false, Long.class);
     }
 
     /**
@@ -696,7 +699,7 @@ public class DataBlock {
     public List<Double>
     getStreamSnapshotDoublesFromMarker(String item, Topic topic)
             throws LibraryNotLoaded, CLibException, DirtyMarkerException {
-        return helper.getStreamSnapshotFromMarkerToMostRecent(item, topic, false, Double.class);
+        return _helper.getStreamSnapshotFromMarkerToMostRecent(item, topic, false, Double.class);
     }
 
     /**
@@ -716,7 +719,7 @@ public class DataBlock {
     public List<Double>
     getStreamSnapshotDoublesFromMarker(String item, Topic topic, int beg)
             throws LibraryNotLoaded, CLibException, DataIndexException, DirtyMarkerException {
-        return helper.getStreamSnapshotFromMarker(item, topic, beg, true, false, Double.class);
+        return _helper.getStreamSnapshotFromMarker(item, topic, beg, true, false, Double.class);
     }
 
     /**
@@ -733,7 +736,7 @@ public class DataBlock {
     public List<String>
     getStreamSnapshotStringsFromMarker(String item, Topic topic)
             throws LibraryNotLoaded, CLibException, DirtyMarkerException {
-        return helper.getStreamSnapshotFromMarkerToMostRecent(item, topic, false, String.class);
+        return _helper.getStreamSnapshotFromMarkerToMostRecent(item, topic, false, String.class);
     }
 
     /**
@@ -753,7 +756,7 @@ public class DataBlock {
     public List<String>
     getStreamSnapshotStringsFromMarker(String item, Topic topic, int beg)
             throws LibraryNotLoaded, CLibException, DataIndexException, DirtyMarkerException {
-        return helper.getStreamSnapshotFromMarker(item, topic, beg, true, false, String.class);
+        return _helper.getStreamSnapshotFromMarker(item, topic, beg, true, false, String.class);
     }
 
     /**
@@ -797,7 +800,7 @@ public class DataBlock {
     public List<Long>
     getStreamSnapshotLongsFromMarkerIgnoreDirty(String item, Topic topic)
             throws LibraryNotLoaded, CLibException {
-        return helper.getStreamSnapshotFromMarkerToMostRecentIgnoreDirty(item, topic, false,
+        return _helper.getStreamSnapshotFromMarkerToMostRecentIgnoreDirty(item, topic, false,
                 Long.class);
     }
 
@@ -817,7 +820,7 @@ public class DataBlock {
     public List<Long>
     getStreamSnapshotLongsFromMarkerIgnoreDirty(String item, Topic topic, int beg)
             throws LibraryNotLoaded, CLibException, DataIndexException {
-        return helper.getStreamSnapshotFromMarkerIgnoreDirty(item, topic, beg, false, 
+        return _helper.getStreamSnapshotFromMarkerIgnoreDirty(item, topic, beg, false, 
                 Long.class);
     }
 
@@ -835,7 +838,7 @@ public class DataBlock {
     public List<Double>
     getStreamSnapshotDoublesFromMarkerIgnoreDirty(String item, Topic topic)
             throws LibraryNotLoaded, CLibException {
-        return helper.getStreamSnapshotFromMarkerToMostRecentIgnoreDirty(item, topic, false, 
+        return _helper.getStreamSnapshotFromMarkerToMostRecentIgnoreDirty(item, topic, false, 
                 Double.class);
     }
 
@@ -855,7 +858,7 @@ public class DataBlock {
     public List<Double>
     getStreamSnapshotDoublesFromMarkerIgnoreDirty(String item, Topic topic, int beg)
             throws LibraryNotLoaded, CLibException, DataIndexException {
-        return helper.getStreamSnapshotFromMarkerIgnoreDirty(item, topic, beg, false, 
+        return _helper.getStreamSnapshotFromMarkerIgnoreDirty(item, topic, beg, false, 
                 Double.class);
     }
 
@@ -873,7 +876,7 @@ public class DataBlock {
     public List<String>
     getStreamSnapshotStringsFromMarkerIgnoreDirty(String item, Topic topic)
             throws LibraryNotLoaded, CLibException {
-        return helper.getStreamSnapshotFromMarkerToMostRecentIgnoreDirty(item, topic, false, 
+        return _helper.getStreamSnapshotFromMarkerToMostRecentIgnoreDirty(item, topic, false, 
                 String.class);
     }
 
@@ -893,7 +896,7 @@ public class DataBlock {
     public List<String>
     getStreamSnapshotStringsFromMarkerIgnoreDirty(String item, Topic topic, int beg)
             throws LibraryNotLoaded, CLibException, DataIndexException {
-        return helper.getStreamSnapshotFromMarkerIgnoreDirty(item, topic, beg, false, 
+        return _helper.getStreamSnapshotFromMarkerIgnoreDirty(item, topic, beg, false, 
                 String.class);
     }
 
@@ -908,7 +911,7 @@ public class DataBlock {
      */
     public Map<String, String>
     getItemFrame(Topic topic) throws CLibException, LibraryNotLoaded {
-        return helper.getFrame(topic, true, false);
+        return _helper.getFrame(topic, true, false);
     }
 
     /**
@@ -921,7 +924,7 @@ public class DataBlock {
      */
     public Map<Topic, String>
     getTopicFrame(String item) throws CLibException, LibraryNotLoaded {
-        return helper.getFrame(item, false, false);
+        return _helper.getFrame(item, false, false);
     }
 
     /**
@@ -951,6 +954,7 @@ public class DataBlock {
      * is accessed via DataBlock's getHelper() method.
      */
     class DataBlockSharedHelper {
+
         /* only allow DataBlock to instantiate */
         private DataBlockSharedHelper(){
         }
@@ -985,13 +989,8 @@ public class DataBlock {
                 return null;
             }
 
-            if (valType.equals(Long.class)) {
-                return _getLong(item, topic, indx, withDateTime);
-            } else if (valType.equals(Double.class)) {
-                return _getDouble(item, topic, indx, withDateTime);
-            } else {
-                return _getString(item, topic, indx, withDateTime);
-            }
+            return _nativeAccessByType(valType,"_get","", new Class<?>[]{String.class, Topic.class, 
+                            int.class, boolean.class}, item, topic, indx, withDateTime);
         }
 
         /* suppress DataIndexException */
@@ -1036,13 +1035,9 @@ public class DataBlock {
                 size = end - beg + 1;
             }
 
-            if (valType.equals(Long.class)) {
-                return _getStreamSnapshotLongs(item, topic, end, beg, withDateTime, size);
-            } else if (valType.equals(Double.class)) {
-                return _getStreamSnapshotDoubles(item, topic, end, beg, withDateTime, size);
-            } else {
-                return _getStreamSnapshotStrings(item, topic, end, beg, withDateTime, size);
-            }
+            return _nativeAccessByType(valType, "_getStreamSnapshot", "s",
+                    new Class<?>[]{String.class, Topic.class, int.class, int.class,
+                            boolean.class, int.class}, item, topic, end, beg, withDateTime, size);        
         }
 
         /* suppress DirtyMarkerException */
@@ -1121,16 +1116,10 @@ public class DataBlock {
                 return new ArrayList<>();
             }
 
-            if (valType.equals(Long.class)) {
-                return _getStreamSnapshotLongsFromMarker(item, topic, beg, withDateTime,
-                        throwIfDataLost, (int) szFromMarker + MARKER_MARGIN_OF_SAFETY);
-            } else if (valType.equals(Double.class)) {
-                return _getStreamSnapshotDoublesFromMarker(item, topic, beg, withDateTime,
-                        throwIfDataLost, (int) szFromMarker + MARKER_MARGIN_OF_SAFETY);
-            } else {
-                return _getStreamSnapshotStringsFromMarker(item, topic, beg, withDateTime,
-                        throwIfDataLost, (int) szFromMarker + MARKER_MARGIN_OF_SAFETY);
-            }
+            return _nativeAccessByType(valType, "_getStreamSnapshot", "sFromMarker", 
+                    new Class<?>[]{String.class, Topic.class, int.class, boolean.class, 
+                            boolean.class, int.class}, item, topic, beg, withDateTime, 
+                    throwIfDataLost, (int) szFromMarker + MARKER_MARGIN_OF_SAFETY);
         }
 
         public final <T, E, X> Map<X, T>
@@ -1178,6 +1167,22 @@ public class DataBlock {
                 frame.put(lab, val);
             }
             return frame;
+        }
+
+        @SuppressWarnings("unchecked")
+        private <R> R
+        _nativeAccessByType(Class<?> valType, String callNamePre, String callNamePost,
+                            Class<?>[] vArgTypes, Object... args) {
+            String typeName = valType.equals(Long.class) ? "Long"
+                    : (valType.equals(Double.class) ? "Double" : "String");
+            String methodName = callNamePre + typeName + callNamePost;
+            try {
+                Method m = DataBlock.class.getDeclaredMethod(methodName, vArgTypes);
+                m.setAccessible(true);
+                return (R) m.invoke(DataBlock.this, args);
+            } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
+                throw new RuntimeException("_nativeAccessByType failed to call: " + methodName);
+            }
         }
     } /* class DataBlockSharedHelper */
 

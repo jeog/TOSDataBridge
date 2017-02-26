@@ -379,7 +379,7 @@ public class TOSDataBridgeTest {
             System.err.println("failed to double block limit");
             return false;
         }
-        System.out.println("block limit: " + String.valueOf(l));
+        System.out.println("block limit: " + String.valueOf(ll));
 
         // get_block_count()
         int c = TOSDataBridge.getBlockCount();

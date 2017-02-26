@@ -49,7 +49,7 @@
 
 13. (***JAVA ONLY***) Add appropriate [Java API calls](README_JAVA.md) to you code. Build.
 
-14. (***PTHON ONLY***) [Install the tosdb package.](README_PYTHON.md#install)
+14. (***PYTHON ONLY***) [Install the tosdb package.](README_PYTHON.md#install)
 
 15. Start the TOS platform.
 
