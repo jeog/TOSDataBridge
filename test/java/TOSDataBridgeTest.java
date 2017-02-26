@@ -82,6 +82,10 @@ public class TOSDataBridgeTest {
             System.out.println("EXCEPTION: CLibException");
             System.out.println(e.toString());
             e.printStackTrace();
+        } catch (InvalidItemOrTopic e) {
+            System.out.println("EXCEPTION: InvalidItemOrTopic");
+            System.out.println(e.toString());
+            e.printStackTrace();
         } catch (InterruptedException e) {
             System.out.println("EXCEPTION: InterruptedException");
             System.out.println(e.toString());
@@ -98,8 +102,9 @@ public class TOSDataBridgeTest {
     }
 
     private static void 
-    testBlock1() throws LibraryNotLoaded, CLibException, NoSuchMethodException, IllegalAccessException,
-            InvocationTargetException, InterruptedException, DataIndexException {
+    testBlock1() throws LibraryNotLoaded, CLibException, NoSuchMethodException,
+            IllegalAccessException, InvocationTargetException, InterruptedException,
+            DataIndexException, InvalidItemOrTopic {
         int sz = 100000;
         System.out.println();
         System.out.println("CREATE BLOCK 1...");
@@ -134,8 +139,34 @@ public class TOSDataBridgeTest {
         try{
             block.addTopic(Topic.NULL_TOPIC);
             throw new RuntimeException("Add NULL_TOPIC/CLIbException test failed");
-        }catch(TOSDataBridge.CLibException e){
+        }catch(TOSDataBridge.InvalidItemOrTopic e){
             System.out.println("Successfully caught exception from adding NULL_TOPIC: " + e.toString() );
+        }
+
+        // add bad topic
+        try{
+            block.addTopic(null);
+            throw new RuntimeException("Add null topic test failed");
+        }catch(NullPointerException e){
+            System.out.println("Successfully caught exception from adding null topic: " + e.toString() );
+        }
+
+        // add bad item
+        try{
+            block.addItem("");
+            throw new RuntimeException("Add empty item string test failed");
+        }catch(TOSDataBridge.InvalidItemOrTopic e){
+            System.out.println("Successfully caught exception from adding empty item string: " + e.toString() );
+        }
+
+        // add bad item
+        try{
+            char[] s = new char[TOSDataBridge.MAX_STR_SZ + 1];
+            Arrays.fill(s,'x');
+            block.addItem(new String(s));
+            throw new RuntimeException("Add too large item string failed");
+        }catch(TOSDataBridge.InvalidItemOrTopic e){
+            System.out.println("Successfully caught exception from adding too large item string: " + e.toString() );
         }
 
         //add good topics
@@ -203,7 +234,8 @@ public class TOSDataBridgeTest {
 
     private static void
     testBlock2() throws LibraryNotLoaded, CLibException, InterruptedException, DataIndexException,
-            NoSuchMethodException, IllegalAccessException, InvocationTargetException {
+            NoSuchMethodException, IllegalAccessException, InvocationTargetException,
+            InvalidItemOrTopic {
         int sz = 1000;
         int timeout = 3000;
         System.out.println();
@@ -455,7 +487,8 @@ public class TOSDataBridgeTest {
     }
 
     private static void
-    testGetCalls(DataBlock block, boolean withDateTime) throws CLibException, LibraryNotLoaded, DataIndexException {
+    testGetCalls(DataBlock block, boolean withDateTime)
+            throws CLibException, LibraryNotLoaded, DataIndexException, InvalidItemOrTopic {
         Random rand = new Random(Double.doubleToLongBits(Math.random()));
         String dtSuffix = withDateTime ? "WithDateTime" : "";
         Set<String> items = block.getItems();
@@ -556,8 +589,7 @@ public class TOSDataBridgeTest {
 
     private static void
     testStreamSnapshotCalls(DataBlock block, int sz, boolean withDateTime)
-            throws CLibException, LibraryNotLoaded
-    {
+            throws CLibException, LibraryNotLoaded, InvalidItemOrTopic {
         if(sz < 1) {
             throw new IllegalArgumentException("sz < 1");
         }
@@ -596,8 +628,8 @@ public class TOSDataBridgeTest {
 
     private static void
     testStreamSnapshotFromMarkerCalls(DataBlock block, int passes, int wait, boolean withDateTime,
-                                      boolean ignoreDirty) throws CLibException, LibraryNotLoaded
-    {
+                                      boolean ignoreDirty)
+            throws CLibException, LibraryNotLoaded, InvalidItemOrTopic {
         if(passes < 1) {
             throw new IllegalArgumentException("passes < 1");
         }
@@ -636,8 +668,8 @@ public class TOSDataBridgeTest {
     }
 
     private static void
-    testDirtyMarkerExceptions(DataBlock block, boolean withDateTime) throws CLibException, LibraryNotLoaded
-    {
+    testDirtyMarkerExceptions(DataBlock block, boolean withDateTime)
+            throws CLibException, LibraryNotLoaded, InvalidItemOrTopic {
         Set<String> items = block.getItems();
         Set<Topic> topics = block.getTopics();
         int sz = block.getBlockSize();
@@ -698,8 +730,8 @@ public class TOSDataBridgeTest {
     }
 
     private static void
-    testDataIndexExceptions(DataBlock block, boolean withDateTime) throws CLibException, LibraryNotLoaded
-    {
+    testDataIndexExceptions(DataBlock block, boolean withDateTime)
+            throws CLibException, LibraryNotLoaded, InvalidItemOrTopic {
         Set<String> items = block.getItems();
         Set<Topic> topics = block.getTopics();
         int sz = block.getBlockSize();

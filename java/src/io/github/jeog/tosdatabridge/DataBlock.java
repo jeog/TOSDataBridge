@@ -233,10 +233,9 @@ public class DataBlock {
      * @see Topic
      */
     public int
-    getStreamOccupancy(String item, Topic topic) throws CLibException, LibraryNotLoaded {
-        item = item.toUpperCase();
-        _isValidItem(item);
-        _isValidTopic(topic);
+    getStreamOccupancy(String item, Topic topic) throws CLibException, LibraryNotLoaded,
+            InvalidItemOrTopic {
+        item = _handleRawItemTopic(item,topic,true);
         int occ[] = {0};
         int err = TOSDataBridge.getCLibrary()
                 .TOSDB_GetStreamOccupancy(_name, item, topic.val, occ);
@@ -298,9 +297,11 @@ public class DataBlock {
      * @param item item string to be added to the block
      * @throws LibraryNotLoaded C lib has not been loaded
      * @throws CLibException    error code returned by C lib
+     * @throws InvalidItemOrTopic invalid item or topic argument
      */
     public void
-    addItem(String item) throws LibraryNotLoaded, CLibException {
+    addItem(String item) throws LibraryNotLoaded, CLibException, InvalidItemOrTopic {
+        _handleRawItem(item,false);
         /* check we are consistent with C lib */
         if (!_items.equals(getItems())) {
             throw new IllegalStateException("_items != getItems()");
@@ -309,10 +310,7 @@ public class DataBlock {
         if (err != 0) {
             throw new CLibException("TOSDB_AddItem", err);
         }
-        /* in case topics came out of pre-cache */
-        if (_items.isEmpty() && _topics.isEmpty()) {
-            _topics = getTopics();
-        }
+        _topics = getTopics();
         _items = getItems();
     }
 
@@ -322,10 +320,12 @@ public class DataBlock {
      * @param topic topic enum to be added to the block
      * @throws LibraryNotLoaded C lib has not been loaded
      * @throws CLibException    error code returned by C lib
+     * @throws InvalidItemOrTopic invalid item or topic argument
      * @see Topic
      */
     public void
-    addTopic(Topic topic) throws LibraryNotLoaded, CLibException {
+    addTopic(Topic topic) throws LibraryNotLoaded, CLibException, InvalidItemOrTopic {
+        _handleRawTopic(topic,false);
         /* check we are consistent with C lib */
         if (!_topics.equals(getTopics())) {
             throw new IllegalStateException("_topics != getTopics()");
@@ -334,10 +334,7 @@ public class DataBlock {
         if (err != 0) {
             throw new CLibException("TOSDB_AddTopic", err);
         }
-        /* in case items came out of pre-cache */
-        if (_topics.isEmpty() && _items.isEmpty()) {
-            _items = getItems();
-        }
+        _items = getItems();
         _topics = getTopics();
     }
 
@@ -347,9 +344,12 @@ public class DataBlock {
      * @param item item string to be removed from the block
      * @throws LibraryNotLoaded C lib has not been loaded
      * @throws CLibException    error code returned by C lib
+     * @throws InvalidItemOrTopic invalid item or topic argument
      */
     public void
-    removeItem(String item) throws LibraryNotLoaded, CLibException {
+    removeItem(String item) throws LibraryNotLoaded, CLibException, InvalidItemOrTopic {
+        /* note: we don't throw if item isn't it block because it might be in pre-cache */
+        _handleRawItem(item,false);
         /* check we are consistent with C lib */
         if (!_items.equals(getItems())) {
             throw new IllegalStateException("_items != getItems()");
@@ -359,10 +359,7 @@ public class DataBlock {
             throw new CLibException("TOSDB_RemoveItem", err);
         }
         _items = getItems();
-        /* in case topics get sent to pre-cache */
-        if (_items.isEmpty()) {
-            _topics = getTopics();
-        }
+        _topics = getTopics();
     }
 
     /**
@@ -371,10 +368,13 @@ public class DataBlock {
      * @param topic topic enum to be removed from the block.
      * @throws LibraryNotLoaded C lib has not been loaded
      * @throws CLibException    error code returned by C lib
+     * @throws InvalidItemOrTopic invalid item or topic argument
      * @see Topic
      */
     public void
-    removeTopic(Topic topic) throws LibraryNotLoaded, CLibException {
+    removeTopic(Topic topic) throws LibraryNotLoaded, CLibException, InvalidItemOrTopic {
+        /* note: we don't throw if topic isn't it block because it might be in pre-cache */
+        _handleRawTopic(topic,false);
         /* check we are consistent with C lib */
         if (!_topics.equals(getTopics())) {
             throw new IllegalStateException("_topics != getTopics()");
@@ -384,10 +384,39 @@ public class DataBlock {
             throw new CLibException("TOSDB_RemoveTopic", err);
         }
         _topics = getTopics();
-        /* in case items get sent to pre-cache */
-        if (_topics.isEmpty()) {
-            _items = getItems();
-        }
+        _items = getItems();
+    }
+
+    /**
+     * Returns if item is in the block.(NOT THE PRE-CACHE)
+     *
+     * @param item item string to be removed from the block
+     * @return if item is in the block
+     * @throws LibraryNotLoaded C lib has not been loaded
+     * @throws CLibException    error code returned by C lib
+     * @throws InvalidItemOrTopic invalid item or topic argument
+     */
+    public boolean
+    containsItem(String item) throws LibraryNotLoaded, CLibException, InvalidItemOrTopic {
+        /* note: we don't throw if item isn't it block */
+        _handleRawItem(item,false);
+        return _items.contains(item);
+    }
+
+    /**
+     * Returns if topic is in the block.(NOT THE PRE-CACHE)
+     *
+     * @param topic topic enum to be removed from the block
+     * @return if topic is in the block
+     * @throws LibraryNotLoaded C lib has not been loaded
+     * @throws CLibException    error code returned by C lib
+     * @throws InvalidItemOrTopic invalid item or topic argument
+     */
+    public boolean
+    containsTopic(Topic topic) throws LibraryNotLoaded, CLibException, InvalidItemOrTopic {
+        /* note: we don't throw if topic isn't it block */
+        _handleRawTopic(topic,false);
+        return _topics.contains(topic);
     }
 
     /**
@@ -398,10 +427,12 @@ public class DataBlock {
      * @return most recent data-point of stream (or null)
      * @throws CLibException    error code returned by C lib
      * @throws LibraryNotLoaded C lib has not been loaded
+     * @throws InvalidItemOrTopic invalid item or topic argument
      * @see Topic
      */
     public Long
-    getLong(String item, Topic topic) throws CLibException, LibraryNotLoaded {
+    getLong(String item, Topic topic)
+            throws CLibException, LibraryNotLoaded, InvalidItemOrTopic {
         return _helper.getMostRecent(item, topic, false, Long.class);
     }
 
@@ -415,11 +446,12 @@ public class DataBlock {
      * @throws CLibException      error code returned by C lib
      * @throws LibraryNotLoaded   C lib has not been loaded
      * @throws DataIndexException invalid index/position value
+     * @throws InvalidItemOrTopic invalid item or topic argument
      * @see Topic
      */
     public Long
     getLong(String item, Topic topic, int indx)
-            throws CLibException, LibraryNotLoaded, DataIndexException {
+            throws CLibException, LibraryNotLoaded, DataIndexException, InvalidItemOrTopic {
         return _helper.get(item, topic, indx, false, Long.class);
     }
 
@@ -431,10 +463,12 @@ public class DataBlock {
      * @return most recent data-point of stream (or null)
      * @throws CLibException    error code returned by C lib
      * @throws LibraryNotLoaded C lib has not been loaded
+     * @throws InvalidItemOrTopic invalid item or topic argument
      * @see Topic
      */
     public Double
-    getDouble(String item, Topic topic) throws CLibException, LibraryNotLoaded {
+    getDouble(String item, Topic topic)
+            throws CLibException, LibraryNotLoaded, InvalidItemOrTopic {
         return _helper.getMostRecent(item, topic, false, Double.class);
     }
 
@@ -448,11 +482,12 @@ public class DataBlock {
      * @throws CLibException      error code returned by C lib
      * @throws LibraryNotLoaded   C lib has not been loaded
      * @throws DataIndexException invalid index/position value
+     * @throws InvalidItemOrTopic invalid item or topic argument
      * @see Topic
      */
     public Double
     getDouble(String item, Topic topic, int indx)
-            throws CLibException, LibraryNotLoaded, DataIndexException {
+            throws CLibException, LibraryNotLoaded, DataIndexException, InvalidItemOrTopic {
         return _helper.get(item, topic, indx, false, Double.class);
     }
 
@@ -464,10 +499,12 @@ public class DataBlock {
      * @return most recent data-point of stream (or null)
      * @throws CLibException    error code returned by C lib
      * @throws LibraryNotLoaded C lib has not been loaded
+     * @throws InvalidItemOrTopic invalid item or topic argument
      * @see Topic
      */
     public String
-    getString(String item, Topic topic) throws CLibException, LibraryNotLoaded {
+    getString(String item, Topic topic)
+            throws CLibException, LibraryNotLoaded, InvalidItemOrTopic {
         return _helper.getMostRecent(item, topic, false, String.class);
     }
 
@@ -481,11 +518,12 @@ public class DataBlock {
      * @throws CLibException      error code returned by C lib
      * @throws LibraryNotLoaded   C lib has not been loaded
      * @throws DataIndexException invalid index/position value
+     * @throws InvalidItemOrTopic invalid item or topic argument
      * @see Topic
      */
     public String
     getString(String item, Topic topic, int indx)
-            throws CLibException, LibraryNotLoaded, DataIndexException {
+            throws CLibException, LibraryNotLoaded, DataIndexException, InvalidItemOrTopic {
         return _helper.get(item, topic, indx, false, String.class);
     }
 
@@ -497,10 +535,12 @@ public class DataBlock {
      * @return all data-points of stream
      * @throws LibraryNotLoaded C lib has not been loaded
      * @throws CLibException    error code returned by C lib
+     * @throws InvalidItemOrTopic invalid item or topic argument
      * @see Topic
      */
     public List<Long>
-    getStreamSnapshotLongs(String item, Topic topic) throws LibraryNotLoaded, CLibException {
+    getStreamSnapshotLongs(String item, Topic topic)
+            throws LibraryNotLoaded, CLibException, InvalidItemOrTopic {
         return _helper.getStreamSnapshotAll(item, topic, false, Long.class);
     }
 
@@ -515,11 +555,12 @@ public class DataBlock {
      * @throws LibraryNotLoaded   C lib has not been loaded
      * @throws CLibException      error code returned by C lib
      * @throws DataIndexException invalid index/position value
+     * @throws InvalidItemOrTopic invalid item or topic argument
      * @see Topic
      */
     public List<Long>
     getStreamSnapshotLongs(String item, Topic topic, int end)
-            throws LibraryNotLoaded, CLibException, DataIndexException {
+            throws LibraryNotLoaded, CLibException, DataIndexException, InvalidItemOrTopic {
         return _helper.getStreamSnapshot(item, topic, end, 0, true, false, Long.class);
     }
 
@@ -534,11 +575,12 @@ public class DataBlock {
      * @throws LibraryNotLoaded   C lib has not been loaded
      * @throws CLibException      error code returned by C lib
      * @throws DataIndexException invalid index/position value
+     * @throws InvalidItemOrTopic invalid item or topic argument
      * @see Topic
      */
     public List<Long>
     getStreamSnapshotLongs(String item, Topic topic, int end, int beg)
-            throws LibraryNotLoaded, CLibException, DataIndexException {
+            throws LibraryNotLoaded, CLibException, DataIndexException, InvalidItemOrTopic {
         return _helper.getStreamSnapshot(item, topic, end, beg, true, false, Long.class);
     }
 
@@ -550,10 +592,12 @@ public class DataBlock {
      * @return all data-points of stream
      * @throws LibraryNotLoaded C lib has not been loaded
      * @throws CLibException    error code returned by C lib
+     * @throws InvalidItemOrTopic invalid item or topic argument
      * @see Topic
      */
     public List<Double>
-    getStreamSnapshotDoubles(String item, Topic topic) throws LibraryNotLoaded, CLibException {
+    getStreamSnapshotDoubles(String item, Topic topic)
+            throws LibraryNotLoaded, CLibException, InvalidItemOrTopic {
         return _helper.getStreamSnapshotAll(item, topic, false, Double.class);
     }
 
@@ -568,11 +612,12 @@ public class DataBlock {
      * @throws LibraryNotLoaded   C lib has not been loaded
      * @throws CLibException      error code returned by C lib
      * @throws DataIndexException invalid index/position value
+     * @throws InvalidItemOrTopic invalid item or topic argument
      * @see Topic
      */
     public List<Double>
     getStreamSnapshotDoubles(String item, Topic topic, int end)
-            throws LibraryNotLoaded, CLibException, DataIndexException {
+            throws LibraryNotLoaded, CLibException, DataIndexException, InvalidItemOrTopic {
         return _helper.getStreamSnapshot(item, topic, end, 0, true, false, Double.class);
     }
 
@@ -587,11 +632,12 @@ public class DataBlock {
      * @throws LibraryNotLoaded   C lib has not been loaded
      * @throws CLibException      error code returned by C lib
      * @throws DataIndexException invalid index/position value
+     * @throws InvalidItemOrTopic invalid item or topic argument
      * @see Topic
      */
     public List<Double>
     getStreamSnapshotDoubles(String item, Topic topic, int end, int beg)
-            throws LibraryNotLoaded, CLibException, DataIndexException {
+            throws LibraryNotLoaded, CLibException, DataIndexException, InvalidItemOrTopic {
         return _helper.getStreamSnapshot(item, topic, end, beg, true, false, Double.class);
     }
 
@@ -603,10 +649,12 @@ public class DataBlock {
      * @return all data-points of stream
      * @throws LibraryNotLoaded C lib has not been loaded
      * @throws CLibException    error code returned by C lib
+     * @throws InvalidItemOrTopic invalid item or topic argument
      * @see Topic
      */
     public List<String>
-    getStreamSnapshotStrings(String item, Topic topic) throws LibraryNotLoaded, CLibException {
+    getStreamSnapshotStrings(String item, Topic topic)
+            throws LibraryNotLoaded, CLibException, InvalidItemOrTopic {
         return _helper.getStreamSnapshotAll(item, topic, false, String.class);
     }
 
@@ -621,11 +669,12 @@ public class DataBlock {
      * @throws LibraryNotLoaded   C lib has not been loaded
      * @throws CLibException      error code returned by C lib
      * @throws DataIndexException invalid index/position value
+     * @throws InvalidItemOrTopic invalid item or topic argument
      * @see Topic
      */
     public List<String>
     getStreamSnapshotStrings(String item, Topic topic, int end)
-            throws LibraryNotLoaded, CLibException, DataIndexException {
+            throws LibraryNotLoaded, CLibException, DataIndexException, InvalidItemOrTopic {
         return _helper.getStreamSnapshot(item, topic, end, 0, true, false, String.class);
     }
 
@@ -640,11 +689,12 @@ public class DataBlock {
      * @throws LibraryNotLoaded   C lib has not been loaded
      * @throws CLibException      error code returned by C lib
      * @throws DataIndexException invalid index/position value
+     * @throws InvalidItemOrTopic invalid item or topic argument
      * @see Topic
      */
     public List<String>
     getStreamSnapshotStrings(String item, Topic topic, int end, int beg)
-            throws LibraryNotLoaded, CLibException, DataIndexException {
+            throws LibraryNotLoaded, CLibException, DataIndexException, InvalidItemOrTopic {
         return _helper.getStreamSnapshot(item, topic, end, beg, true, false, String.class);
     }
 
@@ -657,11 +707,13 @@ public class DataBlock {
      * @throws LibraryNotLoaded     C lib has not been loaded
      * @throws CLibException        error code returned by C lib
      * @throws DirtyMarkerException marker is 'dirty' (data lost behind it)
+     * @throws InvalidItemOrTopic invalid item or topic argument
      * @see Topic
      */
     public List<Long>
     getStreamSnapshotLongsFromMarker(String item, Topic topic)
-            throws LibraryNotLoaded, CLibException, DirtyMarkerException {
+            throws LibraryNotLoaded, CLibException, DirtyMarkerException,
+            InvalidItemOrTopic {
         return _helper.getStreamSnapshotFromMarkerToMostRecent(item, topic, false, Long.class);
     }
 
@@ -677,11 +729,13 @@ public class DataBlock {
      * @throws CLibException        error code returned by C lib
      * @throws DataIndexException   invalid index/position value
      * @throws DirtyMarkerException marker is 'dirty' (data lost behind it)
+     * @throws InvalidItemOrTopic invalid item or topic argument
      * @see Topic
      */
     public List<Long>
     getStreamSnapshotLongsFromMarker(String item, Topic topic, int beg)
-            throws LibraryNotLoaded, CLibException, DataIndexException, DirtyMarkerException {
+            throws LibraryNotLoaded, CLibException, DataIndexException, DirtyMarkerException,
+            InvalidItemOrTopic {
         return _helper.getStreamSnapshotFromMarker(item, topic, beg, true, false, Long.class);
     }
 
@@ -694,11 +748,13 @@ public class DataBlock {
      * @throws LibraryNotLoaded     C lib has not been loaded
      * @throws CLibException        error code returned by C lib
      * @throws DirtyMarkerException marker is 'dirty' (data lost behind it)
+     * @throws InvalidItemOrTopic invalid item or topic argument
      * @see Topic
      */
     public List<Double>
     getStreamSnapshotDoublesFromMarker(String item, Topic topic)
-            throws LibraryNotLoaded, CLibException, DirtyMarkerException {
+            throws LibraryNotLoaded, CLibException, DirtyMarkerException,
+            InvalidItemOrTopic {
         return _helper.getStreamSnapshotFromMarkerToMostRecent(item, topic, false, Double.class);
     }
 
@@ -714,11 +770,13 @@ public class DataBlock {
      * @throws CLibException        error code returned by C lib
      * @throws DataIndexException   invalid index/position value
      * @throws DirtyMarkerException marker is 'dirty' (data lost behind it)
+     * @throws InvalidItemOrTopic invalid item or topic argument
      * @see Topic
      */
     public List<Double>
     getStreamSnapshotDoublesFromMarker(String item, Topic topic, int beg)
-            throws LibraryNotLoaded, CLibException, DataIndexException, DirtyMarkerException {
+            throws LibraryNotLoaded, CLibException, DataIndexException, DirtyMarkerException,
+            InvalidItemOrTopic {
         return _helper.getStreamSnapshotFromMarker(item, topic, beg, true, false, Double.class);
     }
 
@@ -731,11 +789,13 @@ public class DataBlock {
      * @throws LibraryNotLoaded     C lib has not been loaded
      * @throws CLibException        error code returned by C lib
      * @throws DirtyMarkerException marker is 'dirty' (data lost behind it)
+     * @throws InvalidItemOrTopic invalid item or topic argument
      * @see Topic
      */
     public List<String>
     getStreamSnapshotStringsFromMarker(String item, Topic topic)
-            throws LibraryNotLoaded, CLibException, DirtyMarkerException {
+            throws LibraryNotLoaded, CLibException, DirtyMarkerException,
+            InvalidItemOrTopic {
         return _helper.getStreamSnapshotFromMarkerToMostRecent(item, topic, false, String.class);
     }
 
@@ -751,11 +811,13 @@ public class DataBlock {
      * @throws CLibException        error code returned by C lib
      * @throws DataIndexException   invalid index/position value
      * @throws DirtyMarkerException marker is 'dirty' (data lost behind it)
+     * @throws InvalidItemOrTopic invalid item or topic argument
      * @see Topic
      */
     public List<String>
     getStreamSnapshotStringsFromMarker(String item, Topic topic, int beg)
-            throws LibraryNotLoaded, CLibException, DataIndexException, DirtyMarkerException {
+            throws LibraryNotLoaded, CLibException, DataIndexException, DirtyMarkerException,
+            InvalidItemOrTopic {
         return _helper.getStreamSnapshotFromMarker(item, topic, beg, true, false, String.class);
     }
 
@@ -768,14 +830,14 @@ public class DataBlock {
      * @return if stream/marker is dirty
      * @throws LibraryNotLoaded C lib has not been loaded
      * @throws CLibException    error code returned by C lib
+     * @throws InvalidItemOrTopic invalid item or topic argument
      * @see "StreamSnapshotFromMarker calls"
      * @see Topic
      */
     public boolean
-    isDirty(String item, Topic topic) throws LibraryNotLoaded, CLibException {
-        item = item.toUpperCase();
-        _isValidItem(item);
-        _isValidTopic(topic);
+    isDirty(String item, Topic topic) throws LibraryNotLoaded, CLibException,
+            InvalidItemOrTopic {
+        item = _handleRawItemTopic(item,topic,true);
         int[] ptrIsDirty = {0};
         int err = TOSDataBridge.getCLibrary()
                 .TOSDB_IsMarkerDirty(_name, item, topic.val, ptrIsDirty);
@@ -794,12 +856,13 @@ public class DataBlock {
      * @param topic topic enum of stream
      * @return all data-points up to atomic marker of stream
      * @throws LibraryNotLoaded     C lib has not been loaded
-     * @throws CLibException        error code returned by C lib     
+     * @throws CLibException        error code returned by C lib
+     * @throws InvalidItemOrTopic invalid item or topic argument
      * @see Topic
      */
     public List<Long>
     getStreamSnapshotLongsFromMarkerIgnoreDirty(String item, Topic topic)
-            throws LibraryNotLoaded, CLibException {
+            throws LibraryNotLoaded, CLibException, InvalidItemOrTopic {
         return _helper.getStreamSnapshotFromMarkerToMostRecentIgnoreDirty(item, topic, false,
                 Long.class);
     }
@@ -814,12 +877,13 @@ public class DataBlock {
      * @return multiple contiguous data-points up to atomic marker of stream
      * @throws LibraryNotLoaded     C lib has not been loaded
      * @throws CLibException        error code returned by C lib
-     * @throws DataIndexException   invalid index/position value     
+     * @throws DataIndexException   invalid index/position value
+     * @throws InvalidItemOrTopic invalid item or topic argument
      * @see Topic
      */
     public List<Long>
     getStreamSnapshotLongsFromMarkerIgnoreDirty(String item, Topic topic, int beg)
-            throws LibraryNotLoaded, CLibException, DataIndexException {
+            throws LibraryNotLoaded, CLibException, DataIndexException, InvalidItemOrTopic {
         return _helper.getStreamSnapshotFromMarkerIgnoreDirty(item, topic, beg, false, 
                 Long.class);
     }
@@ -832,12 +896,13 @@ public class DataBlock {
      * @param topic topic enum of stream
      * @return all data-points up to atomic marker of stream
      * @throws LibraryNotLoaded     C lib has not been loaded
-     * @throws CLibException        error code returned by C lib     
+     * @throws CLibException        error code returned by C lib
+     * @throws InvalidItemOrTopic invalid item or topic argument
      * @see Topic
      */
     public List<Double>
     getStreamSnapshotDoublesFromMarkerIgnoreDirty(String item, Topic topic)
-            throws LibraryNotLoaded, CLibException {
+            throws LibraryNotLoaded, CLibException, InvalidItemOrTopic {
         return _helper.getStreamSnapshotFromMarkerToMostRecentIgnoreDirty(item, topic, false, 
                 Double.class);
     }
@@ -852,12 +917,13 @@ public class DataBlock {
      * @return multiple contiguous data-points up to atomic marker of stream
      * @throws LibraryNotLoaded     C lib has not been loaded
      * @throws CLibException        error code returned by C lib
-     * @throws DataIndexException   invalid index/position value     
+     * @throws DataIndexException   invalid index/position value
+     * @throws InvalidItemOrTopic invalid item or topic argument
      * @see Topic
      */
     public List<Double>
     getStreamSnapshotDoublesFromMarkerIgnoreDirty(String item, Topic topic, int beg)
-            throws LibraryNotLoaded, CLibException, DataIndexException {
+            throws LibraryNotLoaded, CLibException, DataIndexException, InvalidItemOrTopic {
         return _helper.getStreamSnapshotFromMarkerIgnoreDirty(item, topic, beg, false, 
                 Double.class);
     }
@@ -870,12 +936,13 @@ public class DataBlock {
      * @param topic topic enum of stream
      * @return all data-points up to atomic marker of stream
      * @throws LibraryNotLoaded     C lib has not been loaded
-     * @throws CLibException        error code returned by C lib     
+     * @throws CLibException        error code returned by C lib
+     * @throws InvalidItemOrTopic invalid item or topic argument
      * @see Topic
      */
     public List<String>
     getStreamSnapshotStringsFromMarkerIgnoreDirty(String item, Topic topic)
-            throws LibraryNotLoaded, CLibException {
+            throws LibraryNotLoaded, CLibException, InvalidItemOrTopic {
         return _helper.getStreamSnapshotFromMarkerToMostRecentIgnoreDirty(item, topic, false, 
                 String.class);
     }
@@ -890,12 +957,13 @@ public class DataBlock {
      * @return multiple contiguous data-points up to atomic marker of stream
      * @throws LibraryNotLoaded     C lib has not been loaded
      * @throws CLibException        error code returned by C lib
-     * @throws DataIndexException   invalid index/position value     
+     * @throws DataIndexException   invalid index/position value
+     * @throws InvalidItemOrTopic invalid item or topic argument
      * @see Topic
      */
     public List<String>
     getStreamSnapshotStringsFromMarkerIgnoreDirty(String item, Topic topic, int beg)
-            throws LibraryNotLoaded, CLibException, DataIndexException {
+            throws LibraryNotLoaded, CLibException, DataIndexException, InvalidItemOrTopic {
         return _helper.getStreamSnapshotFromMarkerIgnoreDirty(item, topic, beg, false, 
                 String.class);
     }
@@ -907,10 +975,11 @@ public class DataBlock {
      * @return mapping of item names to most recent item values
      * @throws CLibException    error code returned by C lib
      * @throws LibraryNotLoaded C lib has not been loaded
+     * @throws InvalidItemOrTopic invalid item or topic argument
      * @see Topic
      */
     public Map<String, String>
-    getItemFrame(Topic topic) throws CLibException, LibraryNotLoaded {
+    getItemFrame(Topic topic) throws CLibException, LibraryNotLoaded, InvalidItemOrTopic {
         return _helper.getFrame(topic, true, false);
     }
 
@@ -921,9 +990,10 @@ public class DataBlock {
      * @return mapping of topic enums to most recent topic values
      * @throws CLibException    error code returned by C lib
      * @throws LibraryNotLoaded C lib has not been loaded
+     * @throws InvalidItemOrTopic invalid item or topic argument
      */
     public Map<Topic, String>
-    getTopicFrame(String item) throws CLibException, LibraryNotLoaded {
+    getTopicFrame(String item) throws CLibException, LibraryNotLoaded, InvalidItemOrTopic {
         return _helper.getFrame(item, false, false);
     }
 
@@ -939,7 +1009,13 @@ public class DataBlock {
     getTotalFrame() throws LibraryNotLoaded, CLibException {
         Map<String, Map<Topic, String>> frame = new HashMap<>();
         for (String item : getItems()) {
-            Map<Topic, String> tf = getTopicFrame(item);
+            Map<Topic, String> tf = null;
+            try {
+                tf = getTopicFrame(item);
+            } catch (InvalidItemOrTopic e) {
+                /* SHOULD NEVER GET HERE */
+               throw new RuntimeException("InvalidItemOrTopic caught in getTotalFrame");
+            }
             frame.put(item, tf);
         }
         return frame;
@@ -962,7 +1038,7 @@ public class DataBlock {
         /* suppress DataIndexException */
         public final <T> T
         getMostRecent(String item, Topic topic, boolean withDateTime, Class<?> valType)
-                throws LibraryNotLoaded, CLibException {
+                throws LibraryNotLoaded, CLibException, InvalidItemOrTopic {
             try {
                 return get(item, topic, 0, withDateTime, valType);
             } catch (DataIndexException e) {
@@ -974,11 +1050,9 @@ public class DataBlock {
         @SuppressWarnings("unchecked")
         public final <T> T
         get(String item, Topic topic, int indx, boolean withDateTime, Class<?> valType)
-                throws LibraryNotLoaded, CLibException, DataIndexException {
-            item = item.toUpperCase();
-            _isValidItem(item);
-            _isValidTopic(topic);
-
+                throws LibraryNotLoaded, CLibException, DataIndexException, InvalidItemOrTopic
+        {
+            item = _handleRawItemTopic(item,topic,true);
             if (indx < 0) {
                 indx += _size;
             }
@@ -988,7 +1062,6 @@ public class DataBlock {
             if (indx >= getStreamOccupancy(item, topic)) {
                 return null;
             }
-
             return _nativeAccessByType(valType,"_get","", new Class<?>[]{String.class, Topic.class, 
                             int.class, boolean.class}, item, topic, indx, withDateTime);
         }
@@ -996,7 +1069,7 @@ public class DataBlock {
         /* suppress DataIndexException */
         public final <T> List<T>
         getStreamSnapshotAll(String item, Topic topic, boolean withDateTime, Class<?> valType)
-                throws LibraryNotLoaded, CLibException {
+                throws LibraryNotLoaded, CLibException, InvalidItemOrTopic {
             try {
                 return getStreamSnapshot(item, topic, -1, 0, true, withDateTime, valType);
             } catch (DataIndexException e) {
@@ -1009,11 +1082,10 @@ public class DataBlock {
         public final <T> List<T>
         getStreamSnapshot(String item, Topic topic, int end, int beg, boolean smartSize,
                           boolean withDateTime, Class<?> valType)
-                throws LibraryNotLoaded, CLibException, DataIndexException {
-            item = item.toUpperCase();
-            _isValidItem(item);
-            _isValidTopic(topic);
-
+                throws LibraryNotLoaded, CLibException, DataIndexException,
+                InvalidItemOrTopic
+        {
+            item = _handleRawItemTopic(item,topic,true);
             if (end < 0) {
                 end += _size;
             }
@@ -1042,9 +1114,10 @@ public class DataBlock {
 
         /* suppress DirtyMarkerException */
         public final <T> List<T>
-        getStreamSnapshotFromMarkerIgnoreDirty(String item, Topic topic, int beg, boolean withDateTime,
-                                               Class<?> valType)
-                throws LibraryNotLoaded, CLibException, DataIndexException {
+        getStreamSnapshotFromMarkerIgnoreDirty(String item, Topic topic, int beg,
+                                               boolean withDateTime, Class<?> valType)
+                throws LibraryNotLoaded, CLibException, DataIndexException,
+                InvalidItemOrTopic {
             try {
                 return getStreamSnapshotFromMarker(item, topic, beg, false, withDateTime, valType);
             } catch (DirtyMarkerException e) {
@@ -1058,7 +1131,8 @@ public class DataBlock {
         public final <T> List<T>
         getStreamSnapshotFromMarkerToMostRecent(String item, Topic topic, boolean withDateTime,
                                                 Class<?> valType)
-                throws LibraryNotLoaded, CLibException, DirtyMarkerException {
+                throws LibraryNotLoaded, CLibException, DirtyMarkerException,
+                InvalidItemOrTopic {
             try {
                 return getStreamSnapshotFromMarker(item, topic, 0, true, withDateTime, valType);
             } catch (DataIndexException e) {
@@ -1072,7 +1146,7 @@ public class DataBlock {
         public final <T> List<T>
         getStreamSnapshotFromMarkerToMostRecentIgnoreDirty(String item, Topic topic,
                                                            boolean withDateTime, Class<?> valType)
-                throws LibraryNotLoaded, CLibException {
+                throws LibraryNotLoaded, CLibException, InvalidItemOrTopic {
             try {
                 return getStreamSnapshotFromMarker(item, topic, 0, false, withDateTime, valType);
             } catch (DataIndexException e) {
@@ -1090,11 +1164,10 @@ public class DataBlock {
         public final <T> List<T>
         getStreamSnapshotFromMarker(String item, Topic topic, int beg, boolean throwIfDataLost,
                                     boolean withDateTime, Class<?> valType)
-                throws LibraryNotLoaded, CLibException, DataIndexException, DirtyMarkerException {
-            item = item.toUpperCase();
-            _isValidItem(item);
-            _isValidTopic(topic);
-
+                throws LibraryNotLoaded, CLibException, DataIndexException, DirtyMarkerException,
+                InvalidItemOrTopic
+        {
+            item = _handleRawItemTopic(item,topic,true);
             if (beg < 0) {
                 beg += _size;
             }
@@ -1124,15 +1197,15 @@ public class DataBlock {
 
         public final <T, E, X> Map<X, T>
         getFrame(E e, boolean itemFrame, boolean withDateTime)
-                throws CLibException, LibraryNotLoaded {
+                throws CLibException, LibraryNotLoaded, InvalidItemOrTopic
+        {
             if (itemFrame) {
-                _isValidTopic((Topic) e);
+                _handleRawTopic((Topic)e, true);
             } else {
-                _isValidItem(((String) e).toUpperCase());
+                _handleRawItem((String)e, true);
             }
 
             int n = itemFrame ? _getItemCount() : _getTopicCount();
-
             Pointer[] vals = new Pointer[n];
             Pointer[] labels = new Pointer[n];
             for (int i = 0; i < n; ++i) {
@@ -1186,6 +1259,44 @@ public class DataBlock {
         }
     } /* class DataBlockSharedHelper */
 
+
+    private String
+    _handleRawItem(String item, boolean throwIfNotInBlock)
+            throws CLibException, LibraryNotLoaded, InvalidItemOrTopic {
+        if(item == null)
+            throw new NullPointerException("null item string");
+        item = item.toUpperCase();
+        int slen = item.length();
+        if(slen < 1 || slen > MAX_STR_SZ){
+            throw new InvalidItemOrTopic("invalid string length: " + slen);
+        }
+        if(throwIfNotInBlock && !_items.contains(item)) {
+            throw new InvalidItemOrTopic("item not in block: " + item);
+        }
+        return item;
+    }
+
+    private void
+    _handleRawTopic(Topic topic, boolean throwIfNotInBlock)
+            throws CLibException, LibraryNotLoaded, InvalidItemOrTopic {
+        if(topic == null){
+            throw new NullPointerException("null topic enum");
+        }
+        if(topic == Topic.NULL_TOPIC){
+            throw new InvalidItemOrTopic("'NULL_TOPIC' is not a valid Topic");
+        }
+        if(throwIfNotInBlock && !_topics.contains(topic)){
+            throw new InvalidItemOrTopic("topic not in block: " + topic);
+        }
+    }
+
+    private String
+    _handleRawItemTopic(String item, Topic topic, boolean throwIfNotInBlock)
+            throws CLibException, LibraryNotLoaded, InvalidItemOrTopic {
+        _handleRawTopic(topic, throwIfNotInBlock);
+        return _handleRawItem(item, throwIfNotInBlock);
+    }
+
     private int
     _getBlockSize() throws LibraryNotLoaded, CLibException {
         int[] size = {0};
@@ -1194,26 +1305,6 @@ public class DataBlock {
             throw new CLibException("TOSDB_GetBlockSize", err);
         }
         return size[0];
-    }
-
-    private void
-    _isValidItem(String item) throws IllegalArgumentException, CLibException, LibraryNotLoaded {
-        if (_items.isEmpty()) {
-            _items = getItems();
-        }
-        if (!_items.contains(item)) {
-            throw new IllegalArgumentException("item " + item + " not found");
-        }
-    }
-
-    private void
-    _isValidTopic(Topic topic) throws IllegalArgumentException, CLibException, LibraryNotLoaded {
-        if (_topics.isEmpty()) {
-            _topics = getTopics();
-        }
-        if (!_topics.contains(topic)) {
-            throw new IllegalArgumentException("topic " + topic + " not found");
-        }
     }
 
     private int

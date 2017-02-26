@@ -62,12 +62,15 @@ As mentioned, the java wrapper mirrors the python wrapper in many important ways
     switch( TOSDataBridge.connectionState() ){
     case TOSDataBridge.CONN_NONN:
         // Not connected to engine
+        // TOSDataBridge.connected() == false;
         break;
     case TOSDataBridge.CONN_ENGINE:
         // Only connected to Engine (only access to admin calls)    
+        // TOSDataBridge.connected() == false;
         break;
     case TOSDataBridge.CONN_ENGINE_TOS:
         // Connected to Engine AND TOS Platform (can get data from engine/platform)
+        // TOSDataBridge.connected() == true;
         break;
     }
 
@@ -104,19 +107,27 @@ Clearly we need items AND topics. Items(topics) added before any topics(items) e
 
     import io.github.jeog.tosdatabridge.Topic
 
-    blockDT.addItem("SPY"); // goes into pre-cache 
-    blockDT.addItem("QQQ"); // goes into pre-cache 
+    try{
+        blockDT.addItem("SPY"); // goes into pre-cache 
+        blockDT.addItem("QQQ"); // goes into pre-cache 
 
-    Set<String> myPrecachedItems = blockDT.getItemsPreCached() // {'SPY','QQQ'}
+        Set<String> myPrecachedItems = blockDT.getItemsPreCached() // {'SPY','QQQ'}
 
-    blockDT.addTopic(Topic.LAST); // pulls items out of pre-cache 
+        blockDT.addTopic(Topic.LAST); // pulls items out of pre-cache 
      
-    Set<String> myItems = blockDT.getItems(); // {'SPY','QQQ'}
-    Set<Topic> myTopics = blockDT.getTopics(); // {Topic.LAST}
-    myPrecachedItems = blockDT.getItemsPreCached() // { }
+        Set<String> myItems = blockDT.getItems(); // {'SPY','QQQ'}
+        Set<Topic> myTopics = blockDT.getTopics(); // {Topic.LAST}
+        myPrecachedItems = blockDT.getItemsPreCached() // { }
 
-    blockDT.removeTopic(Topic.LAST); // items go back into pre-cache
+        blockDT.removeTopic(Topic.LAST); // items go back into pre-cache
 
+    }catch(LibraryNotLoaded){
+        // init(...) was not successfull or the library was freed (all methods can throw this)
+    }catch(CLibException){
+        // an error was thrown from the C Lib (see CError.java) (all methods can throw this)
+    }catch(InvalidItemOrTopic){
+        // item string was empty, too long, or null; topic enum was null or NULL_TOPIC
+    }
 
 ##### Get Data-Point from a Stream
 
@@ -153,9 +164,14 @@ Like the C/C++ interfaces we have type-specific calls. If you call the wrong ver
         // init(...) was not successfull or the library was freed (all methods can throw this)
     }catch(CLibException){
         // an error was thrown from the C Lib (see CError.java) (all methods can throw this)
+    }catch(InvalidItemOrTopic){
+        /* item string was empty, too long, or null; topic enum was null or NULL_TOPIC -or-
+           item or topic is currently not in the block -or-
+           item or topic is currently in the pre-cache */
     }catch(DataIndexException){
         // we tried to access data in a position that isn't possible for that block size
     }
+
 
 'WithDateTime' versions return DateTimePair object(s):
 
@@ -233,6 +249,10 @@ Methods with a plural type in the name(e.g getStreamSnapshotLongs) return a List
         // init(...) was not successfull or the library was freed (all methods can throw this)
     }catch(CLibException){
         // an error was thrown from the C Lib (see CError.java) (all methods can throw this)
+    }catch(InvalidItemOrTopic){
+        /* item string was empty, too long, or null; topic enum was null or NULL_TOPIC -or-
+           item or topic is currently not in the block -or-
+           item or topic is currently in the pre-cache */
     }catch(DataIndexException){
         // we tried to access data in a position that isn't possible for that block size
     }catch((DirtyMarkerException){
@@ -264,6 +284,10 @@ Frame methods are used to get most recent data (as strings) in some 'logical' wa
         // init(...) was not successfull or the library was freed (all methods can throw this)
     }catch(CLibException){
         // an error was thrown from the C Lib (see CError.java) (all methods can throw this)
+    }catch(InvalidItemOrTopic){
+        /* item string was empty, too long, or null; topic enum was null or NULL_TOPIC -or-
+           item or topic is currently not in the block -or-
+           item or topic is currently in the pre-cache */
     }
 ```
 

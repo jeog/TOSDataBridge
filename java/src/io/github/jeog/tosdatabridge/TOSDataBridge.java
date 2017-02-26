@@ -77,6 +77,12 @@ public final class TOSDataBridge{
         }
     }
 
+    public static class InvalidItemOrTopic extends DataBlockException{
+        InvalidItemOrTopic(String info) {
+            super(info);
+        }
+    }
+
     public static class DataIndexException extends DataBlockException{
         DataIndexException(String info) {
             super(info);

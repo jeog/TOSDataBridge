@@ -107,10 +107,12 @@ public class DataBlockWithDateTime extends DataBlock {
      * @return most recent data-point and DateTime of stream (or null)
      * @throws CLibException    error code returned by C lib
      * @throws LibraryNotLoaded C lib has not been loaded
+     * @throws InvalidItemOrTopic invalid item or topic argument
      * @see Topic
      */
     public DateTimePair<Long>
-    getLongWithDateTime(String item, Topic topic) throws CLibException, LibraryNotLoaded {
+    getLongWithDateTime(String item, Topic topic)
+            throws CLibException, LibraryNotLoaded, InvalidItemOrTopic {
         return getHelper().getMostRecent(item, topic, true, Long.class);
     }
 
@@ -125,11 +127,12 @@ public class DataBlockWithDateTime extends DataBlock {
      * @throws CLibException      error code returned by C lib
      * @throws LibraryNotLoaded   C lib has not been loaded
      * @throws DataIndexException invalid index/position value
+     * @throws InvalidItemOrTopic invalid item or topic argument
      * @see Topic
      */
     public DateTimePair<Long>
     getLongWithDateTime(String item, Topic topic,int indx)
-            throws CLibException, LibraryNotLoaded, DataIndexException {
+            throws CLibException, LibraryNotLoaded, DataIndexException, InvalidItemOrTopic {
         return getHelper().get(item,topic, indx, true, Long.class);
     }
 
@@ -142,10 +145,12 @@ public class DataBlockWithDateTime extends DataBlock {
      * @return most recent data-point and DateTime of stream (or null)
      * @throws CLibException    error code returned by C lib
      * @throws LibraryNotLoaded C lib has not been loaded
+     * @throws InvalidItemOrTopic invalid item or topic argument
      * @see Topic
      */
     public DateTimePair<Double>
-    getDoubleWithDateTime(String item, Topic topic) throws CLibException, LibraryNotLoaded {
+    getDoubleWithDateTime(String item, Topic topic)
+            throws CLibException, LibraryNotLoaded, InvalidItemOrTopic {
         return getHelper().getMostRecent(item, topic, true, Double.class);
     }
 
@@ -160,11 +165,12 @@ public class DataBlockWithDateTime extends DataBlock {
      * @throws CLibException      error code returned by C lib
      * @throws LibraryNotLoaded   C lib has not been loaded
      * @throws DataIndexException invalid index/position value
+     * @throws InvalidItemOrTopic invalid item or topic argument
      * @see Topic
      */
     public DateTimePair<Double>
     getDoubleWithDateTime(String item, Topic topic,int indx)
-            throws CLibException, LibraryNotLoaded, DataIndexException {
+            throws CLibException, LibraryNotLoaded, DataIndexException, InvalidItemOrTopic {
         return getHelper().get(item,topic, indx, true, Double.class);
     }
 
@@ -177,10 +183,12 @@ public class DataBlockWithDateTime extends DataBlock {
      * @return most recent data-point and DateTime of stream (or null)
      * @throws CLibException    error code returned by C lib
      * @throws LibraryNotLoaded C lib has not been loaded
+     * @throws InvalidItemOrTopic invalid item or topic argument
      * @see Topic
      */
     public DateTimePair<String>
-    getStringWithDateTime(String item, Topic topic) throws CLibException, LibraryNotLoaded {
+    getStringWithDateTime(String item, Topic topic)
+            throws CLibException, LibraryNotLoaded, InvalidItemOrTopic {
         return getHelper().getMostRecent(item, topic, true, String.class);
     }
 
@@ -195,11 +203,12 @@ public class DataBlockWithDateTime extends DataBlock {
      * @throws CLibException      error code returned by C lib
      * @throws LibraryNotLoaded   C lib has not been loaded
      * @throws DataIndexException invalid index/position value
+     * @throws InvalidItemOrTopic invalid item or topic argument
      * @see Topic
      */
     public DateTimePair<String>
     getStringWithDateTime(String item, Topic topic,int indx)
-            throws CLibException, LibraryNotLoaded, DataIndexException {
+            throws CLibException, LibraryNotLoaded, DataIndexException, InvalidItemOrTopic {
         return getHelper().get(item, topic, indx, true, String.class);
     }
 
@@ -212,11 +221,12 @@ public class DataBlockWithDateTime extends DataBlock {
      * @return all data-points and DateTime(s) of stream
      * @throws LibraryNotLoaded C lib has not been loaded
      * @throws CLibException    error code returned by C lib
+     * @throws InvalidItemOrTopic invalid item or topic argument
      * @see Topic
      */
     public List<DateTimePair<Long>>
     getStreamSnapshotLongsWithDateTime(String item, Topic topic)
-            throws LibraryNotLoaded, CLibException {
+            throws LibraryNotLoaded, CLibException, InvalidItemOrTopic {
         return getHelper().getStreamSnapshotAll(item, topic, true, Long.class);
     }
 
@@ -231,11 +241,12 @@ public class DataBlockWithDateTime extends DataBlock {
      * @throws LibraryNotLoaded   C lib has not been loaded
      * @throws CLibException      error code returned by C lib
      * @throws DataIndexException invalid index/position value
+     * @throws InvalidItemOrTopic invalid item or topic argument
      * @see Topic
      */
     public List<DateTimePair<Long>>
     getStreamSnapshotLongsWithDateTime(String item, Topic topic, int end)
-            throws LibraryNotLoaded, CLibException, DataIndexException {
+            throws LibraryNotLoaded, CLibException, DataIndexException, InvalidItemOrTopic {
         return getHelper().getStreamSnapshot(item, topic, end, 0, true, true, Long.class);
     }
 
@@ -251,11 +262,12 @@ public class DataBlockWithDateTime extends DataBlock {
      * @throws LibraryNotLoaded   C lib has not been loaded
      * @throws CLibException      error code returned by C lib
      * @throws DataIndexException invalid index/position value
+     * @throws InvalidItemOrTopic invalid item or topic argument
      * @see Topic
      */
     public List<DateTimePair<Long>>
     getStreamSnapshotLongsWithDateTime(String item, Topic topic, int end, int beg)
-            throws LibraryNotLoaded, CLibException, DataIndexException {
+            throws LibraryNotLoaded, CLibException, DataIndexException, InvalidItemOrTopic {
         return getHelper().getStreamSnapshot(item, topic, end, beg, true, true, Long.class);
     }
 
@@ -268,11 +280,12 @@ public class DataBlockWithDateTime extends DataBlock {
      * @return all data-points and DateTime(s) of stream
      * @throws LibraryNotLoaded C lib has not been loaded
      * @throws CLibException    error code returned by C lib
+     * @throws InvalidItemOrTopic invalid item or topic argument
      * @see Topic
      */
     public List<DateTimePair<Double>>
     getStreamSnapshotDoublesWithDateTime(String item, Topic topic)
-            throws LibraryNotLoaded, CLibException {
+            throws LibraryNotLoaded, CLibException, InvalidItemOrTopic {
         return getHelper().getStreamSnapshotAll(item, topic, true, Double.class);
     }
 
@@ -287,11 +300,12 @@ public class DataBlockWithDateTime extends DataBlock {
      * @throws LibraryNotLoaded   C lib has not been loaded
      * @throws CLibException      error code returned by C lib
      * @throws DataIndexException invalid index/position value
+     * @throws InvalidItemOrTopic invalid item or topic argument
      * @see Topic
      */
     public List<DateTimePair<Double>>
     getStreamSnapshotDoublesWithDateTime(String item, Topic topic, int end)
-            throws LibraryNotLoaded, CLibException, DataIndexException {
+            throws LibraryNotLoaded, CLibException, DataIndexException, InvalidItemOrTopic {
         return getHelper().getStreamSnapshot(item, topic, end, 0, true, true, Double.class);
     }
 
@@ -307,11 +321,12 @@ public class DataBlockWithDateTime extends DataBlock {
      * @throws LibraryNotLoaded   C lib has not been loaded
      * @throws CLibException      error code returned by C lib
      * @throws DataIndexException invalid index/position value
+     * @throws InvalidItemOrTopic invalid item or topic argument
      * @see Topic
      */
     public List<DateTimePair<Double>>
     getStreamSnapshotDoublesWithDateTime(String item, Topic topic, int end, int beg)
-            throws LibraryNotLoaded, CLibException, DataIndexException {
+            throws LibraryNotLoaded, CLibException, DataIndexException, InvalidItemOrTopic {
         return getHelper().getStreamSnapshot(item, topic, end, beg, true, true, Double.class);
     }
 
@@ -324,11 +339,12 @@ public class DataBlockWithDateTime extends DataBlock {
      * @return all data-points and DateTime(s) of stream
      * @throws LibraryNotLoaded C lib has not been loaded
      * @throws CLibException    error code returned by C lib
+     * @throws InvalidItemOrTopic invalid item or topic argument
      * @see Topic
      */
     public List<DateTimePair<String>>
     getStreamSnapshotStringsWithDateTime(String item, Topic topic) 
-            throws LibraryNotLoaded, CLibException {
+            throws LibraryNotLoaded, CLibException, InvalidItemOrTopic {
         return getHelper().getStreamSnapshotAll(item, topic, true, String.class);
     }
 
@@ -343,11 +359,12 @@ public class DataBlockWithDateTime extends DataBlock {
      * @throws LibraryNotLoaded   C lib has not been loaded
      * @throws CLibException      error code returned by C lib
      * @throws DataIndexException invalid index/position value
+     * @throws InvalidItemOrTopic invalid item or topic argument
      * @see Topic
      */
     public List<DateTimePair<String>>
     getStreamSnapshotStringsWithDateTime(String item, Topic topic, int end)
-            throws LibraryNotLoaded, CLibException, DataIndexException {
+            throws LibraryNotLoaded, CLibException, DataIndexException, InvalidItemOrTopic {
         return getHelper().getStreamSnapshot(item, topic, end, 0, true, true, String.class);
     }
 
@@ -363,11 +380,12 @@ public class DataBlockWithDateTime extends DataBlock {
      * @throws LibraryNotLoaded   C lib has not been loaded
      * @throws CLibException      error code returned by C lib
      * @throws DataIndexException invalid index/position value
+     * @throws InvalidItemOrTopic invalid item or topic argument
      * @see Topic
      */
     public List<DateTimePair<String>>
     getStreamSnapshotStringsWithDateTime(String item, Topic topic, int end, int beg)
-            throws LibraryNotLoaded, CLibException, DataIndexException {
+            throws LibraryNotLoaded, CLibException, DataIndexException, InvalidItemOrTopic {
         return getHelper().getStreamSnapshot(item, topic, end, beg, true, true, String.class);
     }
 
@@ -381,11 +399,13 @@ public class DataBlockWithDateTime extends DataBlock {
      * @throws LibraryNotLoaded     C lib has not been loaded
      * @throws CLibException        error code returned by C lib
      * @throws DirtyMarkerException marker is 'dirty' (data lost behind it)
+     * @throws InvalidItemOrTopic invalid item or topic argument
      * @see Topic
      */
     public List<DateTimePair<Long>>
     getStreamSnapshotLongsFromMarkerWithDateTime(String item, Topic topic)
-            throws LibraryNotLoaded, CLibException, DirtyMarkerException {
+            throws LibraryNotLoaded, CLibException, DirtyMarkerException,
+            InvalidItemOrTopic {
         return getHelper().getStreamSnapshotFromMarkerToMostRecent(item, topic, true, Long.class);
     }
 
@@ -401,11 +421,13 @@ public class DataBlockWithDateTime extends DataBlock {
      * @throws CLibException        error code returned by C lib
      * @throws DataIndexException   invalid index/position value
      * @throws DirtyMarkerException marker is 'dirty' (data lost behind it)
+     * @throws InvalidItemOrTopic invalid item or topic argument
      * @see Topic
      */
     public List<DateTimePair<Long>>
     getStreamSnapshotLongsFromMarkerWithDateTime(String item, Topic topic, int beg)
-            throws LibraryNotLoaded, CLibException, DataIndexException, DirtyMarkerException {
+            throws LibraryNotLoaded, CLibException, DataIndexException, DirtyMarkerException,
+            InvalidItemOrTopic {
         return getHelper().getStreamSnapshotFromMarker(item, topic, beg, true, true, Long.class);
     }
 
@@ -419,11 +441,13 @@ public class DataBlockWithDateTime extends DataBlock {
      * @throws LibraryNotLoaded     C lib has not been loaded
      * @throws CLibException        error code returned by C lib
      * @throws DirtyMarkerException marker is 'dirty' (data lost behind it)
+     * @throws InvalidItemOrTopic invalid item or topic argument
      * @see Topic
      */
     public List<DateTimePair<Double>>
     getStreamSnapshotDoublesFromMarkerWithDateTime(String item, Topic topic)
-            throws LibraryNotLoaded, CLibException, DirtyMarkerException {
+            throws LibraryNotLoaded, CLibException, DirtyMarkerException,
+            InvalidItemOrTopic {
         return getHelper().getStreamSnapshotFromMarkerToMostRecent(item, topic, true, Double.class);
     }
 
@@ -439,11 +463,13 @@ public class DataBlockWithDateTime extends DataBlock {
      * @throws CLibException        error code returned by C lib
      * @throws DataIndexException   invalid index/position value
      * @throws DirtyMarkerException marker is 'dirty' (data lost behind it)
+     * @throws InvalidItemOrTopic invalid item or topic argument
      * @see Topic
      */
     public List<DateTimePair<Double>>
     getStreamSnapshotDoublesFromMarkerWithDateTime(String item, Topic topic, int beg)
-            throws LibraryNotLoaded, CLibException, DataIndexException, DirtyMarkerException {
+            throws LibraryNotLoaded, CLibException, DataIndexException, DirtyMarkerException,
+            InvalidItemOrTopic {
         return getHelper().getStreamSnapshotFromMarker(item, topic, beg, true, true, Double.class);
     }
 
@@ -457,11 +483,13 @@ public class DataBlockWithDateTime extends DataBlock {
      * @throws LibraryNotLoaded     C lib has not been loaded
      * @throws CLibException        error code returned by C lib
      * @throws DirtyMarkerException marker is 'dirty' (data lost behind it)
+     * @throws InvalidItemOrTopic invalid item or topic argument
      * @see Topic
      */
     public List<DateTimePair<String>>
     getStreamSnapshotStringsFromMarkerWithDateTime(String item, Topic topic)
-            throws LibraryNotLoaded, CLibException, DirtyMarkerException {
+            throws LibraryNotLoaded, CLibException, DirtyMarkerException,
+            InvalidItemOrTopic {
         return getHelper().getStreamSnapshotFromMarkerToMostRecent(item, topic, true, String.class);
     }
 
@@ -477,11 +505,13 @@ public class DataBlockWithDateTime extends DataBlock {
      * @throws CLibException        error code returned by C lib
      * @throws DataIndexException   invalid index/position value
      * @throws DirtyMarkerException marker is 'dirty' (data lost behind it)
+     * @throws InvalidItemOrTopic invalid item or topic argument
      * @see Topic
      */
     public List<DateTimePair<String>>
     getStreamSnapshotStringsFromMarkerWithDateTime(String item, Topic topic, int beg)
-            throws LibraryNotLoaded, CLibException, DataIndexException, DirtyMarkerException {
+            throws LibraryNotLoaded, CLibException, DataIndexException, DirtyMarkerException,
+            InvalidItemOrTopic {
         return getHelper().getStreamSnapshotFromMarker(item, topic, beg, true, true, String.class);
     }
 
@@ -494,11 +524,12 @@ public class DataBlockWithDateTime extends DataBlock {
      * @return all data-points and DateTime(s) up to atomic marker of stream
      * @throws LibraryNotLoaded     C lib has not been loaded
      * @throws CLibException        error code returned by C lib
+     * @throws InvalidItemOrTopic invalid item or topic argument
      * @see Topic
      */
     public List<DateTimePair<Long>>
     getStreamSnapshotLongsFromMarkerWithDateTimeIgnoreDirty(String item, Topic topic)
-            throws LibraryNotLoaded, CLibException {
+            throws LibraryNotLoaded, CLibException, InvalidItemOrTopic {
         return getHelper().getStreamSnapshotFromMarkerToMostRecentIgnoreDirty(item, topic,
                 true, Long.class);
     }
@@ -514,11 +545,12 @@ public class DataBlockWithDateTime extends DataBlock {
      * @throws LibraryNotLoaded     C lib has not been loaded
      * @throws CLibException        error code returned by C lib
      * @throws DataIndexException   invalid index/position value
+     * @throws InvalidItemOrTopic invalid item or topic argument
      * @see Topic
      */
     public List<DateTimePair<Long>>
     getStreamSnapshotLongsFromMarkerWithDateTimeIgnoreDirty(String item, Topic topic, int beg)
-            throws LibraryNotLoaded, CLibException, DataIndexException {
+            throws LibraryNotLoaded, CLibException, DataIndexException, InvalidItemOrTopic {
         return getHelper().getStreamSnapshotFromMarkerIgnoreDirty(item, topic, beg, true,
                 Long.class);
     }
@@ -532,11 +564,12 @@ public class DataBlockWithDateTime extends DataBlock {
      * @return all data-points and DateTime(s) up to atomic marker of stream
      * @throws LibraryNotLoaded     C lib has not been loaded
      * @throws CLibException        error code returned by C lib
+     * @throws InvalidItemOrTopic invalid item or topic argument
      * @see Topic
      */
     public List<DateTimePair<Double>>
     getStreamSnapshotDoublesFromMarkerWithDateTimeIgnoreDirty(String item, Topic topic)
-            throws LibraryNotLoaded, CLibException {
+            throws LibraryNotLoaded, CLibException, InvalidItemOrTopic {
         return getHelper().getStreamSnapshotFromMarkerToMostRecentIgnoreDirty(item, topic,
                 true, Double.class);
     }
@@ -552,11 +585,12 @@ public class DataBlockWithDateTime extends DataBlock {
      * @throws LibraryNotLoaded     C lib has not been loaded
      * @throws CLibException        error code returned by C lib
      * @throws DataIndexException   invalid index/position value
+     * @throws InvalidItemOrTopic invalid item or topic argument
      * @see Topic
      */
     public List<DateTimePair<Double>>
     getStreamSnapshotDoublesFromMarkerWithDateTimeIgnoreDirty(String item, Topic topic, int beg)
-            throws LibraryNotLoaded, CLibException, DataIndexException {
+            throws LibraryNotLoaded, CLibException, DataIndexException, InvalidItemOrTopic {
         return getHelper().getStreamSnapshotFromMarkerIgnoreDirty(item, topic, beg, true,
                 Double.class);
     }
@@ -570,11 +604,12 @@ public class DataBlockWithDateTime extends DataBlock {
      * @return all data-points and DateTime(s) up to atomic marker of stream
      * @throws LibraryNotLoaded     C lib has not been loaded
      * @throws CLibException        error code returned by C lib
+     * @throws InvalidItemOrTopic invalid item or topic argument
      * @see Topic
      */
     public List<DateTimePair<String>>
     getStreamSnapshotStringsFromMarkerWithDateTimeIgnoreDirty(String item, Topic topic)
-            throws LibraryNotLoaded, CLibException {
+            throws LibraryNotLoaded, CLibException, InvalidItemOrTopic {
         return getHelper().getStreamSnapshotFromMarkerToMostRecentIgnoreDirty(item, topic,
                 true, String.class);
     }
@@ -590,11 +625,12 @@ public class DataBlockWithDateTime extends DataBlock {
      * @throws LibraryNotLoaded     C lib has not been loaded
      * @throws CLibException        error code returned by C lib
      * @throws DataIndexException   invalid index/position value
+     * @throws InvalidItemOrTopic invalid item or topic argument
      * @see Topic
      */
     public List<DateTimePair<String>>
     getStreamSnapshotStringsFromMarkerWithDateTimeIgnoreDirty(String item, Topic topic, int beg)
-            throws LibraryNotLoaded, CLibException, DataIndexException {
+            throws LibraryNotLoaded, CLibException, DataIndexException, InvalidItemOrTopic {
         return getHelper().getStreamSnapshotFromMarkerIgnoreDirty(item, topic, beg, true,
                 String.class);
     }
@@ -607,10 +643,12 @@ public class DataBlockWithDateTime extends DataBlock {
      * @return mapping of item names to most recent item values and DateTime(s)
      * @throws CLibException    error code returned by C lib
      * @throws LibraryNotLoaded C lib has not been loaded
+     * @throws InvalidItemOrTopic invalid item or topic argument
      * @see Topic
      */
     public Map<String,DateTimePair<String>>
-    getItemFrameWithDateTime(Topic topic) throws CLibException, LibraryNotLoaded {
+    getItemFrameWithDateTime(Topic topic)
+            throws CLibException, LibraryNotLoaded, InvalidItemOrTopic {
         return getHelper().getFrame(topic, true,true);
     }
 
@@ -622,9 +660,11 @@ public class DataBlockWithDateTime extends DataBlock {
      * @return mapping of topic enums to most recent topic values and DateTime(s)
      * @throws CLibException    error code returned by C lib
      * @throws LibraryNotLoaded C lib has not been loaded
+     * @throws InvalidItemOrTopic invalid item or topic argument
      */
     public Map<Topic,DateTimePair<String>>
-    getTopicFrameWithDateTime(String item) throws CLibException, LibraryNotLoaded {
+    getTopicFrameWithDateTime(String item)
+            throws CLibException, LibraryNotLoaded, InvalidItemOrTopic {
         return getHelper().getFrame(item, false,true);
     }
 
@@ -641,8 +681,14 @@ public class DataBlockWithDateTime extends DataBlock {
     getTotalFrameWithDateTime() throws LibraryNotLoaded, CLibException {
         Map<String, Map<Topic,DateTimePair<String>>> frame = new HashMap<>();
         for(String item : getItems()){
-            Map<Topic,DateTimePair<String>> tf = getTopicFrameWithDateTime(item);
-            frame.put(item, tf);
+            try {
+                Map<Topic,DateTimePair<String>> tf = getTopicFrameWithDateTime(item);
+                frame.put(item, tf);
+            } catch (InvalidItemOrTopic e) {
+                /* SHOULD NEVER GET HERE */
+                throw new RuntimeException("InvalidItemOrTopic caught in " +
+                        "getTotalFrameWithDateTime");
+            }
         }
         return frame;
     }
