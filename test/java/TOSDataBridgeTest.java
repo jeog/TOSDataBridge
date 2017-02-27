@@ -270,21 +270,41 @@ public class TOSDataBridgeTest {
         block.addItem(item2);
         printBlockItemsTopics(block);
 
+        System.out.println("Remove item: " + item2);
+        block.removeItem(item2);
+        printBlockItemsTopics(block);
+
+        System.out.println("Add item: " + item2);
+        block.addItem(item2);
+        printBlockItemsTopics(block);
+
+        System.out.print("check containsItemPreCached: ");
+        if(!block.containsItemPreCached(item1) || !block.containsItemPreCached(item2)){
+            System.out.println("FAILURE");
+            throw new IllegalStateException("containsItem failed");
+        }
+        System.out.println("SUCCESS");
+        System.out.println();
+
         System.out.println("Add topic: " + topic1);
         block.addTopic(topic1);
         printBlockItemsTopics(block);
 
-        System.out.println("Remove item: " + item1);
+        System.out.println("Remove ALL items");
         block.removeItem(item1);
+        block.removeItem(item2);
         printBlockItemsTopics(block);
+
+        System.out.print("check containsTopicPreCached: ");
+        if(!block.containsTopicPreCached(topic1)){
+            System.out.println("FAILURE");
+            throw new IllegalStateException("containsTopic failed");
+        }
+        System.out.println("SUCCESS");
+        System.out.println();
 
         System.out.println("Remove Topic: " + topic1);
         block.removeTopic(topic1);
-        printBlockItemsTopics(block);
-
-        System.out.println("Add ALL items");
-        block.addItem(item1);
-        block.addItem(item2);
         printBlockItemsTopics(block);
 
         System.out.println("Add ALL topics");
@@ -292,6 +312,36 @@ public class TOSDataBridgeTest {
         block.addTopic(topic2);
         block.addTopic(topic3);
         printBlockItemsTopics(block);
+
+        System.out.println("Remove Topic: " + topic2);
+        block.removeTopic(topic2);
+        printBlockItemsTopics(block);
+
+        System.out.println("Add ALL items");
+        block.addItem(item1);
+        block.addItem(item2);
+        printBlockItemsTopics(block);
+
+        System.out.println("Add topic: " + topic2);
+        block.addTopic(topic2);
+        printBlockItemsTopics(block);
+
+        System.out.print("check containsTopic: ");
+        if(!block.containsTopic(topic1) || !block.containsTopic(topic2)
+                || !block.containsTopic(topic3)){
+            System.out.println("FAILURE");
+            throw new IllegalStateException("containsTopic failed");
+        }
+        System.out.println("SUCCESS");
+        System.out.println();
+
+        System.out.print("check containsItem: ");
+        if(!block.containsItem(item1) || !block.containsItem(item2)){
+            System.out.println("FAILURE");
+            throw new IllegalStateException("containsItem failed");
+        }
+        System.out.println("SUCCESS");
+        System.out.println();
 
         System.out.println("***SLEEP FOR " + String.valueOf(SLEEP_PERIOD) + " MILLISECONDS***");
         Thread.sleep(SLEEP_PERIOD);

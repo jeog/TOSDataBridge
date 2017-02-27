@@ -59,19 +59,25 @@ public final class TOSDataBridge{
     public static final int DEF_TIMEOUT = 2000;
     public static final int MARKER_MARGIN_OF_SAFETY = 100;
 
-    public static class LibraryNotLoaded extends Exception{
+    public static class TOSDataBridgeException extends Exception{
+        TOSDataBridgeException(String info){
+            super(info);
+        }
+    }
+
+    public static class LibraryNotLoaded extends TOSDataBridgeException{
         LibraryNotLoaded(){
             super("library not loaded");
         }
     }
 
-    public static class CLibException extends Exception{
+    public static class CLibException extends TOSDataBridgeException{
         CLibException(String callStr, int errorCode){
             super("CLib call [" + callStr + "] failed; " + CError.errorLookup(errorCode));
         }
     }
 
-    public static class DataBlockException extends Exception{
+    public static class DataBlockException extends TOSDataBridgeException{
         DataBlockException(String info){
             super(info);
         }

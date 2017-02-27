@@ -95,8 +95,10 @@ public class DataBlock {
     private final String _name;
     private final int _timeout;
     private int _size;
-    private Set<String> _items;
-    private Set<Topic> _topics;
+    private Set<String> _items = new HashSet<>();
+    private Set<Topic> _topics = new HashSet<>();
+    private Set<String> _itemsPreCached = new HashSet<>();
+    private Set<Topic> _topicsPreCached = new HashSet<>();
 
     /**
      * DataBlock Constructor.
@@ -130,9 +132,6 @@ public class DataBlock {
         _size = size;
         _timeout = timeout;
         _name = UUID.randomUUID().toString();
-        _items = new HashSet<>();
-        _topics = new HashSet<>();
-
         int err = TOSDataBridge.getCLibrary()
                 .TOSDB_CreateBlock(_name, size, dateTime, timeout);
         if (err != 0) {
@@ -247,48 +246,38 @@ public class DataBlock {
 
     /**
      * @return items currently in the block
-     *
-     * @throws LibraryNotLoaded C lib has not been loaded
-     * @throws CLibException    error code returned by C lib
      */
     public Set<String>
-    getItems() throws LibraryNotLoaded, CLibException {
-        return _getItemTopicNames(true, false);
+    getItems() {
+        return _items;
     }
 
     /**
      * @return topics currently in the block
      *
-     * @throws LibraryNotLoaded C lib has not been loaded
-     * @throws CLibException    error code returned by C lib
      * @see Topic
      */
     public Set<Topic>
-    getTopics() throws LibraryNotLoaded, CLibException {
-        return _getItemTopicNames(false, false);
+    getTopics() {
+        return _topics;
     }
 
     /**
      * @return items currently in the block's pre-cache
-     *
-     * @throws LibraryNotLoaded C lib has not been loaded
-     * @throws CLibException    error code returned by C lib
      */
     public Set<String>
-    getItemsPreCached() throws LibraryNotLoaded, CLibException {
-        return _getItemTopicNames(true, true);
+    getItemsPreCached() {
+        return _itemsPreCached;
     }
 
     /**
      * @return topics currently in the block's pre-cache
      *
-     * @throws LibraryNotLoaded C lib has not been loaded
-     * @throws CLibException    error code returned by C lib
      * @see Topic
      */
     public Set<Topic>
-    getTopicsPreCached() throws LibraryNotLoaded, CLibException {
-        return _getItemTopicNames(false, true);
+    getTopicsPreCached() {
+        return _topicsPreCached;
     }
 
     /**
@@ -301,21 +290,23 @@ public class DataBlock {
      */
     public void
     addItem(String item) throws LibraryNotLoaded, CLibException, InvalidItemOrTopic {
-        _handleRawItem(item,false);
+        item = _handleRawItem(item, /*throwIfNotInBlock=*/false);
         /* check we are consistent with C lib */
-        if (!_items.equals(getItems())) {
-            throw new IllegalStateException("_items != getItems()");
+        _goodItemTopicStateOrThrow();
+        /* if we already have it */
+        if (_items.contains(item) || _itemsPreCached.contains(item)) {
+            return;
         }
         int err = TOSDataBridge.getCLibrary().TOSDB_AddItem(_name, item);
+        /* sync with C block regardless */
+        _syncItemTopicState();
         if (err != 0) {
             throw new CLibException("TOSDB_AddItem", err);
         }
-        _topics = getTopics();
-        _items = getItems();
     }
 
     /**
-     * Add Topic to the block.
+     * Add topic to the block.
      *
      * @param topic topic enum to be added to the block
      * @throws LibraryNotLoaded C lib has not been loaded
@@ -325,17 +316,19 @@ public class DataBlock {
      */
     public void
     addTopic(Topic topic) throws LibraryNotLoaded, CLibException, InvalidItemOrTopic {
-        _handleRawTopic(topic,false);
+        _handleRawTopic(topic, /*throwIfNotInBlock=*/false);
         /* check we are consistent with C lib */
-        if (!_topics.equals(getTopics())) {
-            throw new IllegalStateException("_topics != getTopics()");
+        _goodItemTopicStateOrThrow();
+        /* if we already have it */
+        if (_topics.contains(topic) || _topicsPreCached.contains(topic)) {
+            return;
         }
         int err = TOSDataBridge.getCLibrary().TOSDB_AddTopic(_name, topic.val);
+        /* sync with C block regardless */
+        _syncItemTopicState();
         if (err != 0) {
             throw new CLibException("TOSDB_AddTopic", err);
         }
-        _items = getItems();
-        _topics = getTopics();
     }
 
     /**
@@ -348,22 +341,20 @@ public class DataBlock {
      */
     public void
     removeItem(String item) throws LibraryNotLoaded, CLibException, InvalidItemOrTopic {
-        /* note: we don't throw if item isn't it block because it might be in pre-cache */
-        _handleRawItem(item,false);
+        /* note: doesn't throw if item isn't it block (it might be in pre-cache) */
+        item = _handleRawItem(item, /*throwIfNotInBlock=*/false);
         /* check we are consistent with C lib */
-        if (!_items.equals(getItems())) {
-            throw new IllegalStateException("_items != getItems()");
-        }
+        _goodItemTopicStateOrThrow();
         int err = TOSDataBridge.getCLibrary().TOSDB_RemoveItem(_name, item);
+        /* sync with C block regardless */
+        _syncItemTopicState();
         if (err != 0) {
             throw new CLibException("TOSDB_RemoveItem", err);
         }
-        _items = getItems();
-        _topics = getTopics();
     }
 
     /**
-     * Remove Topic from the block.
+     * Remove topic from the block.
      *
      * @param topic topic enum to be removed from the block.
      * @throws LibraryNotLoaded C lib has not been loaded
@@ -373,50 +364,68 @@ public class DataBlock {
      */
     public void
     removeTopic(Topic topic) throws LibraryNotLoaded, CLibException, InvalidItemOrTopic {
-        /* note: we don't throw if topic isn't it block because it might be in pre-cache */
-        _handleRawTopic(topic,false);
+        /* note: doesn't throw if topic isn't in block (it might be in pre-cache) */
+        _handleRawTopic(topic, /*throwIfNotInBlock=*/false);
         /* check we are consistent with C lib */
-        if (!_topics.equals(getTopics())) {
-            throw new IllegalStateException("_topics != getTopics()");
-        }
+        _goodItemTopicStateOrThrow();
         int err = TOSDataBridge.getCLibrary().TOSDB_RemoveTopic(_name, topic.val);
+        /* sync with C block regardless */
+        _syncItemTopicState();
         if (err != 0) {
             throw new CLibException("TOSDB_RemoveTopic", err);
         }
-        _topics = getTopics();
-        _items = getItems();
     }
 
     /**
      * Returns if item is in the block.(NOT THE PRE-CACHE)
      *
-     * @param item item string to be removed from the block
+     * @param item item string to be search for
      * @return if item is in the block
-     * @throws LibraryNotLoaded C lib has not been loaded
-     * @throws CLibException    error code returned by C lib
      * @throws InvalidItemOrTopic invalid item or topic argument
      */
     public boolean
-    containsItem(String item) throws LibraryNotLoaded, CLibException, InvalidItemOrTopic {
-        /* note: we don't throw if item isn't it block */
-        _handleRawItem(item,false);
+    containsItem(String item) throws InvalidItemOrTopic {
+        item = _handleRawItem(item, /*throwIfNotInBlock=*/false);
         return _items.contains(item);
     }
 
     /**
      * Returns if topic is in the block.(NOT THE PRE-CACHE)
      *
-     * @param topic topic enum to be removed from the block
+     * @param topic topic enum to be searched for
      * @return if topic is in the block
-     * @throws LibraryNotLoaded C lib has not been loaded
-     * @throws CLibException    error code returned by C lib
      * @throws InvalidItemOrTopic invalid item or topic argument
      */
     public boolean
-    containsTopic(Topic topic) throws LibraryNotLoaded, CLibException, InvalidItemOrTopic {
-        /* note: we don't throw if topic isn't it block */
-        _handleRawTopic(topic,false);
+    containsTopic(Topic topic) throws InvalidItemOrTopic {
+        _handleRawTopic(topic, /*throwIfNotInBlock=*/false);
         return _topics.contains(topic);
+    }
+
+    /**
+     * Returns if item is in the block's pre-cache.
+     *
+     * @param item item string to be searched for
+     * @return if item is in the block's pre-cache
+     * @throws InvalidItemOrTopic invalid item or topic argument
+     */
+    public boolean
+    containsItemPreCached(String item) throws InvalidItemOrTopic {
+        item = _handleRawItem(item, /*throwIfNotInBlock=*/false);
+        return _itemsPreCached.contains(item);
+    }
+
+    /**
+     * Returns if topic is in the block's pre-cache.
+     *
+     * @param topic topic enum to be searched for
+     * @return if topic is in the block's pre-cache
+     * @throws InvalidItemOrTopic invalid item or topic argument
+     */
+    public boolean
+    containsTopicPreCached(Topic topic) throws InvalidItemOrTopic {
+        _handleRawTopic(topic, /*throwIfNotInBlock=*/false);
+        return _topicsPreCached.contains(topic);
     }
 
     /**
@@ -1254,21 +1263,21 @@ public class DataBlock {
                 m.setAccessible(true);
                 return (R) m.invoke(DataBlock.this, args);
             } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
-                throw new RuntimeException("_nativeAccessByType failed to call: " + methodName);
+                throw new RuntimeException("_nativeAccessByType failed to call: " + methodName
+                        + "; " + e.toString());
             }
         }
     } /* class DataBlockSharedHelper */
 
 
     private String
-    _handleRawItem(String item, boolean throwIfNotInBlock)
-            throws CLibException, LibraryNotLoaded, InvalidItemOrTopic {
+    _handleRawItem(String item, boolean throwIfNotInBlock) throws InvalidItemOrTopic {
         if(item == null)
             throw new NullPointerException("null item string");
         item = item.toUpperCase();
         int slen = item.length();
         if(slen < 1 || slen > MAX_STR_SZ){
-            throw new InvalidItemOrTopic("invalid string length: " + slen);
+            throw new InvalidItemOrTopic("invalid item string length: " + slen);
         }
         if(throwIfNotInBlock && !_items.contains(item)) {
             throw new InvalidItemOrTopic("item not in block: " + item);
@@ -1277,8 +1286,7 @@ public class DataBlock {
     }
 
     private void
-    _handleRawTopic(Topic topic, boolean throwIfNotInBlock)
-            throws CLibException, LibraryNotLoaded, InvalidItemOrTopic {
+    _handleRawTopic(Topic topic, boolean throwIfNotInBlock) throws InvalidItemOrTopic {
         if(topic == null){
             throw new NullPointerException("null topic enum");
         }
@@ -1292,7 +1300,7 @@ public class DataBlock {
 
     private String
     _handleRawItemTopic(String item, Topic topic, boolean throwIfNotInBlock)
-            throws CLibException, LibraryNotLoaded, InvalidItemOrTopic {
+            throws InvalidItemOrTopic {
         _handleRawTopic(topic, throwIfNotInBlock);
         return _handleRawItem(item, throwIfNotInBlock);
     }
@@ -1391,6 +1399,49 @@ public class DataBlock {
         return names;
     }
 
+    public Set<String>
+    _getItems() throws LibraryNotLoaded, CLibException {
+        return _getItemTopicNames(true, false);
+    }
+
+    public Set<Topic>
+    _getTopics() throws LibraryNotLoaded, CLibException {
+        return _getItemTopicNames(false, false);
+    }
+
+    public Set<String>
+    _getItemsPreCached() throws LibraryNotLoaded, CLibException {
+        return _getItemTopicNames(true, true);
+    }
+
+    public Set<Topic>
+    _getTopicsPreCached() throws LibraryNotLoaded, CLibException {
+        return _getItemTopicNames(false, true);
+    }
+
+    private void
+    _goodItemTopicStateOrThrow() throws CLibException, LibraryNotLoaded {
+        if (!_topics.equals(_getTopics())) {
+            throw new IllegalStateException("_topics != _getTopics()");
+        }
+        if (!_topicsPreCached.equals(_getTopicsPreCached())) {
+            throw new IllegalStateException("_topicsPreCached != _getTopicsPreCached()");
+        }
+        if (!_items.equals(_getItems())) {
+            throw new IllegalStateException("_items != _getItems()");
+        }
+        if (!_itemsPreCached.equals(_getItemsPreCached())) {
+            throw new IllegalStateException("_itemsPreCached != _getItemsPreCached()");
+        }
+    }
+
+    private void
+    _syncItemTopicState() throws CLibException, LibraryNotLoaded {
+        _topics = _getTopics();
+        _items = _getItems();
+        _topicsPreCached = _getTopicsPreCached();
+        _itemsPreCached = _getItemsPreCached();
+    }
     @SuppressWarnings("unchecked")
     private <T> T
     _getLong(String item, Topic topic, int indx, boolean withDateTime)

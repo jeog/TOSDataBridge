@@ -56,22 +56,28 @@ As mentioned, the java wrapper mirrors the python wrapper in many important ways
 
     import io.github.jeog.tosdatabridge.TOSDataBridge;
 
-    // path to the C Lib; tries to load lib and calls connect() 
-    TOSDataBridge.init(".\bin\Release\x64\tos-databridge-0.7-x64.dll");
+    try{
+        // path to the C Lib; tries to load lib and calls connect() 
+        TOSDataBridge.init(".\bin\Release\x64\tos-databridge-0.7-x64.dll");
 
-    switch( TOSDataBridge.connectionState() ){
-    case TOSDataBridge.CONN_NONN:
-        // Not connected to engine
-        // TOSDataBridge.connected() == false;
-        break;
-    case TOSDataBridge.CONN_ENGINE:
-        // Only connected to Engine (only access to admin calls)    
-        // TOSDataBridge.connected() == false;
-        break;
-    case TOSDataBridge.CONN_ENGINE_TOS:
-        // Connected to Engine AND TOS Platform (can get data from engine/platform)
-        // TOSDataBridge.connected() == true;
-        break;
+        switch( TOSDataBridge.connectionState() ){
+        case TOSDataBridge.CONN_NONN:
+            // Not connected to engine
+            // TOSDataBridge.connected() == false;
+            break;
+
+        case TOSDataBridge.CONN_ENGINE:
+            // Only connected to Engine (only access to admin calls)    
+            // TOSDataBridge.connected() == false;
+            break;
+
+        case TOSDataBridge.CONN_ENGINE_TOS:
+            // Connected to Engine AND TOS Platform (can get data from engine/platform)
+            // TOSDataBridge.connected() == true;
+            break;
+        }
+    }catch(LibraryNotLoaded){
+        // init(...) was not successfull or the library was freed 
     }
 
 
@@ -84,12 +90,19 @@ There are two types of objects used to get real-time data. Both require a size p
 
     int blockSz = 10000;
 
-    /* only primary data */
-    DataBlock block = new DataBlock(blockSz);
+    try{
+        /* only primary data */
+        DataBlock block = new DataBlock(blockSz);
 
-    /* include a DateTime object with each primary data-point
-       extends DataBlock, adds 'WithDateTime' versions of the get methods */
-    DataBlockWithDateTime blockDT = new DataBlockWithDateTime(blockSz);
+        /* include a DateTime object with each primary data-point
+           extends DataBlock, adds 'WithDateTime' versions of the get methods */
+        DataBlockWithDateTime blockDT = new DataBlockWithDateTime(blockSz);
+
+    }catch(LibraryNotLoaded){
+        // init(...) was not successfull or the library was freed 
+    }catch(CLibException){
+        // an error was thrown from the C Lib (see CError.java) 
+    }
 
 
 ##### Add Items/Topics
@@ -121,10 +134,13 @@ Clearly we need items AND topics. Items(topics) added before any topics(items) e
 
         blockDT.removeTopic(Topic.LAST); // items go back into pre-cache
 
+        blockDT.containsItem('SPY'); // false
+        blockDT.containsItemPreCached('SPY') // true
+
     }catch(LibraryNotLoaded){
-        // init(...) was not successfull or the library was freed (all methods can throw this)
+        // init(...) was not successfull or the library was freed 
     }catch(CLibException){
-        // an error was thrown from the C Lib (see CError.java) (all methods can throw this)
+        // an error was thrown from the C Lib (see CError.java) 
     }catch(InvalidItemOrTopic){
         // item string was empty, too long, or null; topic enum was null or NULL_TOPIC
     }
@@ -132,6 +148,8 @@ Clearly we need items AND topics. Items(topics) added before any topics(items) e
 ##### Get Data-Point from a Stream
 
 Like the C/C++ interfaces we have type-specific calls. If you call the wrong version the C lib will try to (safely) cast the value for you. If it can't it will return ERROR_GET_DATA and java will throw CLibException.
+
+Notice below we use the base classes of the exception hierarchy for illustrative purposes.
 
     import io.github.jeog.tosdatabridge.DateTime.DateTimePair;
 
@@ -160,18 +178,16 @@ Like the C/C++ interfaces we have type-specific calls. If you call the wrong ver
             ...
             break;
        }
-    }catch(LibraryNotLoaded){
-        // init(...) was not successfull or the library was freed (all methods can throw this)
-    }catch(CLibException){
-        // an error was thrown from the C Lib (see CError.java) (all methods can throw this)
-    }catch(InvalidItemOrTopic){
-        /* item string was empty, too long, or null; topic enum was null or NULL_TOPIC -or-
-           item or topic is currently not in the block -or-
-           item or topic is currently in the pre-cache */
-    }catch(DataIndexException){
-        // we tried to access data in a position that isn't possible for that block size
+    }catch(DataBlockException){ /*extends TOSDataBridgeException, so need to catch first*/
+        // InvalidItemOrTopic
+        // DataIndexException
+        // DirtyMarkerException (see next section)
+    }catch(TOSDataBridgeException){ /* TOSDataBridgeException is (indirect) base to ALL */
+        // LibraryNotLoaded
+        // CLibException
+        // DataBlockException 
     }
-
+ 
 
 'WithDateTime' versions return DateTimePair object(s):
 
@@ -246,9 +262,9 @@ Methods with a plural type in the name(e.g getStreamSnapshotLongs) return a List
             break;
        }
     }catch(LibraryNotLoaded){
-        // init(...) was not successfull or the library was freed (all methods can throw this)
+        // init(...) was not successfull or the library was freed 
     }catch(CLibException){
-        // an error was thrown from the C Lib (see CError.java) (all methods can throw this)
+        // an error was thrown from the C Lib (see CError.java) 
     }catch(InvalidItemOrTopic){
         /* item string was empty, too long, or null; topic enum was null or NULL_TOPIC -or-
            item or topic is currently not in the block -or-
@@ -281,9 +297,9 @@ Frame methods are used to get most recent data (as strings) in some 'logical' wa
         Map<String, Map<Topic,String>> totalFrame = blockDT.getTotalFrame();
 
     }catch(LibraryNotLoaded){
-        // init(...) was not successfull or the library was freed (all methods can throw this)
+        // init(...) was not successfull or the library was freed 
     }catch(CLibException){
-        // an error was thrown from the C Lib (see CError.java) (all methods can throw this)
+        // an error was thrown from the C Lib (see CError.java) 
     }catch(InvalidItemOrTopic){
         /* item string was empty, too long, or null; topic enum was null or NULL_TOPIC -or-
            item or topic is currently not in the block -or-
