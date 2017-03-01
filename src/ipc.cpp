@@ -31,15 +31,16 @@ IPCBase::send(std::string msg) const
     BOOL ret;
 
     if(msg.length() > MAX_MESSAGE_SZ){
+        TOSDB_LogH("IPC", "IPCBase::send() :: msg length > MAX_MESSAGE_SZ");
         throw std::invalid_argument("IPCBase::send() :: msg length > MAX_MESSAGE_SZ");
     }
 
     ret = WriteFile(_main_channel_pipe_hndl, (void*)msg.c_str(), msg.length() + 1, &d, NULL);
-
     if(!ret){        
         TOSDB_LogEx("IPC", "WriteFile failed in _recv()", GetLastError());  
         return false; 
     }
+
     return true;
 }
  
@@ -54,11 +55,11 @@ IPCBase::recv(std::string *msg) const
     msg->resize(MAX_MESSAGE_SZ); 
     
     ret = ReadFile(_main_channel_pipe_hndl, (void*)msg->c_str(), MAX_MESSAGE_SZ + 1, &d, NULL);
-
     if(!ret || d == 0){
         TOSDB_LogEx("IPC", "ReadFile failed in _recv()", GetLastError());
         return false;
     }
+
     return true;
 }
 
@@ -121,6 +122,12 @@ IPCMaster::call(std::string *msg, unsigned long timeout)
 {  
     /* buffer for returned string */
     std::string recv(MAX_MESSAGE_SZ, '\0');  
+
+    /* check buffer length */
+    if(msg->length() > MAX_MESSAGE_SZ){
+        TOSDB_LogH("IPC", "IPCMaster::call() :: msg length > MAX_MESSAGE_SZ");
+        throw std::invalid_argument("IPCMaster::call() :: msg length > MAX_MESSAGE_SZ");
+    } 
 
     /* assign the receive buffer*/
     std::function<bool(const char*,DWORD)> cb_good = 
@@ -190,8 +197,10 @@ IPCSlave::_listen_for_probes()
             }
         }
 
+        b = 0;
+        r = 0;
         ret = ReadFile(_probe_channel_pipe_hndl, (void*)&b, sizeof(b), &r, NULL);
-        if(!ret || ret == 0){           
+        if(!ret){           
             e = GetLastError();
             if(e == ERROR_BROKEN_PIPE)
                 TOSDB_LogDebug("***IPC*** PROBE RECV - (BROKEN_PIPE)");
@@ -201,7 +210,8 @@ IPCSlave::_listen_for_probes()
                           
                                      
         if(b != PROBE_BYTE || r != sizeof(PROBE_BYTE)){
-            TOSDB_LogH("IPC", ("didn't receive PROBE_BYTE, b:" +std::to_string(b)).c_str());
+            TOSDB_LogH("IPC", ("didn't receive PROBE_BYTE, b:" + std::to_string(b) 
+                                + ", r:" + std::to_string(r)).c_str());
             b = 0;
         }
 

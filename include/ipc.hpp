@@ -35,7 +35,7 @@ public:
     /* we limit message size to make the implemenation much easier/safer; 
        a more robust mechanism could manually write/read to/from the pipe server 
        and loop on the read calls until ERROR_MORE_DATA isn't returned */
-    static const int MAX_MESSAGE_SZ = 255; 
+    static const int MAX_MESSAGE_SZ = 511; // 2**9 excluding \0 
 
     /* arbitrary value the 'probe' channel sends/recieves to confirm connection */
     static const uint8_t PROBE_BYTE = 0xff;
