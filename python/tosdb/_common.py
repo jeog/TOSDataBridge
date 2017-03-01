@@ -94,7 +94,7 @@ class _TOSDB_DataBlock(metaclass=_ABCMeta):
         
         returns -> int
 
-        throws TOSDB_CLibError
+        throws TOSDB_CLibError, TOSDB_TypeError
         """ 
         pass
 
@@ -165,7 +165,7 @@ class _TOSDB_DataBlock(metaclass=_ABCMeta):
         
         *items :: *str :: any numer of item strings
 
-        throws TOSDB_CLibError
+        throws TOSDB_Error
         """  
         pass
 
@@ -180,7 +180,7 @@ class _TOSDB_DataBlock(metaclass=_ABCMeta):
         
         *topics :: *str :: any numer of topic strings
 
-        throws TOSDB_CLibError
+        throws TOSDB_Error
         """     
         pass
 
@@ -195,7 +195,7 @@ class _TOSDB_DataBlock(metaclass=_ABCMeta):
         
         *items :: *str :: any numer of item strings in the block
 
-        throws TOSDB_CLibError
+        throws TOSDB_Error
         """
         pass
 
@@ -210,7 +210,7 @@ class _TOSDB_DataBlock(metaclass=_ABCMeta):
         
         *topics :: *str :: any numer of topic strings in the block
 
-        throws TOSDB_CLibError
+        throws TOSDB_Error
         """
         pass
 
@@ -235,7 +235,7 @@ class _TOSDB_DataBlock(metaclass=_ABCMeta):
         **data are of type int, float, or str (deping on the topic)
         
         throws TOSDB_DataTimeError, TOSDB_IndexError, TOSDB_DataError,
-               TOSDB_CLibError
+               TOSDB_CLibError, TOSDB_TypeError, TOSDB_ValueError
         """
         pass
 
@@ -259,7 +259,8 @@ class _TOSDB_DataBlock(metaclass=_ABCMeta):
 
         **data are of type int, float, or str (deping on the topic)
 
-        throws TOSDB_DataTimeError, TOSDB_IndexError, TOSDB_CLibError
+        throws TOSDB_DataTimeError, TOSDB_IndexError, TOSDB_CLibError,
+               TOSDB_TypeError, TOSDB_ValueError
         """
         pass
 
@@ -319,7 +320,7 @@ class _TOSDB_DataBlock(metaclass=_ABCMeta):
         **data are of type int, float, or str (deping on the topic)
 
         throws TOSDB_DataTimeError, TOSDB_IndexError, TOSDB_ValueError,
-               TOSDB_DataError, TOSDB_CLibError       
+               TOSDB_DataError, TOSDB_CLibError, TOSDB_TypeError       
         """
         pass
 
@@ -343,7 +344,8 @@ class _TOSDB_DataBlock(metaclass=_ABCMeta):
 
         **data are of type int, float, or str (deping on the topic)
         
-        throws TOSDB_DataTimeError, TOSDB_CLibError
+        throws TOSDB_DataTimeError, TOSDB_CLibError, TOSDB_TypeError,
+               TOSDB_ValueError
         """
         pass
 
@@ -367,7 +369,8 @@ class _TOSDB_DataBlock(metaclass=_ABCMeta):
 
         **data are ALL of type str (frame can contain topics of differnt type)
 
-        throws TOSDB_DataTimeError, TOSDB_CLibError     
+        throws TOSDB_DataTimeError, TOSDB_CLibError, TOSDB_TypeError,
+               TOSDB_ValueError     
         """
         pass
 

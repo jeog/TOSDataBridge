@@ -68,6 +68,13 @@ _pchar_ = _PTR_(_char_)
 _ppchar_ = _PTR_(_pchar_)  
 _cast_cstr = lambda x: _cast(x,_str_).value.decode()
 
+_gen_str_buffers = lambda sz, n: [_BUF_(sz) for _ in range(n)]
+_gen_str_buffers_ptrs = lambda bufs: (_pchar_ * len(bufs))(*[_cast(b,_pchar_) for b in bufs])
+
+_map_cstr = _partial(map,_cast_cstr)
+_map_dt = _partial(map, TOSDB_DateTime)
+_zip_cstr_dt = lambda cstr, dt: zip(_map_cstr(cstr),_map_dt(dt))
+
 DLL_BASE_NAME = "tos-databridge"
 DLL_DEPENDS1_NAME = "_tos-databridge"
 SYS_ARCH_TYPE = "x64" if (_log(_maxsize * 2, 2) > 33) else "x86"
@@ -292,8 +299,11 @@ def set_block_limit(new_limit):
     throws TOSDB_CLibError
            **does not raise an exception if lib call returns error code
     """
-    _lib_call("TOSDB_SetBlockLimit", new_limit, ret_type=_uint32_, 
-              arg_types=(_uint32_,), error_check=False)
+    _lib_call("TOSDB_SetBlockLimit",
+              new_limit,
+              ret_type=_uint32_, 
+              arg_types=(_uint32_,),
+              error_check=False)
 
 
 def get_block_count():
@@ -324,7 +334,9 @@ def type_bits(topic):
     throws TOSDB_CLibError
     """
     b = _uint8_()
-    _lib_call("TOSDB_GetTypeBits", topic.upper().encode("ascii"), _pointer(b), 
+    _lib_call("TOSDB_GetTypeBits",
+              topic.upper().encode("ascii"),
+              _pointer(b), 
               arg_types=(_str_,_PTR_(_uint8_)) )
 
     return b.value
@@ -342,7 +354,10 @@ def type_string(topic):
     throws TOSDB_CLibError
     """
     s = _BUF_(MAX_STR_SZ + 1)
-    _lib_call("TOSDB_GetTypeString", topic.upper().encode("ascii"), s, (MAX_STR_SZ + 1))
+    _lib_call("TOSDB_GetTypeString",
+              topic.upper().encode("ascii"),
+              s,
+              (MAX_STR_SZ + 1))
 
     return s.value.decode()
 
@@ -362,16 +377,22 @@ class TOSDB_DataBlock(_TOSDB_DataBlock):
     """    
     def __init__(self, size=1000, date_time=False, timeout=DEF_TIMEOUT):        
         self._name = (_uuid4().hex).encode("ascii")
-        self._valid = False
-        _lib_call("TOSDB_CreateBlock", self._name, size, date_time, timeout,
-                  arg_types=(_str_,_uint32_,_int_,_uint32_) )                 
-        self._valid= True
         self._block_size = size
         self._timeout = timeout
         self._date_time = date_time
         self._items = []   
-        self._topics = []        
-    
+        self._topics = []
+        self._items_precached = []   
+        self._topics_precached = []    
+        self._valid = False
+        _lib_call("TOSDB_CreateBlock",
+                  self._name,
+                  size,
+                  date_time,
+                  timeout,
+                  arg_types=(_str_,_uint32_,_int_,_uint32_))                 
+        self._valid= True
+       
 
     def __del__(self): # for convenience, no guarantee
         # cleaning up can be problematic if we exit python abruptly:
@@ -419,56 +440,124 @@ class TOSDB_DataBlock(_TOSDB_DataBlock):
         sio.seek(0)
         return sio.read()
 
-      
-    # assumes .upper() already called
-    def _valid_item(self, item):
-        if not self._items: # in case items came out of pre-cache
-            self._items = self.items()
-        if item not in self._items:
-            raise TOSDB_ValueError("item " + str(item) + " not found")
-
-
-    # assumes .upper() already called
-    def _valid_topic(self, topic):
-        if not self._topics: # in case topics came out of pre-cache
-            self._topics = self.topics()
-        if topic not in self._topics:
-            raise TOSDB_ValueError("topic " + str(topic) + " not found")
-
 
     def _item_count(self):       
         i = _uint32_()
-        _lib_call("TOSDB_GetItemCount", self._name, _pointer(i),
+        _lib_call("TOSDB_GetItemCount",
+                  self._name,
+                  _pointer(i),
                   arg_types=(_str_,_PTR_(_uint32_)))
         return i.value
 
 
     def _topic_count(self):        
         t = _uint32_()
-        _lib_call("TOSDB_GetTopicCount", self._name, _pointer(t),
+        _lib_call("TOSDB_GetTopicCount",
+                  self._name,
+                  _pointer(t),
                   arg_types=(_str_,_PTR_(_uint32_)))
         return t.value
 
 
     def _item_precached_count(self):       
         i = _uint32_()
-        _lib_call("TOSDB_GetPreCachedItemCount", self._name, _pointer(i),
+        _lib_call("TOSDB_GetPreCachedItemCount",
+                  self._name,
+                  _pointer(i),
                   arg_types=(_str_,_PTR_(_uint32_)))
         return i.value
 
 
     def _topic_precached_count(self):        
         t = _uint32_()
-        _lib_call("TOSDB_GetPreCachedTopicCount", self._name, _pointer(t),
+        _lib_call("TOSDB_GetPreCachedTopicCount",
+                  self._name,
+                  _pointer(t),
                   arg_types=(_str_,_PTR_(_uint32_)))
         return t.value
+
+    
+    def _get_items(self, str_max=MAX_STR_SZ):
+        size = self._item_count()
+        strs = _gen_str_buffers(str_max+1, size)
+        pstrs = _gen_str_buffers_ptrs(strs) 
+        
+        _lib_call("TOSDB_GetItemNames", 
+                  self._name, 
+                  pstrs, 
+                  size, 
+                  str_max + 1, 
+                  arg_types=(_str_, _ppchar_, _uint32_, _uint32_))
+        
+        return list(map(_cast_cstr,pstrs))                     
+
+    
+    def _get_topics(self, str_max=MAX_STR_SZ):
+        size = self._topic_count()
+        strs = _gen_str_buffers(str_max+1, size)
+        pstrs = _gen_str_buffers_ptrs(strs)   
+            
+        _lib_call("TOSDB_GetTopicNames", 
+                  self._name, 
+                  pstrs, 
+                  size, 
+                  str_max + 1, 
+                  arg_types=(_str_,  _ppchar_, _uint32_, _uint32_))               
+        
+        return list(map(_cast_cstr,pstrs))     
+
+    
+    def _get_items_precached(self, str_max=MAX_STR_SZ):
+        size = self._item_precached_count()  
+        strs = _gen_str_buffers(str_max+1, size)
+        pstrs = _gen_str_buffers_ptrs(strs) 
+        
+        _lib_call("TOSDB_GetPreCachedItemNames", 
+                  self._name, 
+                  pstrs, 
+                  size, 
+                  str_max + 1, 
+                  arg_types=(_str_, _ppchar_, _uint32_, _uint32_))
+        
+        return list(map(_cast_cstr,pstrs))                 
+
+
+    def _get_topics_precached(self,  str_max=MAX_STR_SZ):
+        size = self._topic_precached_count()
+        strs = _gen_str_buffers(str_max+1, size)
+        pstrs = _gen_str_buffers_ptrs(strs)   
+            
+        _lib_call("TOSDB_GetPreCachedTopicNames", 
+                  self._name, 
+                  pstrs, 
+                  size, 
+                  str_max + 1, 
+                  arg_types=(_str_,  _ppchar_, _uint32_, _uint32_))               
+        
+        return list(map(_cast_cstr,pstrs))
+
+
+    def _sync_items_topics(self):
+        self._items = self._get_items()
+        self._topics = self._get_topics()       
+        self._items_precached = self._get_items_precached()
+        self._topics_precached = self._get_topics_precached()
+
+
+    def _items_topics_are_synced(self):
+        return self._items == self._get_items() \
+            and self._topics == self._get_topics() \
+            and self._items_precached == self._get_items_precached() \
+            and self._topics_precached == self._get_topics_precached()
 
 
     @_doxtend(_TOSDB_DataBlock) # __doc__ from ABC _TOSDB_DataBlock
     def info(self):      
         return {"Name": self._name.decode('ascii'), 
-                "Items": self.items(),
-                "Topics": self.topics(), 
+                "Items": list(self._items),
+                "Topics": list(self._topics),
+                "ItemsPreCached": list(self._items_precached),
+                "TopicsPreCached": list(self._topics_precached), 
                 "Size": self._block_size,
                 "DateTime": "Enabled" if self._date_time else "Disabled",
                 "Timeout": self._timeout}
@@ -477,23 +566,98 @@ class TOSDB_DataBlock(_TOSDB_DataBlock):
     @_doxtend(_TOSDB_DataBlock) # __doc__ from ABC _TOSDB_DataBlock
     def get_block_size(self):          
         b = _uint32_()
-        _lib_call("TOSDB_GetBlockSize", self._name, _pointer(b),
+        _lib_call("TOSDB_GetBlockSize",
+                  self._name,
+                  _pointer(b),
                   arg_types=(_str_,_PTR_(_uint32_)))
         return b.value
       
 
     @_doxtend(_TOSDB_DataBlock) # __doc__ from ABC _TOSDB_DataBlock
-    def set_block_size(self, sz):  
-        _lib_call("TOSDB_SetBlockSize", self._name, sz, arg_types=(_str_,_uint32_))
-        self._block_size = sz
-         
+    def set_block_size(self, sz):
+        try:
+            _lib_call("TOSDB_SetBlockSize",
+                      self._name,
+                      sz,
+                      arg_types=(_str_,_uint32_))
+        finally:
+            try:
+                self._block_size = self.get_block_size()
+            except Exception as e:
+                raise TOSDB_Error("unable to sync block size: " + str(e))
+              
 
+    @_doxtend(_TOSDB_DataBlock) # __doc__ from ABC _TOSDB_DataBlock
+    def items(self, str_max=MAX_STR_SZ):
+        return list(self._items)
+
+
+    @_doxtend(_TOSDB_DataBlock) # __doc__ from ABC _TOSDB_DataBlock
+    def topics(self, str_max=MAX_STR_SZ):
+        return list(self._topics)
+
+    
+    @_doxtend(_TOSDB_DataBlock) # __doc__ from ABC _TOSDB_DataBlock
+    def items_precached(self, str_max=MAX_STR_SZ):
+        return list(self._items_precached)
+
+
+    @_doxtend(_TOSDB_DataBlock) # __doc__ from ABC _TOSDB_DataBlock
+    def topics_precached(self,  str_max=MAX_STR_SZ):
+        return list(self._topics_precached)         
+
+
+    def _in_block_or_precache(self, is_item, e):
+        return e in (self._items + self._items_precached) if is_item else \
+               e in (self._topics + self._topics_precached)                    
+
+
+    def _add_remove(self, cname, hfunc, elems):
+        if not self._items_topics_are_synced():
+            raise TOSDB_Error("item/topics not synced with C lib")
+        remove = 'Remove' in cname
+        fails = {}
+        for elem in elems:
+            try:
+                el = hfunc(elem, False)                                
+                if remove and not self._in_block_or_precache('Item' in cname, el):
+                    fails[str(elem)] = "item not in block or precache: " + el
+                    continue
+                _lib_call(cname,
+                          self._name,
+                          el.encode("ascii"),
+                          arg_types=(_str_,_str_))
+            except Exception as e:
+                fails[str(elem)] = e.args[0]
+        self._sync_items_topics()
+        if fails:
+            raise TOSDB_Error("error(s) adding/removing items/topics", str(fails))
+        
+        
+    @_doxtend(_TOSDB_DataBlock) # __doc__ from ABC _TOSDB_DataBlock   
+    def add_items(self, *items):
+        self._add_remove('TOSDB_AddItem', self._handle_raw_item, items)
+
+            
+    @_doxtend(_TOSDB_DataBlock) # __doc__ from ABC _TOSDB_DataBlock
+    def add_topics(self, *topics):
+        self._add_remove('TOSDB_AddTopic', self._handle_raw_topic, topics)
+
+
+    @_doxtend(_TOSDB_DataBlock) # __doc__ from ABC _TOSDB_DataBlock
+    def remove_items(self, *items):
+        self._add_remove('TOSDB_RemoveItem', self._handle_raw_item, items)
+
+
+    @_doxtend(_TOSDB_DataBlock) # __doc__ from ABC _TOSDB_DataBlock
+    def remove_topics(self, *topics):
+        self._add_remove('TOSDB_RemoveTopic', self._handle_raw_topic, topics)  
+
+ 
     @_doxtend(_TOSDB_DataBlock) # __doc__ from ABC _TOSDB_DataBlock     
-    def stream_occupancy(self, item, topic):              
-        item = item.upper()
-        topic = topic.upper()
-        self._valid_item(item)
-        self._valid_topic(topic)
+    def stream_occupancy(self, item, topic):        
+        item = self._handle_raw_item(item)
+        topic = self._handle_raw_topic(topic)       
         occ = _uint32_()
         
         _lib_call("TOSDB_GetStreamOccupancy", 
@@ -504,161 +668,17 @@ class TOSDB_DataBlock(_TOSDB_DataBlock):
                   arg_types=(_str_, _str_, _str_, _PTR_(_uint32_)))
         
         return occ.value
-      
 
-    @_doxtend(_TOSDB_DataBlock) # __doc__ from ABC _TOSDB_DataBlock
-    def items(self, str_max=MAX_STR_SZ):  
-        size = self._item_count()  
-        strs = [_BUF_(str_max + 1) for _ in range(size)]      
-        strs_array = (_pchar_* size)(*[ _cast(s, _pchar_) for s in strs]) 
-        
-        _lib_call("TOSDB_GetItemNames", 
-                  self._name, 
-                  strs_array, 
-                  size, 
-                  str_max + 1, 
-                  arg_types=(_str_, _ppchar_, _uint32_, _uint32_))
-        
-        return [_cast_cstr(s) for s in strs_array]            
-         
-         
-    @_doxtend(_TOSDB_DataBlock) # __doc__ from ABC _TOSDB_DataBlock
-    def topics(self,  str_max=MAX_STR_SZ):
-        size = self._topic_count()
-        strs = [_BUF_(str_max + 1) for _ in range(size)]     
-        strs_array = (_pchar_* size)(*[ _cast(s, _pchar_) for s in strs])   
-            
-        _lib_call("TOSDB_GetTopicNames", 
-                  self._name, 
-                  strs_array, 
-                  size, 
-                  str_max + 1, 
-                  arg_types=(_str_,  _ppchar_, _uint32_, _uint32_))               
-        
-        return [_cast_cstr(s) for s in strs_array] 
-        
-
-    @_doxtend(_TOSDB_DataBlock) # __doc__ from ABC _TOSDB_DataBlock
-    def items_precached(self, str_max=MAX_STR_SZ):  
-        size = self._item_precached_count()  
-        strs = [_BUF_(str_max + 1) for _ in range(size)]      
-        strs_array = (_pchar_* size)(*[ _cast(s, _pchar_) for s in strs]) 
-        
-        _lib_call("TOSDB_GetPreCachedItemNames", 
-                  self._name, 
-                  strs_array, 
-                  size, 
-                  str_max + 1, 
-                  arg_types=(_str_, _ppchar_, _uint32_, _uint32_))
-        
-        return [_cast_cstr(s) for s in strs_array]            
-         
-         
-    @_doxtend(_TOSDB_DataBlock) # __doc__ from ABC _TOSDB_DataBlock
-    def topics_precached(self,  str_max=MAX_STR_SZ):
-        size = self._topic_precached_count()
-        strs = [_BUF_(str_max + 1) for _ in range(size)]     
-        strs_array = (_pchar_* size)(*[ _cast(s, _pchar_) for s in strs])   
-            
-        _lib_call("TOSDB_GetPreCachedTopicNames", 
-                  self._name, 
-                  strs_array, 
-                  size, 
-                  str_max + 1, 
-                  arg_types=(_str_,  _ppchar_, _uint32_, _uint32_))               
-        
-        return [_cast_cstr(s) for s in strs_array] 
-        
-
-    @_doxtend(_TOSDB_DataBlock) # __doc__ from ABC _TOSDB_DataBlock   
-    def add_items(self, *items):              
-        fails = {}
-        for item in items:
-            err = _lib_call("TOSDB_AddItem", self._name,
-                            item.encode("ascii").upper(),
-                            arg_types=(_str_,_str_), error_check=False)
-            if err:
-                fails[item] = _lookup_error_name(err)
-       
-        if not self._items and not self._topics:
-            self._topics = self.topics() # in case topics came out of pre-cache            
-        self._items = self.items()          
-
-        if fails:
-            raise TOSDB_CLibError("error(s) adding items", str(fails))
-         
-
-    @_doxtend(_TOSDB_DataBlock) # __doc__ from ABC _TOSDB_DataBlock
-    def add_topics(self, *topics):        
-        fails = {}
-        for topic in topics:
-            err = _lib_call("TOSDB_AddTopic", self._name,
-                            topic.encode("ascii").upper(),
-                            arg_types=(_str_,_str_), error_check=False)
-            if err:
-                fails[topic] = _lookup_error_name(err)
-
-        if not self._items and not self._topics:
-            self._items = self.items() # in case items came out of pre-cache            
-        self._topics = self.topics()    
-        
-        if fails:
-            raise TOSDB_CLibError("error(s) adding topics", str(fails))
-
-       
-    @_doxtend(_TOSDB_DataBlock) # __doc__ from ABC _TOSDB_DataBlock
-    def remove_items(self, *items):
-        fails = {}
-        for item in items:
-            err = _lib_call("TOSDB_RemoveItem", self._name,
-                            item.encode("ascii").upper(),
-                            arg_types=(_str_,_str_), error_check=False)
-            if err:
-                fails[item] = _lookup_error_name(err)
-
-        self._items = self.items()
-
-        #jan 30 2017: if topics are sent to pre-cache
-        if not self._items:
-            self._topics = self.topics()
-                
-        if fails:
-            raise TOSDB_CLibError("error(s) removing items", str(fails))
-            
-
-
-    @_doxtend(_TOSDB_DataBlock) # __doc__ from ABC _TOSDB_DataBlock
-    def remove_topics(self, *topics):
-        fails = {}
-        for topic in topics:
-            err = _lib_call("TOSDB_RemoveTopic", self._name,
-                            topic.encode("ascii").upper(),
-                            arg_types=(_str_,_str_), error_check=False)
-            if err:
-                fails[topic] = _lookup_error_name(err)
-
-        self._topics = self.topics()
-
-        #jan 30 2017: if items are sent to pre-cache
-        if not self._topics:
-            self._items = self.items()
-            
-        if fails:
-            raise TOSDB_CLibError("error(s) removing topics", str(fails))
-          
-
+    
     @_doxtend(_TOSDB_DataBlock) # __doc__ from ABC _TOSDB_DataBlock
     def get(self, item, topic, date_time=False, indx=0, check_indx=True, 
             data_str_max=STR_DATA_SZ):
-         
-        item = item.upper()
-        topic = topic.upper()
+        
+        item = self._handle_raw_item(item)
+        topic = self._handle_raw_topic(topic)  
         
         if date_time and not self._date_time:
             raise TOSDB_DateTimeError("date_time not available for this block")
-
-        self._valid_item(item)
-        self._valid_topic(topic)
         
         if indx < 0:
             indx += self._block_size
@@ -667,59 +687,59 @@ class TOSDB_DataBlock(_TOSDB_DataBlock):
         if check_indx and indx >= self.stream_occupancy(item, topic):
             raise TOSDB_DataError("data not available at this index yet " +
                                   "(disable check_indx to avoid this error)")
-
-        dts = _DateTimeStamp()      
-        tbits = type_bits(topic)
-        tytup = _type_switch(tbits)
-        
+                
+        tytup = _type_switch( type_bits(topic) )       
         if tytup[0] == "String":
-            ret_str = _BUF_(data_str_max + 1)
-            _lib_call("TOSDB_GetString", 
-                      self._name, 
-                      item.encode("ascii"), 
-                      topic.encode("ascii"), 
-                      indx, 
-                      ret_str, 
-                      data_str_max + 1,
-                      _pointer(dts) if date_time else _PTR_(_DateTimeStamp)(),
-                      arg_types=(_str_,  _str_, _str_, _long_, _pchar_,
-                                 _uint32_, _PTR_(_DateTimeStamp)))   
-         
-            if date_time :
-                return (ret_str.value.decode(), TOSDB_DateTime(dts))
-            else:
-                return ret_str.value.decode()
-
+            return self._get_string(item, topic, date_time, indx, data_str_max)
         else:
-            val = tytup[1]()
-            _lib_call("TOSDB_Get"+tytup[0], 
-                      self._name,
-                      item.encode("ascii"), 
-                      topic.encode("ascii"),
-                      indx, 
-                      _pointer(val),
-                      _pointer(dts) if date_time else _PTR_(_DateTimeStamp)(),
-                      arg_types=(_str_, _str_, _str_, _long_, _PTR_(tytup[1]),
-                                 _PTR_(_DateTimeStamp)))     
-
-            if date_time:
-                return (val.value, TOSDB_DateTime(dts))
-            else:
-                return val.value
+            return self._get_number(tytup, item, topic, date_time, indx)
 
 
+    def _get_string(self, item, topic, date_time, indx, data_str_max):
+        dt = _DateTimeStamp() 
+        s = _BUF_(data_str_max + 1)
+        
+        _lib_call("TOSDB_GetString", 
+                  self._name, 
+                  item.encode("ascii"), 
+                  topic.encode("ascii"), 
+                  indx, 
+                  s, 
+                  data_str_max + 1,
+                  _pointer(dt) if date_time else _PTR_(_DateTimeStamp)(),
+                  arg_types=(_str_,  _str_, _str_, _long_, _pchar_,
+                             _uint32_, _PTR_(_DateTimeStamp)))
+
+        s = s.value.decode()
+        return (s, TOSDB_DateTime(dt)) if date_time else s
+
+
+    def _get_number(self, tytup, item, topic, date_time, indx):
+        dt = _DateTimeStamp()
+        n = tytup[1]()
+        
+        _lib_call("TOSDB_Get"+tytup[0], 
+                  self._name,
+                  item.encode("ascii"), 
+                  topic.encode("ascii"),
+                  indx, 
+                  _pointer(n),
+                  _pointer(dt) if date_time else _PTR_(_DateTimeStamp)(),
+                  arg_types=(_str_, _str_, _str_, _long_, _PTR_(tytup[1]),
+                             _PTR_(_DateTimeStamp)))     
+
+        return (n.value, TOSDB_DateTime(dt)) if date_time else n.value       
+
+       
     @_doxtend(_TOSDB_DataBlock) # __doc__ from ABC _TOSDB_DataBlock
-    def stream_snapshot(self, item, topic, date_time=False, end=-1, beg=0, 
+    def stream_snapshot(self, item, topic, date_time=False, end=-1, beg=0,
                         smart_size=True, data_str_max=STR_DATA_SZ):
-
-        item = item.upper()
-        topic = topic.upper()
+        
+        item = self._handle_raw_item(item)
+        topic = self._handle_raw_topic(topic)  
         
         if date_time and not self._date_time:
             raise TOSDB_DateTimeError("date_time not available for this block")
-        
-        self._valid_item(item)
-        self._valid_topic(topic)
         
         if end < 0:
             end += self._block_size
@@ -739,69 +759,68 @@ class TOSDB_DataBlock(_TOSDB_DataBlock):
                 return []
             end = min(end, so - 1)
             beg = min(beg, so - 1)
-            size = (end - beg) + 1
-        
-        dtss = (_DateTimeStamp * size)()
-        tbits = type_bits(topic)
-        tytup = _type_switch(tbits)
-        
+            size = (end - beg) + 1    
+   
+        tytup = _type_switch( type_bits(topic) )        
         if tytup[0] == "String":      
-            strs = [_BUF_( data_str_max +1) for _ in range(size)]              
-            strs_array = (_pchar_ * size)(*[ _cast(s, _pchar_) for s in strs]) 
-
-            _lib_call("TOSDB_GetStreamSnapshotStrings", 
-                      self._name,
-                      item.encode("ascii"), 
-                      topic.encode("ascii"),
-                      strs_array, 
-                      size, 
-                      data_str_max + 1,                
-                      dtss if date_time else _PTR_(_DateTimeStamp)(),
-                      end, 
-                      beg,
-                      arg_types=(_str_, _str_, _str_, _ppchar_, _uint32_, _uint32_, 
-                                 _PTR_(_DateTimeStamp), _long_, _long_))   
-
-            if date_time:
-                adj_dts = [TOSDB_DateTime(x) for x in dtss]         
-                return [sd for sd in zip(map(_cast_cstr, strs_array), adj_dts)]        
-            else:        
-                return [_cast_cstr(s) for s in strs_array]
-
-        else: 
-            num_array = (tytup[1] * size)()   
-            _lib_call("TOSDB_GetStreamSnapshot"+tytup[0]+"s", 
-                      self._name,
-                      item.encode("ascii"), 
-                      topic.encode("ascii"),
-                      num_array, 
-                      size,
-                      dtss if date_time else _PTR_(_DateTimeStamp)(),
-                      end, 
-                      beg,
-                      arg_types=(_str_, _str_, _str_, _PTR_(tytup[1]), _uint32_, 
-                                 _PTR_(_DateTimeStamp), _long_, _long_)) 
-           
-            if date_time:
-                adj_dts = [TOSDB_DateTime(x) for x in dtss]
-                return [nd for nd in zip(num_array,adj_dts)]       
-            else:
-                return [n for n in num_array]
+            return self._stream_snapshot_strings(item, topic, date_time, end,
+                                                 beg, size, data_str_max)
+        else:
+            return self._stream_snapshot_numbers(tytup, item, topic, date_time,
+                                                 end, beg, size)
 
 
+    def _stream_snapshot_strings(self, item, topic, date_time, end, beg, size,
+                                 data_str_max):
+        strs = _gen_str_buffers(data_str_max+1, size)
+        pstrs = _gen_str_buffers_ptrs(strs) 
+        dts = (_DateTimeStamp * size)()
+                                 
+        _lib_call("TOSDB_GetStreamSnapshotStrings", 
+                  self._name,
+                  item.encode("ascii"), 
+                  topic.encode("ascii"),
+                  pstrs, 
+                  size, 
+                  data_str_max + 1,                
+                  dts if date_time else _PTR_(_DateTimeStamp)(),
+                  end, 
+                  beg,
+                  arg_types=(_str_, _str_, _str_, _ppchar_, _uint32_, _uint32_, 
+                             _PTR_(_DateTimeStamp), _long_, _long_))   
+        
+        return list(_zip_cstr_dt(pstrs,dts) if date_time else _map_cstr(pstrs)) 
+
+        
+    def _stream_snapshot_numbers(self, tytup, item, topic, date_time, end, beg, size):
+        nums = (tytup[1] * size)()
+        dts = (_DateTimeStamp * size)()
+                                 
+        _lib_call("TOSDB_GetStreamSnapshot"+tytup[0]+"s", 
+                  self._name,
+                  item.encode("ascii"), 
+                  topic.encode("ascii"),
+                  nums, 
+                  size,
+                  dts if date_time else _PTR_(_DateTimeStamp)(),
+                  end, 
+                  beg,
+                  arg_types=(_str_, _str_, _str_, _PTR_(tytup[1]), _uint32_, 
+                             _PTR_(_DateTimeStamp), _long_, _long_)) 
+        
+        return list(zip(nums,_map_dt(dts)) if date_time else nums)
+
+                                 
     @_doxtend(_TOSDB_DataBlock) # __doc__ from ABC _TOSDB_DataBlock
     def stream_snapshot_from_marker(self, item, topic, date_time=False, beg=0, 
                                     margin_of_safety=100, throw_if_data_lost=True,
                                     data_str_max=STR_DATA_SZ):
-      
-        item = item.upper()
-        topic = topic.upper()
+        
+        item = self._handle_raw_item(item)
+        topic = self._handle_raw_topic(topic)  
         
         if date_time and not self._date_time:
             raise TOSDB_DateTimeError("date_time not available for this block")
-
-        self._valid_item(item)    
-        self._valid_topic(topic)
         
         if beg < 0:
             beg += self._block_size   
@@ -834,194 +853,184 @@ class TOSDB_DataBlock(_TOSDB_DataBlock):
         if cur_sz < 0:
             return None
         
-        safe_sz = cur_sz + margin_of_safety
-        dtss = (_DateTimeStamp * safe_sz)()
-        tbits = type_bits(topic)
-        tytup = _type_switch(tbits)
-        get_size = _long_()
-        
+        tytup = _type_switch( type_bits(topic) )       
         if tytup[0] == "String":
-            strs = [ _BUF_( data_str_max +1) for _ in range(safe_sz) ]   
-            strs_array = (_pchar_ * safe_sz)(*[_cast(s,_pchar_) for s in strs]) 
-
-            _lib_call("TOSDB_GetStreamSnapshotStringsFromMarker", 
-                      self._name,
-                      item.encode("ascii"), 
-                      topic.encode("ascii"),
-                      strs_array, 
-                      safe_sz, 
-                      data_str_max + 1,
-                      dtss if date_time else _PTR_(_DateTimeStamp)(),     
-                      beg, 
-                      _pointer(get_size),
-                      arg_types=(_str_, _str_, _str_, _ppchar_, _uint32_, _uint32_,
-                                 _PTR_(_DateTimeStamp), _long_, _PTR_(_long_))) 
-               
-            get_size = get_size.value
-            if get_size == 0:
-                return None
-            elif get_size < 0:
-                if throw_if_data_lost:
-                    raise TOSDB_DataError("data lost behind the 'marker'")
-                else:
-                    get_size *= -1
-            if date_time:
-                adj_dts = [TOSDB_DateTime(x) for x in dtss[:get_size]]      
-                return [sd for sd in zip(map(_cast_cstr, strs_array[:get_size]), adj_dts)]    
-            else:
-                return [_cast_cstr(s) for s in strs_array[:get_size]]
-
+            return self._stream_snapshot_from_marker_strings(item, topic,
+                                date_time, beg, cur_sz + margin_of_safety,
+                                throw_if_data_lost, data_str_max)
         else:
-            num_array = (tytup[1] * safe_sz)()   
-            _lib_call("TOSDB_GetStreamSnapshot" + tytup[0] + "sFromMarker", 
-                      self._name,
-                      item.encode("ascii"), 
-                      topic.encode("ascii"),
-                      num_array, 
-                      safe_sz,
-                      dtss if date_time else _PTR_(_DateTimeStamp)(),     
-                      beg, 
-                      _pointer(get_size),
-                      arg_types=(_str_, _str_, _str_, _PTR_(tytup[1]), _uint32_, 
-                                 _PTR_(_DateTimeStamp), _long_, _PTR_(_long_))) 
-          
-            get_size = get_size.value
-            if get_size == 0:
-                return None
-            elif get_size < 0:
-                if throw_if_data_lost:
-                    raise TOSDB_DataError("data lost behind the 'marker'")
-                else:
-                    get_size *= -1            
-            if date_time:
-                adj_dts = [TOSDB_DateTime(x) for x in dtss[:get_size]]
-                return [nd for nd in zip(num_array[:get_size], adj_dts)]       
-            else:
-                return [n for n in num_array[:get_size]]    
-      
+            return self._stream_snapshot_from_marker_numbers(tytup, item,
+                                topic, date_time, beg, cur_sz + margin_of_safety,
+                                throw_if_data_lost)
+       
 
+    def _stream_snapshot_from_marker_strings(self, item, topic, date_time, beg,
+                                             size, throw_if_data_lost, data_str_max):
+        strs = _gen_str_buffers(data_str_max+1, size)
+        pstrs = _gen_str_buffers_ptrs(strs) 
+        dts = (_DateTimeStamp * size)()
+        g = _long_()
+                                 
+        _lib_call("TOSDB_GetStreamSnapshotStringsFromMarker", 
+                  self._name,
+                  item.encode("ascii"), 
+                  topic.encode("ascii"),
+                  pstrs, 
+                  size, 
+                  data_str_max + 1,
+                  dts if date_time else _PTR_(_DateTimeStamp)(),     
+                  beg, 
+                  _pointer(g),
+                  arg_types=(_str_, _str_, _str_, _ppchar_, _uint32_, _uint32_,
+                             _PTR_(_DateTimeStamp), _long_, _PTR_(_long_))) 
+           
+        g = g.value
+        if g == 0:
+            return None
+        elif g < 0:
+            if throw_if_data_lost:
+                raise TOSDB_DataError("data lost behind the 'marker'")
+            else:
+                g *= -1
+
+        return list(_zip_cstr_dt(pstrs[:g],dts[:g]) if date_time else _map_cstr(pstrs[:g]))
+     
+                                 
+    def _stream_snapshot_from_marker_numbers(self, tytup, item, topic, date_time, beg,
+                                             size, throw_if_data_lost):
+        nums = (tytup[1] * size)()
+        dts = (_DateTimeStamp * size)()
+        g = _long_()
+                                 
+        _lib_call("TOSDB_GetStreamSnapshot" + tytup[0] + "sFromMarker", 
+                  self._name,
+                  item.encode("ascii"), 
+                  topic.encode("ascii"),
+                  nums, 
+                  size,
+                  dts if date_time else _PTR_(_DateTimeStamp)(),     
+                  beg, 
+                  _pointer(g),
+                  arg_types=(_str_, _str_, _str_, _PTR_(tytup[1]), _uint32_, 
+                             _PTR_(_DateTimeStamp), _long_, _PTR_(_long_))) 
+      
+        g = g.value
+        if g == 0:
+            return None
+        elif g < 0:
+            if throw_if_data_lost:
+                raise TOSDB_DataError("data lost behind the 'marker'")
+            else:
+                g *= -1
+
+        return list(zip(nums[:g], _map_dt(dts[:g])) if date_time else nums[:g])                        
+                                    
+                                 
     @_doxtend(_TOSDB_DataBlock) # __doc__ from ABC _TOSDB_DataBlock
     def item_frame(self, topic, date_time=False, labels=True, 
                    data_str_max=STR_DATA_SZ, label_str_max=MAX_STR_SZ):
-       
-        topic = topic.upper()
+        
+        topic = self._handle_raw_topic(topic)  
         
         if date_time and not self._date_time:
-            raise TOSDB_DateTimeError("date_time not available for this block")
+            raise TOSDB_DateTimeError("date_time not available for this block")       
         
-        self._valid_topic(topic)
-        
-        size = self._item_count()
-        dtss = (_DateTimeStamp * size)()  
-        labs = [_BUF_(label_str_max+1) for _ in range(size)] 
-        labs_array = (_pchar_ * size)(*[_cast(s, _pchar_) for s in labs])  
-        tbits = type_bits(topic)
-        tytup = _type_switch(tbits)
-        
-        if tytup[0] is "String":      
-            strs = [_BUF_( data_str_max + 1) for _ in range(size)]
-            strs_array = (_pchar_ * size)(*[_cast(s, _pchar_) for s in strs]) 
-
-            _lib_call("TOSDB_GetItemFrameStrings", 
-                      self._name, 
-                      topic.encode("ascii"),
-                      strs_array, 
-                      size, 
-                      data_str_max + 1,
-                      labs_array if labels else _ppchar_(), 
-                      label_str_max + 1,
-                      dtss if date_time else _PTR_(_DateTimeStamp)(),
-                      arg_types=(_str_, _str_, _ppchar_, _uint32_, _uint32_,
-                                 _ppchar_, _uint32_, _PTR_(_DateTimeStamp)))       
-
-            if labels:
-                l_map = map(_cast_cstr, labs_array)
-                _nt_ = _gen_namedtuple(_str_clean(topic)[0], _str_clean(*l_map)) 
-                if date_time:
-                    adj_dts = [TOSDB_DateTime(x) for x in dtss]
-                    return _nt_(*zip(map(_cast_cstr, strs_array),adj_dts))
-                else:
-                    return _nt_(*map(_cast_cstr, strs_array))    
-            else:
-                if date_time:
-                    adj_dts = [TOSDB_DateTime(x) for x in dtss]
-                    return list(zip(map(_cast_cstr, strs_array),adj_dts))
-                else:
-                    return list(map(_cast_cstr, strs_array))  
-         
-        else: 
-            num_array = (tytup[1] * size)()   
-            _lib_call("TOSDB_GetItemFrame"+tytup[0]+"s", 
-                      self._name, 
-                      topic.encode("ascii"), 
-                      num_array, 
-                      size,
-                      labs_array if labels else _ppchar_(), 
-                      label_str_max + 1,
-                      dtss if date_time else _PTR_(_DateTimeStamp)(),       
-                      arg_types=(_str_, _str_, _PTR_(tytup[1]), _uint32_, _ppchar_, 
-                                 _uint32_, _PTR_(_DateTimeStamp)))    
-        
-            if labels:   
-                l_map = map(_cast_cstr, labs_array)
-                _nt_ = _gen_namedtuple(_str_clean(topic)[0], _str_clean(*l_map)) 
-                if date_time:
-                    adj_dts = [TOSDB_DateTime(x) for x in dtss]
-                    return _nt_(*zip(num_array,adj_dts))
-                else:
-                    return _nt_(*num_array)   
-            else:
-                if date_time:
-                    adj_dts = [TOSDB_DateTime(x) for x in dtss]
-                    return list(zip(num_array,adj_dts))
-                else:
-                    return [n for n in num_array]    
+        tytup = _type_switch( type_bits(topic) )        
+        if tytup[0] is "String":
+            return self._item_frame_strings(topic, date_time, labels, self._item_count(),
+                                            data_str_max, label_str_max)
+        else:
+            return self._item_frame_numbers(tytup, topic, date_time, labels,
+                                            self._item_count(), label_str_max) 
 
 
+    def _item_frame_strings(self, topic, date_time, labels, size, data_str_max,
+                            label_str_max):
+        strs = _gen_str_buffers(data_str_max+1, size)
+        labs = _gen_str_buffers(label_str_max+1, size)                
+        pstrs = _gen_str_buffers_ptrs(strs)
+        plabs = _gen_str_buffers_ptrs(labs)  
+        dts = (_DateTimeStamp * size)()
+                                 
+        _lib_call("TOSDB_GetItemFrameStrings", 
+                  self._name, 
+                  topic.encode("ascii"),
+                  pstrs, 
+                  size, 
+                  data_str_max + 1,
+                  plabs if labels else _ppchar_(), 
+                  label_str_max + 1,
+                  dts if date_time else _PTR_(_DateTimeStamp)(),
+                  arg_types=(_str_, _str_, _ppchar_, _uint32_, _uint32_,
+                             _ppchar_, _uint32_, _PTR_(_DateTimeStamp)))       
+
+        dat = list(_zip_cstr_dt(pstrs, dts) if date_time else _map_cstr(pstrs))
+        if labels:            
+            nt = _gen_namedtuple(_str_clean(topic)[0], _str_clean(*_map_cstr(plabs)))            
+            return nt(*dat)
+        else:
+            return dat                                
+
+
+    def _item_frame_numbers(self, tytup, topic, date_time, labels, size, label_str_max):        
+        nums = (tytup[1] * size)()
+        dts = (_DateTimeStamp * size)()
+        labs = _gen_str_buffers(label_str_max+1, size) 
+        plabs = _gen_str_buffers_ptrs(labs)
+                                 
+        _lib_call("TOSDB_GetItemFrame"+tytup[0]+"s", 
+                  self._name, 
+                  topic.encode("ascii"), 
+                  nums, 
+                  size,
+                  plabs if labels else _ppchar_(), 
+                  label_str_max + 1,
+                  dts if date_time else _PTR_(_DateTimeStamp)(),       
+                  arg_types=(_str_, _str_, _PTR_(tytup[1]), _uint32_, _ppchar_, 
+                             _uint32_, _PTR_(_DateTimeStamp)))    
+
+        dat = list(zip(nums,_map_dt(dts)) if date_time else nums)
+        if labels:               
+            nt = _gen_namedtuple(_str_clean(topic)[0], _str_clean(*_map_cstr(plabs)))
+            return nt(*dat)        
+        else:
+            return dat 
+        
+                                 
     @_doxtend(_TOSDB_DataBlock) # __doc__ from ABC _TOSDB_DataBlock
     def topic_frame(self, item, date_time=False, labels=True, 
                     data_str_max=STR_DATA_SZ, label_str_max=MAX_STR_SZ):
-       
-        item = item.upper()
         
+        item = self._handle_raw_item(item)
+         
         if date_time and not self._date_time:
-            raise TOSDB_DateTimeError("date_time not available for this block")
-        
-        self._valid_item( item)
+            raise TOSDB_DateTimeError("date_time not available for this block")       
         
         size = self._topic_count()
-        dtss = (_DateTimeStamp * size)()          
-        labs = [_BUF_(label_str_max + 1) for _ in range(size)] 
-        strs = [_BUF_(data_str_max + 1) for _ in range(size)]    
-        labs_array = (_pchar_ * size)(*[_cast(s, _pchar_) for s in labs]) 
-        strs_array = (_pchar_ * size)(*[_cast(s, _pchar_) for s in strs])
+        strs = _gen_str_buffers(data_str_max+1, size)
+        labs = _gen_str_buffers(label_str_max+1, size)                
+        pstrs = _gen_str_buffers_ptrs(strs)
+        plabs = _gen_str_buffers_ptrs(labs)  
+        dts = (_DateTimeStamp * size)()
             
         _lib_call("TOSDB_GetTopicFrameStrings", 
                   self._name, 
                   item.encode("ascii"),
-                  strs_array, 
+                  pstrs, 
                   size, 
                   data_str_max + 1,                                            
-                  labs_array if labels else _ppchar_(), 
+                  plabs if labels else _ppchar_(), 
                   label_str_max + 1,
-                  dtss if date_time else _PTR_(_DateTimeStamp)(),
+                  dts if date_time else _PTR_(_DateTimeStamp)(),
                   arg_types=(_str_, _str_, _ppchar_, _uint32_, _uint32_,
                              _ppchar_, _uint32_, _PTR_(_DateTimeStamp)))    
 
-        if labels:
-            l_map = map(_cast_cstr, labs_array)
-            _nt_ = _gen_namedtuple(_str_clean(item)[0], _str_clean(*l_map))        
-            if date_time:
-                adj_dts = [TOSDB_DateTime(x) for x in dtss]
-                return _nt_(*zip(map(_cast_cstr, strs_array), adj_dts))                
-            else:
-                return _nt_(*map(_cast_cstr, strs_array))            
+        dat = list(_zip_cstr_dt(pstrs,dts) if date_time else _map_cstr(pstrs))        
+        if labels:      
+            nt = _gen_namedtuple(_str_clean(item)[0], _str_clean(*_map_cstr(plabs)))            
+            return nt(*dat)                     
         else:
-            if date_time:
-                adj_dts = [TOSDB_DateTime(x) for x in dtss]
-                return list(zip(map(_cast_cstr, strs_array), adj_dts))         
-            else:
-                return list(map(_cast_cstr, strs_array))
+            return dat
 
 
     # total_frame not party of abstract base, so include doc string
@@ -1042,18 +1051,51 @@ class TOSDB_DataBlock(_TOSDB_DataBlock):
         elif date_time == True:          returns -> list of list of 2-tuple**
         else:                            returns -> list of list**
 
-        **data are ALL of type str (frame can contain topics of differnt type)
+        **data are ALL of type str (frame can contain topics of different type)
 
         throws TOSDB_DataTimeError, TOSDB_CLibError     
         """
         p = _partial(self.topic_frame, date_time=date_time, labels=labels, 
                      data_str_max=data_str_max, label_str_max=label_str_max)
         if labels:
-            return {x : p(x) for x in self.items()}    
+            return {x : p(x) for x in self._items}    
         else:               
-            return [p(x) for x in self.items()]
+            return list(map(p,self._items))
 
-            
+
+    def _handle_raw(self, s):       
+        if len(s) < 1 or len(s) > MAX_STR_SZ:            
+            raise TOSDB_ValueError("invalid str len: " + str(len(s)))
+        return s.upper()
+
+        
+    def _handle_raw_item(self, item, throw_if_not_in_block=True):
+        if type(item) is not str:
+            raise TOSDB_TypeError("item must be str")
+
+        item = self._handle_raw(item)                                  
+        if throw_if_not_in_block and item not in self._items:
+            raise TOSDB_ValueError("item '" + str(item) + "' not in block")
+        
+        return item
+
+        
+    def _handle_raw_topic(self, topic, throw_if_not_in_block=True):
+        if topic in TOPICS:
+            topic = topic.val
+        elif type(topic) is not str:
+            raise TOSDB_TypeError("topic must be TOPICS enum or str")
+
+        topic = self._handle_raw(topic)
+        if topic not in TOPICS.val_dict:        
+            raise TOSDB_ValueError("invalid topic: " + topic)
+                                  
+        if throw_if_not_in_block and topic not in self._topics:
+            raise TOSDB_ValueError("topic '" + str(topic) + "' not in block")
+        
+        return topic
+    
+
 
 ### HOW WE ACCESS THE UNDERLYING C CALLS ###
 def _lib_call(f, *fargs, ret_type=_int_, arg_types=None, error_check=True):        

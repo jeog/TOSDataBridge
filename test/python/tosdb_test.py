@@ -225,18 +225,67 @@ def test():
             print('   ...') 
 
     print()
-    print("-- ITEM FRAME --",tt,'date_time=False')
-    print('  ',b1.item_frame(tt))
-  
+    print("-- STREAM SNAPSHOT FROM MARKER --",ii,tt, 'date_time=False','beg = 1')
+    for i in range(3):
+        print('  ',"(sleep 2 second(s))")
+        _sleep(2)
+        ssfm = b1.stream_snapshot_from_marker(ii,tt,False, 1)
+        if(ssfm):
+            ssfm.reverse()
+            for k in ssfm:
+                print('  ',str(k))  
+        else:
+            print('   ...')
+            
     print()
-    print("-- TOPIC FRAME --",ii,'date_time=False')
-    print('  ',b1.topic_frame(ii))
+    print("-- ITEM FRAME --",tt,'date_time=False, labels=True')
+    print('  ',b1.item_frame(tt,False,True))
+
+    print()
+    print("-- ITEM FRAME --",tt,'date_time=True, labels=True')
+    print('  ',b1.item_frame(tt,True,True))
+
+    print()
+    print("-- ITEM FRAME --",tt,'date_time=False, labels=False')
+    print('  ',b1.item_frame(tt,False,False))
+
+    print()
+    print("-- ITEM FRAME --",tt,'date_time=True, labels=False')
+    print('  ',b1.item_frame(tt,True,False))
+
+    
+    print()
+    print("-- TOPIC FRAME --",ii,'date_time=False, labels=True')
+    print('  ',b1.topic_frame(ii,False,True))
+
+    print()
+    print("-- TOPIC FRAME --",ii,'date_time=True, labels=True')
+    print('  ',b1.topic_frame(ii,True,True))
+
+    print()
+    print("-- TOPIC FRAME --",ii,'date_time=False, labels=False')
+    print('  ',b1.topic_frame(ii,False,False))
+
+    print()
+    print("-- TOPIC FRAME --",ii,'date_time=True, labels=False')
+    print('  ',b1.topic_frame(ii,True,False))
 
     if not args.virtual:
         print()
-        print("-- TOTAL FRAME --",ii,'date_time=False')
-        print('  ',b1.total_frame())
-  
+        print("-- TOTAL FRAME --",ii,'date_time=False, labels=True')
+        print('  ',b1.total_frame(False,True))
+
+        print()
+        print("-- TOTAL FRAME --",ii,'date_time=True, labels=True')
+        print('  ',b1.total_frame(True,True))
+
+        print()
+        print("-- TOTAL FRAME --",ii,'date_time=False, labels=False')
+        print('  ',b1.total_frame(False,False))
+
+        print()
+        print("-- TOTAL FRAME --",ii,'date_time=True, labels=False')
+        print('  ',b1.total_frame(True,False))
     print()
 
 
