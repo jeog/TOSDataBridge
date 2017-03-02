@@ -34,7 +34,11 @@ def _main_init():
     parser.add_argument('--path', help='the exact path of the library')
     parser.add_argument('--auth', help='password to use for authentication')
     args = parser.parse_args()  
-      
+
+    #remove quotes 
+    if args.auth:
+        args.auth = args.auth.strip("'").strip('"')
+        
     if args.virtual_server and _SYS_IS_WIN:
         raw_args = args.virtual_server.split(' ')
         try:

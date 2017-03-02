@@ -676,76 +676,80 @@ class _VTOS_BlockServer(_Thread):
         self._blk = None
         self._rflag = False
         self._stop_callback = stop_callback
-      
+
+    def __del__(self):
+        if self._my_sock:
+            self._my_sock.close()
+            
     def stop(self):
         self._rflag = False            
 
     def run(self):   
-        def _handle_msg(dat): 
-            def _handle_call(args):       
-                try:
-                    meth = getattr(self._blk, args[1].decode())
-                    uargs = _pickle.loads(args[2]) if len(args) > 2 else ()            
-                    ret = meth(*uargs)        
-                    if ret is None: # None is still a success
-                        return _pack_msg(_vSUCCESS)        
-                    elif hasattr(ret,NTUP_TAG_ATTR): #special namedtuple tag
-                        return _pack_msg(_vSUCCESS_NT, _dumpnamedtuple(ret))
-                    else:
-                        return _pack_msg(_vSUCCESS, _pickle.dumps(ret))   
-                except Exception as e:         
-                    return _pack_msg(_vFAILURE, _vEXCEPTION, repr(e))   
-            ### _handle_call() ###
-                  
-            r = None
-            kill = False
-            args = _unpack_msg(dat)        
-            msg_t = args[0].decode()        
-            try:
-                if msg_t == _vCREATE:
-                    uargs = _pickle.loads(args[1])         
-                    self._blk = TOSDB_DataBlock(*uargs)
-                    r = _pack_msg(_vSUCCESS)
-                    if not r:
-                        kill = True                                  
-                elif msg_t == _vCALL:   
-                    r = _handle_call(args)
-                else:
-                    raise TOSDB_ValueError("invalid msg type")
-            except Exception as e:  
-                kill = True        
-                r = _pack_msg(_vFAILURE, _vEXCEPTION, repr(e))
-            try:
-                _send_tcp(self._my_sock, r)
-            except:
-                raise
-            finally:
-                if kill:
-                    self.stop()
-        ### _handle_msg() ###
-            
         self._rflag = True      
         while self._rflag:                     
             try:           
                 dat = _recv_tcp(self._my_sock)          
                 if not dat:            
                     break        
-                _handle_msg(dat)
+                ret, kill = self._handle_msg(dat)
+                try:
+                    _send_tcp(self._my_sock, ret)      
+                finally:
+                    if kill:
+                        self.stop()
             except _socket.timeout:        
                 pass
-            except:
-                print("fatal: unhandled exception in _VTOS_BlockServer", file=_stderr)
-                del self._blk
-                self._rflag = False          
-                self._my_sock.close()
-                self._stop_callback(self)
+            except ConnectionResetError:
+                print("- Connection Reset in _VTOS_BlockServer")
+                break 
+            except Exception as e:
+                print("fatal: unhandled exception in _VTOS_BlockServer,", str(e), file=_stderr)
+                self._close()
                 raise    
-        del self._blk    
-        self._my_sock.close()
-        self._stop_callback(self)  
-    ### run() ###    
-  
+        self._close()    
 
+    def _handle_msg(self,dat):                   
+        r = None
+        kill = False
+        args = _unpack_msg(dat)        
+        msg_t = args[0].decode()        
+        try:
+            if msg_t == _vCREATE:
+                uargs = _pickle.loads(args[1])         
+                self._blk = TOSDB_DataBlock(*uargs)
+                r = _pack_msg(_vSUCCESS)
+                if not r:
+                    kill = True                                  
+            elif msg_t == _vCALL:   
+                r = self._handle_call(args)
+            else:
+                raise TOSDB_ValueError("invalid msg type")
+        except Exception as e:  
+            kill = True        
+            r = _pack_msg(_vFAILURE, _vEXCEPTION, repr(e))
+        return (r, kill)
+                
+    def _handle_call(self,args):       
+        try:
+            meth = getattr(self._blk, args[1].decode())
+            uargs = _pickle.loads(args[2]) if len(args) > 2 else ()            
+            ret = meth(*uargs)        
+            if ret is None: # None is still a success
+                return _pack_msg(_vSUCCESS)        
+            elif hasattr(ret,NTUP_TAG_ATTR): #special namedtuple tag
+                return _pack_msg(_vSUCCESS_NT, _dumpnamedtuple(ret))
+            else:
+                return _pack_msg(_vSUCCESS, _pickle.dumps(ret))   
+        except Exception as e:         
+            return _pack_msg(_vFAILURE, _vEXCEPTION, repr(e))
+
+    def _close(self):
+        del self._blk
+        self._rflag = False          
+        self._my_sock.close()
+        self._stop_callback(self)
+        
+  
 class _VTOS_AdminServer(_Thread):    
     def __init__(self, conn, timeout):
         super().__init__(daemon=True)
@@ -755,7 +759,11 @@ class _VTOS_AdminServer(_Thread):
         self._my_sock.settimeout(timeout / 1000)
         self._rflag = False
         self._globals = globals()
-      
+
+    def __del__(self):
+        if self._my_sock:
+            self._my_sock.close()
+        
     def stop(self):
         self._rflag = False            
 
@@ -766,30 +774,33 @@ class _VTOS_AdminServer(_Thread):
                 dat = _recv_tcp(self._my_sock)         
                 if not dat:            
                     break          
-                args = _unpack_msg(dat)         
-                rmsg = _pack_msg(_vFAILURE)
-                try:          
-                    meth = self._globals[args[0].decode()]             
-                    uargs = _pickle.loads(args[1]) if len(args) > 1 else ()                      
-                    r = meth(*uargs)  
-                    if r is None:                    
-                        rmsg = _pack_msg(_vSUCCESS)
-                    else:
-                        rmsg = _pack_msg(_vSUCCESS, _pickle.dumps(r))              
-                except Exception as e:            
-                    rmsg = _pack_msg(_vFAILURE, _vEXCEPTION, repr(e))           
-                _send_tcp(self._my_sock, rmsg)         
+                ret = self._handle_call(dat)
+                _send_tcp(self._my_sock, ret)
             except _socket.timeout:        
                 pass
             except ConnectionResetError:
-                break # Nov 7 2016 ... if client closes socket exit gracefully instead of throw
-            except:
-                print("fatal: unhandled exception in _VTOS_AdminServer", file=_stderr)
+                print("- Connection Reset in _VTOS_AdminServer - ",self._cli_addr,'\n') 
+                break 
+            except Exception as e:
+                print("fatal: unhandled exception in _VTOS_AdminServer,", str(e), file=_stderr)
                 self._rflag = False
                 self._my_sock.close()
                 raise
         self._my_sock.close()
-  
+
+    def _handle_call(self,dat):
+        args = _unpack_msg(dat)         
+        rmsg = _pack_msg(_vFAILURE)
+        try:          
+            meth = self._globals[args[0].decode()]             
+            uargs = _pickle.loads(args[1]) if len(args) > 1 else ()                      
+            r = meth(*uargs)
+            msg = (_vSUCCESS,) if (r is None) else (_vSUCCESS,_pickle.dumps(r))
+            rmsg = _pack_msg(*msg)                      
+        except Exception as e:            
+            rmsg = _pack_msg(_vFAILURE, _vEXCEPTION, repr(e))           
+        return rmsg
+                
   
 class _VTOS_Hub(_Thread):
     def __init__(self, address, password, timeout):
@@ -807,79 +818,113 @@ class _VTOS_Hub(_Thread):
       
     def stop(self):      
         self._rflag = False      
-
+        
     def run(self):      
-        def _shutdown_servers():
-            while self._virtual_block_servers:
-                self._virtual_block_servers.pop().stop()
-            if self._virtual_admin_server:
-                self._virtual_admin_server.stop()
-        ### _shutdown_servers() ###
-
-        def _handle_msg(dat,conn):
-            try:          
-                dat = _unpack_msg(dat)[0].decode()          
-                if dat == _vCONN_BLOCK:    
-                    vserv = _VTOS_BlockServer(conn, self._timeout,
-                                              self._virtual_block_servers.discard)
-                    self._virtual_block_servers.add(vserv)
-                    vserv.start()
-                elif dat == _vCONN_ADMIN:                      
-                    if self._virtual_admin_server:
-                        self._virtual_admin_server.stop()            
-                    self._virtual_admin_server = \
-                        _VTOS_AdminServer(conn, self._timeout)
-                    self._virtual_admin_server.start()
-                else:
-                    raise TOSDB_VirtualizationError("connection init msg must be "
-                                                "_vCONN_BLOCK or _vCONN_ADMIN")
-                _send_tcp(conn[0], _pack_msg(_vSUCCESS))
-            except Exception as e:
-                rmsg = _pack_msg(_vFAILURE, _vEXCEPTION, repr(e)) 
-                _send_tcp(conn[0], rmsg)
-                raise
-        ### _handle_msg() ###     
-
         self._rflag = True      
         while self._rflag:        
-            try:          
-                conn = self._my_sock.accept()                   
-                # indicate whether client needs to authenticate              
-                amsg = _vREQUIRE_AUTH_NO if self._password is None else _vREQUIRE_AUTH
-                _send_tcp(conn[0], amsg.encode())
-                conn[0].settimeout(self._timeout / 1000)         
+            try:
+                conn = None
+                try:
+                    conn = self._my_sock.accept()
+                except _socket.timeout:
+                    continue
+                conn[0].settimeout(self._timeout / 1000)                 
+                # indicate the response/handshake auth protocol required
+                if not self._ack_auth_protocol(conn):
+                    conn[0].close()
+                    continue                
+                # use auth mechanims if we got a password arg
+                if self._password is not None and not self._authenticate(conn):
+                    conn[0].close()
+                    continue                
+                print('\n+ CLIENT CONNECTED + ',conn[1],'\n')               
+                # get the type of server to start(_vCONN_BLOCK, _vCONN_ADMIN)
+                dat = self._recv_msg(conn)
+                if not dat:
+                    conn[0].close()
+                    continue                 
                 try:                    
-                    if _recv_tcp(conn[0]) != _vACK.encode(): # get an ack or timeout
-                        raise TOSDB_VirtualizationError('bad ack token received')
-                    if self._password is not None:
-                        ### AUTHENTICATE ###
-                        good_auth = handle_auth_serv(conn,self._password)                       
-                        if not good_auth:
-                            print('\n- CLIENT AUTHENTICATION FAILED -')
-                            print('    ',conn[1],'\n')
-                            conn[0].close()
-                            # TODO: add delay/throttle mechanism
-                            continue
-                        else:
-                            print('\n+ CLIENT AUTHENTICATION SUCCEEDED +')
-                            print('    ',conn[1],'\n')
-                        ### AUTHENTICATE ###                
+                    self._handle_msg(dat, conn) # (DONT CLOSE CONN AFTER THIS POINT)
+                    rmsg = _pack_msg(_vSUCCESS)
                 except TOSDB_VirtualizationError as e:
-                    print('\n- HANDSHAKE FAILED -')
-                    print('    ',conn[1])
-                    print('    ', str(e),'\n')
-                    conn[0].close()        
-                    continue          
-                conn[0].settimeout(None)
-                dat = _recv_tcp(conn[0])
-                _handle_msg(dat, conn)
-            except _socket.timeout:                      
-                continue        
-            except: # anything else... shutdown the hub
-                print("Unhandled exception in _VTOS_Hub, terminated", file=_stderr)
-                _shutdown_servers()
-                raise       
-        _shutdown_servers()
+                    print('\n- FAILED TO HANDLE MESSAGE - ',conn[1],'\n') 
+                    rmsg = _pack_msg(_vFAILURE, _vEXCEPTION, repr(e))
+                    continue
+                except Exception as e:
+                    print('\n- FAILED TO HANDLE MESSAGE - ',conn[1],'\n')
+                    rmsg = _pack_msg(_vFAILURE, _vEXCEPTION, repr(e))
+                    raise
+                finally:
+                    _send_tcp(conn[0], rmsg)                    
+            except Exception as e: # anything else... shutdown the hub
+                print("fatal: unhandled exception in _VTOS_Hub,", str(e), file=_stderr)
+                self._shutdown_servers()
+                raise                        
+        self._shutdown_servers()
+
+    def _recv_msg(self, conn):
+        dat = None
+        try:
+            dat = _recv_tcp(conn[0])
+            if not dat:
+                print('\n- DID NOT RECEIVE VALID MESSAGE - ',conn[1],'\n')                
+        except _socket.timeout:
+            print('\n- TIMED OUT WAITING FOR MESSAGE - ',conn[1],'\n')            
+        return dat
+                       
+    def _ack_auth_protocol(self, conn):        
+        amsg = _vREQUIRE_AUTH_NO if self._password is None else _vREQUIRE_AUTH
+        try:
+            _send_tcp(conn[0], amsg.encode())
+        except _socket.timeout:
+            print('\n- TIMED OUT SENDING PROTOCOL MESSAGE - ',conn[1],'\n')            
+            return False
+        # get an ack or timeout
+        try:
+            r = _recv_tcp(conn[0])
+            if r != _vACK.encode(): 
+                print('\n- BAD ACK TOKEN RECEIVED - ',conn[1],'\n')                
+                return False
+        except _socket.timeout:
+            print('\n- TIMED OUT WAITING FOR ACK TOKEN - ',conn[1],'\n')            
+            return False
+        return True
+    
+    #TODO: add delay/throttle mechanism
+    def _authenticate(self, conn):
+        try:                
+            good_auth = handle_auth_serv(conn,self._password)                       
+            if good_auth:
+                print('\n+ CLIENT AUTHENTICATION SUCCEEDED + ',conn[1],'\n') 
+                return True
+            print('\n- CLIENT AUTHENTICATION FAILED - ',conn[1],'\n')                                              
+        except TOSDB_VirtualizationError as e:
+            print('\n- HANDSHAKE FAILED - ',conn[1],'\n  ', str(e),'\n')                        
+        except Exception as e:
+            print('\n- HANDSHAKE FAILED - ',conn[1],'\n  ', str(e),'\n')
+            raise
+        return False
+    
+    def _handle_msg(self,dat,conn):            
+        dat = _unpack_msg(dat)[0].decode()          
+        if dat == _vCONN_BLOCK:         
+            vserv = _VTOS_BlockServer(conn, self._timeout, self._virtual_block_servers.discard)
+            self._virtual_block_servers.add(vserv)
+            vserv.start()
+        elif dat == _vCONN_ADMIN:                      
+            if self._virtual_admin_server:
+                self._virtual_admin_server.stop()            
+            self._virtual_admin_server = _VTOS_AdminServer(conn, self._timeout)
+            self._virtual_admin_server.start()
+        else:
+            conn[0].close()
+            raise TOSDB_VirtualizationError("init message not _vCONN_BLOCK or _vCONN_ADMIN")   
+    
+    def _shutdown_servers(self):
+        while self._virtual_block_servers:
+            self._virtual_block_servers.pop().stop()
+        if self._virtual_admin_server:
+            self._virtual_admin_server.stop()
 
         
 def _vcall(msg, my_sock, hub_addr, rcnt=3):
@@ -894,13 +939,15 @@ def _vcall(msg, my_sock, hub_addr, rcnt=3):
             pass
         my_sock.settimeout(old_timeout)
         #initiate new call
-        _send_tcp(my_sock, msg)        
-        try:
-            ret_b = _recv_tcp(my_sock)            
-        except _socket.timeout as e:
-            raise TOSDB_VirtualizationError("socket timed out", "_vcall")        
-        args = _unpack_msg(ret_b)   
-        status = args[0].decode()  
+        _send_tcp(my_sock, msg)               
+        ret_b = _recv_tcp(my_sock)
+        args = _unpack_msg(ret_b)
+        status = None
+        try:               
+            status = args[0].decode()
+        except Exception as e:            
+            raise TOSDB_VirtualizationError("server failed to return (valid) message",
+                                            "_vcall", str(e))
         if status == _vFAILURE:       
             desc = args[2].decode()       
             if args[1].decode() == _vEXCEPTION:
@@ -909,6 +956,8 @@ def _vcall(msg, my_sock, hub_addr, rcnt=3):
                 raise TOSDB_VirtualizationError("failure status returned", desc)
         else:
             return (args[0],args[1]) if len(args) > 1 else (args[0],None)
+    except _socket.timeout as e:
+        raise TOSDB_VirtualizationError("socket timed out", "_vcall")     
     except ConnectionResetError:        
         try:                             
             if rcnt > 0: # attemp rcnt retries via recursion
