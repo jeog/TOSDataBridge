@@ -111,7 +111,20 @@ IPCBase::connected(unsigned long timeout)
 
     /* check for a single byte that == PROBE_BYTE */
     std::function<bool(uint8_t*,DWORD)> cb = 
-        [](uint8_t *out, DWORD r){ return (*out == PROBE_BYTE) && (r == 1); };
+        [](uint8_t *out, DWORD r){ 
+            if (r != sizeof(PROBE_BYTE)){
+                TOSDB_LogH("IPC", ("bad probe size returned: " + std::to_string(r)).c_str());
+                return false;
+            }
+            if (*out != PROBE_BYTE){
+                TOSDB_LogH("IPC", ("bad probe value returned: " + std::to_string(*out)).c_str());
+                if (*out == PROBE_BYTE_WRONG_ARCH){
+                    TOSDB_LogH("IPC", "build mismatch between engine and library(x86 vs x64)");                
+                }           
+                return false;
+            }
+            return true;
+        };
   
     return _call_pipe(_probe_channel_pipe_name, &i, sizeof(i), &o, sizeof(o), timeout, cb); 
 }
@@ -185,7 +198,7 @@ IPCSlave::_listen_for_probes()
     while(_probe_channel_run_flag){ 
      /* Main run loop for the probe channel: a very simple named pipe server that 
         allows clients (master AND slave objects) to share a single pipe instance 
-        in order to send a PROBE_BYTE. If the server receives a PROBE_BYTE it 
+        in order to send a PROBE_BYTE. If the server receives a valid PROBE_BYTE it 
         returns it, disconnects the pipe instance and waits for another */
 
         ret = ConnectNamedPipe(_probe_channel_pipe_hndl, NULL);
@@ -206,15 +219,22 @@ IPCSlave::_listen_for_probes()
                 TOSDB_LogDebug("***IPC*** PROBE RECV - (BROKEN_PIPE)");
             else
                 TOSDB_LogEx("IPC", "ReadFile failed in _listen_for_probes()", e);            
+        }                          
+ 
+        if (r != sizeof(PROBE_BYTE)){
+            TOSDB_LogH("IPC", ("bad probe size received: " + std::to_string(r)).c_str());
+            b = 0;            
+        }else if(b != PROBE_BYTE){
+            TOSDB_LogH("IPC", ("bad probe value received: " + std::to_string(b)).c_str());                      
+            if (b == PROBE_BYTE_WRONG_ARCH){
+                TOSDB_LogH("IPC", "build mismatch between engine and library(x86 vs x64)");                
+                b = PROBE_BYTE;
+            }else{
+                b = 0;  
+            }
         }
-                          
-                                     
-        if(b != PROBE_BYTE || r != sizeof(PROBE_BYTE)){
-            TOSDB_LogH("IPC", ("didn't receive PROBE_BYTE, b:" + std::to_string(b) 
-                                + ", r:" + std::to_string(r)).c_str());
-            b = 0;
-        }
-
+ 
+        r = 0;
         ret = WriteFile(_probe_channel_pipe_hndl, (void*)&b, sizeof(b), &r, NULL);
         if(!ret || r != sizeof(PROBE_BYTE))
             TOSDB_LogEx("IPC", "WriteFile failed in _listen_for_probes()", GetLastError());

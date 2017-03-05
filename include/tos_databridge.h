@@ -22,6 +22,10 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 #error tos-databridge core libs require Windows !
 #endif
 
+#ifdef _WIN64
+#define BUILD64BIT
+#endif
+
 /* internal objects of exported impl classes not exported;
   look here if link errors on change of_tos-databridge... mods */
 #pragma warning(once : 4251)

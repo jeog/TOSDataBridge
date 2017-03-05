@@ -158,20 +158,22 @@ def init(dllpath=None, root="C:\\", bypass_check=False):
 
         dllpath_depends1 = _get_depends1_dll_path(dllpath)
         _dll_depend1 = _CDLL(dllpath_depends1)
-        _dll = _CDLL(dllpath)
-        
+        _dll = _CDLL(dllpath)        
         print("+ Using Module(s) ", dllpath)
         print("                  ", dllpath_depends1)
         print("+ Last Update ", _asctime(_localtime(_stat(dllpath).st_mtime)))
         if connect():
-            print("+ Succesfully Connected to Service \ Engine")       
+            print("+ Succesfully Connected to Service\Engine")
+            if connected():
+                print("+ Succesfully Connected to TOS")
+            else:
+                print("- Failed to Connect to TOS")
         else:
-            print("- Failed to Connect to Service \ Engine")
+            print("- Failed to Connect to Service\Engine")
+            print("- Failed to Connect to TOS")  
         return True # indicate the lib was loaded (but not if connect succeeded)
-    except TOSDB_Error:
-        raise
     except Exception as e:
-        raise TOSDB_InitError("unable to initialize library", e)        
+        raise TOSDB_InitError("unable to initialize library:", e)        
 
 
 def connect():

@@ -39,6 +39,10 @@ typedef std::map<std::pair<TOS_Topics::TOPICS, std::string>, buffer_info_ty>  bu
 
 LPCSTR LOG_NAME = "client-log.log";
 
+/* item/topic to test connection */
+const TOS_Topics::TOPICS TEST_TOPIC = TOS_Topics::TOPICS::LAST;
+const std::string TEST_ITEM = "SPY";
+
 /* blocks in *this* instance of the dll */
 std::map<std::string,TOSDBlock*> dde_blocks;
 
@@ -77,18 +81,20 @@ _getBlockPtr(std::string id)
 
 bool
 _connected(bool log_if_not_connected=false)
-{
-    bool conn = master.connected(TOSDB_DEF_TIMEOUT);
-    bool aware = aware_of_connection.load();
-
-    if(log_if_not_connected){
-        if(!aware)
-            TOSDB_LogH("IPC", "not connected to slave (!aware_of_connection)");                 
-        if(!conn)
-            TOSDB_LogH("IPC", "not connected to slave (!master.connected)");            
+{    
+    if(!aware_of_connection.load()){
+        if(log_if_not_connected)
+            TOSDB_LogH("IPC", "not connected to slave (!aware_of_connection)");
+        return false;
     }
 
-    return conn && aware;
+    if(!master.connected(TOSDB_DEF_TIMEOUT)){
+        if(log_if_not_connected)        
+            TOSDB_LogH("IPC", "not connected to slave (!master.connected)");            
+        return false;
+    }
+
+    return true;
 }
 
 
@@ -455,7 +461,7 @@ DllMain(HANDLE mod, DWORD why, LPVOID res) /* ENTRY POINT */
 
 int 
 TOSDB_Connect() 
-{  
+{      
     /* We should be able to block in here as long as this is not called from DllMain  */
     if(_connected()) 
         return 0;
@@ -463,21 +469,30 @@ TOSDB_Connect()
     if(buffer_thread)
         return 0;
 
+    char mod_name[MAX_PATH+1];
+    memset(mod_name, 0, MAX_PATH+1);
+    GetModuleFileName(NULL, mod_name, MAX_PATH+1);
+    std::string mod_name_str(mod_name);
+
     buffer_thread = CreateThread(0, 0, _threadedExtractLoop, 0, 0, &buffer_thread_id);
     if(!buffer_thread){
-        TOSDB_LogH("THREAD","TOSDB_Connect(): error initializing communication thread");        
+        TOSDB_LogH("THREAD", "error initializing _threadedExtractLoop"); 
+        TOSDB_Log("IPC", ("NOT connected to engine, client: " + mod_name_str).c_str());
         return TOSDB_ERROR_CONCURRENCY;  
     }
         
     for(int msec = TOSDB_DEF_PAUSE; msec <= TOSDB_DEF_TIMEOUT; msec += TOSDB_DEF_PAUSE){
         /* we need a timed wait on aware_of_connection to avoid situations 
            where a lib call is made before _threadedExtractLoop sets it to true   */ 
-        if(aware_of_connection.load())
+        if(aware_of_connection.load()){
+            TOSDB_Log("IPC", ("connected to engine, client: " + mod_name_str).c_str());
             return 0;
+        }
         Sleep(TOSDB_DEF_PAUSE);
     }
     
-    TOSDB_LogH("IPC", "timed out waiting for aware_of_connection");                   
+    TOSDB_LogH("IPC", "timed out waiting for aware_of_connection");    
+    TOSDB_Log("IPC", ("NOT connected to engine, client: " + mod_name_str).c_str());
     return TOSDB_ERROR_TIMEOUT;
 }
 
@@ -513,9 +528,7 @@ TOSDB_IsConnectedToEngineAndTOS()
     if(!_connected())
         return 0;
 
-    long r = _requestStreamOP(TOS_Topics::TOPICS::LAST, "SPY", TOSDB_MIN_TIMEOUT, TOSDB_SIG_TEST);
-
-    return r ? 0 : 1;
+    return _requestStreamOP(TEST_TOPIC, TEST_ITEM, TOSDB_MIN_TIMEOUT, TOSDB_SIG_TEST) ? 0 : 1;    
 }
 
 
@@ -523,10 +536,10 @@ TOSDB_IsConnectedToEngineAndTOS()
 unsigned int   
 TOSDB_ConnectionState() 
 {   
-    if( !TOSDB_IsConnectedToEngine() )
+    if(!_connected())
         return TOSDB_CONN_NONE;
-    
-    if( !TOSDB_IsConnectedToEngineAndTOS() )
+
+    if( _requestStreamOP(TEST_TOPIC, TEST_ITEM, TOSDB_MIN_TIMEOUT, TOSDB_SIG_TEST) )
         return TOSDB_CONN_ENGINE;
 
     /* TODO: develop a heuristic for inicating:

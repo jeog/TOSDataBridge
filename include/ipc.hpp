@@ -38,7 +38,13 @@ public:
     static const int MAX_MESSAGE_SZ = 511; // 2**9 excluding \0 
 
     /* arbitrary value the 'probe' channel sends/recieves to confirm connection */
-    static const uint8_t PROBE_BYTE = 0xff;
+#ifdef BUILD64BIT
+    static const uint8_t PROBE_BYTE = 64;
+    static const uint8_t PROBE_BYTE_WRONG_ARCH = 32;
+#else
+    static const uint8_t PROBE_BYTE = 32;
+    static const uint8_t PROBE_BYTE_WRONG_ARCH = 64;
+#endif
 
     bool
     connected(unsigned long timeout);
