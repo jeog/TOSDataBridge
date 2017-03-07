@@ -443,93 +443,21 @@ class TOSDB_DataBlock(_TOSDB_DataBlock):
         return sio.read()
 
 
-    def _item_count(self):       
-        i = _uint32_()
-        _lib_call("TOSDB_GetItemCount",
+    def _get_item_or_topic_count(self, fname):       
+        c = _uint32_()
+        _lib_call("TOSDB_Get" + fname + "Count",
                   self._name,
-                  _pointer(i),
+                  _pointer(c),
                   arg_types=(_str_,_PTR_(_uint32_)))
-        return i.value
+        return c.value
 
 
-    def _topic_count(self):        
-        t = _uint32_()
-        _lib_call("TOSDB_GetTopicCount",
-                  self._name,
-                  _pointer(t),
-                  arg_types=(_str_,_PTR_(_uint32_)))
-        return t.value
-
-
-    def _item_precached_count(self):       
-        i = _uint32_()
-        _lib_call("TOSDB_GetPreCachedItemCount",
-                  self._name,
-                  _pointer(i),
-                  arg_types=(_str_,_PTR_(_uint32_)))
-        return i.value
-
-
-    def _topic_precached_count(self):        
-        t = _uint32_()
-        _lib_call("TOSDB_GetPreCachedTopicCount",
-                  self._name,
-                  _pointer(t),
-                  arg_types=(_str_,_PTR_(_uint32_)))
-        return t.value
-
-    
-    def _get_items(self, str_max=MAX_STR_SZ):
-        size = self._item_count()
-        strs = _gen_str_buffers(str_max+1, size)
-        pstrs = _gen_str_buffers_ptrs(strs) 
-        
-        _lib_call("TOSDB_GetItemNames", 
-                  self._name, 
-                  pstrs, 
-                  size, 
-                  str_max + 1, 
-                  arg_types=(_str_, _ppchar_, _uint32_, _uint32_))
-        
-        return list(map(_cast_cstr,pstrs))                     
-
-    
-    def _get_topics(self, str_max=MAX_STR_SZ):
-        size = self._topic_count()
+    def _get_items_or_topics(self, fname, str_max=MAX_STR_SZ):
+        size = self._get_item_or_topic_count(fname) 
         strs = _gen_str_buffers(str_max+1, size)
         pstrs = _gen_str_buffers_ptrs(strs)   
             
-        _lib_call("TOSDB_GetTopicNames", 
-                  self._name, 
-                  pstrs, 
-                  size, 
-                  str_max + 1, 
-                  arg_types=(_str_,  _ppchar_, _uint32_, _uint32_))               
-        
-        return list(map(_cast_cstr,pstrs))     
-
-    
-    def _get_items_precached(self, str_max=MAX_STR_SZ):
-        size = self._item_precached_count()  
-        strs = _gen_str_buffers(str_max+1, size)
-        pstrs = _gen_str_buffers_ptrs(strs) 
-        
-        _lib_call("TOSDB_GetPreCachedItemNames", 
-                  self._name, 
-                  pstrs, 
-                  size, 
-                  str_max + 1, 
-                  arg_types=(_str_, _ppchar_, _uint32_, _uint32_))
-        
-        return list(map(_cast_cstr,pstrs))                 
-
-
-    def _get_topics_precached(self,  str_max=MAX_STR_SZ):
-        size = self._topic_precached_count()
-        strs = _gen_str_buffers(str_max+1, size)
-        pstrs = _gen_str_buffers_ptrs(strs)   
-            
-        _lib_call("TOSDB_GetPreCachedTopicNames", 
+        _lib_call("TOSDB_Get" + fname + "Names", 
                   self._name, 
                   pstrs, 
                   size, 
@@ -538,19 +466,19 @@ class TOSDB_DataBlock(_TOSDB_DataBlock):
         
         return list(map(_cast_cstr,pstrs))
 
-
+    
     def _sync_items_topics(self):
-        self._items = self._get_items()
-        self._topics = self._get_topics()       
-        self._items_precached = self._get_items_precached()
-        self._topics_precached = self._get_topics_precached()
+        self._items = self._get_items_or_topics("Item")
+        self._topics = self._get_items_or_topics("Topic")       
+        self._items_precached = self._get_items_or_topics("PreCachedItem")
+        self._topics_precached = self._get_items_or_topics("PreCachedTopic")
 
 
     def _items_topics_are_synced(self):
-        return self._items == self._get_items() \
-            and self._topics == self._get_topics() \
-            and self._items_precached == self._get_items_precached() \
-            and self._topics_precached == self._get_topics_precached()
+        return self._items == self._get_items_or_topics("Item") \
+            and self._topics == self._get_items_or_topics("Topic") \
+            and self._items_precached == self._get_items_or_topics("PreCachedItem") \
+            and self._topics_precached == self._get_items_or_topics("PreCachedTopic")
 
 
     @_doxtend(_TOSDB_DataBlock) # __doc__ from ABC _TOSDB_DataBlock
@@ -936,14 +864,15 @@ class TOSDB_DataBlock(_TOSDB_DataBlock):
         
         if date_time and not self._date_time:
             raise TOSDB_DateTimeError("date_time not available for this block")       
-        
+
+        size = self._get_item_or_topic_count("Item")
         tytup = _type_switch( type_bits(topic) )        
         if tytup[0] is "String":
-            return self._item_frame_strings(topic, date_time, labels, self._item_count(),
+            return self._item_frame_strings(topic, date_time, labels, size,
                                             data_str_max, label_str_max)
         else:
             return self._item_frame_numbers(tytup, topic, date_time, labels,
-                                            self._item_count(), label_str_max) 
+                                            size, label_str_max) 
 
 
     def _item_frame_strings(self, topic, date_time, labels, size, data_str_max,
@@ -1008,7 +937,7 @@ class TOSDB_DataBlock(_TOSDB_DataBlock):
         if date_time and not self._date_time:
             raise TOSDB_DateTimeError("date_time not available for this block")       
         
-        size = self._topic_count()
+        size = self._get_item_or_topic_count("Topic")
         strs = _gen_str_buffers(data_str_max+1, size)
         labs = _gen_str_buffers(label_str_max+1, size)                
         pstrs = _gen_str_buffers_ptrs(strs)
