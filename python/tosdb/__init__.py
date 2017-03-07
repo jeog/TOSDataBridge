@@ -625,7 +625,7 @@ class VTOSDB_DataBlock(_TOSDB_DataBlock):
                      
 
             
-def enable_virtualization(address, password=None, timeout=DEF_TIMEOUT):
+def enable_virtualization(address, password=None, timeout=DEF_TIMEOUT, verbose=True):
     """ enable virtualization, making *this* the host system.
 
     This will start a background thread (_VTOS_Hub) to listen for virtual
@@ -642,6 +642,7 @@ def enable_virtualization(address, password=None, timeout=DEF_TIMEOUT):
     address  :: (str,int) :: (address of the host system, port)
     password :: str       :: password for authentication(None for no authentication)
     timeout  :: int       :: timeout(s) used by the underlying socket(s)
+    verbose  :: bool      :: extra information to stdout about client connection(s)
     
     throws TOSDB_VirtualizationError 
     """  
@@ -654,7 +655,7 @@ def enable_virtualization(address, password=None, timeout=DEF_TIMEOUT):
         if _virtual_hub is None:
             if password is not None:
                 check_password(password)
-            _virtual_hub = _VTOS_Hub(address, password, timeout)
+            _virtual_hub = _VTOS_Hub(address, password, timeout, verbose)
             _virtual_hub.start()    
     except Exception as e:
         raise TOSDB_VirtualizationError("enable virtualization error", e)
@@ -677,7 +678,7 @@ def disable_virtualization():
 
 
 class _VTOS_BlockServer(_Thread):    
-    def __init__(self, conn, timeout, stop_callback):
+    def __init__(self, conn, timeout, stop_callback, verbose):
         super().__init__(daemon=True)
         self._my_sock = conn[0]
         self._cli_addr = conn[1]
@@ -686,10 +687,13 @@ class _VTOS_BlockServer(_Thread):
         self._blk = None
         self._rflag = False
         self._stop_callback = stop_callback
-        print('+ OPEN BLOCK SERVER +',self._cli_addr)
+        self._verbose = verbose
+        if self._verbose:
+            print('+ OPEN BLOCK SERVER +',self._cli_addr)
 
-    def __del__(self):  
-        print('+ CLOSE BLOCK SERVER +',self._cli_addr)
+    def __del__(self):
+        if self._verbose:
+            print('+ CLOSE BLOCK SERVER +',self._cli_addr)
         if self._my_sock:
             self._my_sock.close()
             
@@ -729,7 +733,8 @@ class _VTOS_BlockServer(_Thread):
             if msg_t == _vCREATE:
                 uargs = _pickle.loads(args[1])         
                 self._blk = TOSDB_DataBlock(*uargs)
-                print('+ BLOCK CREATED +', self._blk._name.decode(),'+', self._cli_addr)
+                if self._verbose:
+                    print('+ BLOCK CREATED +', self._blk._name.decode(),'+', self._cli_addr)
                 r = _pack_msg(_vSUCCESS)
                 if not r:
                     kill = True                                  
@@ -764,7 +769,7 @@ class _VTOS_BlockServer(_Thread):
         
   
 class _VTOS_AdminServer(_Thread):    
-    def __init__(self, conn, timeout, stop_callback):
+    def __init__(self, conn, timeout, stop_callback, verbose):
         super().__init__(daemon=True)
         self._my_sock = conn[0]
         self._cli_addr = conn[1]
@@ -773,10 +778,13 @@ class _VTOS_AdminServer(_Thread):
         self._rflag = False
         self._globals = globals()
         self._stop_callback = stop_callback
-        print('+ OPEN ADMIN SERVER +',self._cli_addr)
+        self._verbose = verbose
+        if self._verbose:
+            print('+ OPEN ADMIN SERVER +',self._cli_addr)
 
     def __del__(self):
-        print('+ CLOSE ADMIN SERVER +',self._cli_addr)
+        if self._verbose:
+            print('+ CLOSE ADMIN SERVER +',self._cli_addr)
         if self._my_sock:
             self._my_sock.close()
         
@@ -799,12 +807,9 @@ class _VTOS_AdminServer(_Thread):
                 break 
             except Exception as e:
                 print("fatal: unhandled exception in _VTOS_AdminServer,", str(e), file=_stderr)
-                self._rflag = False
-                self._my_sock.close()
-                self._stop_callback()
+                self._close()
                 raise
-        self._my_sock.close()
-        self._stop_callback()
+        self._close()
 
     def _handle_call(self,dat):
         args = _unpack_msg(dat)         
@@ -818,10 +823,15 @@ class _VTOS_AdminServer(_Thread):
         except Exception as e:            
             rmsg = _pack_msg(_vFAILURE, _vEXCEPTION, repr(e))           
         return rmsg
-                
+
+    def _close(self):
+        self._rflag = False
+        self._my_sock.close()
+        self._stop_callback(self)        
+
   
 class _VTOS_Hub(_Thread):
-    def __init__(self, address, password, timeout):
+    def __init__(self, address, password, timeout, verbose):
         super().__init__(daemon=True)  
         self._my_addr = _check_and_resolve_address(address)   
         self._rflag = False
@@ -832,7 +842,8 @@ class _VTOS_Hub(_Thread):
         self._my_sock.bind(self._my_addr)
         self._my_sock.listen(0)
         self._virtual_block_servers = set()
-        self._virtual_admin_server = None
+        self._virtual_admin_servers = set()
+        self._verbose = verbose
       
     def stop(self):      
         self._rflag = False      
@@ -854,8 +865,9 @@ class _VTOS_Hub(_Thread):
                 # use auth mechanims if we got a password arg
                 if self._password is not None and not self._authenticate(conn):
                     conn[0].close()
-                    continue                
-                print('+ CLIENT CONNECTED +',conn[1])               
+                    continue
+                if self._verbose:
+                    print('+ CLIENT CONNECTED +',conn[1])               
                 # get the type of server to start(_vCONN_BLOCK, _vCONN_ADMIN)
                 dat = self._recv_msg(conn)
                 if not dat:
@@ -893,8 +905,9 @@ class _VTOS_Hub(_Thread):
     def _ack_auth_protocol(self, conn):
         amsg = _vREQUIRE_AUTH_NO
         if self._password:
-            amsg = _vREQUIRE_AUTH 
-            print('+ TELL CLIENT TO AUTHENTICATE +',conn[1])       
+            amsg = _vREQUIRE_AUTH
+            if self._verbose:
+                print('+ TELL CLIENT TO AUTHENTICATE +',conn[1])       
         try:
             _send_tcp(conn[0], amsg.encode())
         except _socket.timeout:
@@ -916,7 +929,8 @@ class _VTOS_Hub(_Thread):
         try:                
             good_auth = handle_auth_serv(conn,self._password)                       
             if good_auth:
-                print('+ CLIENT AUTHENTICATION SUCCEEDED +',conn[1]) 
+                if self._verbose:
+                    print('+ CLIENT AUTHENTICATION SUCCEEDED +',conn[1]) 
                 return True
             print('- CLIENT AUTHENTICATION FAILED -',conn[1])                                              
         except TOSDB_VirtualizationError as e:
@@ -929,27 +943,24 @@ class _VTOS_Hub(_Thread):
     def _handle_msg(self,dat,conn):            
         dat = _unpack_msg(dat)[0].decode()          
         if dat == _vCONN_BLOCK:         
-            vserv = _VTOS_BlockServer(conn, self._timeout, self._virtual_block_servers.discard)
+            vserv = _VTOS_BlockServer(conn, self._timeout,
+                                      self._virtual_block_servers.discard, self._verbose)
             self._virtual_block_servers.add(vserv)
             vserv.start()
         elif dat == _vCONN_ADMIN:                      
-            if self._virtual_admin_server:
-                self._virtual_admin_server.stop()            
-            self._virtual_admin_server = _VTOS_AdminServer(conn, self._timeout,
-                                                           self._remove_virtual_admin_server)
-            self._virtual_admin_server.start()
+            vserv = _VTOS_AdminServer(conn, self._timeout,
+                                      self._virtual_admin_servers.discard, self._verbose)
+            self._virtual_admin_servers.add(vserv)
+            vserv.start()
         else:
             conn[0].close()
             raise TOSDB_VirtualizationError("init message not _vCONN_BLOCK or _vCONN_ADMIN")   
-
-    def _remove_virtual_admin_server(self):
-        self._virtual_admin_server = None
         
     def _shutdown_servers(self):
         while self._virtual_block_servers:
             self._virtual_block_servers.pop().stop()
-        if self._virtual_admin_server:
-            self._virtual_admin_server.stop()
+        while self._virtual_admin_servers:
+            self._virtual_admin_servers.pop().stop()
 
         
 def _vcall(msg, my_sock, hub_addr, rcnt=3):

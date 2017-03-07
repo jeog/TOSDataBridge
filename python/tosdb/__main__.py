@@ -33,6 +33,8 @@ def _main_init():
     parser.add_argument('--root', help='root directory to search for the library')
     parser.add_argument('--path', help='the exact path of the library')
     parser.add_argument('--auth', help='password to use for authentication')
+    parser.add_argument('-v', '--verbose', action="store_true", 
+                        help='extra info to stdout about client connection(s)')
     args = parser.parse_args()  
 
     #remove quotes 
@@ -46,9 +48,9 @@ def _main_init():
         except IndexError:
             print("usage: tosdb --virtual-server 'address port [timeout]'",file=_stderr)
             exit(1)
-        vs_args += (int(raw_args[2]),) if len(raw_args) > 2 else ()
-        if args.auth:
-            vs_args = vs_args[:2] + (args.auth,) + vs_args[2:]
+        vs_args += (args.auth,)
+        vs_args += (int(raw_args[2]),) if len(raw_args) > 2 else (DEF_TIMEOUT,) 
+        vs_args += (args.verbose,)
         #spin off so we don't block on exit
         _Thread(target=enable_virtualization,args=vs_args).start()
       
@@ -59,9 +61,8 @@ def _main_init():
         except IndexError:
             print("usage: tosdb --virtual-client 'address port [timeout]'",file=_stderr)
             exit(1)
-        vc_args += (int(raw_args[2]),) if len(raw_args) > 2 else ()
-        if args.auth:
-            vc_args = vc_args[:2] + (args.auth,) + vc_args[2:]
+        vc_args += (args.auth,)
+        vc_args += (int(raw_args[2]),) if len(raw_args) > 2 else (DEF_TIMEOUT,)      
         admin_init(*vc_args)
             
     if args.virtual_client:
@@ -85,7 +86,7 @@ globals().pop('_main_init')
 
 if args and args.virtual_server and _SYS_IS_WIN:        
     exit_commands = ('q','Q','quit','QUIT','Quit','Exit','EXIT','exit')
-    print('\n', str(exit_commands) + " to terminate")
+    print('\n', str(exit_commands) + " to terminate\n")
     while input() not in exit_commands: 
         pass 
 else:
