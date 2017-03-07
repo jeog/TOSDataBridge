@@ -394,20 +394,29 @@ class TOSDB_DataBlock(_TOSDB_DataBlock):
                   timeout,
                   arg_types=(_str_,_uint32_,_int_,_uint32_))                 
         self._valid= True
-       
 
-    def __del__(self): # for convenience, no guarantee
+
+    @_doxtend(_TOSDB_DataBlock) # __doc__ from ABC _TOSDB_DataBlock
+    def close(self):
+        _lib_call("TOSDB_CloseBlock", self._name)
+        self._valid = False
+
+
+    # for convenience, no guarantee
+    def __del__(self):
         # cleaning up can be problematic if we exit python abruptly:
         #   1) need to be sure _lib_call is still around to call the C Lib with
-        #   2) need to be sure block creation was actually successful using the
-        #      _valid flag (__del__ can be called if __init__ fails/throws)
+        #   2) need to be sure block creation was actually successful - and close()
+        #      hasn't already been called - using the _valid flag
+        #      (__del__ can be called if __init__ fails/throws)
         #   3) need to be sure the DLL object is still around 
         if _lib_call is not None and self._valid and _dll is not None:
             try:
-                _lib_call("TOSDB_CloseBlock", self._name)      
-            except:      
+                self.close()     
+            except Exception as e:      
                 print("WARN: block[" + self._name.decode() + "] __del__ failed "
-                      "to call TOSDB_CloseBlock - leak possible")        
+                      "to call TOSDB_CloseBlock - leak possible")
+                print('    ', str(e), file=_stderr)
 
 
     def __str__(self):      

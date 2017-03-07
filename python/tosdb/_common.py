@@ -50,6 +50,15 @@ class _TOSDB_DataBlock(metaclass=_ABCMeta):
         return NotImplemented
 
     @_abstractmethod
+    def close(): 
+        """ Close the underlying block
+
+        NOTE: once called the block will become unusable. It should be be the last
+        method used on the block.
+        """
+        pass
+    
+    @_abstractmethod
     def __str__(): 
         pass
 
