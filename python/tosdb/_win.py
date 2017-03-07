@@ -398,19 +398,20 @@ class TOSDB_DataBlock(_TOSDB_DataBlock):
 
     @_doxtend(_TOSDB_DataBlock) # __doc__ from ABC _TOSDB_DataBlock
     def close(self):
-        _lib_call("TOSDB_CloseBlock", self._name)
-        self._valid = False
+        # need to be sure block creation was actually successful - and
+        #   close() hasn't already been called - using the _valid flag
+        #   (__del__ can be called if __init__ fails/throws)
+        if self._valid:
+            _lib_call("TOSDB_CloseBlock", self._name)
+            self._valid = False
 
 
     # for convenience, no guarantee
     def __del__(self):
         # cleaning up can be problematic if we exit python abruptly:
-        #   1) need to be sure _lib_call is still around to call the C Lib with
-        #   2) need to be sure block creation was actually successful - and close()
-        #      hasn't already been called - using the _valid flag
-        #      (__del__ can be called if __init__ fails/throws)
-        #   3) need to be sure the DLL object is still around 
-        if _lib_call is not None and self._valid and _dll is not None:
+        #   1) need to be sure _lib_call is still around to call the C Lib with        
+        #   2) need to be sure the DLL object is still around 
+        if _lib_call is not None and _dll is not None:
             try:
                 self.close()     
             except Exception as e:      
