@@ -950,7 +950,7 @@ class _VTOS_Hub(_Thread):
                 if self._verbose:
                     log_conn("CLIENT AUTHENTICATION SUCCEEDED", conn[1]) 
                 return True
-            log_conn("CLIENT AUTHENTICATION FAILED", conn[1])                                              
+            log_conn("CLIENT AUTHENTICATION FAILED", conn[1], file=_stderr)                                              
         except TOSDB_VirtualizationError as e:
             log_conn("HANDSHAKE FAILED", conn[1], file=_stderr, exception=e)
         except Exception as e:

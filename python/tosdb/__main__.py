@@ -70,15 +70,11 @@ def _main_init():
             vinit(dllpath=args.path)
         elif args.root:
             vinit(root=args.root)
-        if args.path or args.root and not vconnected():
-            raise TOSDB_Error("could not connect to service/engine")
     else:
         if args.path:
             init(dllpath=args.path)   
         elif args.root:  
             init(root=args.root)
-        if args.path or args.root and not connected():
-            raise TOSDB_Error("could not connect to service/engine")
 
 
 _main_init()
