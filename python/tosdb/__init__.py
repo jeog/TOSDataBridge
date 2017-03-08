@@ -638,7 +638,7 @@ def enable_virtualization(address, password=None, timeout=DEF_TIMEOUT, verbose=T
     executed by its respective Server. Finally, a return value/exception
     will be serialized and sent back to the client.
     
-    enable_virtualization(address, password=None, timeout=DEF_TIMEOUT)
+    enable_virtualization(address, password=None, timeout=DEF_TIMEOUT, verbose=True)
     
     address  :: (str,int) :: (address of the host system, port)
     password :: str       :: password for authentication(None for no authentication)
