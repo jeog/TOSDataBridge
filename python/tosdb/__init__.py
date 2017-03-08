@@ -417,7 +417,8 @@ def _handle_req_from_server(sock,password):
     if ret is None:
         raise TOSDB_VirtualizationError("no response from server")
     _send_tcp(sock, _vACK.encode()) # ack
-    if ret.decode() == _vREQUIRE_AUTH:     
+    r = ret.decode()
+    if r == _vREQUIRE_AUTH:     
         if password is not None:     
             try_import_pycrypto()
             good_auth = handle_auth_cli(sock,password)
@@ -425,6 +426,8 @@ def _handle_req_from_server(sock,password):
                 raise TOSDB_VirtualizationError("authentication failed")
         else:
             raise TOSDB_VirtualizationError("server requires authentication")
+    elif r != _vREQUIRE_AUTH_NO:
+        raise TOSDB_VirtualizationError("invalid (auth) request from server")
           
 
 class VTOSDB_DataBlock(_TOSDB_DataBlock):
