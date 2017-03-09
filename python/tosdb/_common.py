@@ -48,7 +48,7 @@ class _TOSDB_DataBlock(metaclass=_ABCMeta):
                     return False
             return True
         return NotImplemented
-
+   
     @_abstractmethod
     def close(): 
         """ Close the underlying block

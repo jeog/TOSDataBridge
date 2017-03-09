@@ -25,11 +25,17 @@ class TOSDB_DataBlock(WINDOWS ONLY):
     the interface is explicitly object-oriented. It abstracts away the underlying
     type complexity, raising TOSDB_CLibError on internal library errors.
 
+class TOSDB_DataBlockThreadSafe(WINDOWS ONLY):
+    version of TOSDB_DataBlock that provides a thread-safe interface.
+
 class VTOSDB_DataBlock:
     same interface as TOSDB_DataBlock except it utilizes a thin virtualization
     layer over TCP, passing serialized method calls to a windows machine running
     the core implemenataion.
 
+class VTOSDB_DataBlockThreadSafe:
+    version of VTOSDB_DataBlock that provides a thread-safe interface.
+    
 ABC _TOSDB_DataBlock:
     abstract base class of TOSDB_DataBlock and VTOSDB_DataBlock
 
@@ -147,7 +153,8 @@ _SYS_IS_WIN = _system() in ["Windows","windows","WINDOWS"]
 
 if _SYS_IS_WIN: 
     from ._win import * # import the core implementation
-  
+    from ._thread_win import TOSDB_DataBlockThreadSafe
+
 _virtual_hub = None
 _virtual_hub_addr = None
 _virtual_admin_sock = None # <- what happens when we exit the client side ?
@@ -485,6 +492,11 @@ class VTOSDB_DataBlock(_TOSDB_DataBlock):
         if self._my_sock:    
             self._my_sock.close()        
 
+
+    def is_thread_safe(self):
+        """ Is the block thread-safe """
+        return False
+
     
     def __del__(self):
         try:
@@ -638,7 +650,9 @@ class VTOSDB_DataBlock(_TOSDB_DataBlock):
                     return _loadnamedtuple(ret_b[1])
                 else:
                     return _pickle.loads(ret_b[1])
+
                      
+from ._thread import VTOSDB_DataBlockThreadSafe
 
             
 def enable_virtualization(address, password=None, timeout=DEF_TIMEOUT, verbose=True):

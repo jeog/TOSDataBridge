@@ -363,8 +363,7 @@ def type_string(topic):
 
     return s.value.decode()
 
-
-
+        
 class TOSDB_DataBlock(_TOSDB_DataBlock):
     """ The main object for storing TOS data.    
 
@@ -385,7 +384,7 @@ class TOSDB_DataBlock(_TOSDB_DataBlock):
         self._items = []   
         self._topics = []
         self._items_precached = []   
-        self._topics_precached = []    
+        self._topics_precached = []        
         self._valid = False
         _lib_call("TOSDB_CreateBlock",
                   self._name,
@@ -405,7 +404,12 @@ class TOSDB_DataBlock(_TOSDB_DataBlock):
             _lib_call("TOSDB_CloseBlock", self._name)
             self._valid = False
 
+   
+    def is_thread_safe(self):
+        """ Is the block thread-safe """
+        return False
 
+    
     # for convenience, no guarantee
     def __del__(self):
         # cleaning up can be problematic if we exit python abruptly:
@@ -1034,9 +1038,8 @@ class TOSDB_DataBlock(_TOSDB_DataBlock):
         if throw_if_not_in_block and topic not in self._topics:
             raise TOSDB_ValueError("topic '" + str(topic) + "' not in block")
         
-        return topic
-    
-
+        return topic   
+       
 
 ### HOW WE ACCESS THE UNDERLYING C CALLS ###
 def _lib_call(f, *fargs, ret_type=_int_, arg_types=None, error_check=True):        
