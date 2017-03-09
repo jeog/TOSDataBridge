@@ -164,7 +164,9 @@ _vCONN_ADMIN = 'CONN_ADMIN'
 _vREQUIRE_AUTH = 'REQUIRE_AUTH'
 _vREQUIRE_AUTH_NO = 'REQUIRE_AUTH_NO'
 
-# _vALLOWED_ADMIN needs to be defined AFTER our 'v' methods
+_vALLOWED_ADMIN = ('init', 'connect', 'connected', 'connection_state', 'clean_up',
+                  'get_block_limit', 'set_block_limit', 'get_block_count',
+                  'type_bits', 'type_string') 
 
 # just the name, can't get bound method with ismethod pred (why?)
 _vALLOWED_METHS = tuple(m[0] for m in _getmembers(_TOSDB_DataBlock, predicate=_isfunction) \
@@ -357,18 +359,11 @@ def vtype_string(topic):
     """
     return _admin_call('type_string', topic) 
 
-_vALLOWED_ADMIN = {
-    'init':init,
-    'connect':connect,
-    'connected':connected,
-    'connection_state':connection_state,
-    'clean_up':clean_up,
-    'get_block_limit':get_block_limit,
-    'set_block_limit':set_block_limit,
-    'get_block_count':get_block_count,
-    'type_bits':type_bits,
-    'type_string':type_string
-    }
+
+# map function objects to names
+_vALLOWED_ADMIN_CALLS = dict(zip(_vALLOWED_ADMIN, \
+    (eval(('' if _SYS_IS_WIN else 'v') + c) for c in _vALLOWED_ADMIN)))
+
 
 def admin_close(): # do we need to signal the server ?
     """ Close admin connection created by admin_init """  
@@ -854,7 +849,7 @@ class _VTOS_AdminServer(_Thread):
             m = args[0].decode()
             if m not in _vALLOWED_ADMIN:
                 raise TOSDB_VirtualizationError("method '%s' not in _vALLOWED_ADMIN" % m)
-            meth = _vALLOWED_ADMIN[m]             
+            meth = _vALLOWED_ADMIN_CALLS[m]             
             uargs = _pickle.loads(args[1]) if len(args) > 1 else ()                      
             r = meth(*uargs)
             msg = (_vSUCCESS,) if (r is None) else (_vSUCCESS,_pickle.dumps(r))
