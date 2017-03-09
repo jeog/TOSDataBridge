@@ -6,6 +6,7 @@ prov/tmp*
 python/tosdb/_tosdb.py
 core
 
+README_API2.md
 
 #################
 ## intelliJ
