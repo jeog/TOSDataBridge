@@ -170,7 +170,7 @@ _vALLOWED_ADMIN = ('init', 'connect', 'connected', 'connection_state', 'clean_up
 
 # just the name, can't get bound method with ismethod pred (why?)
 _vALLOWED_METHS = tuple(m[0] for m in _getmembers(_TOSDB_DataBlock, predicate=_isfunction) \
-                        if m[0][0] != '_')
+                        if m[0][0] != '_') + ('__init__','__str__')
 
 ## !! _vDELIM MUST NOT HAVE THE SAME VALUE AS _vEEXOR !! ##
 _vDELIM = b'\x7E' 
