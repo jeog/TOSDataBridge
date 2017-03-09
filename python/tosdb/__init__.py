@@ -782,14 +782,14 @@ class _VTOS_BlockServer(_Thread):
                 raise TOSDB_VirtualizationError("method '%s' not in _vALLOWED_METHS" % m)
             meth = getattr(self._blk, m)
             uargs = _pickle.loads(args[2]) if len(args) > 2 else ()            
-            ret = meth(*uargs)        
+            ret = meth(*uargs)           
             if ret is None: # None is still a success
                 return _pack_msg(_vSUCCESS)        
             elif hasattr(ret,NTUP_TAG_ATTR): #special namedtuple tag
                 return _pack_msg(_vSUCCESS_NT, _dumpnamedtuple(ret))
             else:
                 return _pack_msg(_vSUCCESS, _pickle.dumps(ret))   
-        except Exception as e:         
+        except Exception as e:            
             return _pack_msg(_vFAILURE, _vEXCEPTION, repr(e))
 
     def _close(self):
@@ -1047,7 +1047,7 @@ def _vcall(msg, my_sock, hub_addr, rcnt=3):
                  
 def _dumpnamedtuple(nt):
     n = type(nt).__name__
-    od = nt.__dict__
+    od = nt._asdict() # __dict__ remove in 3.5.1
     return _pickle.dumps((n,tuple(od.keys()),tuple(od.values())))
 
 
