@@ -137,6 +137,7 @@ from re import sub as _sub
 from atexit import register as _on_exit
 from contextlib import contextmanager as _contextmanager
 from time import strftime as _strftime
+from inspect import getmembers as _getmembers, isfunction as _isfunction
 
 import struct as _struct
 import socket as _socket
@@ -163,9 +164,11 @@ _vCONN_ADMIN = 'CONN_ADMIN'
 _vREQUIRE_AUTH = 'REQUIRE_AUTH'
 _vREQUIRE_AUTH_NO = 'REQUIRE_AUTH_NO'
 
-_vALLOWED_ADMIN = ('init','connect','connected','connection_state','clean_up',
-                   'get_block_limit', 'set_block_limit','get_block_count',
-                   'type_bits','type_string')
+# _vALLOWED_ADMIN needs to be defined AFTER our 'v' methods
+
+# just the name, can't get bound method with ismethod pred (why?)
+_vALLOWED_METHS = tuple(m[0] for m in _getmembers(_TOSDB_DataBlock, predicate=_isfunction) \
+                        if m[0][0] != '_')
 
 ## !! _vDELIM MUST NOT HAVE THE SAME VALUE AS _vEEXOR !! ##
 _vDELIM = b'\x7E' 
@@ -354,6 +357,18 @@ def vtype_string(topic):
     """
     return _admin_call('type_string', topic) 
 
+_vALLOWED_ADMIN = {
+    'init':init,
+    'connect':connect,
+    'connected':connected,
+    'connection_state':connection_state,
+    'clean_up':clean_up,
+    'get_block_limit':get_block_limit,
+    'set_block_limit':set_block_limit,
+    'get_block_count':get_block_count,
+    'type_bits':type_bits,
+    'type_string':type_string
+    }
 
 def admin_close(): # do we need to signal the server ?
     """ Close admin connection created by admin_init """  
@@ -403,7 +418,7 @@ def _admin_call(method, *arg_buffer):
     if not _virtual_admin_sock:
         raise TOSDB_VirtualizationError("no virtual admin socket, call admin_init")
     if method not in _vALLOWED_ADMIN:
-        raise TOSDB_VirtualizationError("this virtual method call is not allowed")
+        raise TOSDB_VirtualizationError("method '%s' not in _vALLOWED_ADMIN" % method)
     a = (method,)
     if arg_buffer:
         a += (_pickle.dumps(arg_buffer),) 
@@ -609,7 +624,9 @@ class VTOSDB_DataBlock(_TOSDB_DataBlock):
     ##    return self._call(_vCALL, 'total_frame', date_time, labels,
     ##                      data_str_max, label_str_max)  
 
-    def _call(self, virt_type, method='', *arg_buffer):      
+    def _call(self, virt_type, method='', *arg_buffer):
+        if method not in _vALLOWED_METHS:
+            raise TOSDB_VirtualizationError("method '%s' not in _vALLOWED_METHS" % method)
         if virt_type == _vCREATE:
             req_b = _pack_msg(_vCREATE, _pickle.dumps(arg_buffer))
         elif virt_type == _vCALL:
@@ -765,7 +782,10 @@ class _VTOS_BlockServer(_Thread):
                 
     def _handle_call(self,args):       
         try:
-            meth = getattr(self._blk, args[1].decode())
+            m = args[1].decode()
+            if m not in _vALLOWED_METHS:
+                raise TOSDB_VirtualizationError("method '%s' not in _vALLOWED_METHS" % m)
+            meth = getattr(self._blk, m)
             uargs = _pickle.loads(args[2]) if len(args) > 2 else ()            
             ret = meth(*uargs)        
             if ret is None: # None is still a success
@@ -791,8 +811,7 @@ class _VTOS_AdminServer(_Thread):
         self._cli_addr = conn[1]
         self._timeout = timeout
         self._my_sock.settimeout(timeout / 1000)
-        self._rflag = False
-        self._globals = globals()
+        self._rflag = False       
         self._stop_callback = stop_callback
         self._verbose = verbose
         if self._verbose:
@@ -831,8 +850,11 @@ class _VTOS_AdminServer(_Thread):
     def _handle_call(self,dat):
         args = _unpack_msg(dat)         
         rmsg = _pack_msg(_vFAILURE)
-        try:          
-            meth = self._globals[args[0].decode()]             
+        try:
+            m = args[0].decode()
+            if m not in _vALLOWED_ADMIN:
+                raise TOSDB_VirtualizationError("method '%s' not in _vALLOWED_ADMIN" % m)
+            meth = _vALLOWED_ADMIN[m]             
             uargs = _pickle.loads(args[1]) if len(args) > 1 else ()                      
             r = meth(*uargs)
             msg = (_vSUCCESS,) if (r is None) else (_vSUCCESS,_pickle.dumps(r))
