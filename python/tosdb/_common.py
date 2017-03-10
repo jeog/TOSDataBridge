@@ -22,6 +22,8 @@ import sys as _sys
 import struct as _struct
 from collections import namedtuple as _namedtuple
 from abc import ABCMeta as _ABCMeta, abstractmethod as _abstractmethod
+from inspect import getmembers as _getmembers, isfunction as _isfunction
+from types import MethodType as _MethodType
 
 from time import mktime as _mktime, struct_time as _struct_time, \
                  asctime as _asctime, localtime as _localtime, \
@@ -382,6 +384,28 @@ class _TOSDB_DataBlock(metaclass=_ABCMeta):
                TOSDB_ValueError     
         """
         pass
+
+
+def make_block_thread_safe(*non_public_methods):
+    class FunctionObject:
+        def __init__(self, func):
+            self._func = func            
+        def __call__(self, instance, *args, **kargs):
+            with instance._rlock:
+                return self._func(instance, *args, **kargs)
+        def __get__(self, instance, parent):
+            # if we try to get the method on the class:
+            # self == None which causes type error
+            return _MethodType(self, instance)
+    def _make_block_thread_safe(cls):        
+        for m,f in [i for i in _getmembers(cls, predicate=_isfunction) \
+                    if i[0][0] != '_' or i[0] in non_public_methods]:                    
+            c = FunctionObject(f)
+            c.__doc__ = f.__doc__
+            c.__name__ = m
+            setattr(cls, m, c)        
+        return cls
+    return _make_block_thread_safe
 
 
 class TOSDB_Error(Exception):

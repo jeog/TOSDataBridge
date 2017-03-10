@@ -144,6 +144,8 @@ from atexit import register as _on_exit
 from contextlib import contextmanager as _contextmanager
 from time import strftime as _strftime
 from inspect import getmembers as _getmembers, isfunction as _isfunction
+from threading import RLock as _RLock
+
 
 import struct as _struct
 import socket as _socket
@@ -153,7 +155,6 @@ _SYS_IS_WIN = _system() in ["Windows","windows","WINDOWS"]
 
 if _SYS_IS_WIN: 
     from ._win import * # import the core implementation
-    from ._thread_win import TOSDB_DataBlockThreadSafe
 
 _virtual_hub = None
 _virtual_hub_addr = None
@@ -448,7 +449,7 @@ def _handle_req_from_server(sock,password):
           
 
 class VTOSDB_DataBlock(_TOSDB_DataBlock):
-    """ The main object for storing TOS data. (VIRTUAL)   
+    """ The main object for storing TOS data (VIRTUAL) (NOT THREAD SAFE) 
 
     __init__(self, address, password=None, size=1000, date_time=False, 
              timeout=DEF_TIMEOUT)
@@ -651,8 +652,28 @@ class VTOSDB_DataBlock(_TOSDB_DataBlock):
                 else:
                     return _pickle.loads(ret_b[1])
 
-                     
-from ._thread import VTOSDB_DataBlockThreadSafe
+
+@make_block_thread_safe('__str__')
+class VTOSDB_ThreadSafeDataBlock(VTOSDB_DataBlock):
+    """ The main object for storing TOS data (VIRTUAL) (THREAD SAFE)
+
+    __init__(self, address, password=None, size=1000, date_time=False, 
+             timeout=DEF_TIMEOUT)
+                 
+    address   :: (str,int) :: (host/address of the windows implementation, port)
+    password  :: str       :: password for authentication(None for no authentication)
+    size      :: int       :: how much historical data can be inserted
+    date_time :: bool      :: should block include date-time with each data-point?
+    timeout   :: int       :: how long to wait for responses from engine,
+                              TOS-DDE server, internal IPC/Concurrency mechanisms,
+                              and network communication (milliseconds)
+
+    throws TOSDB_VirtualizationError TOSDB_ImplErrorWrapper
+    """  
+    def __init__(self, address, password=None, size=1000, date_time=False, 
+                 timeout=DEF_TIMEOUT):
+        self._rlock = _RLock()
+        super().__init__(address, password, size, date_time, timeout)
 
             
 def enable_virtualization(address, password=None, timeout=DEF_TIMEOUT, verbose=True):

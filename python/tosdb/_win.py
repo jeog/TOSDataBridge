@@ -33,6 +33,8 @@ from collections import namedtuple as _namedtuple
 from time import asctime as _asctime, localtime as _localtime
 from platform import system as _system
 from contextlib import contextmanager as _contextmanager
+from threading import RLock as _RLock
+from types import MethodType as _MethodType
 
 from os import walk as _walk, stat as _stat, curdir as _curdir, \
                listdir as _listdir, sep as _sep, path as _path
@@ -365,7 +367,7 @@ def type_string(topic):
 
         
 class TOSDB_DataBlock(_TOSDB_DataBlock):
-    """ The main object for storing TOS data.    
+    """ The base object for storing TOS data (NOT THREAD SAFE)
 
     __init__(self, size=1000, date_time=False, timeout=DEF_TIMEOUT)
 
@@ -1039,7 +1041,25 @@ class TOSDB_DataBlock(_TOSDB_DataBlock):
             raise TOSDB_ValueError("topic '" + str(topic) + "' not in block")
         
         return topic   
-       
+
+    
+@make_block_thread_safe('__str__')
+class TOSDB_ThreadSafeDataBlock(TOSDB_DataBlock):
+    """ The main object for storing TOS data (THREAD SAFE)  
+
+    __init__(self, size=1000, date_time=False, timeout=DEF_TIMEOUT)
+
+    size      :: int  :: how much historical data can be inserted
+    date_time :: bool :: should block include date-time with each data-point?
+    timeout   :: int  :: how long to wait for responses from engine, TOS-DDE server,
+                         and/or internal IPC/Concurrency mechanisms (milliseconds)
+
+    throws TOSDB_CLibError
+    """         
+    def __init__(self, size=1000, date_time=False, timeout=DEF_TIMEOUT):
+        self._rlock = _RLock()
+        super().__init__(size, date_time, timeout)             
+
 
 ### HOW WE ACCESS THE UNDERLYING C CALLS ###
 def _lib_call(f, *fargs, ret_type=_int_, arg_types=None, error_check=True):        
