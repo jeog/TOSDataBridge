@@ -25,7 +25,7 @@ class TOSDB_DataBlock(WINDOWS ONLY):
     the interface is explicitly object-oriented. It abstracts away the underlying
     type complexity, raising TOSDB_CLibError on internal library errors.
 
-class TOSDB_DataBlockThreadSafe(WINDOWS ONLY):
+class TOSDB_ThreadSafeDataBlock(WINDOWS ONLY):
     version of TOSDB_DataBlock that provides a thread-safe interface.
 
 class VTOSDB_DataBlock:
@@ -33,7 +33,7 @@ class VTOSDB_DataBlock:
     layer over TCP, passing serialized method calls to a windows machine running
     the core implemenataion.
 
-class VTOSDB_DataBlockThreadSafe:
+class VTOSDB_ThreadSafeDataBlock:
     version of VTOSDB_DataBlock that provides a thread-safe interface.
     
 ABC _TOSDB_DataBlock:
@@ -675,6 +675,10 @@ class VTOSDB_ThreadSafeDataBlock(VTOSDB_DataBlock):
         self._rlock = _RLock()
         super().__init__(address, password, size, date_time, timeout)
 
+    def is_thread_safe(self):
+        """ Is the block thread-safe """
+        return True
+    
             
 def enable_virtualization(address, password=None, timeout=DEF_TIMEOUT, verbose=True):
     """ enable virtualization, making *this* the host system.

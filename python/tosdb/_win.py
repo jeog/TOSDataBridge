@@ -34,7 +34,6 @@ from time import asctime as _asctime, localtime as _localtime
 from platform import system as _system
 from contextlib import contextmanager as _contextmanager
 from threading import RLock as _RLock
-from types import MethodType as _MethodType
 
 from os import walk as _walk, stat as _stat, curdir as _curdir, \
                listdir as _listdir, sep as _sep, path as _path
@@ -1060,6 +1059,10 @@ class TOSDB_ThreadSafeDataBlock(TOSDB_DataBlock):
         self._rlock = _RLock()
         super().__init__(size, date_time, timeout)             
 
+    def is_thread_safe(self):
+        """ Is the block thread-safe """
+        return True
+    
 
 ### HOW WE ACCESS THE UNDERLYING C CALLS ###
 def _lib_call(f, *fargs, ret_type=_int_, arg_types=None, error_check=True):        

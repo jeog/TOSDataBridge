@@ -83,7 +83,7 @@ def init():
     return True
 
 
-def test():   
+def test_admin():   
     global bsize  
     if args.virtual:
         admin_calls = {k:getattr(tosdb,'v'+k) for k in BASE_ADMIN_CALLS}
@@ -113,14 +113,8 @@ def test():
         print('  ', _ladj(t), str(admin_calls['type_bits'](t)).ljust(4),
               _ladj(admin_calls['type_string'](t)))
 
-    if args.virtual:
-        print()
-        print("-- CREATE (VIRTUAL) BLOCK --")        
-        b1 = tosdb.VTOSDB_DataBlock(vaddr,args.auth,bsize,True,2000)
-    else:
-        print()
-        print("-- CREATE BLOCK --")
-        b1 = tosdb.TOSDB_DataBlock(bsize,True,2000)
+
+def test_block(b1):
 
     for i,v in b1.info().items():
         print('  ',_ladj(i), v)
@@ -298,8 +292,27 @@ if __name__ == '__main__':
     parser.add_argument('--path', help='the exact path of the library')
     parser.add_argument('--auth', help='password to use for authentication')
     args = parser.parse_args()
+
     if init():
-        test()
+        test_admin()
+        if args.virtual:
+            print()
+            print("-- CREATE (VIRTUAL) BLOCK --")
+            b1 = tosdb.VTOSDB_DataBlock(vaddr,args.auth,bsize,True,2000)
+            test_block(b1)
+            print()
+            print("-- CREATE (VIRTUAL, THREAD SAFE) BLOCK --")
+            b2 = tosdb.VTOSDB_ThreadSafeDataBlock(vaddr,args.auth,bsize,True,2000)
+            test_block(b2)
+        else:
+            print()
+            print("-- CREATE BLOCK --")
+            b1 = tosdb.TOSDB_DataBlock(bsize,True,2000)
+            test_block(b1)
+            print()
+            print("-- CREATE (THREAD SAFE)  BLOCK --")
+            b2 = tosdb.TOSDB_ThreadSafeDataBlock(bsize,True,2000)
+            test_block(b2)
     else:
         exit(1)
   

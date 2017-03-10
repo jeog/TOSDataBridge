@@ -394,16 +394,16 @@ def make_block_thread_safe(*non_public_methods):
             with instance._rlock:
                 return self._func(instance, *args, **kargs)
         def __get__(self, instance, parent):
-            # if we try to get the method on the class:
-            # self == None which causes type error
+            if instance is None:
+                return self
             return _MethodType(self, instance)
     def _make_block_thread_safe(cls):        
         for m,f in [i for i in _getmembers(cls, predicate=_isfunction) \
                     if i[0][0] != '_' or i[0] in non_public_methods]:                    
             c = FunctionObject(f)
-            c.__doc__ = f.__doc__
-            c.__name__ = m
-            setattr(cls, m, c)        
+            c.__doc__ = f.__doc__            
+            c.__name__ = repr(c)
+            setattr(cls, m, c)            
         return cls
     return _make_block_thread_safe
 
