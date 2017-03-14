@@ -24,6 +24,7 @@ from collections import namedtuple as _namedtuple
 from abc import ABCMeta as _ABCMeta, abstractmethod as _abstractmethod
 from inspect import getmembers as _getmembers, isfunction as _isfunction
 from types import MethodType as _MethodType
+from threading import RLock as _RLock
 
 from time import mktime as _mktime, struct_time as _struct_time, \
                  asctime as _asctime, localtime as _localtime, \
@@ -50,7 +51,12 @@ class _TOSDB_DataBlock(metaclass=_ABCMeta):
                     return False
             return True
         return NotImplemented
-   
+
+    @classmethod
+    def is_thread_safe(self):
+        """ Is the block thread-safe """
+        return False
+    
     @_abstractmethod
     def close(): 
         """ Close the underlying block
@@ -69,6 +75,11 @@ class _TOSDB_DataBlock(metaclass=_ABCMeta):
         """ Returns a more readable dict of info about the underlying block """
         pass
 
+    @_abstractmethod
+    def is_using_datetime(): 
+        """ Is the blocking including date-time with each data-point """
+        pass
+    
     @_abstractmethod
     def get_block_size(): 
         """ Returns the amount of historical data that can be stored in the block
@@ -397,13 +408,23 @@ def make_block_thread_safe(*non_public_methods):
             if instance is None:
                 return self
             return _MethodType(self, instance)
-    def _make_block_thread_safe(cls):        
+    def _make_block_thread_safe(cls):
+        # have __init__ create a recursive lock
+        old_init = getattr(cls, '__init__')
+        def new_init(self):
+            old_init(self)
+            self._rlock = _RLock()
+        setattr(cls, '__init__', new_init)
+        # protect each public method (or 'private' methods in the
+        # 'non_public_methods' arg) with the recursive lock via FunctionObject
         for m,f in [i for i in _getmembers(cls, predicate=_isfunction) \
                     if i[0][0] != '_' or i[0] in non_public_methods]:                    
             c = FunctionObject(f)
             c.__doc__ = f.__doc__            
             c.__name__ = repr(c)
-            setattr(cls, m, c)            
+            setattr(cls, m, c)        
+        # override is_thread_safe
+        cls.is_thread_safe = classmethod(lambda c: True)        
         return cls
     return _make_block_thread_safe
 

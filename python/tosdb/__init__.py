@@ -144,8 +144,6 @@ from atexit import register as _on_exit
 from contextlib import contextmanager as _contextmanager
 from time import strftime as _strftime
 from inspect import getmembers as _getmembers, isfunction as _isfunction
-from threading import RLock as _RLock
-
 
 import struct as _struct
 import socket as _socket
@@ -493,11 +491,6 @@ class VTOSDB_DataBlock(_TOSDB_DataBlock):
         if self._my_sock:    
             self._my_sock.close()        
 
-
-    def is_thread_safe(self):
-        """ Is the block thread-safe """
-        return False
-
     
     def __del__(self):
         try:
@@ -509,6 +502,11 @@ class VTOSDB_DataBlock(_TOSDB_DataBlock):
     def __str__(self):
         s = self._call(_vCALL, '__str__')  
         return s if s else ''
+
+
+    @_doxtend(_TOSDB_DataBlock) # __doc__ from ABC _TOSDB_DataBlock
+    def is_using_datetime(self):
+        return self._call(_vCALL, 'is_using_datetime')
 
     
     @_doxtend(_TOSDB_DataBlock) # __doc__ from ABC _TOSDB_DataBlock
@@ -672,13 +670,8 @@ class VTOSDB_ThreadSafeDataBlock(VTOSDB_DataBlock):
     """  
     def __init__(self, address, password=None, size=1000, date_time=False, 
                  timeout=DEF_TIMEOUT):
-        self._rlock = _RLock()
         super().__init__(address, password, size, date_time, timeout)
 
-    def is_thread_safe(self):
-        """ Is the block thread-safe """
-        return True
-    
             
 def enable_virtualization(address, password=None, timeout=DEF_TIMEOUT, verbose=True):
     """ enable virtualization, making *this* the host system.

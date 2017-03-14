@@ -33,7 +33,6 @@ from collections import namedtuple as _namedtuple
 from time import asctime as _asctime, localtime as _localtime
 from platform import system as _system
 from contextlib import contextmanager as _contextmanager
-from threading import RLock as _RLock
 
 from os import walk as _walk, stat as _stat, curdir as _curdir, \
                listdir as _listdir, sep as _sep, path as _path
@@ -404,12 +403,7 @@ class TOSDB_DataBlock(_TOSDB_DataBlock):
         if self._valid:
             _lib_call("TOSDB_CloseBlock", self._name)
             self._valid = False
-
-   
-    def is_thread_safe(self):
-        """ Is the block thread-safe """
-        return False
-
+    
     
     # for convenience, no guarantee
     def __del__(self):
@@ -506,7 +500,12 @@ class TOSDB_DataBlock(_TOSDB_DataBlock):
                 "Size": self._block_size,
                 "DateTime": "Enabled" if self._date_time else "Disabled",
                 "Timeout": self._timeout}
-      
+
+
+    @_doxtend(_TOSDB_DataBlock) # __doc__ from ABC _TOSDB_DataBlock
+    def is_using_datetime(self):
+        return self._date_time
+    
 
     @_doxtend(_TOSDB_DataBlock) # __doc__ from ABC _TOSDB_DataBlock
     def get_block_size(self):          
@@ -1055,13 +1054,8 @@ class TOSDB_ThreadSafeDataBlock(TOSDB_DataBlock):
 
     throws TOSDB_CLibError
     """         
-    def __init__(self, size=1000, date_time=False, timeout=DEF_TIMEOUT):
-        self._rlock = _RLock()
-        super().__init__(size, date_time, timeout)             
-
-    def is_thread_safe(self):
-        """ Is the block thread-safe """
-        return True
+    def __init__(self, size=1000, date_time=False, timeout=DEF_TIMEOUT):        
+        super().__init__(size, date_time, timeout)            
     
 
 ### HOW WE ACCESS THE UNDERLYING C CALLS ###
