@@ -16,7 +16,8 @@
 
 
 from ._tosdb import * 
-from .meta_enum import MetaEnum 
+from .meta_enum import MetaEnum
+from .doxtend import doxtend as _doxtend
 
 import sys as _sys
 import struct as _struct
@@ -410,11 +411,11 @@ def make_block_thread_safe(*non_public_methods):
             return _MethodType(self, instance)
     def _make_block_thread_safe(cls):
         # have __init__ create a recursive lock
-        old_init = getattr(cls, '__init__')
-        def new_init(self):
-            old_init(self)
+        __init_old__ = getattr(cls, '__init__')
+        def __init_new__(self, *args, **kargs):
+            __init_old__(self, *args, **kargs)
             self._rlock = _RLock()
-        setattr(cls, '__init__', new_init)
+        setattr(cls, '__init__', __init_new__)
         # protect each public method (or 'private' methods in the
         # 'non_public_methods' arg) with the recursive lock via FunctionObject
         for m,f in [i for i in _getmembers(cls, predicate=_isfunction) \
@@ -424,7 +425,10 @@ def make_block_thread_safe(*non_public_methods):
             c.__name__ = repr(c)
             setattr(cls, m, c)        
         # override is_thread_safe
-        cls.is_thread_safe = classmethod(lambda c: True)        
+        @_doxtend(_TOSDB_DataBlock)
+        def is_thread_safe(cls):
+            return True
+        setattr(cls, 'is_thread_safe', is_thread_safe)
         return cls
     return _make_block_thread_safe
 
