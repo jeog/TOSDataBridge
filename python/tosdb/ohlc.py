@@ -26,20 +26,37 @@ from threading import Thread as _Thread, Lock as _Lock
 from types import MethodType as _MethodType
 from collections import deque as _Deque
 from concurrent import futures as _futures
-from time import time as _time, sleep as _sleep
+from time import time as _time, sleep as _sleep, localtime as _localtime
 from itertools import groupby as _groupby
 
 import traceback as _traceback
 
 class OHLC:
-    def __init__(self, o, h, l, c, epoch_intervals):
+    def __init__(self, o, h, l, c, intervals_since_epoch, interval_sec):
         self.o = o
         self.h = h
         self.l = l
         self.c = c
-        self.epoch_intervals = epoch_intervals
+        self._intervals_since_epoch = intervals_since_epoch
+        self._isec = interval_sec
 
-# callback for 
+    def update(self, h, l, c):           
+        self.h = max(self.h, h)
+        self.l = min(self.l, l)
+        self.c = c
+        
+    intervals_since_epoch = property(lambda s: s._intervals_since_epoch)
+    second = property(lambda s: _localtime(s._intervals_since_epoch * s._isec).tm_sec)
+    minute = property(lambda s: _localtime(s._intervals_since_epoch * s._isec).tm_min)
+    hour = property(lambda s: _localtime(s._intervals_since_epoch * s._isec).tm_hour)
+    day = property(lambda s: _localtime(s._intervals_since_epoch * s._isec).tm_mday)
+    month = property(lambda s: _localtime(s._intervals_since_epoch * s._isec).tm_mon)
+    year = property(lambda s: _localtime(s._intervals_since_epoch * s._isec).tm_year)
+    
+    def __str__(self):
+        return "{" + self.o + "," + self.h + "," + self.l + "," + self.c + "}"
+
+        
 class TOSDB_OpenHighLowClose:
     
     MIN_INTERVAL_SEC = 10
@@ -64,9 +81,17 @@ class TOSDB_OpenHighLowClose:
     def stop(self):
         self._rflag = False
 
+    def get(self, item, topic, indx=0):
+        return self._buffers[topic,item][indx]
+
+    def stream_snapshot(self, item, topic, end=-1, beg=0):
+        return self._buffers[topic,item][beg:end]
+
     def __del__(self):
         self.stop()
-
+        if hasattr(self, '_old_set_block_size'):
+            self._block.set_block_size = self._old_set_block_size
+            
     def _background_worker(self): # can we pass a method to submit ?       
         self._rflag = True
         while self._rflag:
@@ -91,7 +116,8 @@ class TOSDB_OpenHighLowClose:
          
 
     def _parse_data(self, topic, item, dat):
-        ei = self._buffers[(topic,item)][0].epoch_intervals
+        buf = self._buffers[(topic,item)]
+        ei = buf[0].intervals_since_epoch
         fi =  len(dat)
         for d in dat:
             d0 = int(d[1].mktime // self._isec)                    
@@ -101,24 +127,14 @@ class TOSDB_OpenHighLowClose:
         ndat = dat[fi:]
         odat = dat[:fi]
         if odat:
-            self._update_ohlc(topic,item,[d[0] for d in odat], ei)
+            d = [d[0] for d in odat]            
+            buf[0].update(max(d), min(d), d[-1])         
         if ndat:
             pos = len(dat) - fi -1
             ei = int(dat[pos][1].mktime // self._isec)
-            self._insert_ohlc(topic,item, [d[0] for d in ndat], ei)
-
-            
-    def _update_ohlc(self, topic, item, dat, epcoh_intervals):        
-        ohlc = self._buffers[(topic,item)][0]
-        ohlc.h = max(ohlc.h, max(dat))
-        ohlc.l = min(ohlc.l, min(dat))
-        ohlc.c = dat[-1]
-        ohlc.epoch_intervals = epcoh_intervals
-        
-
-    def _insert_ohlc(self, topic, item, dat, epcoh_intervals):
-        ohlc = OHLC(dat[0], max(dat), min(dat), dat[-1], epcoh_intervals)        
-        self._buffers[(topic,item)].appendleft(ohlc)
+            d = [d[0] for d in ndat]
+            ohlc = OHLC(d[0], max(d), min(d), d[-1], ei, self._isec)        
+            buf.appendleft(ohlc)   
 
         
     def _manage_buffers(self):                        
@@ -132,11 +148,13 @@ class TOSDB_OpenHighLowClose:
             for i in items:
                 if (t,i) not in old_buffers:
                     new_buffer_ids.append((t,i))
-                self._buffers[(t,i)] = old_buffers.get((t,i),_Deque())
-        w = len(new_buffer_ids)
-        if w == 0:
-            return        
-        with _futures.ThreadPoolExecutor(max_workers = w) as e:            
+                self._buffers[(t,i)] = old_buffers.get((t,i),_Deque())        
+        if new_buffer_ids:
+            self._init_buffers_async(new_buffer_ids)        
+                  
+
+    def _init_buffers_async(self, new_buffer_ids):
+        with _futures.ThreadPoolExecutor(max_workers = len(new_buffer_ids)) as e:            
             futs = {e.submit(self._init_buffer,t,i):(t,i) for t,i in new_buffer_ids}
             for f in _futures.as_completed(futs):
                 t, i = futs[f]                
@@ -145,9 +163,9 @@ class TOSDB_OpenHighLowClose:
                 for e, grp in _groupby(dat, lambda t: int(t[1].mktime // self._isec)):
                     d = [i[0] for i in grp]
                     ohlc = OHLC(d[0], max(d), min(d), d[-1], e)        
-                    self._buffers[(t,i)].append(ohlc)                    
+                    self._buffers[(t,i)].append(ohlc)  
 
-
+        
     def _init_buffer(self, topic, item):
         for _ in range(int(self._isec / self._psec)):
             dat = self._block.stream_snapshot_from_marker(item,topic,date_time=True,
@@ -159,21 +177,14 @@ class TOSDB_OpenHighLowClose:
 
     def _restrict_block_resize(self, block, poll_sec):
         s = self.BLOCK_SIZE_PER_PSEC * poll_sec        
-        self._old_set_block_size = block.set_block_size
-        
+        self._old_set_block_size = block.set_block_size        
         @_doxtend(type(block), func_name='set_block_size')
         def _inj_set_block_size(instance, sz):
             if sz < s:
                 raise TOSDB_Error("setting a block size < %i has been restricted "
                                   "by TOSDB_OpenHighLowClose" % s)
-            self._old_set_block_size(sz)
-            
+            self._old_set_block_size(sz)            
         block.set_block_size = _MethodType(_inj_set_block_size, block)               
-
-
-    def __del__(self):
-        if hasattr(self, '_old_set_block_size'):
-            self._block.set_block_size = self._old_set_block_size
 
        
     @classmethod
