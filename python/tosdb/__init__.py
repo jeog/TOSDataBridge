@@ -26,7 +26,7 @@ class TOSDB_DataBlock(WINDOWS ONLY):
     type complexity, raising TOSDB_CLibError on internal library errors.
 
 class TOSDB_ThreadSafeDataBlock(WINDOWS ONLY):
-    version of TOSDB_DataBlock that provides a thread-safe interface.
+    thread-safe version of TOSDB_DataBlock.
 
 class VTOSDB_DataBlock:
     same interface as TOSDB_DataBlock except it utilizes a thin virtualization
@@ -34,9 +34,9 @@ class VTOSDB_DataBlock:
     the core implemenataion.
 
 class VTOSDB_ThreadSafeDataBlock:
-    version of VTOSDB_DataBlock that provides a thread-safe interface.
+    thread-safe version of VTOSDB_DataBlock.
     
-ABC _TOSDB_DataBlock:
+class _TOSDB_DataBlock:
     abstract base class of TOSDB_DataBlock and VTOSDB_DataBlock
 
 Init:
@@ -120,7 +120,7 @@ Ways to initialize via virtual layer:
                             ----------------------------------------------------
                             |                 or Remote (client)
                             |                     
-                            | 2) :/.../python/$ python tosdb --virtual-client \
+                            | 2) :/.../python/$ python tosdb --virtual-client \\
                             |                   "ADDR PORT" 
                             | 3) use virtual calls/objs 
 --------------------------------------------------------------------------------
@@ -677,7 +677,7 @@ def enable_virtualization(address, password=None, timeout=DEF_TIMEOUT, verbose=T
     """ enable virtualization, making *this* the host system.
 
     This will start a background thread (_VTOS_Hub) to listen for virtual
-    'clients' looking to use the admin calls (via Thread _VTOS_AdminServer)
+    'clients' looking to use the admin calls (via Thread(s) _VTOS_AdminServer)
     or data blocks (via Thread(s) _VTOS_BlockServer).
 
     The virtual client call will serlialize it's arguments, sending them

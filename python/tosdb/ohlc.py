@@ -34,22 +34,35 @@ from itertools import groupby as _groupby
 import traceback as _traceback
 import time
 
-class OHLC:    
+try:
+    type_bits = tosdb.type_bits
+except AttributeError:
+    type_bits = tosdb.vtype_bits
+    
+class C:
     DATETIME_FIELDS = ('second','minute','hour','day','month','year')
     
-    __slots__ = ('_ohlc','_intervals_since_epoch','_isec','_tfunc')
+    __slots__ = ('_c','_intervals_since_epoch','_isec','_tfunc')
     
-    def __init__(self, o, h, l, c, intervals_since_epoch, interval_seconds,
+    def __init__(self, c, intervals_since_epoch, interval_seconds,
                  time_func=time.localtime):
-        self._ohlc = (o,h,l,c)
+        self._c = c
         self._intervals_since_epoch = intervals_since_epoch
         self._isec = interval_seconds
         self._tfunc = time_func
 
-    def update(self, h, l, c):           
-        h = max(self._ohlc[1], h)
-        l = min(self._ohlc[2], l)
-        self._ohlc = (self._ohlc[0], h, l, c)
+    c = property(lambda s: s._c)
+    second = property(lambda s: s._tfunc(s._intervals_since_epoch * s._isec).tm_sec)
+    minute = property(lambda s: s._tfunc(s._intervals_since_epoch * s._isec).tm_min)
+    hour = property(lambda s: s._tfunc(s._intervals_since_epoch * s._isec).tm_hour)
+    day = property(lambda s: s._tfunc(s._intervals_since_epoch * s._isec).tm_mday)
+    month = property(lambda s: s._tfunc(s._intervals_since_epoch * s._isec).tm_mon)    
+    year = property(lambda s: s._tfunc(s._intervals_since_epoch * s._isec).tm_year)    
+    intervals_since_epoch = property(lambda s: int(s._intervals_since_epoch))    
+    interval_seconds = property(lambda s: int(s._isec))
+    
+    def update(self, c):              
+        self._c = c
 
     def strftime(self, frmt):
         return _strftime(frmt,self._tfunc(self._intervals_since_epoch * self._isec))
@@ -61,34 +74,51 @@ class OHLC:
         return _struct_time(self._tfunc(self._intervals_since_epoch * self._isec))
 
     def as_dict(self):
-        d = self.as_dict()
+        d = {'c':self._c}
         d.update( zip(OHLC.DATETIME_FIELDS, self._datetime_tuple()) )
         return d
 
     def as_tuple(self):
-        return self._ohlc + self._datetime_tuple()
-
-    o = property(lambda s: s._ohlc[0])
-    h = property(lambda s: s._ohlc[1])
-    l = property(lambda s: s._ohlc[2])
-    c = property(lambda s: s._ohlc[3])
-    
-    second = property(lambda s: s._tfunc(s._intervals_since_epoch * s._isec).tm_sec)
-    minute = property(lambda s: s._tfunc(s._intervals_since_epoch * s._isec).tm_min)
-    hour = property(lambda s: s._tfunc(s._intervals_since_epoch * s._isec).tm_hour)
-    day = property(lambda s: s._tfunc(s._intervals_since_epoch * s._isec).tm_mday)
-    month = property(lambda s: s._tfunc(s._intervals_since_epoch * s._isec).tm_mon)    
-    year = property(lambda s: s._tfunc(s._intervals_since_epoch * s._isec).tm_year)
-    
-    intervals_since_epoch = property(lambda s: int(s._intervals_since_epoch))
-    interval_seconds = property(lambda s: int(s._isec))
+        return (self._c,) + self._datetime_tuple()
 
     def _datetime_tuple(self):
         return (self.second, self.minute, self.hour, self.day, self.month, self.year)
     
     def __str__(self):
+        labels = ('c',) + OHLC.DATETIME_FIELDS        
+        return str(tuple(a + "=" + str(v) for a,v in zip(labels, self.as_tuple())))
+    
+        
+class OHLC(C):        
+    __slots__ = ('_o', '_h', '_l')
+    
+    def __init__(self, o, h, l, c, intervals_since_epoch, interval_seconds,
+                 time_func=time.localtime):
+        super().__init__(c, intervals_since_epoch, interval_seconds, time_func)
+        self._o = o
+        self._h = h
+        self._l = l        
+
+    o = property(lambda s: s._o)
+    h = property(lambda s: s._h)
+    l = property(lambda s: s._l)
+    
+    def update(self, h, l, c):           
+        self._h = max(self._h, h)
+        self._l = min(self._l, l)
+        super().update(c)        
+    
+    def as_dict(self):
+        d = {'o':self._o, 'h':self._h, 'l':self._l}
+        d.update( super().as_dict() )
+        return d
+  
+    def as_tuple(self):
+        return (self._o, self._h, self._l) + super().as_tuple()   
+  
+    def __str__(self):
         labels = ('o','h','l','c') + OHLC.DATETIME_FIELDS        
-        return str(tuple(a + "=" + str(v) for a,v in zip(labels, self._as_tuple())))    
+        return str(tuple(a + "=" + str(v) for a,v in zip(labels, self.as_tuple())))    
 
     
         
@@ -97,8 +127,8 @@ class TOSDB_OpenHighLowClose:
     MIN_INTERVAL_SEC = 10
     MAX_INTERVAL_SEC = 60 * 60 * 4 # 4 hours
     BLOCK_SIZE_PER_PSEC = 10  
-    ALLOWED_TOPICS = [TOPICS.LAST.val, TOPICS.VOLUME.val]
-    BLOCK_ATTR = ['is_thread_safe', 'stream_snapshot_from_marker', 'topics']
+    BLOCK_ATTR = ['is_thread_safe', 'stream_snapshot_from_marker', 'topics', 'items',
+                  'add_items', 'add_topics', 'remove_items', 'remove_topics']
     
     def __init__(self, block, interval_sec, poll_sec=.5, time_func=time.localtime):
         TOSDB_OpenHighLowClose._check_params(interval_sec, poll_sec)
@@ -107,6 +137,7 @@ class TOSDB_OpenHighLowClose:
         self._min_block_size = TOSDB_OpenHighLowClose.BLOCK_SIZE_PER_PSEC * poll_sec
         self._check_block(block)        
         self._block = block
+        self._texcludes = set()
         self._ssfunc = block.stream_snapshot_from_marker
         self._restrict_block_resize(block, poll_sec)
         self._tfunc = time_func
@@ -136,17 +167,14 @@ class TOSDB_OpenHighLowClose:
 
     def add_topics(*topics):
         for t in topics:
-            if TOPICS.val_dict[t] not in TOSDB_OpenHighLowClose.ALLOWED_TOPICS:
-                raise TOSDB_Error("topic %s not in 'ALLOWED_TOPICS'" % t)            
+           if type_bits(t) & tosdb.STRING_BIT:
+                raise TOSDB_Error("topic %s returns string data" % t)            
         self._block.add_topics(*topics)
 
     def remove_items(*items):
         self._block.remove_items(*items)
 
-    def remove_topics(*topics):
-        for t in topics:
-            if TOPICS.val_dict[t] not in TOSDB_OpenHighLowClose.ALLOWED_TOPICS:
-                raise TOSDB_Error("topic %s not in 'ALLOWED_TOPICS'" % t)  
+    def remove_topics(*topics): 
         self._block.remove_topics(*topics)
         
     def occupancy(self, item, topic):
@@ -166,29 +194,29 @@ class TOSDB_OpenHighLowClose:
         except IndexError:
             raise TOSDB_Error("OHLC does not exist at this datetime")
 
-    def stream_snapshot(self, item, topic, end=-1, beg=0):
-        return list(self._get_buffer(topic,item))[beg:end]
+    def stream_snapshot(self, item, topic, end=0, beg=-1):
+        return list(self._get_buffer(topic,item))[end:beg]
 
     # INCLUSIVE INDEXING !
-    def stream_snapshot_between_datetimes(self, item, topic, second_beg, minute_beg,
-                                          hour_beg, day_beg, month_beg, year_beg,
-                                          second_end, minute_end, hour_end, day_end,
-                                          month_end, year_end):
+    def stream_snapshot_between_datetimes(self, item, topic, end=tuple(), beg=tuple()):
         buf = self._get_buffer(topic,item)
-        i_beg = self._intervals_since_epoch(second_beg, minute_beg, hour_beg,
-                                            day_beg, month_beg, year_beg)
-        i_end = self._intervals_since_epoch(second_end, minute_end, hour_end,
-                                            day_end, month_end, year_end)
-        off_beg = buf[0].intervals_since_epoch - i_beg
-        if off_beg < 0:
-            raise TOSDB_Error("'beg' OHLC does not exist at this datetime")
-        off_end = buf[0].intervals_since_epoch - i_end
-        if off_end < 0:
-            raise TOSDB_Error("'end' OHLC does not exist at this datetime")
-        if off_beg < off_end:
-            raise TOSDB_Error("'beg' datetime can not be less than 'end'")
+        if beg:
+            i_beg = self._intervals_since_epoch(*beg)
+            off_beg = buf[0].intervals_since_epoch - i_beg
+            if off_beg < 0:
+                raise TOSDB_Error("'beg' OHLC does not exist at this datetime")
+            off_beg += 1 # make range incluseive
+        else:
+            off_beg = -1       
+        if end:
+            i_end = self._intervals_since_epoch(*end)           
+            off_end = buf[0].intervals_since_epoch - i_end
+            if off_end < 0:
+                raise TOSDB_Error("'end' OHLC does not exist at this datetime")
+        else:
+            off_end=0
         try:
-            return list(buf)[off_beg:off_end + 1] #make incluseive
+            return list(buf)[off_end:off_beg] 
         except IndexError:
             raise TOSDB_Error("OHLCs do not exist between these datetimes")
 
@@ -236,15 +264,19 @@ class TOSDB_OpenHighLowClose:
             buf_pair[0].appendleft(ohlc)
             buf_pair[1] = 0
 
-        
+            
     def _manage_buffers(self):                        
-        old_buffers = dict(self._buffers)
+        old_buffers = dict(self._buffers)       
         new_buffer_ids = []
         self._buffers.clear()
-        items = self._block.items()
-        for t in self._block.topics():
-            if TOPICS.val_dict[t] not in TOSDB_OpenHighLowClose.ALLOWED_TOPICS:
-                  continue                  
+        items = self._block.items()     
+        for t in self._block.topics():            
+            if t in self._texcludes:
+                continue
+            elif type_bits(t) & tosdb.STRING_BIT:           
+                print("WARN: topic %s returns string data - excluding" % t)
+                self._texcludes.add(t)
+                continue
             for i in items:
                 if (t,i) not in old_buffers:
                     new_buffer_ids.append((t,i))
@@ -267,7 +299,7 @@ class TOSDB_OpenHighLowClose:
                     while laste and (e - laste > 1):
                         buf.append(None)                        
                         laste += 1
-                        print("DEBUG INIT: ", str(laste), str(0))
+                        print("DEBUG INIT: ", str(e), str(laste), str(0))
                     d = [i[0] for i in grp]
                     ohlc = OHLC(d[0], max(d), min(d), d[-1], e, self._isec, self._tfunc)
                     buf.append(ohlc)
