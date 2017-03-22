@@ -142,7 +142,7 @@ class OHLC(C):
 class TOSDB_ConstantTimeIntervals:    
     MIN_INTERVAL_SEC = 10
     MAX_INTERVAL_SEC = 60 * 60 * 4 # 4 hours
-    BLOCK_SIZE_PER_PSEC = 10  
+    BLOCK_SIZE_PER_PSEC = 10
     BLOCK_ATTR = ['is_thread_safe', 'stream_snapshot_from_marker', 'topics', 'items',
                   'add_items', 'add_topics', 'remove_items', 'remove_topics']
     
@@ -248,35 +248,38 @@ class TOSDB_ConstantTimeIntervals:
             except IndexError:
                 raise TOSDB_Error("OHLCs do not exist between these datetimes")
 
-
     def _get_buffer(self, topic, item):
         return self._buffers[topic.upper(),item.upper()][0]
             
-    def _background_worker(self):       
+    def _background_worker(self):
+        ni = self._isec / self._psec
         self._rflag = True
         while self._rflag:
             tbeg = _time()
             with self._buffers_lock:
                 self._manage_buffers()
                 for (t,i), buf_pair in self._buffers.items():
-                    dat = self._ssfunc(i, t, date_time=True, throw_if_data_lost=False)
+                    buf_pair[1] += 1
+                    dat = self._ssfunc(i, t, date_time=True, throw_if_data_lost=False)                    
                     if dat:
                         self._parse_data(t,i,dat)
-                        continue
-                    buf_pair[1] += 1
-                    # how do we know if this in sync with actual time. we're assuming:
-                    #   1) we always sleep less than _psec and
-                    #   2) slippage on each pass doesnt accumulate to be greater
-                    #      than an entire interval (i.e. long breaks may skip an interval)
-                    if buf_pair[1] >= (self._isec / self._psec):
-                        ei = buf_pair[0][0].intervals_since_epoch + 1
-                        obj = NULL(ei, self._isec, self._tfunc)
-                        buf_pair[0].appendleft(obj)
-                        print("DEBUG WORK NULL: ",  str((t,i)), str(ei), str(buf_pair[1]))
-                        buf_pair[1] = 0                                                     
+                    if buf_pair[1] >= ni:
+                        self._handle_null_interval(t, i, buf_pair)                          
             tend = _time()
-            _sleep( max(self._psec - (tend - tbeg), 0) )
-         
+            trem = self._psec - (tend - tbeg)
+            if trem < 0: ## TODO :: this will create problems will handling nulls
+                print("WARN: _background_worker taking longer than _psec (%i) seconds"
+                      % self._psec)
+            _sleep( max(trem,0) )
+
+
+    def _handle_null_interval(self, t, i, buf_pair):                       
+        ei = buf_pair[0][0].intervals_since_epoch + 1
+        obj = NULL(ei, self._isec, self._tfunc)
+        buf_pair[0].appendleft(obj)
+        buf_pair[1] = 0
+        print("DEBUG WORK NULL: %s %i" % (str((t,i)),ei))
+
 
     def _parse_data(self, topic, item, dat):
         buf_pair = self._buffers[(topic,item)]
@@ -288,10 +291,10 @@ class TOSDB_ConstantTimeIntervals:
                 break
             fi -= 1
         ndat = dat[fi:]
-        odat = dat[:fi]
+        odat = dat[:fi]        
         if odat:
-            d = [d[0] for d in odat]            
-            if isinstance(buf_pair[0][0], NULL):
+            d = [d[0] for d in odat]      
+            if type(buf_pair[0][0]) is NULL:             
                 buf_pair[0][0] = self._iobj(d, ei, self._isec, self._tfunc)
             else:
                 buf_pair[0][0].update(d)         
@@ -318,7 +321,7 @@ class TOSDB_ConstantTimeIntervals:
                 continue
             for i in items:
                 if (t,i) not in old_buffers:
-                    new_buffer_ids.append((t,i))
+                    new_buffer_ids.append((t,i))                             
                 self._buffers[(t,i)] = old_buffers.get((t,i),[_Deque(),0])        
         if new_buffer_ids:
             self._init_buffers_async(new_buffer_ids)        
@@ -334,9 +337,11 @@ class TOSDB_ConstantTimeIntervals:
                 buf = self._get_buffer(t,i)
                 # does groupby guarantee sorted ??
                 for e, grp in _groupby(dat, lambda t: int(t[1].mktime // self._isec)):
-                    # fill in gaps                    
+                    # fill in gaps
+                    print("DEBUG (INIT):", str(e), str(laste))
                     while laste and (e - laste > 1):
-                        buf.append(None)                        
+                        obj = NULL(laste + 1, self._isec, self._tfunc)
+                        buf.append(obj)                        
                         laste += 1
                         print("DEBUG INIT: ", str((t,i)), str(e), str(laste), str(0))
                     d = [i[0] for i in grp]
@@ -370,7 +375,7 @@ class TOSDB_ConstantTimeIntervals:
             if sz < self._min_block_size:
                 raise TOSDB_Error("setting a block size < %i has been restricted "
                                   "by TOSDB_ConstantTimeIntervals" % self._min_block_size)
-            self._old_set_block_size(sz)            
+            block._old_set_block_size(sz)            
         block.set_block_size = _MethodType(_inj_set_block_size, block)               
    
    
@@ -399,7 +404,9 @@ class TOSDB_ConstantTimeIntervals:
                               % (interval_sec, cls.MAX_INTERVAL_SEC) )        
         if interval_sec < (2*poll_sec):
             raise TOSDB_Error("interval_sec(%i) < 2 * poll_sec(%i)" \
-                              % (interval_sec, poll_sec))            
+                              % (interval_sec, poll_sec))
+        if interval_sec % poll_sec:
+            raise TOSDB_Error("interval_sec must be multiple of poll_sec")
 
 
 class TOSDB_OpenHighLowCloseIntervals(TOSDB_ConstantTimeIntervals):
