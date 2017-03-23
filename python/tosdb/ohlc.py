@@ -28,7 +28,7 @@ from collections import deque as _Deque
 from concurrent import futures as _futures
 from time import time as _time, sleep as _sleep, localtime as _localtime, \
     asctime as _asctime, struct_time as _struct_time, mktime as _mktime, \
-    strftime as _strftime
+    strftime as _strftime, perf_counter as _perf_counter
 from itertools import groupby as _groupby
 
 import traceback as _traceback
@@ -146,11 +146,15 @@ class TOSDB_ConstantTimeIntervals:
     MIN_INTERVAL_SEC = 10
     MAX_INTERVAL_SEC = 60 * 60 * 4 # 4 hours
     BLOCK_SIZE_PER_PSEC = 10
+    WAIT_ADJ_DOWN = .999  
+    WAIT_ADJ_THRESHOLD = .01
+    WAIT_ADJ_THRESHOLD_FATAL = .01
     BLOCK_ATTR = ['is_thread_safe', 'stream_snapshot_from_marker', 'topics', 'items',
                   'add_items', 'add_topics', 'remove_items', 'remove_topics']
     
     def __init__(self, block, interval_obj, interval_sec, poll_sec=.5,
                  time_func=time.localtime):
+        self._rflag = False
         self._check_params(interval_obj, interval_sec, poll_sec)
         self._iobj = interval_obj
         self._isec = interval_sec
@@ -162,7 +166,7 @@ class TOSDB_ConstantTimeIntervals:
         self._ssfunc = block.stream_snapshot_from_marker
         self._restrict_block_resize(block, poll_sec)
         self._tfunc = time_func
-        self._rflag = False
+        self._wait_adj_down_exp = 0
         self._buffers = dict()
         self._buffers_lock = _Lock()
         self._bthread = _Thread(target=self._background_worker)
@@ -259,19 +263,21 @@ class TOSDB_ConstantTimeIntervals:
             self.count += 1
         def reset(self):
             self.count = 0
-            self.time = _time()
-
+          
     def _get_buffer_object(self, topic, item):
         return self._buffers[topic.upper(),item.upper()]
     
     def _get_buffer_deque(self, topic, item):
         return self._get_buffer_object(topic,item).deque
-   
+    
             
     def _background_worker(self):        
+        ni = self._isec / self._psec
+        itbeg = _perf_counter()    
+        count = 0
         self._rflag = True
         while self._rflag:
-            tbeg = _time()
+            tbeg = _perf_counter()               
             with self._buffers_lock:
                 self._manage_buffers()
                 for (t,i), b in self._buffers.items():
@@ -281,29 +287,40 @@ class TOSDB_ConstantTimeIntervals:
                         self._parse_data(t,i,dat)
                     if b.count == 0:
                         continue
-                    if self._needs_null_interval(b):
-                        self._handle_null_interval(t, i, b)                          
-            tend = _time()
+                    if (b.count % ni) == 0:
+                        print("b.count mod interval: %i" % b.count)
+                        self._handle_null_interval(t, i, b)
+            count += 1
+            tend = _perf_counter()
             trem = self._psec - (tend - tbeg)
-            if trem < 0: ## TODO :: this will create problems will handling nulls
+            if trem < 0:
+                ## TODO :: this will create problems handling nulls as we wont be able
+                ##         to speed up by using WAIT_ADJ_DOWN (below)
+                ##         considering adjusting _psec 
                 print("WARN: _background_worker taking longer than _psec (%i) seconds"
                       % self._psec)
-            _sleep( max(trem,0) )
+            _sleep( max(trem,0) * (self.WAIT_ADJ_DOWN ** self._wait_adj_down_exp) )
+            if (count % ni) == 0:
+                self._tune_background_worker(count,ni,itbeg)
 
 
-    def _needs_null_interval(self, b):
-        ni = self._isec / self._psec
-        if (b.count % ni) == 0:
-            print("b.count mod interval: %i" % b.count)
-            return True       
-        nnull = b.count // ni
-        adjt = b.time + (nnull * self._isec)
-        nowt = _time()
-        if (nowt - adjt) > self._isec:
-            print("nowt - adjt: %f, %f, %f, %i" % (nowt, adjt, b.time, b.count))
-            return True
-        return False
-        
+    def _tune_background_worker(self, count, ni, itbeg):
+        tnow = _perf_counter()
+        adjbeg = itbeg + (count // ni) * self._isec
+        terr = tnow - adjbeg
+        #print("DEBUG RUNNING ERROR SECONDS: ", str(terr))
+        if terr < 0:
+            print("DEBUG RUNNING ERROR SLEEP: ", str(terr))
+            if self._wait_adj_down_exp > 0:
+                self._wait_adj_down_exp -= 1
+            _sleep(abs(terr))
+        elif abs(terr) > (self._isec * self.WAIT_ADJ_THRESHOLD_FATAL):
+            TOSDB_Error("_background worker entered fatal wait/sync states: %f, %i" \
+                        % (terr, self._wait_adj_down_exp))
+        elif terr > (self._isec * self.WAIT_ADJ_THRESHOLD):
+            self._wait_adj_down_exp += 1
+            print("DEBUG RUNNING ERROR SPEED UP: %f, %i" % (terr,self._wait_adj_down_exp))        
+
 
     def _handle_null_interval(self, t, i, b):                       
         ei = b.deque[0].intervals_since_epoch + 1
@@ -339,7 +356,7 @@ class TOSDB_ConstantTimeIntervals:
             b.deque.appendleft(obj)
             b.reset()
         else:
-            print("VDAT (%s <= current) %i (%i) %i" % (tstr, ei, len(vdat), ei_current))                      
+            #print("VDAT (%s <= current) %i (%i) %i" % (tstr, ei, len(vdat), ei_current))                      
             for i in range(len(b.deque)):
                 if b.deque[i].intervals_since_epoch == ei:
                     if type(b.deque[i]) is NULL:
@@ -422,7 +439,7 @@ class TOSDB_ConstantTimeIntervals:
     def _check_block(self, block):
         for a in TOSDB_ConstantTimeIntervals.BLOCK_ATTR:
             if not hasattr(block, a):
-                raise TOSDB_Error("'block' does not have attr '%s'" % s)
+                raise TOSDB_Error("'block' does not have attr '%s'" % a)
         if not block.is_thread_safe():
             raise TOSDB_Error("'block' is not thread safe")
         if not block.is_using_datetime():
