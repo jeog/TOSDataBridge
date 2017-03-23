@@ -32,7 +32,7 @@ from shutil import rmtree as _rmtree
 
 
 NAME = 'tosdb'
-VERSION = '0.7'
+VERSION = '0.8'
 DESCRIPTION = "Python Front-End / Wrapper for TOSDataBridge"
 AUTHOR = "Jonathon Ogden"
 AUTHOR_EMAIL = "jeog.dev@gmail.com"

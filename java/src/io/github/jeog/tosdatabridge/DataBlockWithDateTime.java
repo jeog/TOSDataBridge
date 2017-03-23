@@ -51,7 +51,7 @@ import java.util.*;
  * the block/streams in myriad ways.
  *
  * @author Jonathon Ogden
- * @version 0.7
+ * @version 0.8
  * @throws CLibException  error code returned by C lib
  * @throws LibraryNotLoaded  C lib has not been loaded
  * @see DataBlock

@@ -25,7 +25,7 @@ import com.sun.jna.Pointer;
  * JNA interface used to access the underlying C Lib.
  *
  * @author Jonathon Ogden
- * @version 0.7
+ * @version 0.8
  */
 public interface CLib extends Library {
     int TOSDB_Connect();

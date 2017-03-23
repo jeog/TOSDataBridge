@@ -45,7 +45,7 @@ import java.util.*;
  * output reviewed manually, in real-time.
  *
  * @author Jonathon Ogden
- * @version 0.7
+ * @version 0.8
  */
 public class TOSDataBridgeTest {
     private static final int SLEEP_PERIOD = 1000;

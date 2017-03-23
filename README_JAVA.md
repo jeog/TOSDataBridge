@@ -33,7 +33,7 @@ The java wrapper, like the python wrapper, extends the underlying C/C++ interfac
 An example using *test/java/TOSDataBridgeTest.java*:
 ```
 C:\...\TOSDataBridge\test\java\> javac -classpath "../../java/tosdatabridge.jar" TOSDataBridgeTest.java
-C:\...\TOSDataBridge\test\java\> java -classpath "../../java/tosdatabridge.jar;." TOSDataBridgeTest "../../bin/Release/x64/tos-databridge-0.7-x64.dll"
+C:\...\TOSDataBridge\test\java\> java -classpath "../../java/tosdatabridge.jar;." TOSDataBridgeTest "../../bin/Release/x64/tos-databridge-0.8-x64.dll"
 ```
 
 
@@ -58,7 +58,7 @@ As mentioned, the java wrapper mirrors the python wrapper in many important ways
 
     try{
         // path to the C Lib; tries to load lib and calls connect() 
-        TOSDataBridge.init(".\bin\Release\x64\tos-databridge-0.7-x64.dll");
+        TOSDataBridge.init(".\bin\Release\x64\tos-databridge-0.8-x64.dll");
 
         switch( TOSDataBridge.connectionState() ){
         case TOSDataBridge.CONN_NONN:

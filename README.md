@@ -17,13 +17,9 @@ The core implementation is not portable, but the python interface does provides 
 ### Versions
 - - -
 
-**WARNING** Major changes to the IPC mechanism and more moderate changes to the API(additional connection state info, new universal error codes for C) were recently pushed to the master branch. If you experience bugs: 1) report them, 2) revert to branch 'v0.5', 'v0.6' or 'master' @ commit 609779c. 
+- **v0.7** \[branch 'v0.7'\] - 'stable' version that guarantees up-to-date binaries, signatures, and symbols (use the README from branch 'v0.7')
 
-- **v0.5** \[branch 'v0.5'\] - 'stable' version that guarantees up-to-date binaries, signatures, and symbols (use the README from branch 'v0.5')
-
-- **v0.6** \[branch 'v0.6'\] - (PRE new_ipc/java_wrapper merges, engine/error-code improvements) development version that may lack up-to-date binaries, signatures, and/or symbols
-
-- **v0.7** \[branch 'master'\] - (POST new_ipc/java_wrapper merges, engine/error-code improvements) development version that may lack up-to-date binaries, signatures, and/or symbols
+- **v0.8** \[branch 'master'\] - development version that may lack up-to-date binaries, signatures, and/or symbols
     
 ### Quick Setup
 - - -
