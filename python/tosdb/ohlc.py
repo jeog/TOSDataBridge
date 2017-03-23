@@ -254,7 +254,12 @@ class TOSDB_ConstantTimeIntervals:
     class _Buffer:
         def __init__(self):
             self.deque = _Deque()
+            self.reset()
+        def incr(self):
+            self.count += 1
+        def reset(self):
             self.count = 0
+            self.time = _time()
 
     def _get_buffer_object(self, topic, item):
         return self._buffers[topic.upper(),item.upper()]
@@ -263,19 +268,20 @@ class TOSDB_ConstantTimeIntervals:
         return self._get_buffer_object(topic,item).deque
    
             
-    def _background_worker(self):
-        ni = self._isec / self._psec
+    def _background_worker(self):        
         self._rflag = True
         while self._rflag:
             tbeg = _time()
             with self._buffers_lock:
                 self._manage_buffers()
                 for (t,i), b in self._buffers.items():
-                    b.count += 1
+                    b.incr()
                     dat = self._ssfunc(i, t, date_time=True, throw_if_data_lost=False)                    
                     if dat:
                         self._parse_data(t,i,dat)
-                    if b.count >= ni:
+                    if b.count == 0:
+                        continue
+                    if self._needs_null_interval(b):
                         self._handle_null_interval(t, i, b)                          
             tend = _time()
             trem = self._psec - (tend - tbeg)
@@ -285,103 +291,63 @@ class TOSDB_ConstantTimeIntervals:
             _sleep( max(trem,0) )
 
 
+    def _needs_null_interval(self, b):
+        ni = self._isec / self._psec
+        if (b.count % ni) == 0:
+            print("b.count mod interval: %i" % b.count)
+            return True       
+        nnull = b.count // ni
+        adjt = b.time + (nnull * self._isec)
+        nowt = _time()
+        if (nowt - adjt) > self._isec:
+            print("nowt - adjt: %f, %f, %f, %i" % (nowt, adjt, b.time, b.count))
+            return True
+        return False
+        
+
     def _handle_null_interval(self, t, i, b):                       
         ei = b.deque[0].intervals_since_epoch + 1
         obj = NULL(ei, self._isec, self._tfunc)
-        b.deque.appendleft(obj)
-        b.count = 0
+        b.deque.appendleft(obj)      
         print("DEBUG WORK NULL: %s %i" % (str((t,i)),ei))
 
 
     def _parse_data(self, topic, item, dat):
-        b = self._get_buffer_object(topic,item)    
-        ei_current = b.deque[0].intervals_since_epoch
+        b = self._get_buffer_object(topic,item)        
         ei_old = int(dat[-1][1].mktime // self._isec)    
-        ei_new = ei_old + 1
+        ei_new = ei_old + 1 # making big assumption here
         fi = 0
         for d in dat:
             ei_last = int(d[1].mktime // self._isec)                    
             if ei_last == ei_old:
                 break
             fi += 1
-
         vodat = [d[0] for d in dat[fi:]]
-        vndat = [d[0] for d in dat[:fi]]        
-        #print("%i (%i)  %i (%i)  %i" % (ei_new, len(vndat), ei_old, len(vodat), ei_current))        
-        
+        vndat = [d[0] for d in dat[:fi]]
         if vodat:
-            if ei_old > ei_current:
-                print("VODAT (old > current)")
-                print("%i (%i)  %i (%i)  %i" % (ei_new, len(vndat), ei_old, len(vodat), ei_current)) 
-                obj = self._iobj(vodat, ei_old, self._isec, self._tfunc)        
-                b.deque.appendleft(obj)
-                b.count = 0
-            else:               
-                found = False
-                for i in range(2):
-                    if b.deque[i].intervals_since_epoch == ei_old:
-                        if type(b.deque[i]) is NULL:
-                            b.deque[i] = self._iobj(vodat, ei_old, self._isec, self._tfunc)
-                        else:
-                            b.deque[i].update(vodat)
-                        found = True
-                        break
-                if not found:
-                    raise TOSDB_Error("invalid ei_old")
-        
+            self._insert_data(ei_old, vodat, b, True)                                 
         if vndat:
-            if ei_new > ei_current:
-                print("VNDAT (new > current)")
-                print("%i (%i)  %i (%i)  %i" % (ei_new, len(vndat), ei_old, len(vodat), ei_current))
-                obj = self._iobj(vndat, ei_new, self._isec, self._tfunc)        
-                b.deque.appendleft(obj)
-                b.count = 0
-            else:
-                print("VNDAT (new <= current)")
-                print("%i (%i)  %i (%i)  %i" % (ei_new, len(vndat), ei_old, len(vodat), ei_current))
-                if b.deque[0].intervals_since_epoch == ei_new:
-                    if type(b.deque[0]) is NULL:
-                        b.deque[0] = self._iobj(vndat, ei_new, self._isec, self._tfunc)
+            self._insert_data(ei_new, vndat, b, False)
+            
+
+    def _insert_data(self, ei, vdat, b, old):
+        ei_current = b.deque[0].intervals_since_epoch
+        tstr = "old" if old else "new"
+        if ei > ei_current:
+            print("VDAT (%s > current) %i (%i) %i" % (tstr, ei, len(vdat), ei_current))
+            obj = self._iobj(vdat, ei, self._isec, self._tfunc)        
+            b.deque.appendleft(obj)
+            b.reset()
+        else:
+            print("VDAT (%s <= current) %i (%i) %i" % (tstr, ei, len(vdat), ei_current))                      
+            for i in range(len(b.deque)):
+                if b.deque[i].intervals_since_epoch == ei:
+                    if type(b.deque[i]) is NULL:
+                        b.deque[i] = self._iobj(vdat, ei, self._isec, self._tfunc)
                     else:
-                        b.deque[0].update(vndat)
-                else:
-                    raise TOSDB_Error("invliad ei_new")
-
-
-
-##    def _parse_data(self, topic, item, dat):
-##        b = self._get_buffer_object(topic,item)
-##        ei = b.deque[0].intervals_since_epoch
-##        fi = 0
-##        for d in dat:
-##            d0 = int(d[1].mktime // self._isec)                    
-##            if d0 == ei:
-##                break
-##            fi += 1
-##        ndat = dat[:fi]
-##        odat = dat[fi:]
-##        if ndat and odat:
-##            print("OLD DATA")
-##            for o in odat:
-##                print(o)
-##            print("NEW DATA")
-##            for n in ndat:
-##                print(n)
-##        if odat:
-##            d = [d[0] for d in odat]      
-##            if type(b.deque[0]) is NULL:
-##                #print("DEBUG REPLACE NULL: ", str(ei))
-##                #for dd in odat:
-##                #    print(str(dd))
-##                b.deque[0] = self._iobj(d, ei, self._isec, self._tfunc)
-##            else:
-##                b.deque[0].update(d)         
-##        if ndat:            
-##            ei = int(dat[fi-1][1].mktime // self._isec)
-##            d = [d[0] for d in ndat]
-##            obj = self._iobj(d, ei, self._isec, self._tfunc)        
-##            b.deque.appendleft(obj)
-##            b.count = 0
+                        b.deque[i].update(vdat)
+                    return
+            raise TOSDB_Error("can not find place for %s data" % tstr)
 
             
     def _manage_buffers(self):       
@@ -414,18 +380,15 @@ class TOSDB_ConstantTimeIntervals:
                 b = self._get_buffer_deque(t,i)
                 # does groupby guarantee sorted ??
                 for e, grp in _groupby(dat, lambda t: int(t[1].mktime // self._isec)):
-                    # fill in gaps
-                    print("DEBUG (INIT):", str(e), str(laste))
+                    # fill in gaps                 
                     while laste and (e - laste > 1):
                         obj = NULL(laste + 1, self._isec, self._tfunc)
                         b.append(obj)                        
-                        laste += 1
-                        print("DEBUG INIT: ", str((t,i)), str(e), str(laste), str(0))
+                        laste += 1                        
                     d = [i[0] for i in grp]
                     obj = self._iobj(d, e, self._isec, self._tfunc)
                     b.append(obj)
-                    laste = e
-                    print("DEBUG INIT: ", str((t,i)), str(e), str(len(d)))
+                    laste = e                    
 
         
     def _init_buffer(self, topic, item):
