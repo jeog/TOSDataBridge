@@ -14,13 +14,39 @@
 #   'LICENSE.txt', along with this program.  If not, see 
 #   <http://www.gnu.org/licenses/>.
 
-"""ohlc.py:  structure tosdb data in ohlc format
+"""ohlc.py:  structure streaming tosdb data in fixed-time intervals
 
+*** IN DEVELOPMENT ***
+
+TOSDB_ConstantTimeIntervals:
+    base class that pulls numerical data of a certain interval from a thread-safe
+    DataBlock, putting it into buffers of fixed-time interval objects (e.g OHLC),
+    that can be extracted in various ways
+    
+TOSDB_OpenHighLowCloseIntervals:
+    extends TOSDB_ConstantTimeIntervals using 'OHLC' fixed-time interval objects
+
+TOSDB_CloseIntervals:
+    extends TOSDB_ConstantTimeIntervals using 'C' fixed-time interval objects
+
+OHLC:
+    object that stores open, high, low, close of a fixed-time interval along
+    with datetime info
+
+C:
+    object that stores close of a fixed-time interval along with datetime info
+
+NULL:
+    base object that stores no data of a fixed-time interval but does include
+    datetime info
+
+*** IN DEVELOPMENT ***
 """
 
 import tosdb
 from tosdb import TOPICS, TOSDB_Error
 from .doxtend import doxtend as _doxtend
+from ._common import _TOSDB_DataBlock
 
 from threading import Thread as _Thread, Lock as _Lock
 from types import MethodType as _MethodType
@@ -141,8 +167,164 @@ class OHLC(C):
         labels = ('o','h','l','c') + self.DATETIME_FIELDS + ('ticks',)     
         return str(tuple(a + "=" + str(v) for a,v in zip(labels, self.as_tuple())))    
 
+
+class TOSDB_ConstantTimeIntervals:
+    pass
+
+class TOSDB_OpenHighLowCloseIntervals(TOSDB_ConstantTimeIntervals):
+    """Pulls data from a thread-safe DataBlock in fixed-time ohlc.OHLC intervals
+
+    This class takes streaming data from a 'DataBlock' object (_win.py/__init__.py),
+    breaks it up along fixed-time intervals, transforms the data into an ohlc.OHLC object,
+    and stores those objects in internal buffers that can be accessed via get(...)
+    and stream_snapshot(...) methods.
+
+    1) Create a thread-safe 'DataBlock' (e.g tosdb.TOSDB_ThreadSafeDataBlock)
+    
+    2) Add 'items' and 'topics' directly through the 'DataBlock' interface, or
+       use the methods provided
+       i) 'topics' that return string data will be ignored (e.g DESCRIPTION, LASTX)
+       ii) all valid items/topics added/removed to/from the 'DataBlock' will
+           immediately affect *this* object (be careful!)
+
+    3) Create a TOSDB_OpenHighLowCloseIntervals object with:
+        i)   the block we created in #1    
+        ii)  the length of the interval in seconds (>= 10, <= 14,400)
+        iii) (optional) how often each retrieval/collection operations should occur
+             (i.e interval_sec=30, poll_sec=1 means 30 operations per interval)
+        iv)  (optional) custom time function to translate time data stored in
+             interval_object to time.struct_time
+
+    5) Use methods to access stored data:
+        get(...) 
+        get_by_datetime(...) 
+        stream_snapshot(...) 
+        stream_snapshot_between_datetimes(...)
+
+    6) WHEN DONE: call stop() method
+
+    NOTE: after stop() is called the 'DataBlock' object you passed into the constructor
+          is still valid and in the same state.
+    
+    __init__(self, block, interval_sec, poll_sec=1, time_func=time.localtime)
+
+    block        :: object :: object that exposes certain _TOSDB_DataBlock methods                                                             
+    interval_sec :: int    :: size of fixed-time interval in seconds 
+    poll_sec     :: int    :: time in seconds of each data retrieval/collection operation                             
+    time_func    :: func   :: custom time function that returns time.struct_time
+    
+    throws TOSDB_Error
+    """
+    def __init__(self, block, interval_sec, poll_sec=.5, time_func=time.localtime):
+        super().__init__(block, OHLC, interval_sec, poll_sec, time_func)
+
+
+class TOSDB_CloseIntervals(TOSDB_ConstantTimeIntervals):
+    """Pulls data from a thread-safe DataBlock in fixed-time ohlc.C intervals
+
+    This class takes streaming data from a 'DataBlock' object (_win.py/__init__.py),
+    breaks it up along fixed-time intervals, transforms the data into a ohlc.C object,
+    and stores those objects in internal buffers that can be accessed via get(...)
+    and stream_snapshot(...) methods.
+
+    1) Create a thread-safe 'DataBlock' (e.g tosdb.TOSDB_ThreadSafeDataBlock)
+    
+    2) Add 'items' and 'topics' directly through the 'DataBlock' interface, or
+       use the methods provided
+       i) 'topics' that return string data will be ignored (e.g DESCRIPTION, LASTX)
+       ii) all valid items/topics added/removed to/from the 'DataBlock' will
+           immediately affect *this* object (be careful!)
+
+    3) Create a TOSDB_CloseIntervals object with:
+        i)   the block we created in #1    
+        ii)  the length of the interval in seconds (>= 10, <= 14,400)
+        iii) (optional) how often each retrieval/collection operations should occur
+             (i.e interval_sec=30, poll_sec=1 means 30 operations per interval)
+        iv)  (optional) custom time function to translate time data stored in
+             interval_object to time.struct_time
+
+    5) Use methods to access stored data:
+        get(...) 
+        get_by_datetime(...) 
+        stream_snapshot(...) 
+        stream_snapshot_between_datetimes(...)
+
+    6) WHEN DONE: call stop() method
+
+    NOTE: after stop() is called the 'DataBlock' object you passed into the constructor
+          is still valid and in the same state.
+    
+    __init__(self, block, interval_sec, poll_sec=1, time_func=time.localtime)
+
+    block        :: object :: object that exposes certain _TOSDB_DataBlock methods                                                             
+    interval_sec :: int    :: size of fixed-time interval in seconds 
+    poll_sec     :: int    :: time in seconds of each data retrieval/collection operation                             
+    time_func    :: func   :: custom time function that returns time.struct_time
+    
+    throws TOSDB_Error
+    """
+    def __init__(self, block, interval_sec, poll_sec=.5, time_func=time.localtime):
+        super().__init__(block, C, interval_sec, poll_sec, time_func)
+
+
+class TOSDB_ConstantTimeIntervals:
+    """Base object that pulls data from a thread-safe DataBlock in fixed-time intervals
+
+    This class takes streaming data from a 'DataBlock' object (_win.py/__init__.py),
+    breaks it up along fixed-time intervals, transforms the data into a custom object,
+    and stores those objects in internal buffers that can be accessed via get(...)
+    and stream_snapshot(...) methods.
+
+    1) Create a thread-safe 'DataBlock' (e.g tosdb.TOSDB_ThreadSafeDataBlock)
+    
+    2) Add 'items' and 'topics' directly through the 'DataBlock' interface, or
+       use the methods provided
+       i) 'topics' that return string data will be ignored (e.g DESCRIPTION, LASTX)
+       ii) all valid items/topics added/removed to/from the 'DataBlock' will
+           immediately affect *this* object (be careful!)
+           
+    3) Define a custom class that extends 'NULL' to represent data in each interval
+       (see OHLC and C above).
+        i) its constructor should have the following prototype:
+            def __init__(self, data, intervals_since_epoch, interval_seconds, time_func):
+                super().__init__(self, intervals_since_epoch, interval_seconds, time_func)
+                # handle 'data'
+        ii) it should define an 'update' method to handle new data coming in:
+            def update(self, data):
+                # handle 'data'
+        iii) consider defining '__slots__' to limit memory usage
         
-class TOSDB_ConstantTimeIntervals:    
+    4) Create a TOSDB_ConstantTimeIntervals object with:
+        i)   the block we created in #1
+        ii)  the class we created in #3 (the actuall class, not an instance)
+        iii) the length of the interval in seconds (>= 10, <= 14,400)
+        iv)  (optional) how often each retrieval/collection operations should occur
+             (i.e interval_sec=30, poll_sec=1 means 30 operations per interval)
+        v)   (optional) custom time function to translate time data stored in
+             interval_object to time.struct_time
+
+    5) Use methods to access stored data:
+        get(...) 
+        get_by_datetime(...) 
+        stream_snapshot(...) 
+        stream_snapshot_between_datetimes(...)
+
+    6) WHEN DONE: call stop() method
+
+    NOTE: after stop() is called the 'DataBlock' object you passed into the constructor
+          is still valid and in the same state.
+    
+    __init__(self, block, interval_obj, interval_sec, poll_sec=1,
+             time_func=time.localtime)
+
+    block        :: object :: object that exposes certain _TOSDB_DataBlock methods                                                             
+    interval_obj :: class  :: object used to stored data over a fixed-time interval 
+    interval_sec :: int    :: size of fixed-time interval in seconds 
+    poll_sec     :: int    :: time in seconds of each data retrieval/collection operation                             
+    time_func    :: func   :: custom time function that returns time.struct_time
+    
+    throws TOSDB_Error
+    """
     MIN_INTERVAL_SEC = 10
     MAX_INTERVAL_SEC = 60 * 60 * 4 # 4 hours
     BLOCK_SIZE_PER_PSEC = 10
@@ -152,7 +334,7 @@ class TOSDB_ConstantTimeIntervals:
     BLOCK_ATTR = ['is_thread_safe', 'stream_snapshot_from_marker', 'topics', 'items',
                   'add_items', 'add_topics', 'remove_items', 'remove_topics']
     
-    def __init__(self, block, interval_obj, interval_sec, poll_sec=.5,
+    def __init__(self, block, interval_obj, interval_sec, poll_sec=1,
                  time_func=time.localtime):
         self._rflag = False
         self._check_params(interval_obj, interval_sec, poll_sec)
@@ -172,25 +354,24 @@ class TOSDB_ConstantTimeIntervals:
         self._bthread = _Thread(target=self._background_worker)
         self._bthread.start()      
 
-    def __del__(self):
-        print("DEBUG", "__del__ in")
+    def __del__(self):        
         if self._rflag:
-            self.stop()
-        print("DEBUG", "__del__ out")
+            self.stop()        
         
     def stop(self):
-        self._rflag = False
-        print("DEBUG", "join IN")
-        self._bthread.join()
-        print("DEBUG", "join OUT")
+        """ Stop retrieving data from the underlying 'DataBlock' """
+        self._rflag = False        
+        self._bthread.join()        
         if hasattr(self._block, '_old_set_block_size'):
             self._block.set_block_size = self._block._old_set_block_size
             delattr(self._block, '_old_set_block_size')
 
+    @_doxtend(_TOSDB_DataBlock) # __doc__ from ABC _TOSDB_DataBlock
     def add_items(*items):
         with self._buffers_lock:
             self._block.add_items(*items)
 
+    @_doxtend(_TOSDB_DataBlock) # __doc__ from ABC _TOSDB_DataBlock
     def add_topics(*topics):
         for t in topics:
            if type_bits(t) & tosdb.STRING_BIT:
@@ -198,23 +379,56 @@ class TOSDB_ConstantTimeIntervals:
         with self._buffers_lock:
             self._block.add_topics(*topics)
 
+    @_doxtend(_TOSDB_DataBlock) # __doc__ from ABC _TOSDB_DataBlock
     def remove_items(*items):
         with self._buffers_lock:
             self._block.remove_items(*items)
 
-    def remove_topics(*topics):
+    @_doxtend(_TOSDB_DataBlock) # __doc__ from ABC _TOSDB_DataBlock
+    def remove_topics(*topics):     
         with self._buffers_lock:
             self._block.remove_topics(*topics)
+
         
     def occupancy(self, item, topic):
+        """ Returns the current number of interval objects being held
+
+        stream_occupancy(self, item, topic)
+
+        item  :: str  :: any item string in the block
+        topic :: str  :: any topic string in the block
+        
+        returns -> int      
+        """ 
         with self._buffers_lock:
             return len(self._get_buffer_deque(topic,item))
+
     
     def get(self, item, topic, indx=0):
+        """ Return a single interval object 
+
+        get(self, item, topic, indx=0)
+            
+        item  :: str :: any item string in the block
+        topic :: str :: any topic string in the block      
+        indx  :: int :: index/position of interval to get                                 
+        """
         with self._buffers_lock:
             return self._get_buffer_deque(topic,item)[indx]
 
+
     def get_by_datetime(self, item, topic, datetime):
+        """ Return a single interval object by its datetime tuple
+
+        get(self, item, topic, datetime)
+            
+        item     :: str :: any item string in the block
+        topic    :: str :: any topic string in the block      
+        datetime :: int :: datetime tuple of the interval object
+                           (second, minute, hour, day, month, year)
+
+        throws TOSDB_Error if interval object doesn't exist at that datetime
+        """
         with self._buffers_lock:
             b = self._get_buffer_deque(topic,item)
             i = self._intervals_since_epoch(*datetime)        
@@ -226,32 +440,56 @@ class TOSDB_ConstantTimeIntervals:
             except IndexError:
                 raise TOSDB_Error("OHLC does not exist at this datetime")
 
-    def stream_snapshot(self, item, topic, end=0, beg=-1):
+
+    def stream_snapshot(self, item, topic, end=-1, beg=0):
+        """ Return multiple interval objects
+
+        stream_snapshot(self, item, topic, end=-1, beg=0)
+                        
+        item  :: str :: any item string in the block
+        topic :: str :: any topic string in the block
+        end   :: int :: index/position of least recent interval to get  
+        beg   :: int :: index/position of most recent interval to get   
+        """
         with self._buffers_lock:
-            return list(self._get_buffer_deque(topic,item))[end:beg]
+            return list(self._get_buffer_deque(topic,item))[beg:end]
+
 
     # INCLUSIVE INDEXING !
     def stream_snapshot_between_datetimes(self, item, topic, end_datetime=tuple(),
                                           beg_datetime=tuple()):
+        """ Return multiple interval objects between datetime tuples
+
+        stream_snapshot(self, item, topic, end_datetime=tuple(), beg_datetime=tuple())
+                        
+        item  :: str :: any item string in the block
+        topic :: str :: any topic string in the block
+        end   :: int :: datetime tuple of least recent interval to get
+                        (second, minute, hour, day, month, year)
+        beg   :: int :: datetime tuple of most recent interval to get
+                        (second, minute, hour, day, month, year)
+
+        throws TOSDB_Error if interval objects don't exist between the datetime tuples
+        """
         with self._buffers_lock:
             b = self._get_buffer_deque(topic,item)
             if beg_datetime:
                 i_beg = self._intervals_since_epoch(*beg_datetime)
                 off_beg = b[0].intervals_since_epoch - i_beg
                 if off_beg < 0:
-                    raise TOSDB_Error("'beg' OHLC does not exist at this datetime")
-                off_beg += 1 # make range incluseive
+                    raise TOSDB_Error("'beg' OHLC does not exist at this datetime")               
             else:
-                off_beg = -1       
+                off_beg = 0       
             if end_datetime:
-                i_end = self._intervals_since_epoch(*end_date_time)           
+                i_end = self._intervals_since_epoch(*end_datetime)           
                 off_end = b[0].intervals_since_epoch - i_end
                 if off_end < 0:
                     raise TOSDB_Error("'end' OHLC does not exist at this datetime")
+                off_end += 1 # make range incluseive
             else:
-                off_end=0
+                off_end=-1
             try:
-                return list(b)[off_end:off_beg] 
+                return list(b)[off_beg:off_end] 
             except IndexError:
                 raise TOSDB_Error("OHLCs do not exist between these datetimes")
 
@@ -465,15 +703,6 @@ class TOSDB_ConstantTimeIntervals:
         if interval_sec % poll_sec:
             raise TOSDB_Error("interval_sec must be multiple of poll_sec")
 
-
-class TOSDB_OpenHighLowCloseIntervals(TOSDB_ConstantTimeIntervals):
-    def __init__(self, block, interval_sec, poll_sec=.5, time_func=time.localtime):
-        super().__init__(block, OHLC, interval_sec, poll_sec, time_func)
-
-
-class TOSDB_CloseIntervals(TOSDB_ConstantTimeIntervals):
-    def __init__(self, block, interval_sec, poll_sec=.5, time_func=time.localtime):
-        super().__init__(block, C, interval_sec, poll_sec, time_func)
 
 
     
