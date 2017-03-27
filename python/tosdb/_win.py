@@ -35,7 +35,8 @@ from platform import system as _system
 from contextlib import contextmanager as _contextmanager
 
 from os import walk as _walk, stat as _stat, curdir as _curdir, \
-               listdir as _listdir, sep as _sep, path as _path
+               listdir as _listdir, sep as _sep, path as _path, \
+               getpid as _getpid
 
 from re import compile as _compile, search as _search, match as _match, \
                split as _split
@@ -161,7 +162,8 @@ def init(dllpath=None, root="C:\\", bypass_check=False):
         _dll = _CDLL(dllpath)        
         print("+ Using Module(s) ", dllpath)
         print("                  ", dllpath_depends1)
-        print("+ Last Update ", _asctime(_localtime(_stat(dllpath).st_mtime)))
+        print("+ Last Update:", _asctime(_localtime(_stat(dllpath).st_mtime)))
+        print("+ Process ID:", str(_getpid())) 
         if connect():
             print("+ Succesfully Connected to Service\Engine")
             if connected():

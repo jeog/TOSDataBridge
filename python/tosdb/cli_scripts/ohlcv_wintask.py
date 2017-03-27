@@ -15,102 +15,102 @@
 #   <http://www.gnu.org/licenses/>.
 
 import tosdb
-#from tosdb.intervalize import TimeInterval as _TI
-from tosdb import ohlc
+from tosdb.intervalize.ohlc import TOSDB_OpenHighLowCloseIntervals as OHLCIntervals, \
+                                   TOSDB_CloseIntervals as CIntervals
+                                   
 
 from argparse import ArgumentParser as _ArgumentParser
 from time import localtime as _localtime, strftime as _strftime, sleep as _sleep
 from os.path import realpath as _path
 from sys import stderr as _stderr
 
-
 BLOCK_SIZE = 1000
-    
+_paths = dict()
 
-def spawn(dllroot,outdir,interval,val_type,*symbols):   
+def spawn(outdir, interval, val_type, *symbols):
+    global _paths
+    
     if val_type not in ['OHLCV','OHLC','CV','C']:
         raise ValueError("invalid val_type (OHLCV,OHLC,CV or C)") 
         
     # generate filename          
     dprfx = _strftime("%Y%m%d", _localtime())
-     
-    paths = {s.upper() : (_path(outdir) + '/' + dprfx + '_' \
-                         + s.replace('/','-S-').replace('$','-D-').replace('.','-P-') \
-                         + '_' + val_type + '_' + str(interval) + 'min.tosdb') for s in symbols}
+    # generate paths from filenames
+    _paths = {s.upper() : (_path(outdir) + '/' + dprfx + '_' \
+                          + s.replace('/','-S-').replace('$','-D-').replace('.','-P-') \
+                          + '_' + val_type + '_' + str(interval) + 'sec.tosdb')
+                          for s in symbols}   
 
-    # open file to write
-    files = {s : open(s,'w',1) for s in paths}
-    
-    def callback_c(item, topic, iobj):
-        f = files[item]        
-        f.write(iobj.asctime().ljust(50))
-        if not iobj.is_null():
-            f.write(str(iobj.c) + '\n')
-
-    def callback_ohlc(item, topic, iobj):
-        f = files[item]        
-        f.write(iobj.asctime().ljust(50))
-        if not iobj.is_null():
-            d = (iobj.open, iobj.high, iobj.low, iobj.close)
-            f.write(str(str(d)) + '\n')
-
-    class _callback_matcher
-        def __init__(self, attrs)
-            self.other_interval = dict()
-            self.attrs = attrs
-        def get(self, i):
-            return (getattr(i, v) for v in self.attrs)
-        def callback(self, item, topic, iobj):
-            if other_interval[item] is None:
-                other_interval[item] = (topic, iobj)
-            else:
-                if other_interval[item][0] == topic:
-                    raise TOSDB_Error("last/volume mismatch")
-                if other_interval[item][1].intervals_since_epoch \
-                   != iobj.intervals_since_epoch:
-                    raise TOSDB_Error("last/volume interval mismatch")
-                f = files[item]        
-                f.write(iobj.asctime().ljust(50))
-                if not iobj.is_null():                    
-                    d = (self.get(iobj), self.get(other_interval[item][1]))
-                    if topic == 'VOLUME':                    
-                        d = (d[1],d[0])
-                    d = tuple(d[0]) + tuple(d[1])
-                    f.write(str(d))
-                other_interval[item].clear()
-
+    # create callback objects
+    callback_c = _callback_basic(lambda o: str(o.c))
+    callback_ohlc = _callback_basic(lambda o: str((o.o, o.h, o.l, o.c)))
     callback_cv = _callback_matcher('c')
     callback_ohlcv = _callback_matcher('ohlc')
-  
-    # connect 
-    tosdb.init(root=dllroot)
     
     # create block
-    blk = tosdb.TOSDB_DataBlock(BLOCK_SIZE, date_time=True)
+    blk = tosdb.TOSDB_ThreadSafeDataBlock(BLOCK_SIZE, date_time=True)
     blk.add_items(*(symbols))
     blk.add_topics('last')        
-        
+    if 'V' in val_type:
+        blk.add_topics('volume')        
+
     # create interval object
     if 'OHLC' in val_type:
-        if 'V' in val_type:
-            blk.add_topics('volume')
-            iobj = TOSDB_OpenHighLowCloseIntervals(blk, interval, interval_cb=callback_ohlcv)
+        if 'V' in val_type:         
+            iobj = OHLCIntervals(blk, interval, interval_cb=callback_ohlcv.callback)
         else:
-            iobj = TOSDB_OpenHighLowCloseIntervals(blk, interval, interval_cb=callback_ohlc)
+            iobj = OHLCIntervals(blk, interval, interval_cb=callback_ohlc.callback)
     else:
-        if 'V' in val_type:
-            blk.add_topics('volume')
-            iobj = TOSDB_CloseIntervals(blk, interval, interval_cb=callback_cv)
+        if 'V' in val_type:           
+            iobj = CIntervals(blk, interval, interval_cb=callback_cv.callback)
         else:
-            iobj = TOSDB_CloseIntervals(blk, interval, interval_cb=callback_c)
+            iobj = CIntervals(blk, interval, interval_cb=callback_c.callback)
 
     ### TODO: HANDLE WAIT/EXIT
+
+
+def _write(item, s):
+    with open(_paths[item], 'a') as f:
+        f.write(s)
+
+class _callback_basic:
+    def __init__(self, to_str_func):
+        self._to_str_func = to_str_func
+    def callback(self, item, topic, iobj):
+        _write(item, iobj.asctime().ljust(50))       
+        s = self._to_str_func(iobj) if not iobj.is_null() else 'N/A'
+        _write(item, s + '\n')           
+    
+class _callback_matcher:
+    TTOGGLE = {"LAST":"VOLUME", "VOLUME":"LAST"}
+    def __init__(self, attrs):
+        self.other_interval = dict()
+        self.attrs = attrs       
+    def callback(self, item, topic, iobj):            
+        if item not in self.other_interval:
+            self.other_interval[item] = {"LAST":dict(), "VOLUME":dict()}
+        ise = iobj.intervals_since_epoch
+        otopic = self.TTOGGLE[topic]
+        if ise in self.other_interval[item][otopic]:
+            _write(item, iobj.asctime().ljust(50))
+            if not iobj.is_null():
+                m = self.other_interval[item][otopic][ise]                        
+                if topic == 'VOLUME':
+                    d = tuple((getattr(m, v) for v in self.attrs)) + (iobj.c,)
+                else:
+                    d = tuple((getattr(iobj, v) for v in self.attrs)) + (m.c,)                                  
+                _write(item, str(d) + '\n')
+            else:
+                _write(item, 'N/A \n')                
+            self.other_interval[item][otopic].pop(ise)
+        else:
+            self.other_interval[item][topic][ise] = iobj
             
 
 if __name__ == '__main__':
     parser = _ArgumentParser()  
-    parser.add_argument('dllroot', type=str,                       
-                        help = 'root path of Windows implementation C Library')
+    parser.add_argument('--root', help='root directory to search for the library')
+    parser.add_argument('--path', help='the exact path of the library')
     parser.add_argument('outdir', type=str, help='directory to output data to')
     parser.add_argument('interval', type=int, help="interval size in seconds")
     parser.add_argument('--ohlc', action="store_true", 
@@ -122,9 +122,16 @@ if __name__ == '__main__':
     if args.ohlc:
         val_type = 'OHLCV' if args.vol else 'OHLC'
     else:
-        val_type = 'CV' if args.vol else 'C'
+        val_type = 'CV' if args.vol else 'C'   
 
-    spawn(args.dllroot, args.outdir, args.interval, val_type, *arg.vars)
+    if not args.path and not args.root:
+        print("need --root or --path argument", file=_stderr)
+        exit(1)
+
+    # connect        
+    tosdb.init(args.path,args.root)
+    
+    spawn(args.outdir, args.interval, val_type, *args.symbols)
 
 
 

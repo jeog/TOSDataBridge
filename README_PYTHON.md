@@ -15,17 +15,17 @@ The python wrapper is a simpler way to get started with the underlying library. 
 
 tosdb/ is structured as a package with the bulk of its code in \__init__.py and \_win.py , the latter holding the non-portable parts that \__init__.py will import if it determines it's being run on a windows sytem. 
 ```
-# import the package (1)
+# import the top-level package (1)
 import tosdb
 
-# (or) import an individual module (2)
-from tosdb import ohlc
+# (or) import an individual module from a sub-package (2)
+from tosdb.intervalize import ohlc
 ```
 
 Once imported you'll have to initialize it so it can connect to the underlying C/C++ library. This requires the path of tos-databridge-[].dll or the root directory it's going to search in for the latest version. 
 
 ```
-# directly from the package (1)
+# directly from the top-level package (1)
 tosdb.init(root="C:/TOSDataBridge/bin/Release")
 
 # (or) from an individual module (2)

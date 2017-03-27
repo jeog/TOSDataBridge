@@ -36,7 +36,7 @@ VERSION = '0.8'
 DESCRIPTION = "Python Front-End / Wrapper for TOSDataBridge"
 AUTHOR = "Jonathon Ogden"
 AUTHOR_EMAIL = "jeog.dev@gmail.com"
-PACKAGES = ['tosdb','tosdb/cli_scripts']  
+PACKAGES = ['tosdb','tosdb/cli_scripts','tosdb/intervalize']  
 
 
 _AUTO_EXT = '_tosdb' 

@@ -14,7 +14,7 @@
 #   'LICENSE.txt', along with this program.  If not, see 
 #   <http://www.gnu.org/licenses/>.
 
-"""ohlc.py:  structure streaming tosdb data in fixed-time intervals
+"""intervalize/ohlc.py:  structure streaming tosdb data in fixed-time intervals
 
 *** IN DEVELOPMENT ***
 
@@ -45,8 +45,8 @@ NULL:
 
 import tosdb
 from tosdb import TOPICS, TOSDB_Error
-from .doxtend import doxtend as _doxtend
-from ._common import _TOSDB_DataBlock
+from tosdb.doxtend import doxtend as _doxtend
+from tosdb._common import _TOSDB_DataBlock
 
 from threading import Thread as _Thread, Lock as _Lock
 from types import MethodType as _MethodType
@@ -244,7 +244,7 @@ class TOSDB_FixedTimeIntervals:
     BLOCK_SIZE_PER_PSEC = 10
     WAIT_ADJ_DOWN = .999  
     WAIT_ADJ_THRESHOLD = .01
-    WAIT_ADJ_THRESHOLD_FATAL = .01
+    WAIT_ADJ_THRESHOLD_FATAL = .10
     BLOCK_ATTR = ['is_thread_safe', 'stream_snapshot_from_marker', 'topics', 'items',
                   'add_items', 'add_topics', 'remove_items', 'remove_topics']
     
@@ -429,9 +429,9 @@ class TOSDB_FixedTimeIntervals:
     def _get_buffer_deque(self, topic, item):
         return self._get_buffer_object(topic,item).deque
 
-    def _callback(self, topic, item, d):
+    def _callback(self, item, topic, d, i=1):
         if self._interval_cb:
-            self._interval_cb(item, topic, d[1]) 
+            self._interval_cb(item, topic, d[i]) 
             
     def _background_worker(self):        
         ni = self._isec / self._psec
@@ -559,20 +559,23 @@ class TOSDB_FixedTimeIntervals:
                 dat = f.result()
                 laste = 0
                 b = self._get_buffer_deque(t,i)
+                cb_count = 0
                 # does groupby guarantee sorted ??
                 for e, grp in _groupby(dat, lambda t: int(t[1].mktime // self._isec)):
                     # fill in gaps                 
                     while laste and (e - laste > 1):
                         obj = NULL(laste + 1, self._isec, self._tfunc)
-                        b.append(obj)
-                        self._callback(i,t,b) # callback with penultimate interval
+                        b.append(obj)                        
+                        cb_count += 1
                         laste += 1                        
                     d = [i[0] for i in grp]
                     obj = self._iobj(d, e, self._isec, self._tfunc)
                     b.append(obj)
-                    if len(b) > 1:
-                        self._callback(i,t,b) # callback with penultimate interval
-                    laste = e                    
+                    cb_count += 1
+                    laste = e
+                # we sort new to old so need do all callbacks after appends
+                for n in range(cb_count-1,0,-1):
+                    self._callback(i,t,b,n) 
 
         
     def _init_buffer(self, topic, item):
