@@ -19,7 +19,7 @@ import tosdb
 from tosdb.intervalize.ohlc import TOSDB_OpenHighLowCloseIntervals as OHLCIntervals, \
                                    TOSDB_CloseIntervals as CIntervals
 
-from .daemon import Daemon as _Daemon
+from tosdb.cli_scripts.daemon import Daemon as _Daemon
 
 from argparse import ArgumentParser as _ArgumentParser
 from time import localtime as _localtime, strftime as _strftime, sleep as _sleep
@@ -29,19 +29,19 @@ from sys import stderr as _stderr
 AINIT_TIMEOUT = 5000
 BLOCK_SIZE = 1000
     
+
 class MyDaemon(_Daemon):
-    def __init__(self, addr, out_dir, pid_file, error_file, interval, itype, symbols):
-        _Daemon.__init__(self, pid_file, stderr = error_file)
-        self._addr = addr
-        self._dll_root = dll_root
-        self._out_dir = _path(out_dir)
+    def __init__(self, addr, outdir, pidfile, errorfile, interval, itype, symbols):
+        _Daemon.__init__(self, pidfile, stderr = errorfile)
+        self._addr = addr    
+        self._outdir = _path(outdir)
         self._interval = interval
         self._itype = itype
         self._symbols = symbols        
         # generate filename          
         dprfx = _strftime("%Y%m%d", _localtime())
         # generate paths from filenames
-        self._paths = {s.upper() : (_path(outdir) + '/' + dprfx + '_' \
+        self._paths = {s.upper() : (_path(self._outdir) + '/' + dprfx + '_' \
                                    + s.replace('/','-S-').replace('$','-D-').replace('.','-P-') \
                                    + '_' + self._itype + '_' + str(self._interval) + 'sec.tosdb') \
                                      for s in self._symbols}
@@ -61,7 +61,7 @@ class MyDaemon(_Daemon):
         if 'V' in self._itype:
             blk.add_topics('volume')       
         # create interval object
-         if 'OHLC' in self._itype:
+        if 'OHLC' in self._itype:
             if 'V' in self._itype:         
                 self._iobj = OHLCIntervals(blk, interval, interval_cb=self._callback_ohlcv.callback)
             else:
@@ -90,28 +90,29 @@ class MyDaemon(_Daemon):
         
     class _callback_matcher:
         TTOGGLE = {"LAST":"VOLUME", "VOLUME":"LAST"}
-        def __init__(self, attrs):
-            self.other_interval = dict()
-            self.attrs = attrs       
+        def __init__(self, attrs, parent):
+            self._other_interval = dict()
+            self._props = attrs       
+            self._parent = parent
         def callback(self, item, topic, iobj):            
-            if item not in self.other_interval:
-                self.other_interval[item] = {"LAST":dict(), "VOLUME":dict()}
+            if item not in self._other_interval:
+                self._other_interval[item] = {"LAST":dict(), "VOLUME":dict()}
             ise = iobj.intervals_since_epoch
             otopic = self.TTOGGLE[topic]
-            if ise in self.other_interval[item][otopic]:
+            if ise in self._other_interval[item][otopic]:
                 self._parent._write(item, iobj.asctime().ljust(50))
                 if not iobj.is_null():
-                    m = self.other_interval[item][otopic][ise]                        
+                    m = self._other_interval[item][otopic][ise]                        
                     if topic == 'VOLUME':
-                        d = tuple((getattr(m, v) for v in self.attrs)) + (iobj.c,)
+                        d = tuple((getattr(m, v) for v in self._props)) + (iobj.c,)
                     else:
-                        d = tuple((getattr(iobj, v) for v in self.attrs)) + (m.c,)                                  
+                        d = tuple((getattr(iobj, v) for v in self._props)) + (m.c,)                                  
                     self._parent._write(item, str(d) + '\n')
                 else:
                     self._parent._write(item, 'N/A \n')                
-                self.other_interval[item][otopic].pop(ise)
+                self._other_interval[item][otopic].pop(ise)
             else:
-                self.other_interval[item][topic][ise] = iobj
+                self._other_interval[item][topic][ise] = iobj
       
 
 if __name__ == '__main__':
@@ -120,6 +121,7 @@ if __name__ == '__main__':
                         help = 'address of the host system "address port"')
     parser.add_argument('--root', help='root directory to search for the library (on host)')
     parser.add_argument('--path', help='the exact path of the library (on host)')
+    parser.add_argument('--auth', help='password to use if authentication required')
     parser.add_argument('outdir', type=str, help = 'directory to output data to')
     parser.add_argument('pidfile', type=str, help = 'path of pid file')
     parser.add_argument('errorfile', type=str, help = 'path of error file')
@@ -143,7 +145,7 @@ if __name__ == '__main__':
         exit(1)
 
     # connect              
-    tosdb.admin_init(addr, AINIT_TIMEOUT)   
+    tosdb.admin_init(addr, password=args.auth, timeout=AINIT_TIMEOUT)   
     tosdb.vinit(args.path, args.root)
     
     MyDaemon(addr, args.outdir, args.pidfile, args.errorfile, args.interval,

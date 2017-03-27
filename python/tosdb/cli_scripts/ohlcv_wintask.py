@@ -84,27 +84,27 @@ class _callback_basic:
 class _callback_matcher:
     TTOGGLE = {"LAST":"VOLUME", "VOLUME":"LAST"}
     def __init__(self, attrs):
-        self.other_interval = dict()
-        self.attrs = attrs       
+        self._other_interval = dict()
+        self._props = attrs       
     def callback(self, item, topic, iobj):            
-        if item not in self.other_interval:
-            self.other_interval[item] = {"LAST":dict(), "VOLUME":dict()}
+        if item not in self._other_interval:
+            self._other_interval[item] = {"LAST":dict(), "VOLUME":dict()}
         ise = iobj.intervals_since_epoch
         otopic = self.TTOGGLE[topic]
-        if ise in self.other_interval[item][otopic]:
+        if ise in self._other_interval[item][otopic]:
             _write(item, iobj.asctime().ljust(50))
             if not iobj.is_null():
-                m = self.other_interval[item][otopic][ise]                        
+                m = self._other_interval[item][otopic][ise]                        
                 if topic == 'VOLUME':
-                    d = tuple((getattr(m, v) for v in self.attrs)) + (iobj.c,)
+                    d = tuple((getattr(m, v) for v in self._props)) + (iobj.c,)
                 else:
-                    d = tuple((getattr(iobj, v) for v in self.attrs)) + (m.c,)                                  
+                    d = tuple((getattr(iobj, v) for v in self._props)) + (m.c,)                                  
                 _write(item, str(d) + '\n')
             else:
                 _write(item, 'N/A \n')                
-            self.other_interval[item][otopic].pop(ise)
+            self._other_interval[item][otopic].pop(ise)
         else:
-            self.other_interval[item][topic][ise] = iobj
+            self._other_interval[item][topic][ise] = iobj
             
 
 if __name__ == '__main__':
