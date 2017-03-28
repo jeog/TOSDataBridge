@@ -535,7 +535,14 @@ class TOSDB_FixedTimeIntervals:
                     else:
                         b.deque[i].update(vdat)
                     return
-            raise TOSDB_Error("can not find place for %s data" % tstr)
+            self._warn_on_stranded_data(ei, b.deque, tstr, topic, item)
+
+
+    def _warn_on_stranded_data(self, ei, d, tstr, topic, item):
+        dbeg = d[0].intervals_since_epoch if (len(d) > 0) else 0
+        dend = d[-1].intervals_since_epoch if (len(d) > 1) else 0        
+        print("WARN: can not find place for %s data: %s, %s, %i, (%i, %i)" \
+               % (tstr, item, topic, ei, dbeg, dend) )
 
             
     def _manage_buffers(self):       

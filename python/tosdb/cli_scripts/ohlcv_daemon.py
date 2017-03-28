@@ -20,6 +20,7 @@ from tosdb.intervalize.ohlc import TOSDB_OpenHighLowCloseIntervals as OHLCInterv
                                    TOSDB_CloseIntervals as CIntervals
 
 from tosdb.cli_scripts.daemon import Daemon as _Daemon
+from tosdb.cli_scripts import _ohlcv_callbacks
 
 from argparse import ArgumentParser as _ArgumentParser
 from time import localtime as _localtime, strftime as _strftime, sleep as _sleep
@@ -39,22 +40,22 @@ class MyDaemon(_Daemon):
         self._interval = interval
         self._has_vol = 'V' in itype
         self._is_ohlc = 'OHLC' in itype
-        self._symbols = symbols        
-        # generate filename          
+        self._symbols = symbols   
+        self._iobj = None     
+        # date prefix for filename          
         dprfx = _strftime("%Y%m%d", _localtime())
         # generate paths from filenames
         self._paths = {s.upper() : (_path(self._outdir) + '/' + dprfx + '_' \
                                    + s.replace('/','-S-').replace('$','-D-').replace('.','-P-') \
                                    + '_' + itype + '_' + str(self._interval) + 'sec.tosdb') \
                                      for s in self._symbols}
-        # create callback objects
+        # create callback object
         if self._has_vol:            
-            self._callback = _callback_matcher('ohlc' if self._is_ohlc else 'c', self)
+            self._callback = _ohlcv_callbacks._Matcher('ohlc' if self._is_ohlc else 'c', self._write)
         else:
-            l = lambda o: str((o.o, o.h, o.l, o.c)) if self._is_ohlc else lambda o: str(o.c)  
-            self._callback = _callback_basic(l, self)       
-        self._iobj = None
-
+            l = (lambda o: str((o.o, o.h, o.l, o.c))) if self._is_ohlc else (lambda o: str(o.c))
+            self._callback = _ohlcv_callbacks._Basic(l, self._write)       
+        
 
     def run(self):
         # create block
@@ -62,7 +63,8 @@ class MyDaemon(_Daemon):
         blk.add_items(*(self._symbols))
         blk.add_topics('last')
         if self._has_vol:
-            blk.add_topics('volume')            
+            blk.add_topics('volume') 
+           
         # create interval object
         IObj = OHLCIntervals if self._is_ohlc else CIntervals
         self._iobj = IObj(blk, self._interval, interval_cb=self._callback.callback)
@@ -72,49 +74,12 @@ class MyDaemon(_Daemon):
         except:
             self._iobj.stop()
         finally:
-            blk.close()
-            tosdb.vclean_up()
+            blk.close()            
         
 
     def _write(self, item, s):
         with open(self._paths[item], 'a') as f:
             f.write(s)
-
-
-class _callback_basic:
-    def __init__(self, to_str_func, parent):
-        self._to_str_func = to_str_func
-        self._parent = parent
-    def callback(self, item, topic, iobj):
-        self._parent._write(item, iobj.asctime().ljust(50))       
-        s = self._to_str_func(iobj) if not iobj.is_null() else 'N/A'
-        self._parent._write(item, s + '\n')           
-    
-class _callback_matcher:
-    TTOGGLE = {"LAST":"VOLUME", "VOLUME":"LAST"}
-    def __init__(self, attrs, parent):
-        self._other_interval = dict()
-        self._props = attrs       
-        self._parent = parent
-    def callback(self, item, topic, iobj):            
-        if item not in self._other_interval:
-            self._other_interval[item] = {"LAST":dict(), "VOLUME":dict()}
-        ise = iobj.intervals_since_epoch
-        otopic = self.TTOGGLE[topic]
-        if ise in self._other_interval[item][otopic]:
-            self._parent._write(item, iobj.asctime().ljust(50))
-            if not iobj.is_null():
-                m = self._other_interval[item][otopic][ise]                        
-                if topic == 'VOLUME':
-                    d = tuple((getattr(m, v) for v in self._props)) + (iobj.c,)
-                else:
-                    d = tuple((getattr(iobj, v) for v in self._props)) + (m.c,)                                  
-                self._parent._write(item, str(d) + '\n')
-            else:
-                self._parent._write(item, 'N/A \n')                
-            self._other_interval[item][otopic].pop(ise)
-        else:
-            self._other_interval[item][topic][ise] = iobj
       
 
 if __name__ == '__main__':

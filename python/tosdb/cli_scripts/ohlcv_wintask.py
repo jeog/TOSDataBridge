@@ -18,6 +18,8 @@ import tosdb
 from tosdb.intervalize.ohlc import TOSDB_OpenHighLowCloseIntervals as OHLCIntervals, \
                                    TOSDB_CloseIntervals as CIntervals
 
+from tosdb.cli_scripts import _ohlcv_callbacks
+
 from argparse import ArgumentParser as _ArgumentParser
 from time import localtime as _localtime, strftime as _strftime, sleep as _sleep
 from os.path import realpath as _path
@@ -28,26 +30,30 @@ _paths = dict()
 
 def spawn(outdir, interval, is_ohlc, has_vol, *symbols):
     global _paths
+
     itype = ("OHLC" if is_ohlc else "C") + ("V" if has_vol else "")    
-    # generate filename          
+    # date prefix for filename                    
     dprfx = _strftime("%Y%m%d", _localtime())
     # generate paths from filenames
     _paths = {s.upper() : (_path(outdir) + '/' + dprfx + '_' \
                           + s.replace('/','-S-').replace('$','-D-').replace('.','-P-') \
                           + '_' + itype + '_' + str(interval) + 'sec.tosdb')
                           for s in symbols}  
-    # create callback objects
+
+    # create callback object
     if has_vol:
-        callback = _callback_matcher('ohlc' if is_ohlc else 'c')
+        callback = _ohlcv_callbacks._Matcher('ohlc' if is_ohlc else 'c', _write)
     else:
-        l = lambda o: str((o.o, o.h, o.l, o.c)) if is_ohlc else lambda o: str(o.c)  
-        callback = _callback_basic(l)     
+        l = (lambda o: str((o.o, o.h, o.l, o.c))) if is_ohlc else (lambda o: str(o.c))
+        callback = _ohlcv_callbacks._Basic(l, _write)   
+  
     # create block
     blk = tosdb.TOSDB_ThreadSafeDataBlock(BLOCK_SIZE, date_time=True)
     blk.add_items(*(symbols))
     blk.add_topics('last')        
     if has_vol:
-        blk.add_topics('volume')       
+        blk.add_topics('volume')  
+     
     # create interval object
     IObj = OHLCIntervals if is_ohlc else CIntervals
     iobj = IObj(blk, interval, interval_cb=callback.callback)
@@ -57,46 +63,12 @@ def spawn(outdir, interval, is_ohlc, has_vol, *symbols):
     except:
         iobj.stop()
     finally:
-        blk.close()
-        tosdb.clean_up()
+        blk.close()     
             
 
 def _write(item, s):
     with open(_paths[item], 'a') as f:
         f.write(s)
-
-class _callback_basic:
-    def __init__(self, to_str_func):
-        self._to_str_func = to_str_func
-    def callback(self, item, topic, iobj):
-        _write(item, iobj.asctime().ljust(50))       
-        s = self._to_str_func(iobj) if not iobj.is_null() else 'N/A'
-        _write(item, s + '\n')           
-    
-class _callback_matcher:
-    TTOGGLE = {"LAST":"VOLUME", "VOLUME":"LAST"}
-    def __init__(self, attrs):
-        self._other_interval = dict()
-        self._props = attrs       
-    def callback(self, item, topic, iobj):            
-        if item not in self._other_interval:
-            self._other_interval[item] = {"LAST":dict(), "VOLUME":dict()}
-        ise = iobj.intervals_since_epoch
-        otopic = self.TTOGGLE[topic]
-        if ise in self._other_interval[item][otopic]:
-            _write(item, iobj.asctime().ljust(50))
-            if not iobj.is_null():
-                m = self._other_interval[item][otopic][ise]                        
-                if topic == 'VOLUME':
-                    d = tuple((getattr(m, v) for v in self._props)) + (iobj.c,)
-                else:
-                    d = tuple((getattr(iobj, v) for v in self._props)) + (m.c,)                                  
-                _write(item, str(d) + '\n')
-            else:
-                _write(item, 'N/A \n')                
-            self._other_interval[item][otopic].pop(ise)
-        else:
-            self._other_interval[item][topic][ise] = iobj
             
 
 if __name__ == '__main__':
