@@ -17,7 +17,6 @@
 import tosdb
 from tosdb.intervalize.ohlc import TOSDB_OpenHighLowCloseIntervals as OHLCIntervals, \
                                    TOSDB_CloseIntervals as CIntervals
-                                   
 
 from argparse import ArgumentParser as _ArgumentParser
 from time import localtime as _localtime, strftime as _strftime, sleep as _sleep
@@ -27,47 +26,40 @@ from sys import stderr as _stderr
 BLOCK_SIZE = 1000
 _paths = dict()
 
-def spawn(outdir, interval, val_type, *symbols):
+def spawn(outdir, interval, is_ohlc, has_vol, *symbols):
     global _paths
-    
-    if val_type not in ['OHLCV','OHLC','CV','C']:
-        raise ValueError("invalid val_type (OHLCV,OHLC,CV or C)") 
-        
+    itype = ("OHLC" if is_ohlc else "C") + ("V" if has_vol else "")    
     # generate filename          
     dprfx = _strftime("%Y%m%d", _localtime())
     # generate paths from filenames
     _paths = {s.upper() : (_path(outdir) + '/' + dprfx + '_' \
                           + s.replace('/','-S-').replace('$','-D-').replace('.','-P-') \
-                          + '_' + val_type + '_' + str(interval) + 'sec.tosdb')
-                          for s in symbols}   
-
+                          + '_' + itype + '_' + str(interval) + 'sec.tosdb')
+                          for s in symbols}  
     # create callback objects
-    callback_c = _callback_basic(lambda o: str(o.c))
-    callback_ohlc = _callback_basic(lambda o: str((o.o, o.h, o.l, o.c)))
-    callback_cv = _callback_matcher('c')
-    callback_ohlcv = _callback_matcher('ohlc')
-    
+    if has_vol:
+        callback = _callback_matcher('ohlc' if is_ohlc else 'c')
+    else:
+        l = lambda o: str((o.o, o.h, o.l, o.c)) if is_ohlc else lambda o: str(o.c)  
+        callback = _callback_basic(l)     
     # create block
     blk = tosdb.TOSDB_ThreadSafeDataBlock(BLOCK_SIZE, date_time=True)
     blk.add_items(*(symbols))
     blk.add_topics('last')        
-    if 'V' in val_type:
-        blk.add_topics('volume')        
-
+    if has_vol:
+        blk.add_topics('volume')       
     # create interval object
-    if 'OHLC' in val_type:
-        if 'V' in val_type:         
-            iobj = OHLCIntervals(blk, interval, interval_cb=callback_ohlcv.callback)
-        else:
-            iobj = OHLCIntervals(blk, interval, interval_cb=callback_ohlc.callback)
-    else:
-        if 'V' in val_type:           
-            iobj = CIntervals(blk, interval, interval_cb=callback_cv.callback)
-        else:
-            iobj = CIntervals(blk, interval, interval_cb=callback_c.callback)
-
-    ### TODO: HANDLE WAIT/EXIT
-
+    IObj = OHLCIntervals if is_ohlc else CIntervals
+    iobj = IObj(blk, interval, interval_cb=callback.callback)
+    try:
+        while iobj.running():
+            _sleep(1)
+    except:
+        iobj.stop()
+    finally:
+        blk.close()
+        tosdb.clean_up()
+            
 
 def _write(item, s):
     with open(_paths[item], 'a') as f:
@@ -119,19 +111,13 @@ if __name__ == '__main__':
     parser.add_argument('symbols', nargs='*', help="symbols to pull")
     args = parser.parse_args()
 
-    if args.ohlc:
-        val_type = 'OHLCV' if args.vol else 'OHLC'
-    else:
-        val_type = 'CV' if args.vol else 'C'   
-
     if not args.path and not args.root:
         print("need --root or --path argument", file=_stderr)
         exit(1)
 
     # connect        
-    tosdb.init(args.path,args.root)
-    
-    spawn(args.outdir, args.interval, val_type, *args.symbols)
+    tosdb.init(args.path,args.root)    
+    spawn(args.outdir, args.interval, bool(args.ohlc), bool(args.vol), *args.symbols)
 
 
 

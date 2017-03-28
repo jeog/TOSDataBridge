@@ -270,7 +270,7 @@ class TOSDB_FixedTimeIntervals:
         self._bthread.start()      
 
 
-    def __del__(self):        
+    def __del__(self):       
         if self._rflag:
             self.stop()        
 
