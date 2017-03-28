@@ -274,11 +274,15 @@ class TOSDB_FixedTimeIntervals:
         if self._rflag:
             self.stop()        
 
+
+    def running(self):
+        return self._rflag
+
         
     def stop(self):
         """ Stop retrieving data from the underlying 'DataBlock' """
-        self._rflag = False        
-        self._bthread.join()        
+        self._rflag = False            
+        self._bthread.join()
         if hasattr(self._block, '_old_set_block_size'):
             self._block.set_block_size = self._block._old_set_block_size
             delattr(self._block, '_old_set_block_size')
@@ -433,37 +437,40 @@ class TOSDB_FixedTimeIntervals:
         if self._interval_cb:
             self._interval_cb(item, topic, d[i]) 
             
-    def _background_worker(self):        
-        ni = self._isec / self._psec
-        itbeg = _perf_counter()    
-        count = 0
-        self._rflag = True
-        while self._rflag:
-            tbeg = _perf_counter()               
-            with self._buffers_lock:
-                self._manage_buffers()
-                for (t,i), b in self._buffers.items():
-                    b.incr()
-                    dat = self._ssfunc(i, t, date_time=True, throw_if_data_lost=False)                    
-                    if dat:
-                        self._parse_data(t,i,dat)
-                    if b.count == 0:
-                        continue
-                    if (b.count % ni) == 0:
-                        #print("b.count mod interval: %i" % b.count)
-                        self._handle_null_interval(t, i, b)
-            count += 1
-            tend = _perf_counter()
-            trem = self._psec - (tend - tbeg)
-            if trem < 0:
-                ## TODO :: this will create problems handling nulls as we wont be able
-                ##         to speed up by using WAIT_ADJ_DOWN (below)
-                ##         considering adjusting _psec 
-                print("WARN: _background_worker taking longer than _psec (%i) seconds"
-                      % self._psec)
-            _sleep( max(trem,0) * (self.WAIT_ADJ_DOWN ** self._wait_adj_down_exp) )
-            if (count % ni) == 0:
-                self._tune_background_worker(count,ni,itbeg)
+    def _background_worker(self):   
+        try:     
+            ni = self._isec / self._psec
+            itbeg = _perf_counter()    
+            count = 0
+            self._rflag = True
+            while self._rflag:
+                tbeg = _perf_counter()               
+                with self._buffers_lock:
+                    self._manage_buffers()
+                    for (t,i), b in self._buffers.items():
+                        b.incr()
+                        dat = self._ssfunc(i, t, date_time=True, throw_if_data_lost=False)                    
+                        if dat:
+                            self._parse_data(t,i,dat)
+                        if b.count == 0:
+                            continue
+                        if (b.count % ni) == 0:
+                            #print("b.count mod interval: %i" % b.count)
+                            self._handle_null_interval(t, i, b)
+                count += 1
+                tend = _perf_counter()
+                trem = self._psec - (tend - tbeg)
+                if trem < 0:
+                    ## TODO :: this will create problems handling nulls as we wont be able
+                    ##         to speed up by using WAIT_ADJ_DOWN (below)
+                    ##         considering adjusting _psec 
+                    print("WARN: _background_worker taking longer than _psec (%i) seconds"
+                          % self._psec)
+                _sleep( max(trem,0) * (self.WAIT_ADJ_DOWN ** self._wait_adj_down_exp) )
+                if (count % ni) == 0:
+                    self._tune_background_worker(count,ni,itbeg)
+        finally:
+            self._rflag = False
 
 
     def _tune_background_worker(self, count, ni, itbeg):

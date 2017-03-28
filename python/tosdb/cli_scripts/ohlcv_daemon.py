@@ -31,9 +31,10 @@ BLOCK_SIZE = 1000
     
 
 class MyDaemon(_Daemon):
-    def __init__(self, addr, outdir, pidfile, errorfile, interval, itype, symbols):
+    def __init__(self, addr, auth, outdir, pidfile, errorfile, interval, itype, symbols):
         _Daemon.__init__(self, pidfile, stderr = errorfile)
         self._addr = addr    
+        self._auth = auth
         self._outdir = _path(outdir)
         self._interval = interval
         self._itype = itype
@@ -46,16 +47,16 @@ class MyDaemon(_Daemon):
                                    + '_' + self._itype + '_' + str(self._interval) + 'sec.tosdb') \
                                      for s in self._symbols}
         # create callback objects
-        self.callback_c = self._callback_basic(lambda o: str(o.c), self)
-        self.callback_ohlc = self._callback_basic(lambda o: str((o.o, o.h, o.l, o.c)), self)
-        self.callback_cv = self._callback_matcher('c',self)
-        self.callback_ohlcv = self._callback_matcher('ohlc', self)
+        self._callback_c = self._callback_basic(lambda o: str(o.c), self)
+        self._callback_ohlc = self._callback_basic(lambda o: str((o.o, o.h, o.l, o.c)), self)
+        self._callback_cv = self._callback_matcher('c',self)
+        self._callback_ohlcv = self._callback_matcher('ohlc', self)
         self._iobj = None
 
 
     def run(self):
         # create block
-        blk = tosdb.VTOSDB_DataBlock(self._addr, BLOCK_SIZE, date_time=True)
+        blk = tosdb.VTOSDB_ThreadSafeDataBlock(self._addr, self._auth, BLOCK_SIZE, date_time=True)
         blk.add_items(*(self._symbols))
         blk.add_topics('last')
         if 'V' in self._itype:
@@ -63,20 +64,22 @@ class MyDaemon(_Daemon):
         # create interval object
         if 'OHLC' in self._itype:
             if 'V' in self._itype:         
-                self._iobj = OHLCIntervals(blk, interval, interval_cb=self._callback_ohlcv.callback)
+                self._iobj = OHLCIntervals(blk, self._interval, interval_cb=self._callback_ohlcv.callback)
             else:
-                self._iobj = OHLCIntervals(blk, interval, interval_cb=self._callback_ohlc.callback)
+                self._iobj = OHLCIntervals(blk, self._interval, interval_cb=self._callback_ohlc.callback)
         else:
             if 'V' in self._itype:           
-                self._iobj = CIntervals(blk, interval, interval_cb=self._callback_cv.callback)
+                self._iobj = CIntervals(blk, self._interval, interval_cb=self._callback_cv.callback)
             else:
-                self._iobj = CIntervals(blk, interval, interval_cb=self._callback_c.callback)
-                
-        ### TODO: HANDLE WAIT/EXIT
+                self._iobj = CIntervals(blk, self._interval, interval_cb=self._callback_c.callback)
+        
+        while self._iobj.running():
+            _sleep(1)
+        
 
 
     def _write(self, item, s):
-        with open(_paths[item], 'a') as f:
+        with open(self._paths[item], 'a') as f:
             f.write(s)
 
     class _callback_basic:
@@ -148,8 +151,8 @@ if __name__ == '__main__':
     tosdb.admin_init(addr, password=args.auth, timeout=AINIT_TIMEOUT)   
     tosdb.vinit(args.path, args.root)
     
-    MyDaemon(addr, args.outdir, args.pidfile, args.errorfile, args.interval,
-             itype, args.symbols).start()
+    MyDaemon(addr, args.auth, args.outdir, args.pidfile, args.errorfile, 
+             args.interval, itype, args.symbols).start()
 
 
 
