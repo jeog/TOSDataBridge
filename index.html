@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="chrome=1">
-    <title>TOSDataBridge v0.5 by jeog</title>
+    <title>TOSDataBridge v0.7 by jeog</title>
 
     <link rel="stylesheet" href="stylesheets/styles.css">
     <link rel="stylesheet" href="stylesheets/github-light.css">
@@ -15,15 +15,15 @@
   <body>
     <div class="wrapper">
       <header>
-        <h1>TOSDataBridge v0.5</h1>
-        <p>Free, Real-Time Streaming Market Data from your TOS Platform [C,C++,Python]</p>
+        <h1>TOSDataBridge v0.7</h1>
+        <p>Free, Real-Time Streaming Market Data from your TOS Platform [C,C++,Java,Python]</p>
 
         <p class="view"><a href="https://github.com/jeog/TOSDataBridge">View the Project on GitHub <small>jeog/TOSDataBridge</small></a></p>
 
 
         <ul>
-          <li><a href="https://github.com/jeog/TOSDataBridge/archive/v0.5.zip">Download <strong>ZIP File</strong></a></li>
-          <li><a href="https://github.com/jeog/TOSDataBridge/archive/v0.5.tar.gz">Download <strong>TAR Ball</strong></a></li>
+          <li><a href="https://github.com/jeog/TOSDataBridge/archive/v0.7.zip">Download <strong>ZIP File</strong></a></li>
+          <li><a href="https://github.com/jeog/TOSDataBridge/archive/v0.7.tar.gz">Download <strong>TAR Ball</strong></a></li>
           <li><a href="https://github.com/jeog/TOSDataBridge">View On <strong>GitHub</strong></a></li>
         </ul>
       </header>
@@ -33,7 +33,7 @@
 
 <hr>
 
-<p>TOSDataBridge (TOSDB) is an open-source collection of resources for 'scraping' real-time streaming data off of TDAmeritrade's ThinkOrSwim(TOS) platform, providing C, C++, and Python interfaces. </p>
+<p>TOSDataBridge (TOSDB) is an open-source collection of resources for 'scraping' real-time streaming data off of TDAmeritrade's ThinkOrSwim(TOS) platform, providing C, C++, Java(in development) and Python interfaces. </p>
 
 <p>TOSDB uses TOS's antiquated, yet still useful, DDE feature, directly through the Windows API. The C / C++ interfaces are implemented as a shared library(DLL) that communicates with a back-end Windows Service. The Python interface wraps this library in a more object-oriented, user-friendly format. </p>
 
@@ -90,6 +90,16 @@ Example 3: C:\TOSDataBridge\> tosdb-setup.bat x64 admin 2 </code>
 </li>
 </ul>
 
+        
+<h5>
+<a id="java-wrapper-optional" class="anchor" href="#java-wrapper-optional" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Java Wrapper (optional)</h5>
+
+<ul>
+<li><strong>Warning - in early development; not stable; interface subject to change; <a href=https://github.com/jeog/TOSDataBridge/blob/master/README_JAVA.md>see docs</a></strong></li>
+<li>Core C/C++ libs (above) must be installed first </li>
+<li>java/tosdatabridge.jar should be included (source is in java/src if you want/need to build)</li>
+</ul>
+        
 <h3>
 <a id="quick-start" class="anchor" href="#quick-start" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Quick Start</h3>
 
@@ -128,6 +138,19 @@ Example 3: C:\TOSDataBridge\> tosdb-setup.bat x64 admin 2 </code>
 <li><a href=https://github.com/jeog/TOSDataBridge/blob/master/python/tutorial.md>(view tutorial)</a></li>
 </ul>
 
+<h5>
+<a id="for-java" class="anchor" href="#for-java" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>For Java:</h5>
+
+<ul>
+<li><strong>Warning - in early development; not stable; interface subject to change</strong></li>
+<li>add java/tosdatabridge.jar to your classpath<li>
+<li><a href=https://github.com/jeog/TOSDataBridge/blob/master/README_JAVA.md>see docs </a>for an intro to the API, or the source(java/src) for the details</li>
+<li>Link with <em>tos-databridge-[0.5]-[x86|x64].dll</em>
+</li>
+<li>Compile</li>
+<li>Run</li>
+</ul>
+        
 <h3>
 <a id="license--terms" class="anchor" href="#license--terms" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>License &amp; Terms</h3>
 
