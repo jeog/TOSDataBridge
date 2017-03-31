@@ -19,9 +19,8 @@
 *** IN DEVELOPMENT ***
 
 TOSDB_FixedTimeIntervals:
-    base class that pulls numerical data of a certain interval from a thread-safe
-    DataBlock, putting it into buffers of fixed-time interval objects (e.g OHLC),
-    that can be extracted in various ways
+    base class that pulls, transforms and stores numerical data of a certain
+    fixed-time(e.g 30 seconds) interval from a thread-safe DataBlock
     
 TOSDB_OpenHighLowCloseIntervals:
     extends TOSDB_FixedTimeIntervals using 'OHLC' fixed-time interval objects
@@ -39,8 +38,6 @@ C:
 NULL:
     base object that stores no data of a fixed-time interval but does include
     datetime info
-
-*** IN DEVELOPMENT ***
 """
 
 import tosdb
@@ -179,17 +176,15 @@ class TOSDB_FixedTimeIntervals:
     """Base object that pulls data from a thread-safe DataBlock in fixed-time intervals
 
     This class takes streaming data from a 'DataBlock' object (_win.py/__init__.py),
-    breaks it up along fixed-time intervals, transforms the data into a custom objects,
-    and stores those objects in internal buffers that can be accessed via get(...)
-    and stream_snapshot(...) methods.
+    breaks it up along fixed-time intervals, transforms the data into instances of a
+    custom object, and stores those instance in internal buffers that can be accessed
+    via get(...) and stream_snapshot(...) methods.
 
     1) Create a thread-safe 'DataBlock' (e.g tosdb.TOSDB_ThreadSafeDataBlock)
     
     2) Add 'items' and 'topics' directly through the 'DataBlock' interface, or
-       use the methods provided
-       i) 'topics' that return string data will be ignored (e.g DESCRIPTION, LASTX)
-       ii) all valid items/topics added/removed to/from the 'DataBlock' will
-           immediately affect *this* object (be careful!)
+       use the methods provided. 'topics' that return string data will be ignored
+       (e.g DESCRIPTION, LASTX)
            
     3) Define a custom class that extends 'NULL' to represent data in each interval
        (see OHLC and C above).
@@ -199,17 +194,16 @@ class TOSDB_FixedTimeIntervals:
                 # handle 'data'
         ii) it should define an 'update' method to handle new data coming in:
             def update(self, data):
-                # handle 'data'
-        iii) consider defining '__slots__' to limit memory usage
+                # handle 'data'   
         
     4) Create a TOSDB_FixedTimeIntervals object with:
         i)   the block we created in #1
-        ii)  the class we created in #3 (the actuall class, not an instance)
+        ii)  the class we created in #3 (the actuall class object, not an instance)
         iii) the length of the interval in seconds (>= 10, <= 14,400)
         iv)  (optional) how often each retrieval/collection operations should occur
              (i.e interval_sec=30, poll_sec=1 means 30 operations per interval)
         v)   (optional) custom time function to translate time data stored in
-             interval_object to time.struct_time
+             interval_object from seconds-from-epoch to time.struct_time
         vi)  (optional) callback function that will pass the item, topic, and
              last completed interval as its arguments
 
@@ -219,16 +213,14 @@ class TOSDB_FixedTimeIntervals:
         stream_snapshot(...) 
         stream_snapshot_between_datetimes(...)
 
-    6) WHEN DONE: call stop() method
-
-    NOTE: after stop() is called the 'DataBlock' object you passed into the constructor
-          is still valid and in the same state.
+    6) WHEN DONE: call stop() method. The 'DataBlock' object you passed into the
+       constructor is still valid and in the same state.
     
     __init__(self, block, interval_obj, interval_sec, poll_sec=1,
              interval_cb=None, time_func=time.localtime)
 
     block        :: object :: object that exposes certain _TOSDB_DataBlock methods                                                             
-    interval_obj :: class  :: object used to stored data over a fixed-time interval 
+    interval_obj :: class  :: class object used to stored data over a fixed-time interval 
     interval_sec :: int    :: size of fixed-time interval in seconds 
     poll_sec     :: int    :: time in seconds of each data retrieval/collection operation
     interval_cb  :: func   :: callback for each 'completed' interval
@@ -666,7 +658,7 @@ class TOSDB_OpenHighLowCloseIntervals(TOSDB_FixedTimeIntervals):
     """Pulls data from a thread-safe DataBlock in fixed-time ohlc.OHLC intervals
 
     This class takes streaming data from a 'DataBlock' object (_win.py/__init__.py),
-    breaks it up along fixed-time intervals, transforms the data into an ohlc.OHLC object,
+    breaks them up along fixed-time intervals, transforms the data into an 'OHLC' object,
     and stores those objects in internal buffers that can be accessed via get(...)
     and stream_snapshot(...) methods.
 
@@ -675,8 +667,6 @@ class TOSDB_OpenHighLowCloseIntervals(TOSDB_FixedTimeIntervals):
     2) Add 'items' and 'topics' directly through the 'DataBlock' interface, or
        use the methods provided
        i) 'topics' that return string data will be ignored (e.g DESCRIPTION, LASTX)
-       ii) all valid items/topics added/removed to/from the 'DataBlock' will
-           immediately affect *this* object (be careful!)
 
     3) Create a TOSDB_OpenHighLowCloseIntervals object with:
         i)   the block we created in #1    
@@ -684,7 +674,7 @@ class TOSDB_OpenHighLowCloseIntervals(TOSDB_FixedTimeIntervals):
         iii) (optional) how often each retrieval/collection operations should occur
              (i.e interval_sec=30, poll_sec=1 means 30 operations per interval)
         iv)  (optional) custom time function to translate time data stored in
-             interval_object to time.struct_time
+             interval_object from seconds-from-epoch to time.struct_time
         vi)  (optional) callback function that will pass the item, topic, and
              last completed interval as its arguments
              
@@ -694,10 +684,8 @@ class TOSDB_OpenHighLowCloseIntervals(TOSDB_FixedTimeIntervals):
         stream_snapshot(...) 
         stream_snapshot_between_datetimes(...)
 
-    6) WHEN DONE: call stop() method
-
-    NOTE: after stop() is called the 'DataBlock' object you passed into the constructor
-          is still valid and in the same state.
+    6) WHEN DONE: call stop() method. The 'DataBlock' object you passed into the
+       constructor is still valid and in the same state.
     
     __init__(self, block, interval_sec, poll_sec=1, interval_cb=None,
              time_func=time.localtime)
@@ -720,7 +708,7 @@ class TOSDB_CloseIntervals(TOSDB_FixedTimeIntervals):
     """Pulls data from a thread-safe DataBlock in fixed-time ohlc.C intervals
 
     This class takes streaming data from a 'DataBlock' object (_win.py/__init__.py),
-    breaks it up along fixed-time intervals, transforms the data into a ohlc.C object,
+    breaks them up along fixed-time intervals, transforms the data into a 'C' object,
     and stores those objects in internal buffers that can be accessed via get(...)
     and stream_snapshot(...) methods.
 
@@ -728,9 +716,7 @@ class TOSDB_CloseIntervals(TOSDB_FixedTimeIntervals):
     
     2) Add 'items' and 'topics' directly through the 'DataBlock' interface, or
        use the methods provided
-       i) 'topics' that return string data will be ignored (e.g DESCRIPTION, LASTX)
-       ii) all valid items/topics added/removed to/from the 'DataBlock' will
-           immediately affect *this* object (be careful!)
+       i) 'topics' that return string data will be ignored (e.g DESCRIPTION, LASTX) 
 
     3) Create a TOSDB_CloseIntervals object with:
         i)   the block we created in #1    
@@ -738,7 +724,7 @@ class TOSDB_CloseIntervals(TOSDB_FixedTimeIntervals):
         iii) (optional) how often each retrieval/collection operations should occur
              (i.e interval_sec=30, poll_sec=1 means 30 operations per interval)
         iv)  (optional) custom time function to translate time data stored in
-             interval_object to time.struct_time
+             interval_object from seconds-from-epoch to time.struct_time
         vi)  (optional) callback function that will pass the item, topic, and
              last completed interval as its arguments
              
@@ -748,10 +734,8 @@ class TOSDB_CloseIntervals(TOSDB_FixedTimeIntervals):
         stream_snapshot(...) 
         stream_snapshot_between_datetimes(...)
 
-    6) WHEN DONE: call stop() method
-
-    NOTE: after stop() is called the 'DataBlock' object you passed into the constructor
-          is still valid and in the same state.
+    6) WHEN DONE: call stop() method. The 'DataBlock' object you passed into the
+       constructor is still valid and in the same state.
     
     __init__(self, block, interval_sec, poll_sec=1, interval_cb=None,
              time_func=time.localtime)
