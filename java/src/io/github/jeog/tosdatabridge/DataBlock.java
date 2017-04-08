@@ -249,7 +249,7 @@ public class DataBlock {
      */
     public Set<String>
     getItems() {
-        return _items;
+        return new HashSet<>(_items);
     }
 
     /**
@@ -259,7 +259,7 @@ public class DataBlock {
      */
     public Set<Topic>
     getTopics() {
-        return _topics;
+        return new HashSet<>(_topics);
     }
 
     /**
@@ -267,7 +267,7 @@ public class DataBlock {
      */
     public Set<String>
     getItemsPreCached() {
-        return _itemsPreCached;
+        return new HashSet<>(_itemsPreCached);
     }
 
     /**
@@ -277,7 +277,7 @@ public class DataBlock {
      */
     public Set<Topic>
     getTopicsPreCached() {
-        return _topicsPreCached;
+        return new HashSet<>(_topicsPreCached);
     }
 
     /**
