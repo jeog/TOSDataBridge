@@ -46,10 +46,10 @@ The core implementation is not portable, but the python interface does provides 
     C:\[...TOSDataBridge]\python\python setup.py install
     ```
     - Core C/C++ libs (above) must be installed first to use the (non-virtual) interface
-    - C++ python extensions have been converted to pure python to avoid portability/build issues. (tosdb/_tosdb.py is now generated automatically by setup.py)
+    - tosdb/_tosdb.py is generated automatically by setup.py
 
     ##### Java Wrapper (optional)
-    - ***Warning - in early development; not stable; interface subject to change; [see docs](README_JAVA.md)***
+    - **Warning - in early development; not stable; interface subject to change [(see docs)](README_JAVA.md)**
     - Core C/C++ libs (above) must be installed first
     - *java/tosdatabridge.jar* should be included (source is in java/src if you want/need to build)
     
@@ -78,7 +78,6 @@ The core implementation is not portable, but the python interface does provides 
 - [tutorial](python/tutorial.md)
 
 ##### For Java:
-- ***Warning - in early development; not stable; interface subject to change***
 - add *java/tosdatabridge.jar* to your classpath
 - [see docs](README_JAVA.md) for an intro to the API, or the source(java/src) for the details
 - Compile
@@ -117,9 +116,11 @@ The core implementation is not portable, but the python interface does provides 
 
 - **/python** - Files relevant to the python wrapper.
 
-    - **tosdb/** : A python package that serves as a wrapper around *tos-databridge-[version]-[x86|x64].dll*. It provides a more object oriented, simplified means of accessing the core functionality.
-
-    - **tosdb/cli_scripts/** : Python scripts built on top of the python wrapper.
+    - **tosdb/** : A python package that serves as a wrapper around *tos-databridge-[version]-[x86|x64].dll*. It provides a more object oriented, simplified means of accessing the core functionality.  
+    
+    - **tosdb/intervalize/** : Sub-package for creating (fixed) intervals from streaming data.
+    
+    - **tosdb/cli_scripts/** : 'Client' scripts built on top of the python wrapper.
 
 - **/java** - Files relevant to the Java wrapper.
 
@@ -148,7 +149,7 @@ The core implementation is not portable, but the python interface does provides 
 #### [Python Wrapper (tosdb/)](README_PYTHON.md)
 
 
-#### [Java Wrapper (Alpha version)](README_JAVA.md)
+#### [Java Wrapper](README_JAVA.md)
 
 
 #### [Details, Provisos & Source Glossary](README_DETAILS.md)
