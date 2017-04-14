@@ -74,7 +74,8 @@ The core implementation is not portable, but the python interface does provides 
 
 ##### For Python:
 - import tosdb
-- [(view tutorial)](python/tutorial.md)
+- [docs](README_PYTHON.md) 
+- [tutorial](python/tutorial.md)
 
 ##### For Java:
 - ***Warning - in early development; not stable; interface subject to change***
