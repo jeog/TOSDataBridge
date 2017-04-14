@@ -43,6 +43,14 @@ The virtual interface consists of, more-or-less, the same objects/calls, with a 
 
 > **IMPORTANT:** We recently added a (provisional) authentication mechanism to the virtual layer. ***Unless you know what you're doing and can review the code (tosdb/\_\_init\_\_.py and tosdb/\_auth.py) it's prudent to assume it not secure, possibly exploitable for remote code execution.*** (If anyone out there can give any feedback it would be helpful.) Currently it's recommended for internal networks. To use: 1) install the pycrypto package if you don't have it(pip install pycrypto), 2) pass a password to the enable_virtualization call on the server side and (the same password) to the admin_init call and/or the VTOSDB_DataBlock constructor on the client side.   
 
+#### Thread Safety
+
+TOSDB_ThreadSafeDataBlock and VTOSDB_ThreadSafeDataBlock are thread-safe versions of TOSDB_DataBlock and VTOSDB_DataBlock, respectively. 
+
+#### Intervals
+
+sub-package tosdb/intervalize helps create (fixed) intervals from streaming data; ohlc.py contains objects that create and store open-high-low-close(OHLC), close(C), and user-defined fixed-time interval objects from an underlying data block.
+
 #### Cleanup
 
 There is a minor issue with how python uses the underlying library to deallocate shared resources, mostly because of python's use of refcounts. WE STRONGLY RECOMMEND you call clean_up() before exiting to be sure all shared resources have been properly dealt with. If this is not possible - the program terminates abruptly, for instance - there's a chance you've got dangling/orphaned resources. 
