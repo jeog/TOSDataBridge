@@ -1,147 +1,740 @@
 ### C/C++ API
 - - -
 
-#### Administrative Calls
+#### Types
+
+name               | language | defined by       | description 
+-------------------|----------|------------------|------------------------------------------
+TOS_Topics::TOPICS | C++      | tos_databridge.h | enum of fields to be added (e.g. BID, ASK, LAST )
+DateTimeStamp      | C / C++  | tos_databridge.h | struct that wraps the C library tm struct, and adds a micro-second field info on the buffer to the client
+UpdateLatency      | C / C++  | tos_databridge.h | enum of milliseconds values the client library waits before re-checking buffers
+ILSet<>            | C++      | containers.hpp   | wrapper around std::set<> type that provides additional means of construction / copy / move / assignment
+generic_type       | C++      | generic.hpp      | custom generic type 
+
+#### Typedefs
+
+typedef                  | underlying type                                | language | defined by
+-------------------------|------------------------------------------------|----------|--------------------------
+LPCSTR                   | const char*                                    | C / C++  | WINAPI
+LPS TR                   | char*                                          | C / C++  | WINAPI
+BOOL                     | unsigned int                                   | C / C++  | WINAPI
+size_type                | uint32_t                                       | C / C++  | tos_databridge.h
+type_bits_type           | uint8_t                                        | C / C++  | tos_databridge.h
+str_set_type             | ILSet<std::string>                             | C++      | tos_databridge.h 
+topic_set_type           | ILSet<TOS_Topics::TOPICS>                      | C++      | tos_databridge.h 
+def_price_type           | float                                          | C / C++  | tos_databridge.h
+ext_price_type           | double                                         | C / C++  | tos_databridge.h
+def_size_type            | long                                           | C / C++  | tos_databridge.h
+ext_price_type           | long long                                      | C / C++  | tos_databridge.h
+generic_dts_type         | std::pair<generic_type,DateTimeStamp>          | C++      | tos_databridge.h
+generic_vector_type      | std::vector<generic_type>                      | C++      | tos_databridge.h
+dts_vector_type          | std::vector<DateTimeStamp>                     | C++      | tos_databridge.h
+generic_dts_vectors_type | std::pair<generic_vector_type,dts_vector_type> | C++      | tos_databridge.h
+generic_map_type         | std::map<std::string, generic_type>            | C++      | tos_databridge.h
+generic_dts_map_type     | std::map<std::string, generic_dts_type>        | C++      | tos_databridge.h
+generic_matrix_type      | std::map<std::string, generic_map_type>        | C++      | tos_databridge.h
+generic_dts_matrix_type  | std::map<std::string, generic_dts_map_type>    | C++      | tos_databridge.h
+
+#### Error Codes
+
+error                            | value
+---------------------------------|-------
+TOSDB_ERROR_BAD_INPUT            | -1
+TOSDB_ERROR_BAD_INPUT_BUFFER     | -2
+TOSDB_ERROR_NOT_CONNECTED        | -3
+TOSDB_ERROR_TIMEOUT              | -4
+TOSDB_ERROR_BLOCK_ALREADY_EXISTS | -5
+TOSDB_ERROR_BLOCK_DOESNT_EXIST   | -6
+TOSDB_ERROR_BLOCK_CREATION       | -7
+TOSDB_ERROR_BLOCK_SIZE           | -8
+TOSDB_ERROR_BAD_TOPIC            | -9
+TOSDB_ERROR_BAD_ITEM             | -10
+TOSDB_ERROR_BAD_SIG              | -11
+TOSDB_ERROR_IPC                  | -12
+TOSDB_ERROR_IPC_MSG              | -13
+TOSDB_ERROR_CONCURRENCY          | -14
+TOSDB_ERROR_ENGINE_NO_TOPIC      | -15
+TOSDB_ERROR_ENGINE_NO_ITEM       | -16
+TOSDB_ERROR_SERVICE              | -17
+TOSDB_ERROR_GET_DATA             | -18
+TOSDB_ERROR_GET_STATE            | -19
+TOSDB_ERROR_SET_STATE            | -20
+TOSDB_ERROR_DDE_POST             | -21
+TOSDB_ERROR_DDE_NO_ACK           | -22
+TOSDB_ERROR_SHEM_BUFFER          | -23
+TOSDB_ERROR_UNKNOWN              | -24
+TOSDB_ERROR_DECREMENT_BASE       | <= -25
+
+#### C vs C++ Return Conventions
+
+In most cases an 'int' return value indicates sucess(0) or failure(non-0 error code). Most C calls don't return values directly, they assign a (pointed to) value or populate a buffer/array. C++ versions of the same calls, generally, return a value directly and throw an exception on error. A function returning a pure boolean value is represented by an unsigned int(C) or bool(C++).
+
+#### Connecting 
+
+**`[C/C++] TOSDB_Connect() -> int`** 
+
+- Connect to the service/engine.
+- Returns 0 on success, error code on failure. 
+
+**`[C/C++] TOSDB_Disconnect() -> int`** 
+
+- Close connection. (Called automatically when the library is unloaded.)
+- Returns 0 on success, error code on failure. 
+
+**`[C/C++] TOSDB_IsConnected() -> unsigned int` [DEPRECATED]** 
+
+- Returns 1 if connected to the service/engine, 0 if not.
+
+**`[C/C++] TOSDB_IsConnectedToEngine() -> unsigned int`** 
+
+- Returns 1 if connected to the service/engine, 0 if not.
+
+**`[C/C++] TOSDB_IsConnectedToEngineAndTOS() -> unsigned int`** 
+
+- Returns 1 if connected to the service/engine AND can communicate with TOS platform, 0 if not.
+
+**`[C/C++] TOSDB_ConnectionState() -> unsigned int`** 
+
+Returns a constant indicating state of connection:
+- TOSDB_CONN_NONE: not connected to engine/service or TOS
+- TOSDB_CONN_ENGINE: connected to engine/service but not TOS (admin calls only)
+- TOSDB_CONN_EGINE_TOS: connected to engine/service and TOS (admin calls AND data from platform)
 
 
-Once the Service is running start by calling **`TOSDB_Connect()`** which will return 0 if successful. Call the Library function **`TOSDB_IsConnected()`** which returns 1 if you are 'connected' to the TOSDataBridge service.
+#### Data Blocks
 
-> **IMPORTANT:** 'Connected' only means there is a connection between the client/library and the engine/service, NOT that the engine/service can communicate with the TOS platform (or TOS is retrieving data from its server). If, for instance, TOS is not running or it's running with elevated privileges(and you didn't pass 'admin' to the setup script) you may be 'connected' but not able to communicate with the TOS platform. 
+TOSDB's main organizational unit is the (data) block (struct TOSDBlock in client.hpp). A block contains streams, of a certain size, that hold historical data.
 
-> **IMPLEMENTATION NOTE:** Be careful: **`TOSDB_IsConnected()`** returns an unsigned int that represents a boolean value; most of the other C admin calls return a signed int to indicate error(non-0) or success(0). Boolean values will be represented by unsigned int return values for C and bool values for C++. 
+**`[C/C++] TOSDB_CreateBlock(LPCSTR id, size_type sz, BOOL is_datetime, size_type timeout) -> int`** 
+
+- Create a block. 
+- 'id' is a unique ID string(<= TOSDB_BLOCK_ID_SZ) that will be used to access it throughout its lifetime.
+- 'sz indicates how much historical data is saved in the block's data-streams.
+- 'is_datetime' is a flag indicating whether date-time (see DateTimeStamp) should be saved alongside primary data in the streams.
+- 'timeout' is milliseconds used for internal waiting/synchronization(see TOSDB_DEF_TIMEOUT, TOSDB_MIN_TIMEOUT). 
+- Returns 0 on success, error code on failure. 
+
+**`[C/C++] TOSDB_CloseBlock(LPCSTR id) -> int`** 
+
+- Deallocate block's internal resources and remove it.
+- Returns 0 on success, error code on failure. 
+
+**`[C/C++] TOSDB_CloseBlocks() -> int`** 
+
+- Close all blocks that currently exist in the dll instance. 
+- Returns 0 on success, error code on failure. 
+
+Within each block is a pointer to a RawDataBlock object created by an internal factory. The factory has a limit (default is 10) which can be adjusted. (The number of blocks  should always be the same as the number RawDataBlocks.)
+
+**`[C/C++] TOSDB_GetBlockLimit() -> size_type`**
+
+- Returns maximum number of blocks that can exist in the dll instance. 
+
+**`[C/C++] TOSDB_SetBlockLimit(size_type sz) -> size_type`**
+
+- Set the maximum number of blocks that can exist in the dll instance.
+- Returns new limit.
+
+**`[C/C++] TOSDB_GetBlockCount() -> size_type `** 
+
+- Returns the number of blocks allocated in the dll instance.
+
+**`[C/C++] TOSDB_GetBlockIDs(LPSTR* dest, size_type array_len, size_type str_len) -> int`** 
+
+- Populates '*dest' with IDs of all blocks that currently exist in the dll instance. 
+- 'array_len' is the size of the array to be populated and should == TOSDB_GetBlockCount().
+- 'str_len' is the size of each string buffer in the array and should be >= TOSDB_MAX_STR_SZ.
+- Returns 0 on success, error code on failure. 
+
+**`[C++] TOSDB_GetBlockIDs() -> str_set_type`**
+
+- Returns 'str_set_type' with IDs of all blocks that currently exist in the dll instance.
+- Throws on failure.
+
+**`[C/C++] TOSDB_GetBlockSize(LPCSTR id, size_type* pSize) -> int`**
+
+- Sets '*pSize' to how much historical data can be saved in the block's data-streams.
+- Returns 0 on success, error code on failure. 
+
+**`[C++] TOSDB_GetBlockSize(std::string id) -> size_type`** 
+
+- Returns how much historical data can be saved in the block's data-streams.
+
+**`[C/C++] TOSDB_SetBlockSize(LPCSTR id, size_type sz) -> int`**
+
+- Changes how much historical data can be saved in the block's data-streams. 
+- 'sz' must be > 1 and <= TOSDB_MAX_BLOCK_SZ.
+- Returns 0 on success, error code on failure. 
+
+**`[C/C++] TOSDB_IsUsingDateTime(LPCSTR id, unsigned int* is_datetime) -> int`** 
+
+- Set '*is_datetime' to 1 if block is storing DateTimeStamp objects alongside primary data, 0 otherwise.
+- Returns 0 on success, error code on failure. 
+
+**`[C++] TOSDB_IsUsingDateTime(std::string id) -> bool`**
+
+- Returns if block is storing DateTimeStamp objects alongside primary data.
+
+The client library extracts data from the engine (tos-databridge-engine[].exe) through a shared memory segment. The library loops through its blocks/streams looking to see what buffers have been updated, reading the buffers if necessary. The 'latency' is the wait time between loops and is represented by the 'UpdateLatency' Enum. The default(Moderate, 300) should be fine for most users.
+
+**`[C/C++] TOSDB_GetLatency() -> unsigned long`** 
+
+- Returns wait time (in milliseconds) between reads of the shared memory buffer by the client library.
+
+**`[C/C++] TOSDB_SetLatency(UpdateLatency latency) -> unsigned long`** 
+
+- Set wait time (in milliseconds) between reads of the shared memory buffer by the client library.
+- Returns new latency.
 
 
-Generally **`TOSDB_Disconnect()`** is unnecessary as it's called automatically when the library is unloaded.
+#### Items / Topics / Streams
 
-> **NOTABLE CONVENTIONS:** The C calls, except in a few cases, don't return values but populate variables, arrays/buffers, and arrays of pointers to char buffers. The 'dest' argument is for primary data; its a pointer to a scalar variable, or an array/buffer when followed by argument 'arr_len' for the number of array/buffer elements. 
+Once a block is created, items and topics are added. Topics are the TOS fields (e.g. LAST, VOLUME, BID ) and items are the individual symbols (e.g. IBM, GE, SPY). C++ uses the TOS_Topics::TOPICS enum. The somewhat unintuitive terms 'item' and 'topic' come from DDE terminology. Data are stored in 'streams', created internally as a result of topics and items being added. 
 
-> The String versions of the calls take a char\*\* argument, followed by arr_len for the number of char\*s, and str_len for the size of the buffer each char\* points to (obviously they should all be >= to this value). 
+For example, if we add two topics and three items we have six streams:
 
-> If the call requires more than one array/buffer besides 'dest' (the Get...Frame... calls for instance) it assumes an array length equal to that of 'arr_len'. If it is of type char\*\* you need to specify a char buffer length just as you do for the initial char\*\*.
+&nbsp;     | SPY | QQQ | GOOG
+-----------|-----|-----|-----
+**LAST**   |&nbsp;&nbsp;X | &nbsp;&nbsp;&nbsp;X | &nbsp;&nbsp;&nbsp;&nbsp;X
+**VOLUME** |&nbsp;&nbsp;X | &nbsp;&nbsp;&nbsp;X | &nbsp;&nbsp;&nbsp;&nbsp;X
 
 
-TOSDB's main organizational unit is the 'block'(struct TOSDBlock in client.hpp): it's important functionally and conceptually. The first thing client code does is call **`TOSDB_CreateBlock()`** passing it a unique ID(<= TOSDB_BLOCK_ID_SZ) that will be used to access it throughout its lifetime, a size(how much historical data is saved in the block's data-streams), a flag indicating whether it saves DateTime in the stream, and a timeout value in milliseconds used for its internal waiting/synchronization(see TOSDB_DEF_TIMEOUT, TOSDB_MIN_TIMEOUT). 
+**`[C/C++] TOSDB_Add(LPCSTR id, LPCSTR* items, size_type items_len, LPCSTR* topics_str , size_type topics_len) -> int`**  
+**`[C++] TOSDB_Add(std::string id, str_set_type items, topic_set_type topics_t) -> int`** 
 
-When you no longer need the data in the block **`TOSDB_CloseBlock()`** should be called to deallocate its internal resources or **`TOSDB_CloseBlocks()`** to close all that currently exist. If you lose track of what's been created use the C or C++ version of **`TOSDB_GetBlockIDs()`** . Technically **`TOSDB_GetBlockCount()`** returns the number of RawDataBlocks allocated(see below), but this should always be the same as the number of TOSDBlocks.
+- Add items and topics to the block.
+- Returns 0 on success, error code on failure. 
 
-Within each 'block' is a pointer to a RawDataBlock object which relies on an internal factory to return a constant pointer to a RawDataBlock object. Internally the factory has a limit ( the default is 10 ) which can be adjusted with the appropriately named admin calls **`TOSDB_GetBlockLimit()`** **`TOSDB_SetBlockLimit()`**
+**`[C/C++] TOSDB_AddTopic(LPCSTR id, LPCSTR topic_str) -> int`**   
+**`[C++] TOSDB_AddTopic(std::string id, TOS_Topics::TOPICS topic_t) -> int`**
 
-Once a block is created, items and topics are added. Topics are the TOS fields (e.g. LAST, VOLUME, BID ) and items are the individual symbols (e.g. IBM, GE, SPY). 
+- Add a single topic to the block.
+- Returns 0 on success, error code on failure. 
 
-> **NOTABLE CONVENTIONS:** The somewhat unintuitive terms 'item' and 'topic' come from DDE terminology that just stuck - for a number of reasons.
+**`[C/C++] TOSDB_AddItem(LPCSTR id, LPCSTR item) -> int`**   
+**`[C++] TOSDB_AddItem(std::string id, std::string item) -> int`**
 
-**`TOSDB_Add()`** **`TOSDB_AddTopic()`** **`TOSDB_AddItem()`** **`TOSDB_AddTopics()`** **`TOSDB_AddItems()`** There are a number of different versions for C and C++, taking C-Strings(const char\*), arrays of C-Strings(const char\*\*), string objects(std::string), TOS_Topics::TOPICS enums, and/or specialized sets (str_set_type, topic_set_type) of the latter two. Check the prototypes in tos_databridge.h for all the versions and arguments.
+- Add a single item to the block.
+- Returns 0 on success, error code on failure. 
 
-To find out the the items / topics currently in the block call the C or C++ versions of **`TOSDB_GetItemNames()`** **`TOSDB_GetTopicNames()`** **`TOSDB_GetTopicEnums()`**; use **`TOSDB_GetItemCount()`** **`TOSDB_GetTopicCount()`** for their respective sizes. (Use these to determine the size of the buffers to pass into the C calls.) 
+**`[C/C++] TOSDB_AddTopics(LPCSTR id, LPCSTR* topics_str, size_type topics_len) -> int`**   
+**`[C++] TOSDB_AddTopics(std::string id, topic_set_type topics_t) -> int`**
 
-To remove individual items **`TOSDB_RemoveItem()`**, and topics **`TOSDB_RemoveTopic()`**.
+- Add multiple topics to the block.
+- Returns 0 on success, error code on failure. 
 
-> **IMPORTANT:** Items\[Topics\] added before any topics\[items\] exist in the block will be pre-cached, i.e they will be visible to the back-end but not to the interface until a topic\[item\] is added; likewise if all the items\[topics\] are removed(thereby leaving only topics\[items\]). See [Important Details and Provisos](README_DETAILS.md). To view the pre-cache use the C or C++ versions of **`TOSDB_GetPreCachedTopicNames()`** **`TOSDB_GetPreCachedItemNames()`** **`TOSDB_GetPreCachedTopicEnums()`**; use **`TOSDB_GetPreCachedTopicCount()`** **`TOSDB_GetPreCachedItemCount()`** for their respective sizes. (Use these to determine the size of the buffers to pass into the C calls.)
+**`[C/C++] TOSDB_AddItems(LPCSTR id, LPCSTR* items, size_type items_len) -> int`**   
+**`[C++] TOSDB_AddItems(std::string id, str_set_type items) -> int`**
 
-As mentioned, the size of the block represents how large the data-streams are, i.e. how much historical data is saved for each item-topic. Each entry in the block has the same size; if you prefer different sizes create a new block. Call **`TOSDB_GetBlockSize()`** to get the size and **`TOSDB_SetBlockSize()`** to change it.
+- Add multiple items to the block.
+- Returns 0 on success, error code on failure. 
 
-> **IMPLEMENTATION NOTE:** The use of the term size may be misleading when getting into implementation details. This is the size from the block's perspective and the bound from the data-stream's perspective. For all intents and purposes the client can think of size as the maximum number of elements that can be in the block and the maximum range that can be indexed. To get the occupancy (how much valid data has come into the stream) call **`TOSDB_GetStreamOccupancy()`** .
+**`[C/C++] TOSDB_RemoveTopic(LPCSTR id, LPCSTR topic_str) -> int`**  
+**`[C++] TOSDB_RemoveTopic(std::string id, TOS_Topics::TOPICS topic_t) -> int`**
 
-To find out if the block is saving DateTime call the C or C++ versions of **`TOSDB_IsUsingDateTime()`**.
+- Remove a single topic from the block.
+- Returns 0 on success, error code on failure. 
 
-Because the data-engine behind the blocks handles a number of types it's necessary to pack the type info inside the topic enum. Get the type bits at compile-time with **`TOS_Topics::Type< ...topic enum... >::type`** or at run-time with **`TOSDB_GetTypeBits()`** , checking the bits with the appropriately named TOSDB_\[...\]_BIT constants in tos_databridge.h. 
+**`[C/C++] TOSDB_RemoveItem(LPCSTR id, LPCSTR item) -> int`**  
+**`[C++] TOSDB_RemoveItem(std::string id, std::string item) -> int`**
 
-    if( TOSDB_TypeBits("BID") == TOSDB_INTGR_BIT ) 
-       \\ data is a long (def_size_type).
-    else if( TOSDB_TypeBits("BID") == TOSDB_INTGR_BIT | TOSDB_QUAD_BIT ) 
-       \\ data is a long long (ext_size_type)
+- Remove a single item from the block.
+- Returns 0 on success, error code on failure. 
+
+**`[C/C++] TOSDB_GetItemCount(LPCSTR id, size_type* count) -> int`**
+
+- Sets '*count' to the number of items in the block. 
+- Returns 0 on success, error code on failure. 
+
+**`[C++] TOSDB_GetItemCount(std::string id) -> size_type`**
+
+- Returns the number of items in the block. 
+- Throws on failure.
+
+**`[C/C++] TOSDB_GetTopicCount(LPCSTR id, size_type* count) -> int`**
+
+- Sets '*count' to the number of topics in the block. 
+- Returns 0 on success, error code on failure. 
+
+**`[C++] TOSDB_GetTopicCount(std::string id) -> size_type`**
+
+- Returns the number of topics in the block. 
+- Throws on failure.
+
+**`[C/C++] TOSDB_GetItemNames(LPCSTR id, LPSTR* dest, size_type array_len, size_type str_len) -> int`** 
+
+- Populates 'dest' with item strings currently in the block. 
+- 'array_len' is the size of the array and should == TOSDB_GetItemCount().
+- 'str_len' is the size of each string buffer in the array and should be >= TOSDB_MAX_STR_SZ.
+- Returns 0 on success, error code on failure. 
+
+**`[C++] TOSDB_GetItemNames(std::string id) -> str_set_type`**
+
+- Returns 'str_set_type' containing all item strings in the block.
+- Throws on failure.
+
+**`[C/C++] TOSDB_GetTopicNames(LPCSTR id, LPSTR* dest, size_type array_len, size_type str_len) -> int`** 
+
+- Populates 'dest' with topic strings currently in the block. 
+- 'array_len' is the size of the array and should == TOSDB_GetTopicCount().
+- 'str_len' is the size of each string buffer in the array and should be >= TOSDB_MAX_STR_SZ.
+- Returns 0 on success, error code on failure. 
+
+**`[C++] TOSDB_GetTopicNames(std::string id) -> str_set_type`**
+
+- Returns 'str_set_type' containing all topic strings in the block.
+- Throws on failure.
+
+**`[C++] TOSDB_GetTopicEnums() -> topic_set_type`** 
+
+- Returns 'topic_set_type' containing all topic enums(TOS_Topics::TOPICS) in the block.
+- Throws on failure.
+
+##### Pre-Caching
+
+Items\[Topics\] added before any topics\[items\] exist in the block will be pre-cached, i.e they will be visible to the back-end but not to the interface until a topic\[item\] is added; likewise if all the items\[topics\] are removed(thereby leaving only topics\[items\]). See [Important Details and Provisos](README_DETAILS.md). To view the pre-cache use the following calls:
+
+**`[C/C++] TOSDB_GetPreCachedItemCount(LPCSTR id, size_type* count) -> int`**
+
+- Sets '*count' to the number of items in the block's pre-cache. 
+- Returns 0 on success, error code on failure. 
+
+**`[C++] TOSDB_GetPreCachedItemCount(std::string id) -> size_type`**
+
+- Returns the number of items in the block's pre-cache. 
+- Throws on failure.
+
+**`[C/C++] TOSDB_GetPreCachedTopicCount(LPCSTR id, size_type* count) -> int`**
+
+- Sets '*count' to the number of topics in block's pre-cache. 
+- Returns 0 on success, error code on failure. 
+
+**`[C++] TOSDB_GetPreCachedTopicCount(std::string id) -> size_type ->`**
+
+- Returns the number of topics in block's pre-cache. 
+- Throws on failure.
+
+**`[C/C++] TOSDB_GetPreCachedItemNames(LPCSTR id, LPSTR* dest, size_type array_len, size_type str_len) -> int`** 
+
+- Populates 'dest' with item strings currently in the block's pre-cache. 
+- 'array_len' is the size of the array and should == TOSDB_GetPreCachedItemCount().
+- 'str_len' is the size of each string buffer in the array and should be >= TOSDB_MAX_STR_SZ.
+- Returns 0 on success, error code on failure. 
+
+**`[C++] TOSDB_GetPreCachedItemNames(std::string id) -> str_set_type`**
+
+- Returns 'str_set_type' containing all items in the block's pre-cache.
+- Throws on failure.
+
+**`[C/C++] TOSDB_GetPreCachedTopicNames(LPCSTR id, LPSTR* dest, size_type array_len, size_type str_len) -> int`** 
+
+- Populates 'dest' with topic strings currently in the block's pre-cache. 
+- 'array_len' is the size of the array and should == TOSDB_GetPreCachedTopicCount().
+- 'str_len' is the size of each string buffer in the array and should be >= TOSDB_MAX_STR_SZ.
+- Returns 0 on success, error code on failure. 
+
+**`[C++] TOSDB_GetPreCachedTopicNames(std::string id) -> str_set_type`**
+
+- Returns 'str_set_type' containing all topics in the block's pre-cache.
+- Throws on failure.
+
+**`[C++] TOSDB_GetPreCachedTopicEnums() -> topic_set_type`** 
+
+- Returns 'topic_set_type' containing all topic enums(TOS_Topics::TOPICS) in the block's pre-cache.
+- Throws on failure.
+
+##### Determining Type of a Topic
+
+Different streams store data as different types. You need to unpack the type info from inside the topic enum in order to make the correct 'Get' call(below).
+
+**`[C++] TOS_Topics::Type<E>::type`** 
+
+- Static object used to get the underlying type of topic enum at compile-time.
+- 'E' is a TOS_Topics::TOPICS enum.
+
+**`[C/C++] TOSDB_GetTypeBits(LPCSTR topic_str, type_bits_type* type_bits) -> int`** 
+
+- Sets '*type_bits' to the type bits of the topic string.
+- Returns 0 on success, error code on failure. 
+
+**`[C++] TOSDB_GetTypeBits(TOS_Topics::TOPICS topic_t) -> type_bits_type`**
+
+- Returns the type bits of the topic enum.
+- Throws on failure.
+
+Check the bits with the appropriate constants:
+
+    type_bits_type tbits;
+    TOSDB_GetTypeBits("BID", &tbits);
+
+    if(tbits == TOSDB_INTGR_BIT) 
+       \\ just the integer bit
+       \\ data are longs (def_size_type).
+    else if(tbits == TOSDB_INTGR_BIT | TOSDB_QUAD_BIT) 
+       \\ integer bit and the quad bit
+       \\ data are long longs (ext_size_type)
+    else if (tbits == TOSDB_QUAD_BIT)
+       \\ quad bit, no integer bit
+       \\ data are doubles (ext_price_type)
+    else if (tbits) == 0)
+       \\ no quad bit, no integer bit
+       \\ data are floats (def_price_type)
+    else if (tbits == TOSDB_STRING_BIT)
+       \\ no quad bit, no integer bit, just the string bit
+       \\ data are strings
+    else 
+       \\ ERROR 
     
-Make sure you don't simply check a bit with logical AND when what you really want is to check the entire type_bits_type value. In this example checking for the INTGR_BIT will return true for def_size_type AND ext_size_type. **`TOSDB_GetTypeString()`** provides a string of the type for convenience.
+> **IMPORTANT** Make sure you don't simply check a bit with logical AND when what you really want is to check the entire type_bits_type value. In this example checking for the INTGR_BIT will return true for def_size_type(long) AND ext_size_type(long long). 
 
-> **IMPLEMENTATION NOTE:** The client-side library extracts data from the Service (tos-databridge-engine[].exe) through a series of protected kernel objects in the global namespace, namely a read-only shared memory segment and a mutex. The Service receives data messages from the TOS DDE server and immediately locks the mutex, writes them into the shared memory buffer, and unlocks the mutex. At the same time the library loops through its blocks and item-topic pairs looking to see what buffers have been updated, acquiring the mutex, and reading the buffers, if necessary. 
+**`[C/C++] TOSDB_GetTypeString(LPCSTR topic_str, LPSTR dest, size_type str_len) -> int`** 
 
->The speed at which the looping occurs depends on the UpdateLatency enum value set in the library. The lower the value, the less it waits, the faster the updates. **`TOSDB_GetLatency()`** and **`TOSDB_SetLatency()`** are the relevant calls. A value of Fastest(0) allows for the quickest refreshes, but can chew up clock cycles - view the relevant CPU% in process explorer or task manager to see for yourself. The default(Fast, 30) or Moderate(300) should be fine for most users. 
+- Populates 'dest' with a (platform dependent) type string of the topic.
+- 'str_len' is the size of the buffer and should be >= TOSDB_MAX_STR_SZ.
+- Returns 0 on success, error code on failure. 
 
+**`[C++] TOSDB_GetTypeString(TOS_Topics::TOPICS topic_t) -> std::string`**
 
-#### Get Calls
-
-Once you've created a block with valid items and topics you'll want to extract the data that are collected. This is done via the non-administrative **`TOSDB_Get...`** calls.
-
-The two basic techniques are pulling data as: 
-
-1. ***a segment:*** some portion of the historical data of the block for a particular item-topic entry. A block with 3 topics and 4 items has 12 different data-streams each of the size passed to **`TOSDB_CreateBlock(...)`**. The data-stream is indexed thusly: 0 or (-block size) is the most recent value, -1 or (block size - 1) is the least recent. 
-
-    > **IMPORTANT:** When indexing a sub-range it is important to keep in mind both values are INCLUSIVE \[ , \]. Therefore a sub-range of a data-stream of size 10 where index begin = 3(or -7) and index end = 5(or -5) will look like: \[0\]\[1\]\[2\]**\[3\]\[4\]\[5\]**\[6\]\[7\]\[8\]\[9\]. Be sure to keep this in mind when passing index values as the C++ versions will throw std::invalid_argument() if you pass an ending index of 100 to a stream of size 100.
-
-2. ***a frame:*** spans ALL the topics, items, or both. Think of all the data-streams as the 3rd dimension of 2-dimensional frames. In theory there can be a frame for each index - a frame of all the most recent values or of all the oldest, for instance - but in practice we've only implemented the retrieval of the most recent frame because of how the data are currently structured.
+- Returns a (platform dependent) type string of the topic.
+- Throws on failure.
 
 
-##### Segment Calls
+##### Accessing Engine Directly
 
-**`TOSDB_Get< , >(...)`** and **`TOSDB_Get[Type](...)`** are simple ways to get a single data-point(think a segment of size 1); the former is a templatized C++ version, the latter a C version with the required type stated explicitly in the call (e.g. **`TOSDB_GetDouble(...)`** ). The C++ version's first template arg is the value type to return. 
+**`[C/C++] TOSDB_DumpSharedBufferStatus() -> int`**
 
-> **IMPORTANT:** 
+- Dump engine's buffer info to a file in /log.
+- Returns 0 on success, error code on failure. 
 
-> Generally the client has three options for which specific C++ call to use:
+**`[C/C++] TOSDB_RemoveOrphanedStream(LPCSTR item, LPCSTR topic_str) -> int`**
 
-> 1. figure out the type of the data-stream (the type bits are packed in the topic enum, see above) and pass it as the first template arg
-> 2. pass in generic_type to receive a custom generic type that knows its own type, can be cast to the relevant type, or can have its as_string() method called
-> 3. use the specialized std::string version
-
-> Generally the client has two options for which specific C call to use:
-
-> 1. figure out the type(as above) and make the appropriately named call
-> 2. call the string version, passing in a char\* to be populated with the data ( \< TOSDB_STR_DATA_SZ ). 
-
-> **Obviously the generic and string versions come with a cost/overhead. 
+- Removes an independent stream from the engine.
+- **WARNING** - this should only be used when certain a client lib has failed to close a stream during destruction of the containing block. If that's not the case **YOU CAN CORRUPT THE UNDERLYING BUFFERS FOR ANY OR ALL CLIENT INSTANCE(S)!**
+- Returns 0 on success, error code on failure. 
 
 
-The C++ version's second template argument is a boolean indicating whether it should return DateTimeStamp values as well(assuming the block is set for that) while the C version accepts a pointer to a DateTimeStamp struct(pDateTimeStamp) that will be populated with the value (pass a NULL value otherwise).
+#### Historical Data
 
-In most cases you'll want more than a single value: use the **`TOSDB_GetStreamSnapshot< , >(...)`** and **`TOSDB_GetStreamSnapshot[Type]s(...)`** calls. The concept is similar to the **`TOSDB_Get...`** calls from above except they return containers(C++) or populate arrays(C) and require a beginning and ending index value. The C calls require you to state the explicit dimensions of the arrays(the string version requires length of the string buffers as well; internally, data moved to string buffers is of maximum size TOSDB_STR_DATA_SZ so no need to allocate larger than that). 
+In order to get data from the block/stream we use simple inclusive indexing. 
 
-DateTimeStamp is dealt with in the same way as above. If NULL is not passed it's array length is presumed to be the same as the other array so make sure you pay attention to what you allocate and pass. The C++ calls are implemented to return either a vector of different types or a pair of vectors(the second a vector of DateTimeStamp), depending on the boolean template argument. **Please review the function prototypes in tos_databridge.h, and the [Glossary section](README_DETAILS.md#source-glossary), for a better understanding of the options available.**
+- positive indices go from most to least recent(new to old).
+- negative indicies go from least to most recent(old to new).
+- the beginning('beg') index represents the most recent value of a range.
+- the ending('end') index represents the least recent(oldest) value of a range.
+- 0 or -block size is the index of the most recent value.
+- -1 or block size - 1 is the index of the least recent value. 
+- C++ calls will throw std::invalid_argument() on index errors.
 
-> **IMPLEMENTATION NOTE:** Internally the data-stream tries to limit what is copied by keeping track of the streams occupancy and finding the *MIN(occupancy count, difference between the end and begin indexes +1\[since they're inclusive\], size of parameter passed in)*. 
-
-> For C++ calls that return a container it's possible you may want the sub-stream from index 5 to 50, for instance, but if only 10 values have been pushed into the stream it will return a container with values only from index 5 to 9. 
-
-> NOTE: If you pass an array to one of the C calls the data-stream will NOT copy/initialize the 'tail' elements of the array that do not correspond to valid indexes in the data-stream and the value of those elements should be assumed undefined.
+Ex.  
+block size = 10; begin = 3(-7), end = 5(-5),  
+\[0\] \[1\] \[2\] **\[3\] \[4\] \[5\]** \[6\] \[7\] \[8\] \[9\] 
 
 
-It's likely the stream will grow between consecutive calls. The **`TOSDB_GetStreamSnapshot[Type]sFromMarker(...)`** calls (C only) guarantee to pick up where the last **`TOSDB_Get...`**, **`TOSDB_GetStreamSnanpshot...`**, or **`TOSDB_GetStreamSnapshotFromMarker...`** call ended (under a few assumptions).  Internally the stream maintains a 'marker' that tracks the position of the last value pulled; the act of retreiving data and moving the marker can be thought of as a single, 'atomic' operation. The \*get_size arg will return the size of the data copied, it's up to the caller to supply a large enough buffer. A negative value indicates the buffer was to small to fit all the data, or the stream is 'dirty' . 
+##### Occupancy
 
-> **'Dirty Stream':** indicates the marker has hit the back of the stream and data between the beginning of the last call and the end of the next will be dropped. To avoid this be sure you use a big enough stream and/or keep the marker moving foward (by using calls mentioned above). To determine if the stream is 'dirty' use the **`TOSDB_IsMarkerDirty()`** call. There is no guarantee that a 'clean' stream will not become dirty between the call to **`TOSDB_IsMarkerDirty`** and the retrieval of stream data, although you can look for a negative \*get_size value to indicate this rare state has occured.
+The size of a block (and all its streams) is simply the maximum amount of data it can hold. The occupancy tells how much data is actually in each stream.
+
+**`[C/C++] TOSDB_GetStreamOccupancy(LPCSTR id,LPCSTR item, LPCSTR topic_str, size_type* sz) -> int`** 
+
+- Sets '*sz' to how many data-points are currently in the particular stream.
+- Returns 0 on success, error code on failure.
+
+**`[C++] TOSDB_GetStreamOccupancy(std::string id, std::string item, TOS_Topics::TOPICS topic_t) -> size_type`**
+
+- Returns how many data-points are currently in the particular stream.
 
 
-##### Frame Calls
+##### Different Versions
 
-The three main 'frame' calls are **`GetItemFrame`**, **`GetTopicFrame`**, **`GetTotalFrame`**( C++ only ).
+Generally the client has three different versions of calls for getting historical data:
 
-**`TOSDB_GetItemFrame<>()`** and **`TOSDB_GetItemFrame[Type]s(...)`** are used to retrieve the most recent values for all the items of a particular topic. Think of it as finding the specific topic on its axis, then pulling all the values along that row(for each item). Because the size of n is limited the C++ calls only return a generic type, whereas the C calls necessarily require the explicitly named call to be made(or the (C\-)String version). The C++ calls take one boolean template arg as above. 
-> **IMPORTANT:** The frames are only dealing with the the 'front' of the block, i.e. index=0 of all the data-streams. 
+1. *type-named* (e.g TOSDB_GetDouble):  
+figure out the type of the topic for that data-stream (see [Determining Type of a Topic](#determining-type-of-a-topic)) and use the appropriately named call.
+2. *string* (e.g TOSDB_GetString):  
+data will be represent as char* or std::string. **(SLOW)**
+3. *generic* (e.g, TOSDB_Get<generic_type,false>):  
+returns generic_type object(s) that know their native type(C++ only). **(SLOW)**
 
-One major difference between the frame calls and the data-stream calls is the former map their values to strings of relevant topic or item names. For instance, a call of **`GetItemFrame<true>(..., BID)`** for a block with topics: BID, ASK and items: IBM, GE, CAT will return `( "IBM", (val,dts); "GE", (val,dts); "CAT", (val,dts) )`; in this case a mapping of item strings to pairs of generic_types and DateTimeStamps. 
+The following functions all have DateTimeStamp versions. In order to use them the block must have been constructed with this option set(is_datetime == TRUE). The C versions need a non-NULL pointer to a DateTimeStamp struct or an array of structs(pass NULL to avoid getting DateTimeStamp(s)). The C++ versions take a boolean template arg instead. 
 
-The C calls require pointers to arrays of appropriate type, with the dimensions of the arrays. The value array is required; the second array of strings that is populated with the corresponding labels(item strings in this case) and the third array of DateTimeStamp object are both optional. Remember, where specified the arrays require dimensions to be passed; if not they are presumed be the same as the primary value array('dest').
+> **IMPORTANT** DateTimeStamp arrays in C should be the same length as the primary data array.
 
-**`TOSDB_GetTopicFrame<>()`** and **`TOSDB_GetTopicFrameStrings()`** are used to retrieve the most recent values for all the topics of a particular item. Think of it as finding the specific item on its axis, then pulling all the values along that row. They are similar to the **`GetItemFrame...`** calls from above except for the obvious fact they pull topic values and there is only the one C call, populating an array of c-strings. Since each item can have multiple topic values, and each topic value may be of a different type, it's necessary to return strings(C) or generic_types(C++).
+> **IMPORTANT** Label arrays (see Frames, below) in C should be the same length as the primary data array and DateTimeStamp array (if used).
 
-**`TOSDB_GetTotalFrame<>(...)`** is the last type of frame call that returns the total frame(the recent values for ALL items AND topics) as a matrix, with the labels mapped to values and DateTimeStamps if true is passed as the template argument. Because of the complexity of the the matrix, with mapped strings, and possible DateTimeStamp structs included there is only a C++ version. C code will have to iterate through the items or topics and call **`GetTopicFrame(item)`** or **`GetItemFrame(topic)`**, respectively, like the Python Wrapper does.
+(Unfortunately) we use the explict type-names and their typedefs inconsistently. Keep in mind:
 
-> **IMPLEMENTATION NOTE:** The data-streams have been implemented in an effort to:
+typedef        | type 
+---------------|-----------
+def_price_type | float
+ext_price_type | double
+def_size_type  | long
+ext_price_type | long long
 
-> 1. provide convenience by allowing both a generic type and strings to be returned.
-> 2. not make the client pay for features that they don't want to use.(i.e. genericism or DateTimeStamps) 
-> 3. take advantage of a type-correcting feature of the underlying data-stream.(see the comments and macros in data_stream.hpp) 
-> 4. throw derived exceptions or return error codes depending on the context and language.
-> 5. provide at least one very efficient, 'stream-lined' call for large data requests.
+> **FUTURE DEPRECATION WARNING** These bad/confusing typedefs will probably be deprecated at some point. 
 
-> In order to comply with #5 we violate the abstraction of the data block for all the **`Get..`** calls and the interface of the data-stream for the non-generic versions of those same calls. For the former we allow the return of a const pointer to the stream, allowing the client-side back-end to operate directly on the stream. For the latter we provide 'copy(...)' virtual methods of the data-stream that take raw pointer(s) to be populated directly, bypassing generic_type construction and STL overhead.
 
-> Not suprisingly, when n is very large the the non-string **`TOSDB_GetStreamSnapshot[Type]s`** C calls are the fastest, with the non-generic, non-string **`TOSDB_GetStreamSnapshot<Type,false>`** C++ calls just behind. 
+##### Individual Data-Points
+
+**`[C/C++] TOSDB_GetDouble(LPCSTR id, LPCSTR item, LPCSTR topic_str, long indx, ext_price_type* dest, pDateTimeStamp datetime) -> int`**  
+**`[C/C++] TOSDB_GetFloat(LPCSTR id, LPCSTR item, LPCSTR topic_str, long indx, def_price_type* dest, pDateTimeStamp datetime) -> int`**  
+**`[C/C++] TOSDB_GetLongLong(LPCSTR id, LPCSTR item, LPCSTR topic_str, long indx, ext_size_type* dest, pDateTimeStamp datetime) -> int`**  
+**`[C/C++] TOSDB_GetLong(LPCSTR id, LPCSTR item, LPCSTR topic_str, long indx, def_size_type* dest, pDateTimeStamp datetime) -> int`**  
+
+- Sets '*dest' to the historical value at position 'indx'.
+- Sets '*datetime' to DateTime struct if NOT NULL and block supports date-time(see TOSDB_IsUsingDateTime).
+- Returns 0 on success, error code on failure.
+
+**`[C/C++] TOSDB_GetString(LPCSTR id, LPCSTR item, LPCSTR topic_str, long indx, LPSTR dest, size_type str_len, pDateTimeStamp datetime) -> int`** 
+
+- Populates '*dest' with the historical value at position 'indx, as string.
+- Populates '*datetime' struct if NOT NULL and block supports date-time(see TOSDB_IsUsingDateTime).
+- 'str_len' is the size of the string buffer and should be >= TOSDB_STR_DATA_SZ.
+- Returns 0 on success, error code on failure.
+
+**`[C++] TOSDB_Get<ext_price_type,false>(std::string id, std::string item, TOS_Topics::TOPICS topic_t, long indx) -> ext_price_type`**  
+**`[C++] TOSDB_Get<def_price_type,false>(std::string id, std::string item, TOS_Topics::TOPICS topic_t, long indx) -> def_price_type`**  
+**`[C++] TOSDB_Get<ext_size_type,false>(std::string id, std::string item, TOS_Topics::TOPICS topic_t, long indx) -> ext_size_type`**  
+**`[C++] TOSDB_Get<def_size_type,false>(std::string id, std::string item, TOS_Topics::TOPICS topic_t, long indx) -> def_size_type`**  
+
+- Returns the historical value at position 'indx'.
+- Throws on failure.
+
+**`[C++] TOSDB_Get<std::string,false>(std::string id, std::string item, TOS_Topics::TOPICS topic_t, long indx) -> std::string`**
+
+- Returns the historical value at position 'indx', as string.
+- Throws on failure.
+
+**`[C++] TOSDB_Get<generic_type,false>(std::string id, std::string item, TOS_Topics::TOPICS topic_t, long indx) -> generic_type`**
+
+- Returns the historical value at position 'indx', as generic_type.
+- Throws on failure.
+
+**`[C++] TOSDB_Get<ext_price_type,true>(std::string id, std::string item, TOS_Topics::TOPICS topic_t, long indx) -> std::pair<ext_price_type, DateTimeStamp>`**  
+**`[C++] TOSDB_Get<def_price_type,true>(std::string id, std::string item, TOS_Topics::TOPICS topic_t, long indx) -> std::pair<def_price_type, DateTimeStamp>`**  
+**`[C++] TOSDB_Get<ext_size_type,true>(std::string id, std::string item, TOS_Topics::TOPICS topic_t, long indx) -> std::pair<ext_size_type, DateTimeStamp>`**  
+**`[C++] TOSDB_Get<def_size_type,true>(std::string id, std::string item, TOS_Topics::TOPICS topic_t, long indx) -> std::pair<def_size_type, DateTimeStamp>`**  
+
+- Returns an std::pair of the historical value at position 'indx' AND DateTimeStamp if block supports it.
+- Throws on failure.
+
+**`[C++] TOSDB_Get<std::string,true>(std::string id, std::string item, TOS_Topics::TOPICS topic_t, long indx) -> std::pair<std::string, DateTimeStamp>`**
+
+- Returns an std::pair of the historical value at position 'indx', as string, AND DateTimeStamp if block supports it.
+- Throws on failure.
+
+**`[C++] TOSDB_Get<generic_type,true>(std::string id, std::string item, TOS_Topics::TOPICS topic_t, long indx) -> generic_dts_type`**
+
+- Returns an std::pair of the historical value at position 'indx', as generic_type, AND DateTimeStamp if block supports it.
+- Throws on failure.
+
+
+##### Multiple Contiguous Data-Points
+
+> **IMPLENTATION NOTE** Internally the data-stream tries to limit what is copied by keeping track of the streams occupancy and only returning valid data. C++ calls will therefore return a dynamically sized containter that may be smaller than what you expected. C calls may leave 'tail' elements of the passed array undefined if there is not valid data to fill them.
+
+> **PERFORMANCE NOTE** Not suprisingly, when n is very large the the non-string C calls are the fastest, with the non-generic, non-string  C++ calls just behind. 
+
+**`[C/C++] TOSDB_GetStreamSnapshotDoubles(LPCSTR id,LPCSTR item, LPCSTR topic_str, ext_price_type* dest, size_type array_len, pDateTimeStamp datetime, long end, long beg) -> int`**  
+**`[C/C++] TOSDB_GetStreamSnapshotFloats(LPCSTR id,LPCSTR item, LPCSTR topic_str, def_price_type* dest, size_type array_len, pDateTimeStamp datetime, long end, long beg) -> int`**  
+**`[C/C++] TOSDB_GetStreamSnapshotLongLongs(LPCSTR id,LPCSTR item, LPCSTR topic_str, ext_size_type* dest, size_type array_len, pDateTimeStamp datetime, long end, long beg) -> int`**  
+**`[C/C++] TOSDB_GetStreamSnapshotLongs(LPCSTR id,LPCSTR item, LPCSTR topic_str, def_size_type* dest, size_type array_len, pDateTimeStamp datetime, long end, long beg) -> int`**  
+
+- Populates '*dest' with historical data between position 'beg' and 'end', inclusively.
+- Populates '*datetime' with the matching DateTime structs if NOT NULL and block supports date-time(see TOSDB_IsUsingDateTime).
+- 'array_len' is the size of the array(s) and must be big enough to fit the data or it will be truncated.
+- Returns 0 on success, error code on failure.
+
+**`[C/C++] TOSDB_GetStreamSnapshotStrings(LPCSTR id, LPCSTR item, LPCSTR topic_str, LPSTR* dest, size_type array_len, size_type str_len, pDateTimeStamp datetime, long end, long beg) -> int`**  
+
+- Populates '*dest' with historical data, as strings, between position 'beg' and 'end', inclusively.
+- Populates '*datetime' with the matching DateTime structs if NOT NULL and block supports date-time(see TOSDB_IsUsingDateTime).
+- 'array_len' is the size of the array(s) and must be big enough to fit the data or it will be truncated.
+- 'str_len' is the size of each string buffer in the array and should be >= TOSDB_STR_DATA_SZ.
+- Returns 0 on success, error code on failure.
+
+**`[C++] TOSDB_GetStreamSnapshot<ext_price_type,false>(std::string id, std::string item, TOS_Topics::TOPICS topic_t, long end, long beg) -> std::vector<ext_price_type>`**  
+**`[C++] TOSDB_GetStreamSnapshot<def_price_type,false>(std::string id, std::string item, TOS_Topics::TOPICS topic_t, long end, long beg) -> std::vector<def_price_type>`**  
+**`[C++] TOSDB_GetStreamSnapshot<ext_size_type,false>(std::string id, std::string item, TOS_Topics::TOPICS topic_t, long end, long beg) -> std::vector<ext_size_type>`**  
+**`[C++] TOSDB_GetStreamSnapshot<def_size_type,false>(std::string id, std::string item, TOS_Topics::TOPICS topic_t, long end, long beg) -> std::vector<def_size_type>`**  
+
+- Returns vector of historical data between position 'beg' and 'end', inclusively.
+- Throws on failure.
+
+**`[C++] TOSDB_GetStreamSnapshot<std::string,false>(std::string id, std::string item, TOS_Topics::TOPICS topic_t, long end, long beg) -> std::vector<std::string>`**  
+
+- Returns vector of historical data, as strings, between position 'beg' and 'end', inclusively.
+- Throws on failure.
+
+**`[C++] TOSDB_GetStreamSnapshot<generic_type,false>(std::string id, std::string item, TOS_Topics::TOPICS topic_t, long end, long beg) -> generic_vector_type`**  
+
+- Returns vector of historical data, as generic_types, between position 'beg' and 'end', inclusively.
+- Throws on failure.
+
+**`[C++] TOSDB_GetStreamSnapshot<ext_price_type,true>(std::string id, std::string item, TOS_Topics::TOPICS topic_t, long end, long beg) -> std::pair<std::vector<ext_price_type>,dts_vector_type>`**  
+**`[C++] TOSDB_GetStreamSnapshot<def_price_type,true>(std::string id, std::string item, TOS_Topics::TOPICS topic_t, long end, long beg) -> std::pair<std::vector<def_price_type>,dts_vector_type>`**  
+**`[C++] TOSDB_GetStreamSnapshot<ext_size_type,true>(std::string id, std::string item, TOS_Topics::TOPICS topic_t, long end, long beg) -> std::pair<std::vector<ext_size_type>,dts_vector_type>`**  
+**`[C++] TOSDB_GetStreamSnapshot<def_size_type,true>(std::string id, std::string item, TOS_Topics::TOPICS topic_t, long end, long beg) -> std::pair<std::vector<def_size_type>,dts_vector_type>`**  
+
+- Returns pair of vectors of historical data and matching DateTimeStamps between position 'beg' and 'end', inclusively.
+- Throws on failure.
+
+**`[C++] TOSDB_GetStreamSnapshot<std::string,true>(std::string id, std::string item, TOS_Topics::TOPICS topic_t, long end, long beg) -> std::pair<std::vector<std::string>,dts_vector_type>`**  
+
+- Returns pair of vectors of historical data, as strings, and matching DateTimeStamps between position 'beg' and 'end', inclusively.
+- Throws on failure.
+
+**`[C++] TOSDB_GetStreamSnapshot<generic_type,true>(std::string id, std::string item, TOS_Topics::TOPICS topic_t, long end, long beg) -> generic_dts_vectors_type`**  
+
+- Returns pair of vectors of historical data, as generic_types, and matching DateTimeStamps between position 'beg' and 'end', inclusively.
+- Throws on failure.
+
+
+
+##### Multiple Contiguous Data-Points From an 'Atomic' Marker
+
+It's likely the stream will grow between consecutive calls. These calls guarantee to pick up where the last 'Get', 'GetStreamSnapshot', or 'GetStreamSnapshotFromMarker' call ended (under a few assumptions).  Internally the stream maintains a 'marker' that tracks the position of the last value pulled; the act of retreiving data and moving the marker can be thought of as a single, 'atomic' operation.
+
+**`[C/C++] TOSDB_GetStreamSnapshotDoublesFromMarker(LPCSTR id,LPCSTR item,LPCSTR topic_str,ext_price_type* dest,size_type array_len, pDateTimeStamp datetime, long beg, long *get_size) -> int`**  
+**`[C/C++] TOSDB_GetStreamSnapshotFloatsFromMarker(LPCSTR id,LPCSTR item,LPCSTR topic_str,def_price_type* dest,size_type array_len, pDateTimeStamp datetime, long beg, long *get_size) -> int`**  
+**`[C/C++] TOSDB_GetStreamSnapshotLongLongsFromMarker(LPCSTR id,LPCSTR item,LPCSTR topic_str,ext_size_type* dest,size_type array_len, pDateTimeStamp datetime, long beg, long *get_size) -> int`**   
+**`[C/C++] TOSDB_GetStreamSnapshotLongsFromMarker(LPCSTR id,LPCSTR item,LPCSTR topic_str,def_size_type* dest,size_type array_len, pDateTimeStamp datetime, long beg, long *get_size) -> int`**  
+
+- Populates '*dest' with historical data between position 'beg' and the marker, inclusively.
+- Populates '*datetime' with the matching DateTime structs if NOT NULL and block supports date-time(see TOSDB_IsUsingDateTime).
+- 'array_len' is the size of the array(s) and must be big enough to fit the data or it will be truncated.
+- Sets '*get_size' to number of data-points copied. A negative value inidicates buffer is too small or stream is 'dirty'(see below).
+- Returns 0 on success, error code on failure.
+
+**`[C/C++] TOSDB_GetStreamSnapshotStringsFromMarker(LPCSTR id, LPCSTR item, LPCSTR topic_str, LPSTR* dest, size_type array_len, size_type str_len, pDateTimeStamp datetime, long beg, long *get_size) -> int`** 
+
+- Populates '*dest' with historical data, as strings, between position 'beg' and the marker, inclusively.
+- Populates '*datetime' with the matching DateTime structs if NOT NULL and block supports date-time(see TOSDB_IsUsingDateTime).
+- 'array_len' is the size of the array(s) and must be big enough to fit the data or it will be truncated.
+- 'str_len' is the size of each string buffer in the array and should be >= TOSDB_STR_DATA_SZ.
+- Sets '*get_size' to number of data-points copied. A negative value inidicates buffer is too small or stream is 'dirty'(see below).
+- Returns 0 on success, error code on failure.
+
+A 'Dirty Stream' results from the marker hiting the back of the stream, indicating all data older than the marker is lost. To avoid this be sure you use a big enough block and/or keep the marker moving foward (by using calls mentioned above).
+
+**`[C/C++] TOSDB_IsMarkerDirty(LPCSTR id, LPCSTR item, LPCSTR topic_str, unsigned int* is_dirty) -> int`**
+
+- Sets '*is_dirty' to 1 if the stream is dirty, 0 otherwise.
+- There is no guarantee that a 'clean' stream will not become dirty before the next call.
+- Returns 0 on success, error code on failure.
+
+**`[C++] TOSDB_IsMarkerDirty(std::string id, std::string item, TOS_Topics::TOPICS topic_t) -> bool`** 
+
+- Returns if the stream is dirty.
+- There is no guarantee that a 'clean' stream will not become dirty before the next call.
+- Throws on failure.
+
+**`[C/C++] TOSDB_GetMarkerPosition(LPCSTR id,LPCSTR item, LPCSTR topic_str, long long* pos) -> int`**
+
+- Sets '*pos' with the current position (index) of the marker in the stream.
+- Returns 0 on success, error code on failure.
+
+**`[C++] TOSDB_GetMarkerPosition(std::string id, std::string item, TOS_Topics::TOPICS topic_t) -> long long`** 
+
+- Returns the current position (index) of the marker in the stream.
+- Throws on failure.
+
+
+#### Frames
+
+A frame is a collection of the most recent data (position/indx = 0) for ALL topics, ALL items, or both. 
+
+##### Item Frames
+
+Item Frames are the most recent values of ALL the items and a single topic. (e.g {'LAST','SPY'} {'LAST','QQQ'} {'LAST','IWM'})
+
+**`[C/C++] TOSDB_GetItemFrameDoubles(LPCSTR id, LPCSTR topic_str, ext_price_type* dest, size_type array_len, LPSTR* label_dest, size_type label_str_len, pDateTimeStamp datetime) -> int`**  
+**`[C/C++] TOSDB_GetItemFrameFloats(LPCSTR id, LPCSTR topic_str, def_price_type* dest, size_type array_len, LPSTR* label_dest, size_type label_str_len, pDateTimeStamp datetime) -> int`**  
+**`[C/C++] TOSDB_GetItemFrameLongLongs(LPCSTR id, LPCSTR topic_str, ext_size_type* dest, size_type array_len, LPSTR* label_dest, size_type label_str_len, pDateTimeStamp datetime) -> int`**  
+**`[C/C++] TOSDB_GetItemFrameLongs(LPCSTR id, LPCSTR topic_str, def_size_type* dest, size_type array_len, LPSTR* label_dest, size_type label_str_len, pDateTimeStamp datetime) -> int`**  
+
+- Populates '*dest' with the current 'topic_str' values for each item in the block.
+- Populates '*datetime' with the matching DateTime structs if NOT NULL and block supports date-time(see TOSDB_IsUsingDateTime).
+- Populates '*label_dest' with the matching labels(the matching item string) for each topic if NOT NULL.
+- 'array_len' is the size of the array(s) and must be big enough to fit the data or it will be truncated.
+- Returns 0 on success, error code on failure.
+
+**`[C/C++] TOSDB_GetItemFrameStrings(LPCSTR id, LPCSTR topic_str, LPSTR* dest, size_type array_len, size_type str_len, LPSTR* label_dest, size_type label_str_len, pDateTimeStamp datetime) -> int`**
+
+- Populates '*dest' with the current 'topic_str' values, as strings, for each item in the block.
+- Populates '*datetime' with the matching DateTime structs if NOT NULL and block supports date-time(see TOSDB_IsUsingDateTime).
+- Populates '*label_dest' with the matching labels(the matching item string) for each item if NOT NULL.
+- 'array_len' is the size of the array(s) and must be big enough to fit the data or it will be truncated.
+- 'str_len' is the size of each string buffer in the array and should be >= TOSDB_STR_DATA_SZ.
+- Returns 0 on success, error code on failure.
+
+
+**`[C++] TOSDB_GetItemFrame<false>(std::string id, TOS_Topics::TOPICS topic_t) -> generic_map_type`**
+
+- Returns std::map of item strings to the maching 'topic_t' value, as generic_type, for each item in the block. 
+- Throws on error.
+
+**`[C++] TOSDB_GetItemFrame<true>(std::string id, TOS_Topics::TOPICS topic_t) -> generic_dts_map_type`**
+
+- Returns std::map of item strings to the std::pairs of the maching 'topic_t' value, as generic_type, and DateTimeStamps, for each item in the block. 
+- Throws on error.
+
+
+##### Topic Frames
+
+Topic Frames are the most recent values of ALL the topics and a single item. (e.g {'LAST','SPY'} {'BID','SPY'} {'ASK','SPY'})
+
+**`[C/C++] TOSDB_GetTopicFrameStrings(LPCSTR id, LPCSTR item, LPSTR* dest, size_type array_len, size_type str_len, LPSTR* label_dest, size_type label_str_len, pDateTimeStamp datetime) -> int`**
+
+- Populates '*dest' with the current 'item' values, as strings, for each topic in the block.
+- Populates '*datetime' with the matching DateTime structs if NOT NULL and block supports date-time(see TOSDB_IsUsingDateTime).
+- Populates '*label_dest' with the matching labels(the matching topic string) for each topic if NOT NULL.
+- 'array_len' is the size of the array(s) and must be big enough to fit the data or it will be truncated.
+- 'str_len' is the size of each string buffer in the array and should be >= TOSDB_STR_DATA_SZ.
+- Returns 0 on success, error code on failure.
+
+**`[C++] TOSDB_GetTopicFrame<false>(std::string id, std::string item) -> generic_map_type`**
+
+- Returns std::map of topic strings to the maching 'item' value, as generic_type, for each topic in the block. 
+- Throws on error.
+ 
+**`[C++] TOSDB_GetTopicFrame<true>(std::string id, std::string item) -> generic_dts_map_type`**
+
+- Returns std::map of topic strings to the std::pairs of the maching 'item' value, as generic_type, and DateTimeStamps, for each topic in the block. 
+- Throws on error.
+
+
+##### Total Frames
+
+Total Frames are the most recent values of ALL the topics and ALL the items. 
+
+**`[C++] TOSDB_GetTotalFrame<false>(std::string id) -> generic_matrix_type`** 
+
+- Returns std::map of item strings to the std::map of topic strings and the maching 'item' value, as generic_type, for each topic in the block. 
+- Throws on error.
+
+**`[C++] TOSDB_GetTotalFrame<true>(std::string id) -> generic_dts_matrix_type`** 
+
+- Returns std::map of topic strings to std::map of the std::pairs of the maching 'item' value, as generic_type, and DateTimeStamps, for each topic in the block. 
+- Throws on error.
 
 
 #### Logging, Exceptions & Stream Overloads
 
-The library exports some logging functions that dovetail with its use of custom exception classes. Most of the modules use these logging functions internally. The files are sent to appropriately named .log files in /log. Client code is sent to /log/client-log.log by using the following calls:  **`TOSDB_LogH()`** and **`TOSDB_Log()`** will log high and low priority messages, respectively. Pass two strings: a tag that provides a short general category of what's being logged and a detailed description. **`TOSDB_LogEx()`** has an additional argument generally used for an error code like one returned from *GetLastError()*. 
+The library exports some logging functions that dovetail with its use of custom exception classes. Most of the modules use these logging functions internally. The files are sent to appropriately named .log files in /log. Client code is sent to /log/client-log.log by using the following calls:  
+
+**`[C/C++] TOSDB_LogH(LPCSTR tag, LPCSTR desc)` [MACRO]** 
+
+- log high priority message.
+
+**`[C/C++] TOSDB_Log(LPCSTR tag, LPCSTR desc)` [MACRO]** 
+
+- log low priority message.
+
+**`[C/C++] TOSDB_LogEx(LPCSTR tag,LPCSTR desc,int error)` [MACRO]** 
+
+- pass additional argument for an error code like one returned from *GetLastError()*. 
 
 The library also defines an exception hierarchy (exceptions.hpp) derived from TOSDB_Error and std::exception. C++ code can catch them and respond accordingly; the base class provides threadID(), processID(), tag(), and info() methods as well as the inherited what() from std::exception. 
 
-There are operator\<\< overloads (client_out.cpp) for most of the custom objects and containers returned by the **`TOSDB_Get...`** calls.
+There are operator\<\< overloads (client_out.cpp) for most of the custom objects and containers returned by the myriad 'Get...' calls.
 
