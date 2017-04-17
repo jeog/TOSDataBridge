@@ -442,16 +442,17 @@ The size of a block (and all its streams) is simply the maximum amount of data i
 **`[C++] TOSDB_GetStreamOccupancy(std::string id, std::string item, TOS_Topics::TOPICS topic_t) -> size_type`**
 
 - Returns how many data-points are currently in the particular stream.
+- Throws on failure.
 
 
 ##### Different Versions
 
-Generally the client has three different versions of calls for getting historical data:
+API offers multiple ways of getting the same historical data:
 
-1. *type-named* (e.g TOSDB_GetDouble):  
-figure out the type of the topic for that data-stream (see [Determining Type of a Topic](#determining-type-of-a-topic)) and use the appropriately named call.
-2. *string* (e.g TOSDB_GetString):  
-data will be represent as char* or std::string. **(SLOW)**
+1. *type-named* (e.g TOSDB_GetDouble, TOSDB_Get<double,true>):  
+figure out the type of the topic for that data-stream (see [Determining Type of a Topic](#determining-type-of-a-topic)) and use the appropriately named call to return the particular type.
+2. *string* (e.g TOSDB_GetString, TOSDB_Get<std::string, true>):  
+data will be cast to char* (of length <= TOSDB_STR_DATA_SZ) or std::string  if topic is not of string type. **(SLOW)**
 3. *generic* (e.g, TOSDB_Get<generic_type,false>):  
 returns generic_type object(s) that know their native type(C++ only). **(SLOW)**
 
@@ -468,7 +469,7 @@ typedef        | type
 def_price_type | float
 ext_price_type | double
 def_size_type  | long
-ext_price_type | long long
+ext_size_type  | long long
 
 > **FUTURE DEPRECATION WARNING** These bad/confusing typedefs will probably be deprecated at some point. 
 
