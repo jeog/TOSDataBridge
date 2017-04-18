@@ -26,6 +26,7 @@ def_price_type           | float                                          | C / 
 ext_price_type           | double                                         | C / C++  | tos_databridge.h
 def_size_type            | long                                           | C / C++  | tos_databridge.h
 ext_price_type           | long long                                      | C / C++  | tos_databridge.h
+pDateTimeStamp           | DateTimeStamp*                                 | C / C++  | tos_databridge.h
 generic_dts_type         | std::pair<generic_type,DateTimeStamp>          | C++      | tos_databridge.h
 generic_vector_type      | std::vector<generic_type>                      | C++      | tos_databridge.h
 dts_vector_type          | std::vector<DateTimeStamp>                     | C++      | tos_databridge.h
