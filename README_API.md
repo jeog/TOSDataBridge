@@ -6,7 +6,7 @@
 name               | language | defined by       | description 
 -------------------|----------|------------------|------------------------------------------
 TOS_Topics::TOPICS | C++      | tos_databridge.h | enum of fields to be added (e.g. BID, ASK, LAST )
-DateTimeStamp      | C / C++  | tos_databridge.h | struct that wraps the C library tm struct, and adds a micro-second field info on the buffer to the client
+DateTimeStamp      | C / C++  | tos_databridge.h | wrapper around C lib 'tm' struct, adds a micro-second field
 UpdateLatency      | C / C++  | tos_databridge.h | enum of milliseconds values the client library waits before re-checking buffers
 ILSet<>            | C++      | containers.hpp   | wrapper around std::set<> type that provides additional means of construction / copy / move / assignment
 generic_type       | C++      | generic.hpp      | custom generic type 
