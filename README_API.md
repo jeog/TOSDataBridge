@@ -13,28 +13,28 @@ generic_type       | C++      | generic.hpp      | custom generic type
 
 #### Typedefs
 
-typedef                         | underlying type                                | language | defined by
-+--------------------------------|------------------------------------------------|----------|--------------------------
-+LPCSTR                          | const char*                                    | C / C++  | WINAPI
-+LPS TR                          | char*                                          | C / C++  | WINAPI
-+BOOL                            | unsigned int                                   | C / C++  | WINAPI
-+size_type                       | uint32_t                                       | C / C++  | tos_databridge.h
-+type_bits_type                  | uint8_t                                        | C / C++  | tos_databridge.h
-+str_set_type                    | ILSet<std::string>                             | C++      | tos_databridge.h 
-+topic_set_type                  | ILSet<TOS_Topics::TOPICS>                      | C++      | tos_databridge.h 
-+def_price_type **(DEPRECATED)** | float                                          | C / C++  | tos_databridge.h
-+ext_price_type **(DEPRECATED)** | double                                         | C / C++  | tos_databridge.h
-+def_size_type  **(DEPRECATED)** | long                                           | C / C++  | tos_databridge.h
-+ext_size_type **(DEPRECATED)**  | long long                                      | C / C++  | tos_databridge.h
-+pDateTimeStamp                  | DateTimeStamp*                                 | C / C++  | tos_databridge.h
-+generic_dts_type                | std::pair<generic_type,DateTimeStamp>          | C++      | tos_databridge.h
-+generic_vector_type             | std::vector<generic_type>                      | C++      | tos_databridge.h
-+dts_vector_type                 | std::vector<DateTimeStamp>                     | C++      | tos_databridge.h
-+generic_dts_vectors_type        | std::pair<generic_vector_type,dts_vector_type> | C++      | tos_databridge.h
-+generic_map_type                | std::map<std::string, generic_type>            | C++      | tos_databridge.h
-+generic_dts_map_type            | std::map<std::string, generic_dts_type>        | C++      | tos_databridge.h
-+generic_matrix_type             | std::map<std::string, generic_map_type>        | C++      | tos_databridge.h
-+generic_dts_matrix_type         | std::map<std::string, generic_dts_map_type>    | C++      | tos_databridge.h
+typedef                         | underlying type                                  | language | defined by
+--------------------------------|--------------------------------------------------|----------|--------------------------
+LPCSTR                          | const char*                                      | C / C++  | WINAPI
+LPSTR                           | char*                                            | C / C++  | WINAPI
+BOOL                            | unsigned int                                     | C / C++  | WINAPI
+size_type                       | uint32_t                                         | C / C++  | tos_databridge.h
+type_bits_type                  | uint8_t                                          | C / C++  | tos_databridge.h
+str_set_type                    | ILSet\<std::string\>                             | C++      | tos_databridge.h 
+topic_set_type                  | ILSet\<TOS_Topics::TOPICS\>                      | C++      | tos_databridge.h 
+def_price_type **(DEPRECATED)** | float                                            | C / C++  | tos_databridge.h
+ext_price_type **(DEPRECATED)** | double                                           | C / C++  | tos_databridge.h
+def_size_type  **(DEPRECATED)** | long                                             | C / C++  | tos_databridge.h
+ext_size_type **(DEPRECATED)**  | long long                                        | C / C++  | tos_databridge.h
+pDateTimeStamp                  | DateTimeStamp*                                   | C / C++  | tos_databridge.h
+generic_dts_type                | std::pair\<generic_type,DateTimeStamp\>          | C++      | tos_databridge.h
+generic_vector_type             | std::vector\<generic_type\>                      | C++      | tos_databridge.h
+dts_vector_type                 | std::vector\<DateTimeStamp\>                     | C++      | tos_databridge.h
+generic_dts_vectors_type        | std::pair\<generic_vector_type,dts_vector_type\> | C++      | tos_databridge.h
+generic_map_type                | std::map\<std::string, generic_type\>            | C++      | tos_databridge.h
+generic_dts_map_type            | std::map\<std::string, generic_dts_type\>        | C++      | tos_databridge.h
+generic_matrix_type             | std::map\<std::string, generic_map_type\>        | C++      | tos_databridge.h
+generic_dts_matrix_type         | std::map\<std::string, generic_dts_map_type\>    | C++      | tos_databridge.h
 
 #### Error Codes
 
