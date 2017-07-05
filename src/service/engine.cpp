@@ -1295,12 +1295,12 @@ HandleData(UINT msg, WPARAM wparam, LPARAM lparam)
             /* remove commas */            
             auto r = std::remove_if(str.begin(), str.end(), [](char c){return std::isdigit(c) == 0;});
             str.erase(r,str.end());
-            RouteToBuffer( DDE_Data<def_size_type>(topic_t, item_atom, std::stol(str), true) );  
+            RouteToBuffer( DDE_Data<long>(topic_t, item_atom, std::stol(str), true) );  
             break;
         }               
         case TOSDB_QUAD_BIT : /* DOUBLE */
         {
-            RouteToBuffer( DDE_Data<ext_price_type>(topic_t, item_atom, std::stod(str), true) ); 
+            RouteToBuffer( DDE_Data<double>(topic_t, item_atom, std::stod(str), true) ); 
             break;
         }     
         case TOSDB_INTGR_BIT | TOSDB_QUAD_BIT :/* LONG LONG */
@@ -1308,12 +1308,12 @@ HandleData(UINT msg, WPARAM wparam, LPARAM lparam)
             /* remove commas */           
             auto r = std::remove_if(str.begin(), str.end(), [](char c){return std::isdigit(c) == 0;});
             str.erase(r,str.end());
-            RouteToBuffer( DDE_Data<ext_size_type>(topic_t, item_atom, std::stoll(str), true) );  
+            RouteToBuffer( DDE_Data<long long>(topic_t, item_atom, std::stoll(str), true) );  
             break;
         }     
         case 0 : /* FLOAT */
         {
-            RouteToBuffer( DDE_Data<def_price_type>(topic_t, item_atom, std::stof(str), true) ); 
+            RouteToBuffer( DDE_Data<float>(topic_t, item_atom, std::stof(str), true) ); 
             break;
         }     
         };

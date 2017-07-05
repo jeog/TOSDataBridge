@@ -63,23 +63,23 @@ RAW_DATA_BLOCK_CLASS::_insert_topic( typename RAW_DATA_BLOCK_CLASS::_my_row_ty* 
         break;
     case TOSDB_INTGR_BIT :
         stream = _datetime 
-               ? new DataStream<def_size_type, datetime_type, generic_type, true>(_block_sz) 
-               : new DataStream<def_size_type, datetime_type, generic_type, false>(_block_sz);
+               ? new DataStream<long, datetime_type, generic_type, true>(_block_sz) 
+               : new DataStream<long, datetime_type, generic_type, false>(_block_sz);
         break;
     case TOSDB_QUAD_BIT :
         stream = _datetime 
-               ? new DataStream<ext_price_type, datetime_type, generic_type, true>(_block_sz) 
-               : new DataStream<ext_price_type, datetime_type, generic_type, false>(_block_sz);
+               ? new DataStream<double, datetime_type, generic_type, true>(_block_sz) 
+               : new DataStream<double, datetime_type, generic_type, false>(_block_sz);
         break;
     case TOSDB_INTGR_BIT | TOSDB_QUAD_BIT :
         stream = _datetime 
-               ? new DataStream<ext_size_type, datetime_type, generic_type, true>(_block_sz)
-               : new DataStream<ext_size_type, datetime_type, generic_type, false>(_block_sz);
+               ? new DataStream<long long, datetime_type, generic_type, true>(_block_sz)
+               : new DataStream<long long, datetime_type, generic_type, false>(_block_sz);
         break;
     default :
         stream = _datetime 
-               ? new DataStream<def_price_type, datetime_type, generic_type, true>(_block_sz) 
-               : new DataStream<def_price_type, datetime_type, generic_type, false>(_block_sz);
+               ? new DataStream<float, datetime_type, generic_type, true>(_block_sz) 
+               : new DataStream<float, datetime_type, generic_type, false>(_block_sz);
     } 
 
     try{

@@ -13,28 +13,28 @@ generic_type       | C++      | generic.hpp      | custom generic type
 
 #### Typedefs
 
-typedef                  | underlying type                                | language | defined by
--------------------------|------------------------------------------------|----------|--------------------------
-LPCSTR                   | const char*                                    | C / C++  | WINAPI
-LPS TR                   | char*                                          | C / C++  | WINAPI
-BOOL                     | unsigned int                                   | C / C++  | WINAPI
-size_type                | uint32_t                                       | C / C++  | tos_databridge.h
-type_bits_type           | uint8_t                                        | C / C++  | tos_databridge.h
-str_set_type             | ILSet<std::string>                             | C++      | tos_databridge.h 
-topic_set_type           | ILSet<TOS_Topics::TOPICS>                      | C++      | tos_databridge.h 
-def_price_type           | float                                          | C / C++  | tos_databridge.h
-ext_price_type           | double                                         | C / C++  | tos_databridge.h
-def_size_type            | long                                           | C / C++  | tos_databridge.h
-ext_price_type           | long long                                      | C / C++  | tos_databridge.h
-pDateTimeStamp           | DateTimeStamp*                                 | C / C++  | tos_databridge.h
-generic_dts_type         | std::pair<generic_type,DateTimeStamp>          | C++      | tos_databridge.h
-generic_vector_type      | std::vector<generic_type>                      | C++      | tos_databridge.h
-dts_vector_type          | std::vector<DateTimeStamp>                     | C++      | tos_databridge.h
-generic_dts_vectors_type | std::pair<generic_vector_type,dts_vector_type> | C++      | tos_databridge.h
-generic_map_type         | std::map<std::string, generic_type>            | C++      | tos_databridge.h
-generic_dts_map_type     | std::map<std::string, generic_dts_type>        | C++      | tos_databridge.h
-generic_matrix_type      | std::map<std::string, generic_map_type>        | C++      | tos_databridge.h
-generic_dts_matrix_type  | std::map<std::string, generic_dts_map_type>    | C++      | tos_databridge.h
+typedef                         | underlying type                                | language | defined by
++--------------------------------|------------------------------------------------|----------|--------------------------
++LPCSTR                          | const char*                                    | C / C++  | WINAPI
++LPS TR                          | char*                                          | C / C++  | WINAPI
++BOOL                            | unsigned int                                   | C / C++  | WINAPI
++size_type                       | uint32_t                                       | C / C++  | tos_databridge.h
++type_bits_type                  | uint8_t                                        | C / C++  | tos_databridge.h
++str_set_type                    | ILSet<std::string>                             | C++      | tos_databridge.h 
++topic_set_type                  | ILSet<TOS_Topics::TOPICS>                      | C++      | tos_databridge.h 
++def_price_type **(DEPRECATED)** | float                                          | C / C++  | tos_databridge.h
++ext_price_type **(DEPRECATED)** | double                                         | C / C++  | tos_databridge.h
++def_size_type  **(DEPRECATED)** | long                                           | C / C++  | tos_databridge.h
++ext_size_type **(DEPRECATED)**  | long long                                      | C / C++  | tos_databridge.h
++pDateTimeStamp                  | DateTimeStamp*                                 | C / C++  | tos_databridge.h
++generic_dts_type                | std::pair<generic_type,DateTimeStamp>          | C++      | tos_databridge.h
++generic_vector_type             | std::vector<generic_type>                      | C++      | tos_databridge.h
++dts_vector_type                 | std::vector<DateTimeStamp>                     | C++      | tos_databridge.h
++generic_dts_vectors_type        | std::pair<generic_vector_type,dts_vector_type> | C++      | tos_databridge.h
++generic_map_type                | std::map<std::string, generic_type>            | C++      | tos_databridge.h
++generic_dts_map_type            | std::map<std::string, generic_dts_type>        | C++      | tos_databridge.h
++generic_matrix_type             | std::map<std::string, generic_map_type>        | C++      | tos_databridge.h
++generic_dts_matrix_type         | std::map<std::string, generic_dts_map_type>    | C++      | tos_databridge.h
 
 #### Error Codes
 
@@ -370,23 +370,23 @@ Check the bits with the appropriate constants:
 
     if(tbits == TOSDB_INTGR_BIT) 
        \\ just the integer bit
-       \\ data are longs (def_size_type).
+       \\ data are longs 
     else if(tbits == TOSDB_INTGR_BIT | TOSDB_QUAD_BIT) 
        \\ integer bit and the quad bit
-       \\ data are long longs (ext_size_type)
+       \\ data are long longs
     else if (tbits == TOSDB_QUAD_BIT)
        \\ quad bit, no integer bit
-       \\ data are doubles (ext_price_type)
+       \\ data are doubles 
     else if (tbits) == 0)
        \\ no quad bit, no integer bit
-       \\ data are floats (def_price_type)
+       \\ data are floats
     else if (tbits == TOSDB_STRING_BIT)
        \\ no quad bit, no integer bit, just the string bit
        \\ data are strings
     else 
        \\ ERROR 
     
-> **IMPORTANT** Make sure you don't simply check a bit with logical AND when what you really want is to check the entire type_bits_type value. In this example checking for the INTGR_BIT will return true for def_size_type(long) AND ext_size_type(long long). 
+> **IMPORTANT** Make sure you don't simply check a bit with logical AND when what you really want is to check the entire type_bits_type value. In this example checking for the INTGR_BIT will return true for long AND long long. 
 
 **`[C/C++] TOSDB_GetTypeString(LPCSTR topic_str, LPSTR dest, size_type str_len) -> int`** 
 
@@ -463,24 +463,13 @@ The following functions all have DateTimeStamp versions. In order to use them th
 
 > **IMPORTANT** Label arrays (see Frames, below) in C should be the same length as the primary data array and DateTimeStamp array (if used).
 
-(Unfortunately) we use the explict type-names and their typedefs inconsistently. Keep in mind:
-
-typedef        | type 
----------------|-----------
-def_price_type | float
-ext_price_type | double
-def_size_type  | long
-ext_size_type  | long long
-
-> **FUTURE DEPRECATION WARNING** These bad/confusing typedefs will probably be deprecated at some point. 
-
 
 ##### Individual Data-Points
 
-**`[C/C++] TOSDB_GetDouble(LPCSTR id, LPCSTR item, LPCSTR topic_str, long indx, ext_price_type* dest, pDateTimeStamp datetime) -> int`**  
-**`[C/C++] TOSDB_GetFloat(LPCSTR id, LPCSTR item, LPCSTR topic_str, long indx, def_price_type* dest, pDateTimeStamp datetime) -> int`**  
-**`[C/C++] TOSDB_GetLongLong(LPCSTR id, LPCSTR item, LPCSTR topic_str, long indx, ext_size_type* dest, pDateTimeStamp datetime) -> int`**  
-**`[C/C++] TOSDB_GetLong(LPCSTR id, LPCSTR item, LPCSTR topic_str, long indx, def_size_type* dest, pDateTimeStamp datetime) -> int`**  
+**`[C/C++] TOSDB_GetDouble(LPCSTR id, LPCSTR item, LPCSTR topic_str, long indx, double* dest, pDateTimeStamp datetime) -> int`**  
+**`[C/C++] TOSDB_GetFloat(LPCSTR id, LPCSTR item, LPCSTR topic_str, long indx, float* dest, pDateTimeStamp datetime) -> int`**  
+**`[C/C++] TOSDB_GetLongLong(LPCSTR id, LPCSTR item, LPCSTR topic_str, long indx, long long* dest, pDateTimeStamp datetime) -> int`**  
+**`[C/C++] TOSDB_GetLong(LPCSTR id, LPCSTR item, LPCSTR topic_str, long indx, long* dest, pDateTimeStamp datetime) -> int`**  
 
 - Sets '*dest' to the historical value at position 'indx'.
 - Sets '*datetime' to DateTime struct if NOT NULL and block supports date-time(see TOSDB_IsUsingDateTime).
@@ -493,10 +482,10 @@ ext_size_type  | long long
 - 'str_len' is the size of the string buffer and should be >= TOSDB_STR_DATA_SZ.
 - Returns 0 on success, error code on failure.
 
-**`[C++] TOSDB_Get<ext_price_type,false>(std::string id, std::string item, TOS_Topics::TOPICS topic_t, long indx) -> ext_price_type`**  
-**`[C++] TOSDB_Get<def_price_type,false>(std::string id, std::string item, TOS_Topics::TOPICS topic_t, long indx) -> def_price_type`**  
-**`[C++] TOSDB_Get<ext_size_type,false>(std::string id, std::string item, TOS_Topics::TOPICS topic_t, long indx) -> ext_size_type`**  
-**`[C++] TOSDB_Get<def_size_type,false>(std::string id, std::string item, TOS_Topics::TOPICS topic_t, long indx) -> def_size_type`**  
+**`[C++] TOSDB_Get<double,false>(std::string id, std::string item, TOS_Topics::TOPICS topic_t, long indx) -> double`**  
+**`[C++] TOSDB_Get<float,false>(std::string id, std::string item, TOS_Topics::TOPICS topic_t, long indx) -> float`**  
+**`[C++] TOSDB_Get<long long,false>(std::string id, std::string item, TOS_Topics::TOPICS topic_t, long indx) -> long long`**  
+**`[C++] TOSDB_Get<long,false>(std::string id, std::string item, TOS_Topics::TOPICS topic_t, long indx) -> long`**  
 
 - Returns the historical value at position 'indx'.
 - Throws on failure.
@@ -511,10 +500,10 @@ ext_size_type  | long long
 - Returns the historical value at position 'indx', as generic_type.
 - Throws on failure.
 
-**`[C++] TOSDB_Get<ext_price_type,true>(std::string id, std::string item, TOS_Topics::TOPICS topic_t, long indx) -> std::pair<ext_price_type, DateTimeStamp>`**  
-**`[C++] TOSDB_Get<def_price_type,true>(std::string id, std::string item, TOS_Topics::TOPICS topic_t, long indx) -> std::pair<def_price_type, DateTimeStamp>`**  
-**`[C++] TOSDB_Get<ext_size_type,true>(std::string id, std::string item, TOS_Topics::TOPICS topic_t, long indx) -> std::pair<ext_size_type, DateTimeStamp>`**  
-**`[C++] TOSDB_Get<def_size_type,true>(std::string id, std::string item, TOS_Topics::TOPICS topic_t, long indx) -> std::pair<def_size_type, DateTimeStamp>`**  
+**`[C++] TOSDB_Get<double,true>(std::string id, std::string item, TOS_Topics::TOPICS topic_t, long indx) -> std::pair<double, DateTimeStamp>`**  
+**`[C++] TOSDB_Get<float,true>(std::string id, std::string item, TOS_Topics::TOPICS topic_t, long indx) -> std::pair<float, DateTimeStamp>`**  
+**`[C++] TOSDB_Get<long long,true>(std::string id, std::string item, TOS_Topics::TOPICS topic_t, long indx) -> std::pair<long long, DateTimeStamp>`**  
+**`[C++] TOSDB_Get<long,true>(std::string id, std::string item, TOS_Topics::TOPICS topic_t, long indx) -> std::pair<long, DateTimeStamp>`**  
 
 - Returns an std::pair of the historical value at position 'indx' AND DateTimeStamp if block supports it.
 - Throws on failure.
@@ -536,10 +525,10 @@ ext_size_type  | long long
 
 > **PERFORMANCE NOTE** Not suprisingly, when n is very large the the non-string C calls are the fastest, with the non-generic, non-string  C++ calls just behind. 
 
-**`[C/C++] TOSDB_GetStreamSnapshotDoubles(LPCSTR id,LPCSTR item, LPCSTR topic_str, ext_price_type* dest, size_type array_len, pDateTimeStamp datetime, long end, long beg) -> int`**  
-**`[C/C++] TOSDB_GetStreamSnapshotFloats(LPCSTR id,LPCSTR item, LPCSTR topic_str, def_price_type* dest, size_type array_len, pDateTimeStamp datetime, long end, long beg) -> int`**  
-**`[C/C++] TOSDB_GetStreamSnapshotLongLongs(LPCSTR id,LPCSTR item, LPCSTR topic_str, ext_size_type* dest, size_type array_len, pDateTimeStamp datetime, long end, long beg) -> int`**  
-**`[C/C++] TOSDB_GetStreamSnapshotLongs(LPCSTR id,LPCSTR item, LPCSTR topic_str, def_size_type* dest, size_type array_len, pDateTimeStamp datetime, long end, long beg) -> int`**  
+**`[C/C++] TOSDB_GetStreamSnapshotDoubles(LPCSTR id,LPCSTR item, LPCSTR topic_str, double* dest, size_type array_len, pDateTimeStamp datetime, long end, long beg) -> int`**  
+**`[C/C++] TOSDB_GetStreamSnapshotFloats(LPCSTR id,LPCSTR item, LPCSTR topic_str, float* dest, size_type array_len, pDateTimeStamp datetime, long end, long beg) -> int`**  
+**`[C/C++] TOSDB_GetStreamSnapshotLongLongs(LPCSTR id,LPCSTR item, LPCSTR topic_str, long long* dest, size_type array_len, pDateTimeStamp datetime, long end, long beg) -> int`**  
+**`[C/C++] TOSDB_GetStreamSnapshotLongs(LPCSTR id,LPCSTR item, LPCSTR topic_str, long* dest, size_type array_len, pDateTimeStamp datetime, long end, long beg) -> int`**  
 
 - Populates '*dest' with historical data between position 'beg' and 'end', inclusively.
 - Populates '*datetime' with the matching DateTime structs if NOT NULL and block supports date-time(see TOSDB_IsUsingDateTime).
@@ -554,10 +543,10 @@ ext_size_type  | long long
 - 'str_len' is the size of each string buffer in the array and should be >= TOSDB_STR_DATA_SZ.
 - Returns 0 on success, error code on failure.
 
-**`[C++] TOSDB_GetStreamSnapshot<ext_price_type,false>(std::string id, std::string item, TOS_Topics::TOPICS topic_t, long end, long beg) -> std::vector<ext_price_type>`**  
-**`[C++] TOSDB_GetStreamSnapshot<def_price_type,false>(std::string id, std::string item, TOS_Topics::TOPICS topic_t, long end, long beg) -> std::vector<def_price_type>`**  
-**`[C++] TOSDB_GetStreamSnapshot<ext_size_type,false>(std::string id, std::string item, TOS_Topics::TOPICS topic_t, long end, long beg) -> std::vector<ext_size_type>`**  
-**`[C++] TOSDB_GetStreamSnapshot<def_size_type,false>(std::string id, std::string item, TOS_Topics::TOPICS topic_t, long end, long beg) -> std::vector<def_size_type>`**  
+**`[C++] TOSDB_GetStreamSnapshot<double,false>(std::string id, std::string item, TOS_Topics::TOPICS topic_t, long end, long beg) -> std::vector<double>`**  
+**`[C++] TOSDB_GetStreamSnapshot<float,false>(std::string id, std::string item, TOS_Topics::TOPICS topic_t, long end, long beg) -> std::vector<float>`**  
+**`[C++] TOSDB_GetStreamSnapshot<long long,false>(std::string id, std::string item, TOS_Topics::TOPICS topic_t, long end, long beg) -> std::vector<long long>`**  
+**`[C++] TOSDB_GetStreamSnapshot<long,false>(std::string id, std::string item, TOS_Topics::TOPICS topic_t, long end, long beg) -> std::vector<long>`**  
 
 - Returns vector of historical data between position 'beg' and 'end', inclusively.
 - Throws on failure.
@@ -572,10 +561,10 @@ ext_size_type  | long long
 - Returns vector of historical data, as generic_types, between position 'beg' and 'end', inclusively.
 - Throws on failure.
 
-**`[C++] TOSDB_GetStreamSnapshot<ext_price_type,true>(std::string id, std::string item, TOS_Topics::TOPICS topic_t, long end, long beg) -> std::pair<std::vector<ext_price_type>,dts_vector_type>`**  
-**`[C++] TOSDB_GetStreamSnapshot<def_price_type,true>(std::string id, std::string item, TOS_Topics::TOPICS topic_t, long end, long beg) -> std::pair<std::vector<def_price_type>,dts_vector_type>`**  
-**`[C++] TOSDB_GetStreamSnapshot<ext_size_type,true>(std::string id, std::string item, TOS_Topics::TOPICS topic_t, long end, long beg) -> std::pair<std::vector<ext_size_type>,dts_vector_type>`**  
-**`[C++] TOSDB_GetStreamSnapshot<def_size_type,true>(std::string id, std::string item, TOS_Topics::TOPICS topic_t, long end, long beg) -> std::pair<std::vector<def_size_type>,dts_vector_type>`**  
+**`[C++] TOSDB_GetStreamSnapshot<double,true>(std::string id, std::string item, TOS_Topics::TOPICS topic_t, long end, long beg) -> std::pair<std::vector<double>,dts_vector_type>`**  
+**`[C++] TOSDB_GetStreamSnapshot<float,true>(std::string id, std::string item, TOS_Topics::TOPICS topic_t, long end, long beg) -> std::pair<std::vector<float>,dts_vector_type>`**  
+**`[C++] TOSDB_GetStreamSnapshot<long long,true>(std::string id, std::string item, TOS_Topics::TOPICS topic_t, long end, long beg) -> std::pair<std::vector<long long>,dts_vector_type>`**  
+**`[C++] TOSDB_GetStreamSnapshot<long,true>(std::string id, std::string item, TOS_Topics::TOPICS topic_t, long end, long beg) -> std::pair<std::vector<long>,dts_vector_type>`**  
 
 - Returns pair of vectors of historical data and matching DateTimeStamps between position 'beg' and 'end', inclusively.
 - Throws on failure.
@@ -596,10 +585,10 @@ ext_size_type  | long long
 
 It's likely the stream will grow between consecutive calls. These calls guarantee to pick up where the last 'Get', 'GetStreamSnapshot', or 'GetStreamSnapshotFromMarker' call ended (under a few assumptions).  Internally the stream maintains a 'marker' that tracks the position of the last value pulled; the act of retreiving data and moving the marker can be thought of as a single, 'atomic' operation.
 
-**`[C/C++] TOSDB_GetStreamSnapshotDoublesFromMarker(LPCSTR id,LPCSTR item,LPCSTR topic_str,ext_price_type* dest,size_type array_len, pDateTimeStamp datetime, long beg, long *get_size) -> int`**  
-**`[C/C++] TOSDB_GetStreamSnapshotFloatsFromMarker(LPCSTR id,LPCSTR item,LPCSTR topic_str,def_price_type* dest,size_type array_len, pDateTimeStamp datetime, long beg, long *get_size) -> int`**  
-**`[C/C++] TOSDB_GetStreamSnapshotLongLongsFromMarker(LPCSTR id,LPCSTR item,LPCSTR topic_str,ext_size_type* dest,size_type array_len, pDateTimeStamp datetime, long beg, long *get_size) -> int`**   
-**`[C/C++] TOSDB_GetStreamSnapshotLongsFromMarker(LPCSTR id,LPCSTR item,LPCSTR topic_str,def_size_type* dest,size_type array_len, pDateTimeStamp datetime, long beg, long *get_size) -> int`**  
+**`[C/C++] TOSDB_GetStreamSnapshotDoublesFromMarker(LPCSTR id,LPCSTR item,LPCSTR topic_str,double* dest,size_type array_len, pDateTimeStamp datetime, long beg, long *get_size) -> int`**  
+**`[C/C++] TOSDB_GetStreamSnapshotFloatsFromMarker(LPCSTR id,LPCSTR item,LPCSTR topic_str,float* dest,size_type array_len, pDateTimeStamp datetime, long beg, long *get_size) -> int`**  
+**`[C/C++] TOSDB_GetStreamSnapshotLongLongsFromMarker(LPCSTR id,LPCSTR item,LPCSTR topic_str,long long* dest,size_type array_len, pDateTimeStamp datetime, long beg, long *get_size) -> int`**   
+**`[C/C++] TOSDB_GetStreamSnapshotLongsFromMarker(LPCSTR id,LPCSTR item,LPCSTR topic_str,long* dest,size_type array_len, pDateTimeStamp datetime, long beg, long *get_size) -> int`**  
 
 - Populates '*dest' with historical data between position 'beg' and the marker, inclusively.
 - Populates '*datetime' with the matching DateTime structs if NOT NULL and block supports date-time(see TOSDB_IsUsingDateTime).
@@ -649,10 +638,10 @@ A frame is a collection of the most recent data (position/indx = 0) for ALL topi
 
 Item Frames are the most recent values of ALL the items and a single topic. (e.g {'LAST','SPY'} {'LAST','QQQ'} {'LAST','IWM'})
 
-**`[C/C++] TOSDB_GetItemFrameDoubles(LPCSTR id, LPCSTR topic_str, ext_price_type* dest, size_type array_len, LPSTR* label_dest, size_type label_str_len, pDateTimeStamp datetime) -> int`**  
-**`[C/C++] TOSDB_GetItemFrameFloats(LPCSTR id, LPCSTR topic_str, def_price_type* dest, size_type array_len, LPSTR* label_dest, size_type label_str_len, pDateTimeStamp datetime) -> int`**  
-**`[C/C++] TOSDB_GetItemFrameLongLongs(LPCSTR id, LPCSTR topic_str, ext_size_type* dest, size_type array_len, LPSTR* label_dest, size_type label_str_len, pDateTimeStamp datetime) -> int`**  
-**`[C/C++] TOSDB_GetItemFrameLongs(LPCSTR id, LPCSTR topic_str, def_size_type* dest, size_type array_len, LPSTR* label_dest, size_type label_str_len, pDateTimeStamp datetime) -> int`**  
+**`[C/C++] TOSDB_GetItemFrameDoubles(LPCSTR id, LPCSTR topic_str, double* dest, size_type array_len, LPSTR* label_dest, size_type label_str_len, pDateTimeStamp datetime) -> int`**  
+**`[C/C++] TOSDB_GetItemFrameFloats(LPCSTR id, LPCSTR topic_str, float* dest, size_type array_len, LPSTR* label_dest, size_type label_str_len, pDateTimeStamp datetime) -> int`**  
+**`[C/C++] TOSDB_GetItemFrameLongLongs(LPCSTR id, LPCSTR topic_str, long long* dest, size_type array_len, LPSTR* label_dest, size_type label_str_len, pDateTimeStamp datetime) -> int`**  
+**`[C/C++] TOSDB_GetItemFrameLongs(LPCSTR id, LPCSTR topic_str, long* dest, size_type array_len, LPSTR* label_dest, size_type label_str_len, pDateTimeStamp datetime) -> int`**  
 
 - Populates '*dest' with the current 'topic_str' values for each item in the block.
 - Populates '*datetime' with the matching DateTime structs if NOT NULL and block supports date-time(see TOSDB_IsUsingDateTime).

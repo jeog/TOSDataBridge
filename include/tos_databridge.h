@@ -144,10 +144,12 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 #endif
 
 /* the core types implemented by the data engine: engine-core.cpp */
+/* *** DEPRECATED - July 2017 *** */
 typedef long       def_size_type; 
 typedef long long  ext_size_type;
 typedef float      def_price_type;
 typedef double     ext_price_type;
+/* *** DEPRECATED - July 2017 *** */
 
 /* guarantees for the Python wrapper */
 typedef uint32_t size_type;
@@ -472,7 +474,7 @@ public:
     typedef typename Topic_Enum_Wrapper<T>::TOPICS enum_type;
 
     /* type at compile-time 
-       (e.g TOS_Topics::Type<TOS_Topics::LAST>::type == ext_price_type) */
+       (e.g TOS_Topics::Type<TOS_Topics::LAST>::type == double) */
     template<enum_type topic>
     struct Type{ 
         typedef typename std::conditional<
@@ -480,10 +482,10 @@ public:
             typename std::conditional<
                 (T)topic & ADJ_INTGR_BIT,           
                 typename std::conditional<
-                    (T)topic & ADJ_QUAD_BIT, ext_size_type, def_size_type>::type,
+                    (T)topic & ADJ_QUAD_BIT, long long, long>::type,
                     typename std::conditional<
                         (T)topic & ADJ_QUAD_BIT, 
-                        ext_price_type, def_price_type>::type>::type>::type  type;
+                        double, float>::type>::type>::type  type;
     };
   
     /* type bits at run-time */
@@ -501,13 +503,13 @@ public:
         case TOSDB_STRING_BIT:
             return TOSDB_STR_DATA_SZ;
         case TOSDB_INTGR_BIT:                  
-            return sizeof(def_size_type);
+            return sizeof(long);
         case TOSDB_QUAD_BIT:                   
-            return sizeof(ext_price_type);
+            return sizeof(double);
         case TOSDB_INTGR_BIT | TOSDB_QUAD_BIT: 
-            return sizeof(ext_size_type);
+            return sizeof(long long);
         default :                              
-            return sizeof(def_price_type);
+            return sizeof(float);
         }; 
     }
 
@@ -519,13 +521,13 @@ public:
         case TOSDB_STRING_BIT:                 
             return typeid(std::string).name();
         case TOSDB_INTGR_BIT:                  
-            return typeid(def_size_type).name();
+            return typeid(long).name();
         case TOSDB_QUAD_BIT:                   
-            return typeid(ext_price_type).name();
+            return typeid(double).name();
         case TOSDB_INTGR_BIT | TOSDB_QUAD_BIT: 
-            return typeid(ext_size_type).name();
+            return typeid(long long).name();
         default :                              
-            return typeid(def_price_type).name();
+            return typeid(float).name();
         }; 
     }
 
@@ -822,46 +824,46 @@ TOSDB_Get<generic_type, true>(std::string id, std::string item, TOS_Topics::TOPI
 template DLL_SPEC_IFACE std::string        
 TOSDB_Get<std::string, false>(std::string id, std::string item, TOS_Topics::TOPICS topic_t, long indx);
 
-template DLL_SPEC_IFACE ext_price_type     
-TOSDB_Get<ext_price_type, false>(std::string id, std::string item, TOS_Topics::TOPICS topic_t, long indx);
+template DLL_SPEC_IFACE double     
+TOSDB_Get<double, false>(std::string id, std::string item, TOS_Topics::TOPICS topic_t, long indx);
 
-template DLL_SPEC_IFACE def_price_type     
-TOSDB_Get<def_price_type, false>(std::string id, std::string item, TOS_Topics::TOPICS topic_t, long indx);
+template DLL_SPEC_IFACE float     
+TOSDB_Get<float, false>(std::string id, std::string item, TOS_Topics::TOPICS topic_t, long indx);
 
-template DLL_SPEC_IFACE ext_size_type      
-TOSDB_Get<ext_size_type, false>(std::string id, std::string item, TOS_Topics::TOPICS topic_t, long indx);
+template DLL_SPEC_IFACE long long      
+TOSDB_Get<long long, false>(std::string id, std::string item, TOS_Topics::TOPICS topic_t, long indx);
 
-template DLL_SPEC_IFACE def_size_type      
-TOSDB_Get<def_size_type, false>(std::string id, std::string item, TOS_Topics::TOPICS topic_t, long indx);      
+template DLL_SPEC_IFACE long      
+TOSDB_Get<long, false>(std::string id, std::string item, TOS_Topics::TOPICS topic_t, long indx);      
 
 template DLL_SPEC_IFACE std::pair<std::string, DateTimeStamp>     
 TOSDB_Get<std::string, true>(std::string id, std::string item, TOS_Topics::TOPICS topic_t, long indx);
 
-template DLL_SPEC_IFACE std::pair<ext_price_type, DateTimeStamp>  
-TOSDB_Get<ext_price_type, true>(std::string id, std::string item, TOS_Topics::TOPICS topic_t, long indx);
+template DLL_SPEC_IFACE std::pair<double, DateTimeStamp>  
+TOSDB_Get<double, true>(std::string id, std::string item, TOS_Topics::TOPICS topic_t, long indx);
 
-template DLL_SPEC_IFACE std::pair<def_price_type, DateTimeStamp>  
-TOSDB_Get<def_price_type, true>(std::string id, std::string item, TOS_Topics::TOPICS topic_t, long indx);
+template DLL_SPEC_IFACE std::pair<float, DateTimeStamp>  
+TOSDB_Get<float, true>(std::string id, std::string item, TOS_Topics::TOPICS topic_t, long indx);
 
-template DLL_SPEC_IFACE std::pair<ext_size_type, DateTimeStamp>   
-TOSDB_Get<ext_size_type, true>(std::string id, std::string item, TOS_Topics::TOPICS topic_t, long indx);
+template DLL_SPEC_IFACE std::pair<long long, DateTimeStamp>   
+TOSDB_Get<long long, true>(std::string id, std::string item, TOS_Topics::TOPICS topic_t, long indx);
 
-template DLL_SPEC_IFACE std::pair<def_size_type, DateTimeStamp>   
-TOSDB_Get<def_size_type, true>(std::string id, std::string item, TOS_Topics::TOPICS topic_t, long indx);
+template DLL_SPEC_IFACE std::pair<long, DateTimeStamp>   
+TOSDB_Get<long, true>(std::string id, std::string item, TOS_Topics::TOPICS topic_t, long indx);
 
 #endif                                     
                                             
 EXT_C_SPEC DLL_SPEC_IFACE NO_THROW int     
-TOSDB_GetDouble(LPCSTR id, LPCSTR item, LPCSTR topic_str, long indx, ext_price_type* dest, pDateTimeStamp datetime);
+TOSDB_GetDouble(LPCSTR id, LPCSTR item, LPCSTR topic_str, long indx, double* dest, pDateTimeStamp datetime);
 
 EXT_C_SPEC DLL_SPEC_IFACE NO_THROW int     
-TOSDB_GetFloat(LPCSTR id, LPCSTR item, LPCSTR topic_str, long indx, def_price_type* dest, pDateTimeStamp datetime);
+TOSDB_GetFloat(LPCSTR id, LPCSTR item, LPCSTR topic_str, long indx, float* dest, pDateTimeStamp datetime);
 
 EXT_C_SPEC DLL_SPEC_IFACE NO_THROW int     
-TOSDB_GetLongLong(LPCSTR id, LPCSTR item, LPCSTR topic_str, long indx, ext_size_type* dest, pDateTimeStamp datetime);
+TOSDB_GetLongLong(LPCSTR id, LPCSTR item, LPCSTR topic_str, long indx, long long* dest, pDateTimeStamp datetime);
 
 EXT_C_SPEC DLL_SPEC_IFACE NO_THROW int     
-TOSDB_GetLong(LPCSTR id, LPCSTR item, LPCSTR topic_str, long indx, def_size_type* dest, pDateTimeStamp datetime);
+TOSDB_GetLong(LPCSTR id, LPCSTR item, LPCSTR topic_str, long indx, long* dest, pDateTimeStamp datetime);
 
 EXT_C_SPEC DLL_SPEC_IFACE NO_THROW int     
 TOSDB_GetString(LPCSTR id, LPCSTR item, LPCSTR topic_str, long indx, LPSTR dest, size_type str_len, pDateTimeStamp datetime);
@@ -884,33 +886,33 @@ DLL_SPEC_IFACE generic_dts_vectors_type
 TOSDB_GetStreamSnapshot<generic_type, true>(std::string id, std::string item, TOS_Topics::TOPICS topic_t, long end, long beg);  
 
 /* 20x faster than generic */
-template DLL_SPEC_IFACE std::vector<ext_price_type>     
-TOSDB_GetStreamSnapshot<ext_price_type, false>(std::string id, std::string item, TOS_Topics::TOPICS topic_t, long end, long beg);    
+template DLL_SPEC_IFACE std::vector<double>     
+TOSDB_GetStreamSnapshot<double, false>(std::string id, std::string item, TOS_Topics::TOPICS topic_t, long end, long beg);    
 
-template DLL_SPEC_IFACE std::vector<def_price_type>     
-TOSDB_GetStreamSnapshot<def_price_type, false>(std::string id, std::string item, TOS_Topics::TOPICS topic_t, long end, long beg);  
+template DLL_SPEC_IFACE std::vector<float>     
+TOSDB_GetStreamSnapshot<float, false>(std::string id, std::string item, TOS_Topics::TOPICS topic_t, long end, long beg);  
 
-template DLL_SPEC_IFACE std::vector<ext_size_type>      
-TOSDB_GetStreamSnapshot<ext_size_type, false>(std::string id, std::string item, TOS_Topics::TOPICS topic_t, long end, long beg);  
+template DLL_SPEC_IFACE std::vector<long long>      
+TOSDB_GetStreamSnapshot<long long, false>(std::string id, std::string item, TOS_Topics::TOPICS topic_t, long end, long beg);  
 
-template DLL_SPEC_IFACE std::vector<def_size_type>      
-TOSDB_GetStreamSnapshot<def_size_type, false>(std::string id, std::string item, TOS_Topics::TOPICS topic_t, long end, long beg);  
+template DLL_SPEC_IFACE std::vector<long>      
+TOSDB_GetStreamSnapshot<long, false>(std::string id, std::string item, TOS_Topics::TOPICS topic_t, long end, long beg);  
 
 template DLL_SPEC_IFACE std::vector<std::string>        
 TOSDB_GetStreamSnapshot<std::string, false>(std::string id, std::string item, TOS_Topics::TOPICS topic_t, long end, long beg);     
 
 
-template DLL_SPEC_IFACE std::pair<std::vector<ext_price_type>,dts_vector_type> 
-TOSDB_GetStreamSnapshot<ext_price_type, true>(std::string id, std::string item, TOS_Topics::TOPICS topic_t, long end, long beg);  
+template DLL_SPEC_IFACE std::pair<std::vector<double>,dts_vector_type> 
+TOSDB_GetStreamSnapshot<double, true>(std::string id, std::string item, TOS_Topics::TOPICS topic_t, long end, long beg);  
 
-template DLL_SPEC_IFACE std::pair<std::vector<def_price_type>,dts_vector_type> 
-TOSDB_GetStreamSnapshot<def_price_type, true>(std::string id, std::string item, TOS_Topics::TOPICS topic_t, long end, long beg);
+template DLL_SPEC_IFACE std::pair<std::vector<float>,dts_vector_type> 
+TOSDB_GetStreamSnapshot<float, true>(std::string id, std::string item, TOS_Topics::TOPICS topic_t, long end, long beg);
 
-template DLL_SPEC_IFACE std::pair<std::vector<ext_size_type>,dts_vector_type>  
-TOSDB_GetStreamSnapshot<ext_size_type, true>(std::string id, std::string item, TOS_Topics::TOPICS topic_t, long end, long beg);
+template DLL_SPEC_IFACE std::pair<std::vector<long long>,dts_vector_type>  
+TOSDB_GetStreamSnapshot<long long, true>(std::string id, std::string item, TOS_Topics::TOPICS topic_t, long end, long beg);
 
-template DLL_SPEC_IFACE std::pair<std::vector<def_size_type>,dts_vector_type>  
-TOSDB_GetStreamSnapshot<def_size_type, true>(std::string id, std::string item, TOS_Topics::TOPICS topic_t, long end, long beg);
+template DLL_SPEC_IFACE std::pair<std::vector<long>,dts_vector_type>  
+TOSDB_GetStreamSnapshot<long, true>(std::string id, std::string item, TOS_Topics::TOPICS topic_t, long end, long beg);
 
 template DLL_SPEC_IFACE std::pair<std::vector<std::string>, dts_vector_type>   
 TOSDB_GetStreamSnapshot<std::string, true>(std::string id, std::string item, TOS_Topics::TOPICS topic_t, long end, long beg);
@@ -919,19 +921,19 @@ TOSDB_GetStreamSnapshot<std::string, true>(std::string id, std::string item, TOS
 
 /* C calls about 30x faster than generic */
 EXT_C_SPEC DLL_SPEC_IFACE NO_THROW int  
-TOSDB_GetStreamSnapshotDoubles(LPCSTR id,LPCSTR item, LPCSTR topic_str, ext_price_type* dest, size_type array_len, 
+TOSDB_GetStreamSnapshotDoubles(LPCSTR id,LPCSTR item, LPCSTR topic_str, double* dest, size_type array_len, 
                                pDateTimeStamp datetime, long end, long beg); 
 
 EXT_C_SPEC DLL_SPEC_IFACE NO_THROW int  
-TOSDB_GetStreamSnapshotFloats(LPCSTR id, LPCSTR item, LPCSTR topic_str, def_price_type* dest, size_type array_len, 
+TOSDB_GetStreamSnapshotFloats(LPCSTR id, LPCSTR item, LPCSTR topic_str, float* dest, size_type array_len, 
                               pDateTimeStamp datetime, long end, long beg); 
 
 EXT_C_SPEC DLL_SPEC_IFACE NO_THROW int  
-TOSDB_GetStreamSnapshotLongLongs(LPCSTR id, LPCSTR item, LPCSTR topic_str, ext_size_type* dest, size_type array_len, 
+TOSDB_GetStreamSnapshotLongLongs(LPCSTR id, LPCSTR item, LPCSTR topic_str, long long* dest, size_type array_len, 
                                  pDateTimeStamp datetime, long end, long beg); 
 
 EXT_C_SPEC DLL_SPEC_IFACE NO_THROW int  
-TOSDB_GetStreamSnapshotLongs(LPCSTR id, LPCSTR item, LPCSTR topic_str, def_size_type* dest, size_type array_len, 
+TOSDB_GetStreamSnapshotLongs(LPCSTR id, LPCSTR item, LPCSTR topic_str, long* dest, size_type array_len, 
                              pDateTimeStamp datetime, long end, long beg); 
 
 EXT_C_SPEC DLL_SPEC_IFACE NO_THROW int  
@@ -942,19 +944,19 @@ TOSDB_GetStreamSnapshotStrings(LPCSTR id, LPCSTR item, LPCSTR topic_str, LPSTR* 
 /* 'guaranteed' to be contiguous between calls (Get, GetStreamSnapshot, GetStreamSnapshot) */
 
 EXT_C_SPEC DLL_SPEC_IFACE NO_THROW int  
-TOSDB_GetStreamSnapshotDoublesFromMarker(LPCSTR id,LPCSTR item,LPCSTR topic_str,ext_price_type* dest,size_type array_len, 
+TOSDB_GetStreamSnapshotDoublesFromMarker(LPCSTR id,LPCSTR item,LPCSTR topic_str,double* dest,size_type array_len, 
                                          pDateTimeStamp datetime, long beg, long *get_size);
 
 EXT_C_SPEC DLL_SPEC_IFACE NO_THROW int  
-TOSDB_GetStreamSnapshotFloatsFromMarker(LPCSTR id, LPCSTR item, LPCSTR topic_str, def_price_type* dest, size_type array_len, 
+TOSDB_GetStreamSnapshotFloatsFromMarker(LPCSTR id, LPCSTR item, LPCSTR topic_str, float* dest, size_type array_len, 
                                         pDateTimeStamp datetime, long beg, long *get_size);
 
 EXT_C_SPEC DLL_SPEC_IFACE NO_THROW int  
-TOSDB_GetStreamSnapshotLongLongsFromMarker(LPCSTR id, LPCSTR item, LPCSTR topic_str, ext_size_type* dest, size_type array_len, 
+TOSDB_GetStreamSnapshotLongLongsFromMarker(LPCSTR id, LPCSTR item, LPCSTR topic_str, long long* dest, size_type array_len, 
                                            pDateTimeStamp datetime, long beg, long *get_size);
 
 EXT_C_SPEC DLL_SPEC_IFACE NO_THROW int  
-TOSDB_GetStreamSnapshotLongsFromMarker(LPCSTR id, LPCSTR item, LPCSTR topic_str, def_size_type* dest, size_type array_len, 
+TOSDB_GetStreamSnapshotLongsFromMarker(LPCSTR id, LPCSTR item, LPCSTR topic_str, long* dest, size_type array_len, 
                                        pDateTimeStamp datetime, long beg, long *get_size);
 
 EXT_C_SPEC DLL_SPEC_IFACE NO_THROW int  
@@ -981,19 +983,19 @@ TOSDB_GetItemFrame<true>(std::string id, TOS_Topics::TOPICS topic_t);
 #endif 
 
 EXT_C_SPEC DLL_SPEC_IFACE NO_THROW int  
-TOSDB_GetItemFrameDoubles(LPCSTR id, LPCSTR topic_str, ext_price_type* dest, size_type array_len, 
+TOSDB_GetItemFrameDoubles(LPCSTR id, LPCSTR topic_str, double* dest, size_type array_len, 
                           LPSTR* label_dest, size_type label_str_len, pDateTimeStamp datetime);
 
 EXT_C_SPEC DLL_SPEC_IFACE NO_THROW int  
-TOSDB_GetItemFrameFloats(LPCSTR id, LPCSTR topic_str, def_price_type* dest, size_type array_len, 
+TOSDB_GetItemFrameFloats(LPCSTR id, LPCSTR topic_str, float* dest, size_type array_len, 
                          LPSTR* label_dest, size_type label_str_len, pDateTimeStamp datetime);
 
 EXT_C_SPEC DLL_SPEC_IFACE NO_THROW int  
-TOSDB_GetItemFrameLongLongs(LPCSTR id, LPCSTR topic_str, ext_size_type* dest, size_type array_len, 
+TOSDB_GetItemFrameLongLongs(LPCSTR id, LPCSTR topic_str, long long* dest, size_type array_len, 
                             LPSTR* label_dest, size_type label_str_len, pDateTimeStamp datetime); 
 
 EXT_C_SPEC DLL_SPEC_IFACE NO_THROW int  
-TOSDB_GetItemFrameLongs(LPCSTR id, LPCSTR topic_str, def_size_type* dest, size_type array_len, 
+TOSDB_GetItemFrameLongs(LPCSTR id, LPCSTR topic_str, long* dest, size_type array_len, 
                         LPSTR* label_dest, size_type label_str_len, pDateTimeStamp datetime);
 
 EXT_C_SPEC DLL_SPEC_IFACE NO_THROW int  
@@ -1084,16 +1086,16 @@ template<typename T> std::ostream&
 operator<<(std::ostream&, const std::pair<T,DateTimeStamp>&); 
 
 template DLL_SPEC_IFACE std::ostream& 
-operator<<(std::ostream&, const std::pair<ext_price_type,DateTimeStamp>&);
+operator<<(std::ostream&, const std::pair<double,DateTimeStamp>&);
 
 template DLL_SPEC_IFACE std::ostream& 
-operator<<(std::ostream&, const std::pair<def_price_type,DateTimeStamp>&);
+operator<<(std::ostream&, const std::pair<float,DateTimeStamp>&);
 
 template DLL_SPEC_IFACE std::ostream& 
-operator<<(std::ostream&, const std::pair<ext_size_type,DateTimeStamp>&);
+operator<<(std::ostream&, const std::pair<long long,DateTimeStamp>&);
 
 template DLL_SPEC_IFACE std::ostream& 
-operator<<(std::ostream&, const std::pair<def_size_type,DateTimeStamp>&);
+operator<<(std::ostream&, const std::pair<long,DateTimeStamp>&);
 
 template DLL_SPEC_IFACE std::ostream& 
 operator<<(std::ostream&, const std::pair<std::string,DateTimeStamp>&);
@@ -1103,16 +1105,16 @@ template<typename T> std::ostream&
 operator<<(std::ostream&, const std::vector<T>&);
 
 template DLL_SPEC_IFACE std::ostream& 
-operator<<(std::ostream&, const std::vector<ext_price_type>&);
+operator<<(std::ostream&, const std::vector<double>&);
 
 template DLL_SPEC_IFACE std::ostream& 
-operator<<(std::ostream&, const std::vector<def_price_type>&);
+operator<<(std::ostream&, const std::vector<float>&);
 
 template DLL_SPEC_IFACE std::ostream& 
-operator<<(std::ostream&, const std::vector<ext_size_type>&);
+operator<<(std::ostream&, const std::vector<long long>&);
 
 template DLL_SPEC_IFACE std::ostream& 
-operator<<(std::ostream&, const std::vector<def_size_type>&);
+operator<<(std::ostream&, const std::vector<long>&);
 
 template DLL_SPEC_IFACE std::ostream& 
   operator<<(std::ostream&, const std::vector<std::string>&); 
@@ -1122,16 +1124,16 @@ template<typename T> std::ostream&
 operator<<(std::ostream&, const std::pair<std::vector<T>,dts_vector_type>&);
 
 template DLL_SPEC_IFACE std::ostream& 
-operator<<(std::ostream&, const std::pair<std::vector<ext_price_type>,dts_vector_type>&);
+operator<<(std::ostream&, const std::pair<std::vector<double>,dts_vector_type>&);
 
 template DLL_SPEC_IFACE std::ostream& 
-operator<<(std::ostream&, const std::pair<std::vector<def_price_type>,dts_vector_type>&);
+operator<<(std::ostream&, const std::pair<std::vector<float>,dts_vector_type>&);
 
 template DLL_SPEC_IFACE std::ostream& 
-operator<<(std::ostream&, const std::pair<std::vector<ext_size_type>,dts_vector_type>&);
+operator<<(std::ostream&, const std::pair<std::vector<long long>,dts_vector_type>&);
 
 template DLL_SPEC_IFACE std::ostream& 
-operator<<(std::ostream&, const std::pair<std::vector<def_size_type>,dts_vector_type>&);
+operator<<(std::ostream&, const std::pair<std::vector<long>,dts_vector_type>&);
 
 template DLL_SPEC_IFACE std::ostream& 
 operator<<(std::ostream&, const std::pair<std::vector<std::string>,dts_vector_type>&);

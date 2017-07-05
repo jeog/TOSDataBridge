@@ -343,16 +343,16 @@ _threadedExtractLoop(LPVOID lParam)
                         _extractFromBuffer<std::string>(buf.first.first, buf.first.second, buf.second); 
                         break;
                     case TOSDB_INTGR_BIT :                  
-                        _extractFromBuffer<def_size_type>(buf.first.first, buf.first.second, buf.second); 
+                        _extractFromBuffer<long>(buf.first.first, buf.first.second, buf.second); 
                         break;                      
                     case TOSDB_QUAD_BIT :                   
-                        _extractFromBuffer<ext_price_type>(buf.first.first, buf.first.second, buf.second); 
+                        _extractFromBuffer<double>(buf.first.first, buf.first.second, buf.second); 
                         break;            
                     case TOSDB_INTGR_BIT | TOSDB_QUAD_BIT :                  
-                        _extractFromBuffer<ext_size_type>(buf.first.first, buf.first.second, buf.second); 
+                        _extractFromBuffer<long long>(buf.first.first, buf.first.second, buf.second); 
                         break;              
                     default : 
-                        _extractFromBuffer<def_price_type>(buf.first.first, buf.first.second, buf.second);                         
+                        _extractFromBuffer<float>(buf.first.first, buf.first.second, buf.second);                         
                     };        
                 }
                 /* --- CRITICAL SECTION --- */

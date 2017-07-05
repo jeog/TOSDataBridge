@@ -132,12 +132,12 @@ GetTests()
            dts.ctime_struct.tm_hour, dts.ctime_struct.tm_min, dts.ctime_struct.tm_sec);
 
 #ifdef __cplusplus
-   ext_price_type p = TOSDB_Get<ext_price_type,false>(block1_id,"SPY",TOS_Topics::TOPICS::LAST, 0);
-   printf("+ TOSDB_Get<ext_price_type,false>(): %s, %s, %d, %f \n", "SPY", "LAST", 0, p);
+   double p = TOSDB_Get<double,false>(block1_id,"SPY",TOS_Topics::TOPICS::LAST, 0);
+   printf("+ TOSDB_Get<double,false>(): %s, %s, %d, %f \n", "SPY", "LAST", 0, p);
 
-   std::pair<ext_size_type, DateTimeStamp> sp = 
-       TOSDB_Get<ext_size_type,true>(block1_id,"QQQ", TOS_Topics::TOPICS::VOLUME, 0);
-   printf("+ TOSDB_Get<ext_size_type,true>(): %s, %s, %d, %lld, %d:%d:%d \n", "QQQ", "VOLUME", 
+   std::pair<long long, DateTimeStamp> sp = 
+       TOSDB_Get<long long,true>(block1_id,"QQQ", TOS_Topics::TOPICS::VOLUME, 0);
+   printf("+ TOSDB_Get<long long,true>(): %s, %s, %d, %lld, %d:%d:%d \n", "QQQ", "VOLUME", 
           0, sp.first, sp.second.ctime_struct.tm_hour, sp.second.ctime_struct.tm_min, 
           sp.second.ctime_struct.tm_sec);
 
