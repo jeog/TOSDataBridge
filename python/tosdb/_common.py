@@ -255,7 +255,7 @@ class _TOSDB_DataBlock(metaclass=_ABCMeta):
         if date_time == True:  returns -> 2-tuple**
         else:                  returns -> int/float/str**
 
-        **data are of type int, float, or str (deping on the topic)
+        **data are of type int, float, or str (depending on the topic)
         
         throws TOSDB_DataTimeError, TOSDB_IndexError, TOSDB_DataError,
                TOSDB_CLibError, TOSDB_TypeError, TOSDB_ValueError
@@ -280,7 +280,7 @@ class _TOSDB_DataBlock(metaclass=_ABCMeta):
         if date_time == True:  returns -> list of 2-tuple**
         else:                  returns -> list**
 
-        **data are of type int, float, or str (deping on the topic)
+        **data are of type int, float, or str (depending on the topic)
 
         throws TOSDB_DataTimeError, TOSDB_IndexError, TOSDB_CLibError,
                TOSDB_TypeError, TOSDB_ValueError
@@ -340,7 +340,7 @@ class _TOSDB_DataBlock(metaclass=_ABCMeta):
         elif date_time == True:             returns -> list of 2-tuple**
         else:                               returns -> list**
 
-        **data are of type int, float, or str (deping on the topic)
+        **data are of type int, float, or str (depending on the topic)
 
         throws TOSDB_DataTimeError, TOSDB_IndexError, TOSDB_ValueError,
                TOSDB_DataError, TOSDB_CLibError, TOSDB_TypeError       
@@ -365,7 +365,7 @@ class _TOSDB_DataBlock(metaclass=_ABCMeta):
         elif date_time == True:          returns -> list of 2-tuple**
         else:                            returns -> list**
 
-        **data are of type int, float, or str (deping on the topic)
+        **data are of type int, float, or str (depending on the topic)
         
         throws TOSDB_DataTimeError, TOSDB_CLibError, TOSDB_TypeError,
                TOSDB_ValueError

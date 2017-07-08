@@ -14,44 +14,43 @@ Comments inside the screen-shots help explain what we are doing and why.
 
 ---
 
-First, let's initialize the library with the init() call. Be sure to use the correct version of the tos-databridge DLL. If you are using branch/version v0.6, for instance, you should be using tos-databridge-0.6-x86.dll or tos-databridge-0.6-x64.dll.
+**Initialize the library with the init() call.** Be sure to use the correct version of the tos-databridge DLL. If you are using branch/version v0.6, for instance, you should be using tos-databridge-0.6-x86.dll or tos-databridge-0.6-x64.dll.
 This loads the shared library into python and tries to automatically connect to the engine.
 
 ![](./../res/tosdb_tut1.png)
 
-Next, learn about topics(fields) and items(symbols).
+**Topics(fields) and Items(symbols)**
 
 ![](./../res/tosdb_tut2.png)
 
-Next, learn about TOSDB_DataBlock, adding items/topics to the block, and pre-caching.
+**TOSDB_DataBlock; adding items/topics to the block; pre-caching**
 
 ![](./../res/tosdb_tut3.png)
 
-Next, get a 'total frame' from the block.
+**Total Frame**
 
 ![](./../res/tosdb_tut4.png)
 
-Or, just get an 'item frame' or a 'topic frame'. Notice that total frames and topic frames return all data as strings because they can contain multiple topics of different types.
+**Topic/Item Frame**
 
 ![](./../res/tosdb_tut5.png)
 
-Now, let's look at block size, stream occupancy, and the simplest method of pulling a historical data-point from the block.
+**Block size; stream occupancy; pull individual data-points**
 
 ![](./../res/tosdb_tut6.png)
 
-Next, let's pull multiple contiguous data-points from the block.
+**Pull multiple contiguous data-points**
 
 ![](./../res/tosdb_tut7.png)
 
-Next, let's look at a detailed explanation for how we can pull multiple contiguous data-points using an 'atomic' marker, to avoid missing data between calls.
+**Pull multiple contiguous data-points from an atomic marker to avoid missing data**
 
 ![](./../res/tosdb_tut8.png)
 
-And, an example:
 
 ![](./../res/tosdb_tut9.png)
 
-Finally, lets remove some topics, show a C lib exception with an error code (tos_databridge.h), and **call clean_up() when done**
+**Remove topics; show a C lib exception with an error code (tos_databridge.h); call clean_up() when done**
 
 ![](./../res/tosdb_tut10.png)
 
