@@ -1081,6 +1081,9 @@ WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     
         UINT_PTR pho = 0; 
         UINT_PTR plo = 0;   
+
+        TOSDB_LogH("ISSUE-3-A", ("ACK RECEIVED - lParam: " + std::to_string(lParam) + 
+                                 ", wParam: " + std::to_string(wParam)).c_str() );
     
         if (lParam <= 0){      
             pho = HIWORD(lParam); /*topic*/
@@ -1092,6 +1095,9 @@ WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             strcpy_s(app_str_lower, APP_NAME);       
             str_to_lower(app_atom, TOSDB_MAX_STR_SZ); 
             str_to_lower(app_str_lower, TOSDB_MAX_STR_SZ); 
+
+            TOSDB_LogH("ISSUE-3-A", ("lParam <= 0 - app_atom: " + std::string(app_atom) + 
+                                     ", topic_atom: " + std::string(topic_atom)).c_str() );
 
             if( strcmp(app_atom, app_str_lower) )
                 break;   
@@ -1111,6 +1117,9 @@ WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             */
             UnpackDDElParam(message,lParam, (PUINT_PTR)&plo, (PUINT_PTR)&pho); 
             GlobalGetAtomName((ATOM)(pho), item_atom, (TOSDB_MAX_STR_SZ + 1)); 
+
+            TOSDB_LogH("ISSUE-3-A", ("lParam > 0 - plo: " + std::to_string(plo) + ", pho: " + 
+                                     std::to_string(pho) + ", item_atom: " + std::string(item_atom)).c_str() );
 
             if(plo == 0x0000){
                 std::string sarg(std::to_string((size_t)(HWND)wParam)); 
