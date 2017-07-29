@@ -799,11 +799,17 @@ PostItem(std::string item,
     std::string sid_id = std::to_string((size_t)convo) + item;
 
     ack_signals.set_signal_ID(sid_id);
-    PostMessage(msg_window, REQUEST_DDE_ITEM, (WPARAM)convo, (LPARAM)(item.c_str())); 
+    if( !PostMessage(msg_window, REQUEST_DDE_ITEM, (WPARAM)convo, (LPARAM)(item.c_str())) ){
+        DWORD err = GetLastError();
+        TOSDB_LogEx("ISSUE-3-A", "PostItem::PostMessage 1 failed", err);
+    }
     /* for whatever reason a bad item gets a posive ack from an attempt 
        to link it, so that message must post second to give the request 
        a chance to preempt it */    
-    PostMessage(msg_window, LINK_DDE_ITEM, (WPARAM)convo, (LPARAM)(item.c_str()));    
+    if( !PostMessage(msg_window, LINK_DDE_ITEM, (WPARAM)convo, (LPARAM)(item.c_str())) ){
+        DWORD err = GetLastError();
+        TOSDB_LogEx("ISSUE-3-A", "PostItem::PostMessage 2 failed", err);
+    }
 
     return ack_signals.wait_for(sid_id , timeout);
 }
@@ -1003,12 +1009,19 @@ WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         LPARAM lp;      
         ATOM item;       
 
+        TOSDB_LogH("ISSUE-3-A", "in LINK_DDE_ITEM");
+
         HGLOBAL hoptions = GlobalAlloc(GMEM_MOVEABLE, sizeof(DDEADVISE));       
-        if (!hoptions)
+        if (!hoptions){
+            DWORD err = GetLastError();
+            TOSDB_LogEx("ISSUE-3-A", "LINK_DDE_ITEM::GlobalAlloc failed", err);  
             break;
+        }
 
         lp_options = (DDEADVISE FAR*)GlobalLock(hoptions);
         if (!lp_options){
+            DWORD err = GetLastError();
+            TOSDB_LogEx("ISSUE-3-A", "LINK_DDE_ITEM::GlobalLock failed", err);  
             GlobalFree(hoptions);
             break;
         }
@@ -1019,13 +1032,20 @@ WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         GlobalUnlock(hoptions);
 
         item = GlobalAddAtom((LPCSTR)lParam);
-        if(!item)
+        if(!item){
+            DWORD err = GetLastError();
+            TOSDB_LogEx("ISSUE-3-A", "LINK_DDE_ITEM::GlobalAddAtom failed", err);  
             break;
+        }
 
         lp = PackDDElParam(WM_DDE_ADVISE, (UINT)hoptions, item);      
     
+        TOSDB_LogH("ISSUE-3-A", ("LINK_DDE_ITEM::PostMessage with lp: " + std::to_string(lp)).c_str() );
+
         if( !PostMessage((HWND)wParam, WM_DDE_ADVISE, (WPARAM)msg_window, lp) )
         {
+            DWORD err = GetLastError();
+            TOSDB_LogEx("ISSUE-3-A", "LINK_DDE_ITEM::PostMessage failed", err);    
             GlobalDeleteAtom(item);
             GlobalFree(hoptions);
             FreeDDElParam(WM_DDE_ADVISE, lp);
@@ -1034,13 +1054,22 @@ WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     } 
     case REQUEST_DDE_ITEM:
     {      
+        TOSDB_LogH("ISSUE-3-A", "in REQUEST_DDE_ITEM");
+
         ATOM item = GlobalAddAtom((LPCSTR)lParam);          
-        if(!item) 
+        if(!item){
+            DWORD err = GetLastError();
+            TOSDB_LogEx("ISSUE-3-A", "REQUEST_DDE_ITEM::GlobalAddAtom failed", err);  
             break;
+        }
   
-        if( !PostMessage((HWND)wParam, WM_DDE_REQUEST, (WPARAM)(msg_window), 
-                         PackDDElParam(WM_DDE_REQUEST, CF_TEXT, item)) )
+        LPARAM lp = PackDDElParam(WM_DDE_REQUEST, CF_TEXT, item);
+        TOSDB_LogH("ISSUE-3-A", ("REQUEST_DDE_ITEM::PostMessage with lp: " + std::to_string(lp)).c_str() );
+
+        if( !PostMessage((HWND)wParam, WM_DDE_REQUEST, (WPARAM)(msg_window), lp) )
         {
+            DWORD err = GetLastError();
+            TOSDB_LogEx("ISSUE-3-A", "REQUEST_DDE_ITEM::PostMessage failed", err);   
             GlobalDeleteAtom(item); 
         }
 
