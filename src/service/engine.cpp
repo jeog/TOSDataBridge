@@ -1009,7 +1009,7 @@ WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         LPARAM lp;      
         ATOM item;       
 
-        TOSDB_LogH("ISSUE-3-A", "in LINK_DDE_ITEM");
+        TOSDB_LogH("ISSUE-3-A", "in LINK_DDE_ITEM"); 
 
         HGLOBAL hoptions = GlobalAlloc(GMEM_MOVEABLE, sizeof(DDEADVISE));       
         if (!hoptions){
@@ -1038,7 +1038,7 @@ WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             break;
         }
 
-        lp = PackDDElParam(WM_DDE_ADVISE, (UINT)hoptions, item);      
+        lp = PackDDElParam(WM_DDE_ADVISE, (UINT_PTR)hoptions, item);     
     
         TOSDB_LogH("ISSUE-3-A", ("LINK_DDE_ITEM::PostMessage with lp: " + std::to_string(lp)).c_str() );
 
