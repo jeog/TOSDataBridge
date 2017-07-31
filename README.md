@@ -152,7 +152,9 @@ The core implementation is not portable, but the python interface does provides 
 #### [Java Wrapper](README_JAVA.md)
 
 
-#### [Details, Provisos & Source Glossary](README_DETAILS.md)
+#### [Details & Troubleshooting](README_DETAILS.md)
+
+#### [FAQ](README_FAQ.md)
 
 
 ### Contributions

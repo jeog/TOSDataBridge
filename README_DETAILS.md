@@ -1,4 +1,33 @@
-### Important Details & Provisos
+### Troubleshooting
+- - -
+
+##### Connection Problems
+
+TOSDataBridge needs to 1) connect the client program (e.g. python interpreter) to the Service/Engine backend, and 2) connect the Service/Engine backend to the TOS platform. If either of these steps fails you'll generally be alerted by an error code, exception, or error message, depending on the language.
+
+If you have trouble with (1) connecting the client to the Service/Engine be sure:
+
+- you have run the tosdb-setup.bat install script (and it doesn't output any error messages).
+- you have started the service ('SC start TOSDataBridge') and it's running. 'SC query TOSDataBridge' will provide the status.
+- you are using the correct version of the client library (e.g. branch 0.7 with a 64-bit Service/Engine and 64-bit client should be using tos-databridge-0.7-x64.dll)
+
+If you can connect to the Service/Engine but have trouble with (2) connecting to the TOS platform be sure:
+
+- you passed 'admin' to the tosdb-setup.bat script if your TOS runs with elevated privileges
+- you are running the Service/Engine in the appropriate session. 
+     1. open up cmd.exe 
+     2. enter 'tasklist' 
+     3. find thinkorswim and tos-databridge-engine on the list
+     4. if their Session# fields don't match you need to [re-run the tosdb-setup.bat script](README.md#quick-setup) with a custom session arg that matches the Session# of thinkorswim
+
+If none of that solves the problem be sure:
+- your anti-virus isn't sandboxing/quarantining any of the binaries and/or blocking communication between them
+- to check the log files in /log for more information
+
+If you are still having issues please [file a new issue](issues/new); you may have run into a serious bug that we'd like to fix.
+
+
+### Important Details 
 - - -
 - **Exiting Gracefully** You want to avoid shutting down the TOS platform and/or the Service while your client code is running. As a general rule follow this order: 
 
@@ -45,5 +74,7 @@
 - **Pre-Caching:** As mentioned the block requires at least one valid topic AND item, otherwise it can't hold a data-stream. Because of this, if only items(topics) are added they are held in a pre-cache until a valid topic(item) is added. Likewise, if all topics(items) are removed, the remaining items(topics) are moved into the pre-cache. This has two important consequences: 1) pre-cached entries are assumed to be valid until they come out and are sent to the engine and 2) when using the API calls or python methods to see the items/topics currently in the 'block' you WILL NOT see pre-cached items. Use the appropriate API calls or python methods to see what's in the pre-cache.
 
 - **SendMessage vs. SendMessageTimeout:** To initiate a topic with the TOS server we should send out a broadcast message via the SendMessage() system call. This call is built to block to insure the client has had a chance to deal with the ACK message. For some reason, it's deadlocking, so we've been forced to use SendMessageTimeout() with an arbitrary 500 millisecond timeout. Therefore, until this gets fixed adding topics will introduce an amount of latency in milliseconds = 500 x # of topics.
+
+
 
 
