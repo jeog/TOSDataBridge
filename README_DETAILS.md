@@ -24,7 +24,7 @@ If none of that solves the problem be sure:
 - your anti-virus isn't sandboxing/quarantining any of the binaries and/or blocking communication between them
 - to check the log files in /log for more information
 
-If you are still having issues please [file a new issue](issues/new); you may have run into a serious bug that we'd like to fix.
+If you are still having issues please [file a new issue](https://github.com/jeog/TOSDataBridge/issues/new); you may have run into a serious bug that we'd like to fix.
 
 
 ### Important Details 
