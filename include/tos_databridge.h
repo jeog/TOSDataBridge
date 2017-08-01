@@ -284,7 +284,20 @@ SysTimeString(bool use_msec=true);
 DLL_SPEC_IMPL void 
 ParseArgs(std::vector<std::string>& vec, std::string str);
 
+DLL_SPEC_IMPL std::string
+str_to_lower(std::string str);
+
+DLL_SPEC_IMPL std::string
+str_to_lower(std::string str);
+
 #endif /*__cplusplus */
+
+DLL_SPEC_IMPL void 
+str_to_lower(char* str, size_t max);
+
+DLL_SPEC_IMPL void 
+str_to_upper(char* str, size_t max);
+
 
 /* signals used by the IPC mechanism */
 #define TOSDB_SIG_ADD 1

@@ -992,14 +992,6 @@ RouteToBuffer(DDE_Data<T> data)
     /* ---(INTRA-PROCESS) CRITICAL SECTION --- */
 }
 
-void /* in place 'safe' strlwr */
-str_to_lower(char* str, size_t max)
-{
-    while(str && max--){
-        str[0] = tolower(str[0]);
-        ++str;
-    }
-}
 
 LRESULT CALLBACK 
 WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)

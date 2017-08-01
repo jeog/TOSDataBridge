@@ -133,7 +133,7 @@ _requestStreamOP(TOS_Topics::TOPICS topic_t,
     try{
         long r = std::stol(msg);        
         if(r)
-            TOSDB_LogRaw("ENGINE", ("error code returned from engine: " + std::to_string(r)).c_str());
+            TOSDB_LogRawH("ENGINE", ("error code returned from engine: " + std::to_string(r)).c_str());
         return r;
     }catch(...){
         TOSDB_LogRawH("IPC", ("failed to convert return message to long, msg:" + msg).c_str());
@@ -146,11 +146,12 @@ void
 _captureBuffer(TOS_Topics::TOPICS topic_t, 
               std::string item, 
               const TOSDBlock* db)
-{
-    std::string buf_name;
+{ 
     void *fm_hndl;
     void *mem_addr;
     void *mtx_hndl;
+    DWORD err;
+    std::string err_msg;
     buffers_ty::key_type buf_key(topic_t, item); 
 
     LOCAL_BUFFERS_LOCK_GUARD;
@@ -160,24 +161,35 @@ _captureBuffer(TOS_Topics::TOPICS topic_t,
     if( b_iter != buffers.end() ){  
         std::get<2>(b_iter->second).insert(db);     
     }else{ 
-        buf_name = CreateBufferName(TOS_Topics::map[topic_t], item);
-        fm_hndl = OpenFileMapping(FILE_MAP_READ, 0, buf_name.c_str());
-
-        if( !fm_hndl || !(mem_addr = MapViewOfFile(fm_hndl,FILE_MAP_READ,0,0,0)) )
-        {  
-            if(fm_hndl)
-                CloseHandle(fm_hndl);
-            std::string e("failure to map shared memory: "); 
-            throw TOSDB_BufferError( e.append(buf_name) );
-        }
-        CloseHandle(fm_hndl); 
-
+        std::string buf_name = CreateBufferName(TOS_Topics::map[topic_t], item);
         std::string mtx_name = std::string(buf_name).append("_mtx");
+
+        fm_hndl = OpenFileMapping(FILE_MAP_READ, 0, buf_name.c_str());
+        if( !fm_hndl ){
+            err = GetLastError();
+            err_msg = "failed to open file mapping: " + buf_name;
+            TOSDB_LogEx("DATA BUFFER", err_msg.c_str(), err);
+            throw TOSDB_BufferError(err_msg);            
+        }
+
+        mem_addr = MapViewOfFile(fm_hndl,FILE_MAP_READ,0,0,0);
+        if( !mem_addr ){   
+            err = GetLastError();            
+            err_msg = "failed to map shared memory: " + buf_name; 
+            TOSDB_LogEx("DATA BUFFER", err_msg.c_str(), err);
+            CloseHandle(fm_hndl);
+            throw TOSDB_BufferError(err_msg);
+        }
+
+        CloseHandle(fm_hndl);        
+
         mtx_hndl = OpenMutex(SYNCHRONIZE,FALSE,mtx_name.c_str());
-        if(!mtx_hndl){ 
-            UnmapViewOfFile(mem_addr);
-            std::string e("failure to open MUTEX handle: ");
-            throw TOSDB_BufferError( e.append(buf_name) );
+        if( !mtx_hndl ){ 
+            err = GetLastError();            
+            err_msg = "failure to open MUTEX handle: " + mtx_name; 
+            TOSDB_LogEx("DATA BUFFER", err_msg.c_str(), err);
+            UnmapViewOfFile(mem_addr);         
+            throw TOSDB_BufferError(err_msg);
         }
 
         std::set<const TOSDBlock*> db_set;

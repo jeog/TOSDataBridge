@@ -111,6 +111,46 @@ ParseArgs(std::vector<std::string>& vec, std::string str)
     }
 }
 
+
+void /* in place 'safe'*/
+str_to_lower(char* str, size_t max)
+{
+    while(str && max--){
+        str[0] = tolower(str[0]);
+        ++str;
+    }
+}
+
+
+void /* in place 'safe' */
+str_to_upper(char* str, size_t max)
+{
+    while(str && max--){
+        str[0] = toupper(str[0]);
+        ++str;
+    }
+}
+
+std::string  /* in place 'safe' */
+str_to_lower(std::string str)
+{
+    std::transform( str.begin(), str.end(), str.begin(), 
+                    [](unsigned char c){ return tolower(c); } );
+
+    return str;
+}
+
+
+std::string  /* in place 'safe' */
+str_to_upper(std::string str)
+{
+    std::transform( str.begin(), str.end(), str.begin(),
+                    [](unsigned char c){ return toupper(c); } );
+
+    return str;
+}
+
+
 /* IMPLEMENTATION AND INTERFACE */
 
 char** 
