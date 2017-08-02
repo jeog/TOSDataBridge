@@ -58,6 +58,7 @@ StaticAdminTests()
 void
 InvalidItemTests()
 {
+#ifdef __cplusplus
     int ret_c, ret_c_array, ret_c_both, ret_cpp, ret_cpp_set, ret_cpp_both;
 
     std::vector<std::function<std::string(char)>> sfuncs;
@@ -99,6 +100,9 @@ InvalidItemTests()
             printf("  - Failed to remove item '%s', error '%i' \n", s.c_str(), r);
         }
     }
+#else
+    printf("  - Not Implemeneted for C (use CPP) \n");
+#endif
 }
 
 
@@ -129,11 +133,9 @@ DynamicAdminTests()
     printf("+ TOSDB_SetBlockSize(): %Iu \n", block1_sz*2);    
     TOSDB_GetBlockSize(block1_id, &block1_sz);
     printf("+ TOSDB_GetBlockSize(): %Iu \n", block1_sz );
-    
-#ifdef __cplusplus
+  
     printf("+ Check For Invalid Items: \n");
     InvalidItemTests();
-#endif
 
     printf("+ TOSDB_AddTopic(): %s, %d \n", "LAST", TOSDB_AddTopic(block1_id, "LAST") );
     printf("+ TOSDB_AddTopic(): %s, %d \n", "VOLUME", TOSDB_AddTopic(block1_id, "VOLUME") );

@@ -558,8 +558,7 @@ AddStream( TOS_Topics::TOPICS topic_t,
            std::string item, 
            unsigned long timeout,
            bool log )
-{    
-    bool ret;
+{   
     int err = 0;
 
     if(topic_t == TOS_Topics::TOPICS::NULL_TOPIC){
@@ -843,8 +842,9 @@ CreateBuffer(TOS_Topics::TOPICS topic_t,
              std::string item, 
              unsigned int buffer_sz)
 {  
-    StreamBuffer buf;
-    std::string name;
+    StreamBuffer buf; 
+    std::string err_msg;
+    DWORD err;
 
     buffer_id_ty id(item, topic_t);  
        
@@ -855,7 +855,8 @@ CreateBuffer(TOS_Topics::TOPICS topic_t,
             return false;
     }
 
-    name = CreateBufferName(TOS_Topics::map[topic_t], item);
+    std::string buf_name = CreateBufferName(TOS_Topics::map[topic_t], item);
+    std::string mtx_name = std::string(buf_name).append("_mtx");
 
     buf.raw_sz = (buffer_sz < sys_info.dwPageSize) ? sys_info.dwPageSize : buffer_sz;
 
@@ -863,29 +864,35 @@ CreateBuffer(TOS_Topics::TOPICS topic_t,
                                    &sec_attr[SHEM1],
                                    PAGE_READWRITE, 0, 
                                    buf.raw_sz, 
-                                   name.c_str() ); 
+                                   buf_name.c_str() ); 
     if(!buf.hfile){
-        TOSDB_LogEx("BUFFER", "CreateFileMapping failed", GetLastError());
+        err = GetLastError();
+        err_msg = "failed to create file mapping: " + buf_name;
+        TOSDB_LogEx("DATA BUFFER", err_msg.c_str(), err);
         return false;
     }
 
     buf.raw_addr = MapViewOfFile(buf.hfile, FILE_MAP_ALL_ACCESS, 0, 0, 0);     
     if(!buf.raw_addr){
-        TOSDB_LogEx("BUFFER", "MapViewOfFile failed", GetLastError());
+        err = GetLastError();
+        err_msg = "failed to map shared memory: " + buf_name;
+        TOSDB_LogEx("DATA BUFFER", err_msg.c_str(), err);
         CloseHandle(buf.hfile);
         return false;   
-    }
+    }    
 
-    std::string mtx_name = std::string(name).append("_mtx");
-
+    // should we close the handle to the file mapping ??
+        
     buf.hmtx = CreateMutex(&sec_attr[MUTEX1], FALSE, mtx_name.c_str());
     if(!buf.hmtx){
-        TOSDB_LogEx("BUFFER", "CreateMutex failed", GetLastError());
+        err = GetLastError();
+        err_msg = "failed to open MUTEX handle: " + mtx_name;
+        TOSDB_LogEx("DATA BUFFER", err_msg.c_str(), err);
         CloseHandle(buf.hfile);
         UnmapViewOfFile(buf.raw_addr); 
         return false;
-    }
- 
+    }    
+
     /* cast mem-map to our header and fill values */
     pBufferHead ptmp = (pBufferHead)(buf.raw_addr); 
     ptmp->loop_seq = 0;
@@ -917,20 +924,17 @@ DestroyBuffer(TOS_Topics::TOPICS topic_t, std::string item)
     if(buf_iter == buffers.end())
         return false;
         
-    if( !UnmapViewOfFile(buf_iter->second.raw_addr) )
-    {        
-        TOSDB_LogEx("BUFFER", "UnmapViewOfFile failed", GetLastError());        
+    if( !UnmapViewOfFile(buf_iter->second.raw_addr) ){        
+        TOSDB_LogEx("BUFFER", "UnmapViewOfFile(raw_addr) failed", GetLastError());        
         b = false;
     }
 
-    if( !CloseHandle(buf_iter->second.hfile) )
-    {        
+    if( !CloseHandle(buf_iter->second.hfile) ){        
         TOSDB_LogEx("BUFFER", "CloseHandle(hfile) failed", GetLastError());          
         b = false;
     }
 
-    if( !CloseHandle(buf_iter->second.hmtx) )
-    {        
+    if( !CloseHandle(buf_iter->second.hmtx) ){        
         TOSDB_LogEx("BUFFER", "CloseHanlde(hmtx) failed", GetLastError());         
         b = false;
     }

@@ -186,7 +186,7 @@ _captureBuffer(TOS_Topics::TOPICS topic_t,
         mtx_hndl = OpenMutex(SYNCHRONIZE,FALSE,mtx_name.c_str());
         if( !mtx_hndl ){ 
             err = GetLastError();            
-            err_msg = "failure to open MUTEX handle: " + mtx_name; 
+            err_msg = "failed to open MUTEX handle: " + mtx_name; 
             TOSDB_LogEx("DATA BUFFER", err_msg.c_str(), err);
             UnmapViewOfFile(mem_addr);         
             throw TOSDB_BufferError(err_msg);
@@ -1126,6 +1126,7 @@ int
 TOSDB_GetClientLogPath(char* path, size_type sz)
 {       
     std::string p = BuildLogPath(LOG_NAME); 
+    /* downcast OK because we limit length of log path */
     size_type psz = p.size() + 1; /* for /n */
 
     if(sz < psz)

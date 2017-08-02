@@ -34,7 +34,8 @@ IPCBase::send(std::string msg) const
         TOSDB_LogH("IPC", "IPCBase::send() :: msg length > MAX_MESSAGE_SZ");
         throw std::invalid_argument("IPCBase::send() :: msg length > MAX_MESSAGE_SZ");
     }
-
+    
+    /* size_t to DWORD cast ok because we check msg length above */
     ret = WriteFile(_main_channel_pipe_hndl, (void*)msg.c_str(), msg.length() + 1, &d, NULL);
     if(!ret){        
         TOSDB_LogEx("IPC", "WriteFile failed in _recv()", GetLastError());  
@@ -150,6 +151,7 @@ IPCMaster::call(std::string *msg, unsigned long timeout)
     std::function<void(void)> cb_no_file = 
         [](){ TOSDB_LogH("IPC", "main pipe not found (slave not available)"); };
        
+    /* size_t to DWORD cast ok because we check msg length above */
     return _call_pipe( _main_channel_pipe_name, 
                        msg->c_str(), msg->length() + 1, 
                        recv.c_str(), recv.length() + 1, 
