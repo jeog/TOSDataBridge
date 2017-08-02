@@ -270,8 +270,10 @@ class DLL_SPEC_IMPL IPCBase;
 class DLL_SPEC_IMPL IPCMaster;
 class DLL_SPEC_IMPL IPCSlave;
 
-/* for C code: create a string of form: "TOSDB_[topic name]_[item name]"  
-   only alpha-numerics */
+/* 
+ * name of mapping is of form: "TOSDB_Buffer__[topic name]_[item_name]"  
+ * replacing reserved chars w/ ITEM_SYMBOL_BUFFER_MAP strings
+ */
 DLL_SPEC_IMPL std::string 
 CreateBufferName(std::string topic_str, std::string item);
 
@@ -284,7 +286,20 @@ SysTimeString(bool use_msec=true);
 DLL_SPEC_IMPL void 
 ParseArgs(std::vector<std::string>& vec, std::string str);
 
+DLL_SPEC_IMPL std::string
+str_to_lower(std::string str);
+
+DLL_SPEC_IMPL std::string
+str_to_lower(std::string str);
+
 #endif /*__cplusplus */
+
+DLL_SPEC_IMPL void 
+str_to_lower(char* str, size_t max);
+
+DLL_SPEC_IMPL void 
+str_to_upper(char* str, size_t max);
+
 
 /* signals used by the IPC mechanism */
 #define TOSDB_SIG_ADD 1
@@ -1177,6 +1192,9 @@ IsValidBlockSize(size_type sz);
 
 EXT_C_SPEC  DLL_SPEC_IMPL unsigned int
 IsValidBlockID(const char* id);
+
+EXT_C_SPEC  DLL_SPEC_IMPL unsigned int
+IsValidItemString(const char* item);
 
 
 #endif /* JO_TOSDB_DATABRIDGE */

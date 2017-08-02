@@ -133,7 +133,7 @@ _requestStreamOP(TOS_Topics::TOPICS topic_t,
     try{
         long r = std::stol(msg);        
         if(r)
-            TOSDB_LogRaw("ENGINE", ("error code returned from engine: " + std::to_string(r)).c_str());
+            TOSDB_LogRawH("ENGINE", ("error code returned from engine: " + std::to_string(r)).c_str());
         return r;
     }catch(...){
         TOSDB_LogRawH("IPC", ("failed to convert return message to long, msg:" + msg).c_str());
@@ -146,11 +146,12 @@ void
 _captureBuffer(TOS_Topics::TOPICS topic_t, 
               std::string item, 
               const TOSDBlock* db)
-{
-    std::string buf_name;
+{ 
     void *fm_hndl;
     void *mem_addr;
     void *mtx_hndl;
+    DWORD err;
+    std::string err_msg;
     buffers_ty::key_type buf_key(topic_t, item); 
 
     LOCAL_BUFFERS_LOCK_GUARD;
@@ -160,24 +161,35 @@ _captureBuffer(TOS_Topics::TOPICS topic_t,
     if( b_iter != buffers.end() ){  
         std::get<2>(b_iter->second).insert(db);     
     }else{ 
-        buf_name = CreateBufferName(TOS_Topics::map[topic_t], item);
-        fm_hndl = OpenFileMapping(FILE_MAP_READ, 0, buf_name.c_str());
-
-        if( !fm_hndl || !(mem_addr = MapViewOfFile(fm_hndl,FILE_MAP_READ,0,0,0)) )
-        {  
-            if(fm_hndl)
-                CloseHandle(fm_hndl);
-            std::string e("failure to map shared memory: "); 
-            throw TOSDB_BufferError( e.append(buf_name) );
-        }
-        CloseHandle(fm_hndl); 
-
+        std::string buf_name = CreateBufferName(TOS_Topics::map[topic_t], item);
         std::string mtx_name = std::string(buf_name).append("_mtx");
+
+        fm_hndl = OpenFileMapping(FILE_MAP_READ, 0, buf_name.c_str());
+        if( !fm_hndl ){
+            err = GetLastError();
+            err_msg = "failed to open file mapping: " + buf_name;
+            TOSDB_LogEx("DATA BUFFER", err_msg.c_str(), err);
+            throw TOSDB_BufferError(err_msg);            
+        }
+
+        mem_addr = MapViewOfFile(fm_hndl,FILE_MAP_READ,0,0,0);
+        if( !mem_addr ){   
+            err = GetLastError();            
+            err_msg = "failed to map shared memory: " + buf_name; 
+            TOSDB_LogEx("DATA BUFFER", err_msg.c_str(), err);
+            CloseHandle(fm_hndl);
+            throw TOSDB_BufferError(err_msg);
+        }
+
+        CloseHandle(fm_hndl);        
+
         mtx_hndl = OpenMutex(SYNCHRONIZE,FALSE,mtx_name.c_str());
-        if(!mtx_hndl){ 
-            UnmapViewOfFile(mem_addr);
-            std::string e("failure to open MUTEX handle: ");
-            throw TOSDB_BufferError( e.append(buf_name) );
+        if( !mtx_hndl ){ 
+            err = GetLastError();            
+            err_msg = "failed to open MUTEX handle: " + mtx_name; 
+            TOSDB_LogEx("DATA BUFFER", err_msg.c_str(), err);
+            UnmapViewOfFile(mem_addr);         
+            throw TOSDB_BufferError(err_msg);
         }
 
         std::set<const TOSDBlock*> db_set;
@@ -590,20 +602,30 @@ TOSDB_Add(std::string id, str_set_type items, topic_set_type topics_t)
 
      if( !_connected(true) )
         return TOSDB_ERROR_NOT_CONNECTED;
-	  
-     auto is_null = [&](TOS_Topics::TOPICS t){ return t == TOS_Topics::TOPICS::NULL_TOPIC; };
 
-    /* log removal of null topics */
-    for(auto& t : topics_t){
-        if(is_null(t))
+    /* log and remove NULL topics */
+    old_topics = topics_t;
+    topics_t.clear();
+    for( auto& t : old_topics ){
+        if( t == TOS_Topics::TOPICS::NULL_TOPIC )
             TOSDB_LogH("INPUT", "NULL topic removed from TOSDB_Add");
+        else
+            topics_t.insert(t);
     }        
+    old_topics.clear();
 
-    /* remove NULL topics */
-    topics_t.erase( std::remove_if(topics_t.begin(), topics_t.end(), is_null), 
-                    topics_t.end() );	
+    /* log and remove INVALID items */
+    old_items = items;
+    items.clear();
+    for( auto& s : old_items ){
+        if( !IsValidItemString(s.c_str()) )
+            TOSDB_LogH("INPUT", ("Invalid item string removed from TOSDB_Add: " + s).c_str() );
+        else
+            items.insert(s);
+    }
+    old_items.clear();
 
-    /* fail if both are empty - note: this could result from NULL topics */
+    /* fail if both are empty - note: this could result from NULL topics and/or invalid items*/
     if( items.empty() && topics_t.empty() )
         return TOSDB_ERROR_BAD_INPUT; 
 
@@ -701,6 +723,9 @@ TOSDB_Add(std::string id, str_set_type items, topic_set_type topics_t)
 int 
 TOSDB_AddTopic(std::string id, TOS_Topics::TOPICS topic_t)
 {
+    if( !IsValidBlockID(id.c_str()) )
+        return TOSDB_ERROR_BAD_INPUT;
+
     if(topic_t == TOS_Topics::TOPICS::NULL_TOPIC){
         TOSDB_LogH("INPUT", "NULL topic passed to TOSDB_AddTopic");
         return TOSDB_ERROR_BAD_TOPIC;  
@@ -713,6 +738,9 @@ TOSDB_AddTopic(std::string id, TOS_Topics::TOPICS topic_t)
 int   
 TOSDB_AddItem(std::string id, std::string item)
 {
+    if( !IsValidBlockID(id.c_str()) || !IsValidItemString(item.c_str()) )
+        return TOSDB_ERROR_BAD_INPUT;
+
     return TOSDB_Add(id, item, topic_set_type());
 }
 
@@ -734,6 +762,9 @@ TOSDB_AddTopic(LPCSTR id, LPCSTR topic_str)
 int 
 TOSDB_AddTopics(std::string id, topic_set_type topics_t)
 {  
+    if( !IsValidBlockID(id.c_str()) )
+        return TOSDB_ERROR_BAD_INPUT;
+
     return TOSDB_Add(id, str_set_type(), topics_t);
 }
 
@@ -754,7 +785,7 @@ TOSDB_AddTopics(LPCSTR id, LPCSTR* topics_str, size_type topics_len)
 int 
 TOSDB_AddItem(LPCSTR id, LPCSTR item)
 {  
-    if( !IsValidBlockID(id) || !CheckStringLength(item) ) 
+    if( !IsValidBlockID(id) || !IsValidItemString(item) ) 
         return TOSDB_ERROR_BAD_INPUT;    
 
     return TOSDB_Add(id, std::string(item), topic_set_type());
@@ -764,6 +795,9 @@ TOSDB_AddItem(LPCSTR id, LPCSTR item)
 int 
 TOSDB_AddItems(std::string id, str_set_type items)
 {
+    if( !IsValidBlockID(id.c_str()) )
+        return TOSDB_ERROR_BAD_INPUT;
+
     return TOSDB_Add(id, items, topic_set_type());
 }
 
@@ -773,7 +807,7 @@ TOSDB_AddItems(LPCSTR id, LPCSTR* items, size_type items_len)
 {  
     if( !IsValidBlockID(id) || !CheckStringLengths(items, items_len) )    
         return TOSDB_ERROR_BAD_INPUT;     
-   
+
     return TOSDB_Add(id, str_set_type(items,items_len), topic_set_type());  
 }
 
@@ -1092,6 +1126,7 @@ int
 TOSDB_GetClientLogPath(char* path, size_type sz)
 {       
     std::string p = BuildLogPath(LOG_NAME); 
+    /* downcast OK because we limit length of log path */
     size_type psz = p.size() + 1; /* for /n */
 
     if(sz < psz)

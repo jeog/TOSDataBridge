@@ -3,6 +3,7 @@
 
 void StaticAdminTests();
 int DynamicAdminTests();
+void InvalidItemTests();
 void GetTests();
 void StreamSnapshotTests();
 void FromMarkerTests();
@@ -53,6 +54,58 @@ StaticAdminTests()
 #endif
 }
 
+
+void
+InvalidItemTests()
+{
+#ifdef __cplusplus
+    int ret_c, ret_c_array, ret_c_both, ret_cpp, ret_cpp_set, ret_cpp_both;
+
+    std::vector<std::function<std::string(char)>> sfuncs;
+
+    sfuncs.push_back( [](char i)->std::string{ return std::string(1,i) + "test"; } );
+    sfuncs.push_back( [](char i)->std::string{ return "test" + std::string(1,i) + "test"; });
+    sfuncs.push_back( [](char i)->std::string{ return "test" + std::string(1,i); });     
+
+    for(char i = 32; i < 127; ++i){
+        std::vector<std::string> catches;
+        for(auto& f : sfuncs){    
+            std::string item = f(i);
+            const char* items[] = {item.c_str()};      
+            ret_c = TOSDB_AddItem(block1_id, items[0]);        
+            ret_c_array = TOSDB_AddItems(block1_id, items, 1);        
+            ret_c_both = TOSDB_Add(block1_id, items, 1, NULL, 0);           
+            ret_cpp = TOSDB_AddItem(std::string(block1_id), item);      
+            ret_cpp_set = TOSDB_AddItems(std::string(block1_id), str_set_type(item) );
+            ret_cpp_both = TOSDB_Add(std::string(block1_id), str_set_type(item), topic_set_type() );         
+            if( !(ret_c == ret_c_array && ret_c_array == ret_c_both && ret_c_both == ret_cpp 
+                  && ret_cpp == ret_cpp_set && ret_cpp_set == ret_cpp_both) ){
+                printf("  - Error codes failed to match (%i, %i, %i, %i, %i, %i) \n", 
+                       ret_c, ret_c_array, ret_c_both, ret_cpp, ret_cpp_set, ret_cpp_both);
+            }else if( ret_c != 0 ){
+                catches.push_back( items[0] );        
+            }         
+        }
+        if( catches.size() > 0 ){
+            std::cout<<"  + Successfully caught bad input for " << i <<": ";
+            for(std::string s : catches)
+                std::cout<< s << " ";
+            std::cout<<std::endl;
+        }
+    }
+
+    for( std::string s : TOSDB_GetPreCachedItemNames(block1_id) ){
+        int r = TOSDB_RemoveItem(block1_id, s);
+        if( r ){
+            printf("  - Failed to remove item '%s', error '%i' \n", s.c_str(), r);
+        }
+    }
+#else
+    printf("  - Not Implemeneted for C (use CPP) \n");
+#endif
+}
+
+
 int
 DynamicAdminTests()
 {
@@ -80,7 +133,10 @@ DynamicAdminTests()
     printf("+ TOSDB_SetBlockSize(): %Iu \n", block1_sz*2);    
     TOSDB_GetBlockSize(block1_id, &block1_sz);
     printf("+ TOSDB_GetBlockSize(): %Iu \n", block1_sz );
-    
+  
+    printf("+ Check For Invalid Items: \n");
+    InvalidItemTests();
+
     printf("+ TOSDB_AddTopic(): %s, %d \n", "LAST", TOSDB_AddTopic(block1_id, "LAST") );
     printf("+ TOSDB_AddTopic(): %s, %d \n", "VOLUME", TOSDB_AddTopic(block1_id, "VOLUME") );
     printf("+ TOSDB_AddItem(): %s, %d \n", "SPY", TOSDB_AddItem(block1_id, "SPY") );

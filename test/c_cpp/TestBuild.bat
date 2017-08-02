@@ -33,6 +33,7 @@ IF "%1"=="x86" (
     set "MACHarg=X86"
     set "OURobj=!BINbase!32.obj"
     set "OURexec=!BINbase!32.exe"
+    set "OURsyms=!BINbase!32.pdb"
 ) else (
     IF "%1"=="x64" (
         set "CMDpath=\bin\x86_amd64"    
@@ -46,6 +47,7 @@ IF "%1"=="x86" (
         set "MACHarg=X64"
         set "OURobj=!BINbase!64.obj"
         set "OURexec=!BINbase!64.exe"
+        set "OURsyms=!BINbase!64.pdb"
     ) else (
         CALL :usage_warn
         EXIT /B 1
@@ -76,6 +78,7 @@ echo CMDpath:     %CMDpath%
 echo OURsrc:      %OURsrc%
 echo OURobj:      %OURobj%
 echo OURexec:     %OURexec%
+echo OURsyms:     %OURsyms%
 echo INCLdir:     %INCLdir%
 echo OURlibdir:   %OURlibdir%
 echo OURlibstub:  %OURlibstub%

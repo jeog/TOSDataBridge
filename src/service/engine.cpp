@@ -558,8 +558,7 @@ AddStream( TOS_Topics::TOPICS topic_t,
            std::string item, 
            unsigned long timeout,
            bool log )
-{    
-    bool ret;
+{   
     int err = 0;
 
     if(topic_t == TOS_Topics::TOPICS::NULL_TOPIC){
@@ -769,7 +768,7 @@ CloseItem(TOS_Topics::TOPICS topic_t, std::string item, unsigned long timeout)
     if( !PostCloseItem(item, topic_t, timeout) )
     {   
         err = TOSDB_ERROR_DDE_POST;
-        TOSDB_LogH("DDE", "PostCloseItem failed, continue with CloseItem");                
+        TOSDB_LogH("ENGINE", "PostCloseItem failed, continue with CloseItem");                
     }
 
     /* previous err code takes priority */
@@ -784,7 +783,10 @@ CloseItem(TOS_Topics::TOPICS topic_t, std::string item, unsigned long timeout)
 void 
 CloseTopic(TOS_Topics::TOPICS topic_t, unsigned long timeout)
 {  
-    PostMessage(msg_window, CLOSE_CONVERSATION, (WPARAM)convos[topic_t], NULL);        
+    if( !PostMessage(msg_window, CLOSE_CONVERSATION, (WPARAM)convos[topic_t], NULL) )
+    {
+        TOSDB_LogEx("ENGINE", "CloseTopic::PostMessage::CLOSE_CONVERSATION failed", GetLastError());
+    }
     topic_refcounts.erase(topic_t); 
     convos.remove(topic_t);  
 }
@@ -794,16 +796,24 @@ bool
 PostItem(std::string item, 
          TOS_Topics::TOPICS topic_t, 
          unsigned long timeout)
-{  
+{ 
     HWND convo = convos[topic_t];
     std::string sid_id = std::to_string((size_t)convo) + item;
 
     ack_signals.set_signal_ID(sid_id);
-    PostMessage(msg_window, REQUEST_DDE_ITEM, (WPARAM)convo, (LPARAM)(item.c_str())); 
+    if( !PostMessage(msg_window, REQUEST_DDE_ITEM, (WPARAM)convo, (LPARAM)(item.c_str())) )
+    {        
+        TOSDB_LogEx("ENGINE", "PostItem::PostMessage::REQUEST_DDE_ITEM failed", GetLastError());
+    }
+
     /* for whatever reason a bad item gets a posive ack from an attempt 
        to link it, so that message must post second to give the request 
        a chance to preempt it */    
-    PostMessage(msg_window, LINK_DDE_ITEM, (WPARAM)convo, (LPARAM)(item.c_str()));    
+
+    if( !PostMessage(msg_window, LINK_DDE_ITEM, (WPARAM)convo, (LPARAM)(item.c_str())) )
+    {      
+        TOSDB_LogEx("ENGINE", "PostItem::PostMessage::LINK_DDE_ITEM failed", GetLastError());
+    }
 
     return ack_signals.wait_for(sid_id , timeout);
 }
@@ -818,7 +828,10 @@ PostCloseItem(std::string item,
     std::string sid_id = std::to_string((size_t)convo) + item;
 
     ack_signals.set_signal_ID(sid_id);
-    PostMessage(msg_window, DELINK_DDE_ITEM, (WPARAM)convo, (LPARAM)(item.c_str()));  
+    if( !PostMessage(msg_window, DELINK_DDE_ITEM, (WPARAM)convo, (LPARAM)(item.c_str())) )
+    {
+        TOSDB_LogEx("ENGINE", "PostCloseItem::PostMessage::DELINK_DDE_ITEM failed", GetLastError());
+    }
 
     return ack_signals.wait_for(sid_id, timeout);
 }
@@ -829,8 +842,9 @@ CreateBuffer(TOS_Topics::TOPICS topic_t,
              std::string item, 
              unsigned int buffer_sz)
 {  
-    StreamBuffer buf;
-    std::string name;
+    StreamBuffer buf; 
+    std::string err_msg;
+    DWORD err;
 
     buffer_id_ty id(item, topic_t);  
        
@@ -841,7 +855,8 @@ CreateBuffer(TOS_Topics::TOPICS topic_t,
             return false;
     }
 
-    name = CreateBufferName(TOS_Topics::map[topic_t], item);
+    std::string buf_name = CreateBufferName(TOS_Topics::map[topic_t], item);
+    std::string mtx_name = std::string(buf_name).append("_mtx");
 
     buf.raw_sz = (buffer_sz < sys_info.dwPageSize) ? sys_info.dwPageSize : buffer_sz;
 
@@ -849,29 +864,35 @@ CreateBuffer(TOS_Topics::TOPICS topic_t,
                                    &sec_attr[SHEM1],
                                    PAGE_READWRITE, 0, 
                                    buf.raw_sz, 
-                                   name.c_str() ); 
+                                   buf_name.c_str() ); 
     if(!buf.hfile){
-        TOSDB_LogEx("BUFFER", "CreateFileMapping failed", GetLastError());
+        err = GetLastError();
+        err_msg = "failed to create file mapping: " + buf_name;
+        TOSDB_LogEx("DATA BUFFER", err_msg.c_str(), err);
         return false;
     }
 
     buf.raw_addr = MapViewOfFile(buf.hfile, FILE_MAP_ALL_ACCESS, 0, 0, 0);     
     if(!buf.raw_addr){
-        TOSDB_LogEx("BUFFER", "MapViewOfFile failed", GetLastError());
+        err = GetLastError();
+        err_msg = "failed to map shared memory: " + buf_name;
+        TOSDB_LogEx("DATA BUFFER", err_msg.c_str(), err);
         CloseHandle(buf.hfile);
         return false;   
-    }
+    }    
 
-    std::string mtx_name = std::string(name).append("_mtx");
-
+    // should we close the handle to the file mapping ??
+        
     buf.hmtx = CreateMutex(&sec_attr[MUTEX1], FALSE, mtx_name.c_str());
     if(!buf.hmtx){
-        TOSDB_LogEx("BUFFER", "CreateMutex failed", GetLastError());
+        err = GetLastError();
+        err_msg = "failed to open MUTEX handle: " + mtx_name;
+        TOSDB_LogEx("DATA BUFFER", err_msg.c_str(), err);
         CloseHandle(buf.hfile);
         UnmapViewOfFile(buf.raw_addr); 
         return false;
-    }
- 
+    }    
+
     /* cast mem-map to our header and fill values */
     pBufferHead ptmp = (pBufferHead)(buf.raw_addr); 
     ptmp->loop_seq = 0;
@@ -903,20 +924,17 @@ DestroyBuffer(TOS_Topics::TOPICS topic_t, std::string item)
     if(buf_iter == buffers.end())
         return false;
         
-    if( !UnmapViewOfFile(buf_iter->second.raw_addr) )
-    {        
-        TOSDB_LogEx("BUFFER", "UnmapViewOfFile failed", GetLastError());        
+    if( !UnmapViewOfFile(buf_iter->second.raw_addr) ){        
+        TOSDB_LogEx("BUFFER", "UnmapViewOfFile(raw_addr) failed", GetLastError());        
         b = false;
     }
 
-    if( !CloseHandle(buf_iter->second.hfile) )
-    {        
+    if( !CloseHandle(buf_iter->second.hfile) ){        
         TOSDB_LogEx("BUFFER", "CloseHandle(hfile) failed", GetLastError());          
         b = false;
     }
 
-    if( !CloseHandle(buf_iter->second.hmtx) )
-    {        
+    if( !CloseHandle(buf_iter->second.hmtx) ){        
         TOSDB_LogEx("BUFFER", "CloseHanlde(hmtx) failed", GetLastError());         
         b = false;
     }
@@ -978,14 +996,6 @@ RouteToBuffer(DDE_Data<T> data)
     /* ---(INTRA-PROCESS) CRITICAL SECTION --- */
 }
 
-void /* in place 'safe' strlwr */
-str_to_lower(char* str, size_t max)
-{
-    while(str && max--){
-        str[0] = tolower(str[0]);
-        ++str;
-    }
-}
 
 LRESULT CALLBACK 
 WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
@@ -1004,11 +1014,14 @@ WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         ATOM item;       
 
         HGLOBAL hoptions = GlobalAlloc(GMEM_MOVEABLE, sizeof(DDEADVISE));       
-        if (!hoptions)
+        if (!hoptions){           
+            TOSDB_LogEx("DDE", "LINK_DDE_ITEM::GlobalAlloc failed", GetLastError());  
             break;
+        }
 
         lp_options = (DDEADVISE FAR*)GlobalLock(hoptions);
-        if (!lp_options){
+        if (!lp_options){           
+            TOSDB_LogEx("DDE", "LINK_DDE_ITEM::GlobalLock failed", GetLastError());  
             GlobalFree(hoptions);
             break;
         }
@@ -1019,13 +1032,16 @@ WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         GlobalUnlock(hoptions);
 
         item = GlobalAddAtom((LPCSTR)lParam);
-        if(!item)
+        if(!item){           
+            TOSDB_LogEx("DDE", "LINK_DDE_ITEM::GlobalAddAtom failed", GetLastError());  
             break;
+        }
 
-        lp = PackDDElParam(WM_DDE_ADVISE, (UINT)hoptions, item);      
-    
+        lp = PackDDElParam(WM_DDE_ADVISE, (UINT_PTR)hoptions, item);        
+
         if( !PostMessage((HWND)wParam, WM_DDE_ADVISE, (WPARAM)msg_window, lp) )
-        {
+        {      
+            TOSDB_LogEx("DDE", "LINK_DDE_ITEM::PostMessage failed", GetLastError());    
             GlobalDeleteAtom(item);
             GlobalFree(hoptions);
             FreeDDElParam(WM_DDE_ADVISE, lp);
@@ -1033,29 +1049,40 @@ WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         break;
     } 
     case REQUEST_DDE_ITEM:
-    {      
+    {     
+        LPARAM lp;   
+
         ATOM item = GlobalAddAtom((LPCSTR)lParam);          
-        if(!item) 
+        if(!item){       
+            TOSDB_LogEx("DDE", "REQUEST_DDE_ITEM::GlobalAddAtom failed", GetLastError());  
             break;
+        }
   
-        if( !PostMessage((HWND)wParam, WM_DDE_REQUEST, (WPARAM)(msg_window), 
-                         PackDDElParam(WM_DDE_REQUEST, CF_TEXT, item)) )
-        {
+        lp = PackDDElParam(WM_DDE_REQUEST, CF_TEXT, item);
+       
+        if( !PostMessage((HWND)wParam, WM_DDE_REQUEST, (WPARAM)(msg_window), lp) )
+        {         
+            TOSDB_LogEx("DDE", "REQUEST_DDE_ITEM::PostMessage failed", GetLastError());   
             GlobalDeleteAtom(item); 
         }
 
         break; 
     } 
     case DELINK_DDE_ITEM:
-    {      
-        ATOM item = GlobalAddAtom((LPCSTR)lParam);      
-        LPARAM lp = PackDDElParam(WM_DDE_UNADVISE, 0, item);
-      
-        if(!item) 
+    {     
+        LPARAM lp;
+
+        ATOM item = GlobalAddAtom((LPCSTR)lParam);     
+        if(!item){            
+            TOSDB_LogEx("DDE", "DELINK_DDE_ITEM::GlobalAddAtom failed", GetLastError()); 
             break;
+        }
+
+        lp = PackDDElParam(WM_DDE_UNADVISE, 0, item);
 
         if( !PostMessage((HWND)wParam, WM_DDE_UNADVISE, (WPARAM)(msg_window), lp) )
-        {
+        {           
+            TOSDB_LogEx("DDE", "DELINK_DDE_ITEM::PostMessage failed", GetLastError());   
             GlobalDeleteAtom(item);      
             FreeDDElParam(WM_DDE_UNADVISE, lp);
         }   
@@ -1064,7 +1091,10 @@ WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     } 
     case CLOSE_CONVERSATION: 
     {
-        PostMessage((HWND)wParam, WM_DDE_TERMINATE, (WPARAM)msg_window, NULL);          
+        if( !PostMessage((HWND)wParam, WM_DDE_TERMINATE, (WPARAM)msg_window, NULL) )
+        {   
+            TOSDB_LogEx("DDE", "CLOSE_CONVERSATION::PostMessage failed", GetLastError());  
+        }        
         break;  
     }
     case WM_DESTROY:        
@@ -1073,14 +1103,17 @@ WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         break;
     }
     case WM_DDE_ACK:  
-    {      
+    {     
         char topic_atom[TOSDB_MAX_STR_SZ + 1];
         char app_atom[TOSDB_MAX_STR_SZ + 1];
         char app_str_lower[TOSDB_MAX_STR_SZ + 1];
-        char item_atom[TOSDB_MAX_STR_SZ + 1];  
+        char item_atom[TOSDB_MAX_STR_SZ + 1];          
     
         UINT_PTR pho = 0; 
         UINT_PTR plo = 0;   
+
+        TOSDB_LogDebug( ("ACK RECEIVED - lParam: " + std::to_string(lParam) + 
+                         ", wParam: " + std::to_string(wParam)).c_str() );
     
         if (lParam <= 0){      
             pho = HIWORD(lParam); /*topic*/
@@ -1093,8 +1126,13 @@ WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             str_to_lower(app_atom, TOSDB_MAX_STR_SZ); 
             str_to_lower(app_str_lower, TOSDB_MAX_STR_SZ); 
 
-            if( strcmp(app_atom, app_str_lower) )
+            TOSDB_LogDebug( ("lParam <= 0 - app_atom: " + std::string(app_atom) + 
+                             ", topic_atom: " + std::string(topic_atom)).c_str() );
+
+            if( strcmp(app_atom, app_str_lower) ){
+                TOSDB_LogH("DDE", (app_atom + std::string(" != ") + app_str_lower).c_str() );
                 break;   
+            }
 
             convos_ty::pair1_type cp(TOS_Topics::map[topic_atom],(HWND)wParam);
             convos.insert(std::move(cp));       
@@ -1111,6 +1149,10 @@ WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             */
             UnpackDDElParam(message,lParam, (PUINT_PTR)&plo, (PUINT_PTR)&pho); 
             GlobalGetAtomName((ATOM)(pho), item_atom, (TOSDB_MAX_STR_SZ + 1)); 
+
+            TOSDB_LogDebug( ("lParam > 0 - plo: " + std::to_string(plo) + ", pho: " + 
+                             std::to_string(pho) + ", item_atom: " + 
+                             std::string(item_atom)).c_str() );
 
             if(plo == 0x0000){
                 std::string sarg(std::to_string((size_t)(HWND)wParam)); 
@@ -1202,7 +1244,7 @@ template<typename T>
 void 
 DDE_Data<T>::_init_datetime()
 {
-    system_clock_type::time_point now; 
+    system_clock_type::time_point now;  
     std::chrono::seconds sec;
     micro_sec_type ms;    
     time_t t;
