@@ -16,14 +16,64 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 */
 
 #include "tos_databridge.h"
+#include "initializer_chain.hpp"
 
 #include <fstream>
 #include <memory>
 #include <string>
 #include <algorithm>
+#include <set>
 
 /* this will be defined/exported for ALL (implemenation) modules; */                             
 /* extern */ char TOSDB_LOG_PATH[MAX_PATH+40];
+
+namespace{
+
+const std::set<const char> ITEM_VALID_START_CHARS = 
+    InitializerChain<std::set<const char>>
+        ('-')
+        ('+')
+        ('.')
+        ('$')       
+        ('/')
+        ('#');
+
+const std::set<const char> ITEM_VALID_MID_CHARS = 
+    InitializerChain<std::set<const char>>
+        ('-')
+        ('.')
+        ('*')
+        ('+')
+        (':')
+        ('$')  
+        ('/')
+        ('#');
+
+const std::set<const char> ITEM_VALID_END_CHARS = 
+    InitializerChain<std::set<const char>>
+        ('.')
+        ('$') 
+        ('#');
+
+const std::unordered_map<char, std::string> ITEM_SYMBOL_BUFFER_MAP = 
+    InitializerChain<std::unordered_map<char, std::string>>
+        ('-', "(1)")
+        ('.', "(2)")
+        ('$', "(3)")
+        ('/', "(4)")
+        ('*', "(5)")
+        ('+', "(6)")
+        ('#', "(7)")
+        (':', "(8)");
+
+bool
+_isValidItemChar(const char c, const std::set<const char>& valid_other_chars=std::set<const char>())
+{
+    return (isalnum(c) || (valid_other_chars.find(c) != valid_other_chars.end())); 
+}
+
+}; /* namespace */
+
 
 BOOL WINAPI 
 DllMain(HINSTANCE mod, DWORD why, LPVOID res)
@@ -69,19 +119,21 @@ DllMain(HINSTANCE mod, DWORD why, LPVOID res)
 std::string 
 CreateBufferName(std::string topic_str, std::string item)
 {     /* 
-      * name of mapping is of form: "TOSDB_[topic name]_[item_name]"  
-      * only alpha-numeric characters (except under-score) 
+      * name of mapping is of form: "TOSDB_Buffer__[topic name]_[item_name]"  
+      * replacing reserved chars w/ ITEM_SYMBOL_BUFFER_MAP strings
       */
-      std::string str("TOSDB_");
-      str.append( topic_str.append("_" + item) );
+      std::stringstream bname;
+      std::string str = "TOSDB_Buffer__" + topic_str + "_" + item;
 
-      auto f = [](char x){ return !isalnum(x) && x != '_'; };
-      str.erase(std::remove_if(str.begin(), str.end(), f), str.end());
+      for( char c : str ){
+          auto f = ITEM_SYMBOL_BUFFER_MAP.find(c);
+          bname << ((f == ITEM_SYMBOL_BUFFER_MAP.end()) ? std::string(1,c) : f->second);
+      }
      
 #ifdef NO_KGBLNS
-      return str;
+      return bname.str();
 #else
-      return std::string("Global\\").append(str);
+      return std::string("Global\\").append(bname.str());
 #endif
 }
 
@@ -131,7 +183,7 @@ str_to_upper(char* str, size_t max)
     }
 }
 
-std::string  /* in place 'safe' */
+std::string 
 str_to_lower(std::string str)
 {
     std::transform( str.begin(), str.end(), str.begin(), 
@@ -141,7 +193,7 @@ str_to_lower(std::string str)
 }
 
 
-std::string  /* in place 'safe' */
+std::string  
 str_to_upper(std::string str)
 {
     std::transform( str.begin(), str.end(), str.begin(),
@@ -261,4 +313,35 @@ IsValidBlockID(const char* id)
     return 1;
 }
 
+
+unsigned int
+IsValidItemString(const char* item)
+{
+    if( !item || !CheckStringLength(item)  )
+        return 0;
+
+    size_t slen = strlen(item);
+
+    /* first char */
+    if( !_isValidItemChar(item[0], ITEM_VALID_START_CHARS) ){
+          TOSDB_LogH("INPUT", ("invalid item string: " + std::string(item)).c_str() );
+          return 0;       
+    }
+        
+    /* middle chars */
+    for(int i = 1; i < slen -1; ++i){
+        if( !_isValidItemChar(item[i], ITEM_VALID_MID_CHARS) ){
+            TOSDB_LogH("INPUT", ("invalid item string: " + std::string(item)).c_str() );
+            return 0;           
+        }       
+    }    
+
+    /* last char*/
+    if( !_isValidItemChar(item[slen-1], ITEM_VALID_END_CHARS) ){
+        TOSDB_LogH("INPUT", ("invalid item string: " + std::string(item)).c_str() );
+        return 0;
+    }
+
+    return 1;
+}
 

@@ -199,6 +199,7 @@ For example, if we add two topics and three items we have six streams:
 **LAST**   |&nbsp;&nbsp;X | &nbsp;&nbsp;&nbsp;X | &nbsp;&nbsp;&nbsp;&nbsp;X
 **VOLUME** |&nbsp;&nbsp;X | &nbsp;&nbsp;&nbsp;X | &nbsp;&nbsp;&nbsp;&nbsp;X
 
+Items and Topics are **CASE SENSITIVE** and should be entered as all upper-case. Topic strings will be cast to a TOS_Topics::TOPICS enum. Item strings will be checked for invalid characters in the 'Add' calls. In most cases a bad Topic will return TOSDB_ERROR_BAD_TOPIC(C); an invalid Item String will return TOSDB_ERROR_BAD_INPUT(C); or they'll throw an exception(C++). **EXCEPT**. for the 'AddItems', 'AddTopics', and 'Add' calls which take multiple items/topics and will simply remove invalid items/topics from the input array/set. Only if ALL are removed will an error/exception occur.
 
 **`[C/C++] TOSDB_Add(LPCSTR id, LPCSTR* items, size_type items_len, LPCSTR* topics_str , size_type topics_len) -> int`**  
 **`[C++] TOSDB_Add(std::string id, str_set_type items, topic_set_type topics_t) -> int`** 

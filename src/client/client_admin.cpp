@@ -602,20 +602,30 @@ TOSDB_Add(std::string id, str_set_type items, topic_set_type topics_t)
 
      if( !_connected(true) )
         return TOSDB_ERROR_NOT_CONNECTED;
-	  
-     auto is_null = [&](TOS_Topics::TOPICS t){ return t == TOS_Topics::TOPICS::NULL_TOPIC; };
 
-    /* log removal of null topics */
-    for(auto& t : topics_t){
-        if(is_null(t))
+    /* log and remove NULL topics */
+    old_topics = topics_t;
+    topics_t.clear();
+    for( auto& t : old_topics ){
+        if( t == TOS_Topics::TOPICS::NULL_TOPIC )
             TOSDB_LogH("INPUT", "NULL topic removed from TOSDB_Add");
+        else
+            topics_t.insert(t);
     }        
+    old_topics.clear();
 
-    /* remove NULL topics */
-    topics_t.erase( std::remove_if(topics_t.begin(), topics_t.end(), is_null), 
-                    topics_t.end() );	
+    /* log and remove INVALID items */
+    old_items = items;
+    items.clear();
+    for( auto& s : old_items ){
+        if( !IsValidItemString(s.c_str()) )
+            TOSDB_LogH("INPUT", ("Invalid item string removed from TOSDB_Add: " + s).c_str() );
+        else
+            items.insert(s);
+    }
+    old_items.clear();
 
-    /* fail if both are empty - note: this could result from NULL topics */
+    /* fail if both are empty - note: this could result from NULL topics and/or invalid items*/
     if( items.empty() && topics_t.empty() )
         return TOSDB_ERROR_BAD_INPUT; 
 
@@ -713,6 +723,9 @@ TOSDB_Add(std::string id, str_set_type items, topic_set_type topics_t)
 int 
 TOSDB_AddTopic(std::string id, TOS_Topics::TOPICS topic_t)
 {
+    if( !IsValidBlockID(id.c_str()) )
+        return TOSDB_ERROR_BAD_INPUT;
+
     if(topic_t == TOS_Topics::TOPICS::NULL_TOPIC){
         TOSDB_LogH("INPUT", "NULL topic passed to TOSDB_AddTopic");
         return TOSDB_ERROR_BAD_TOPIC;  
@@ -725,6 +738,9 @@ TOSDB_AddTopic(std::string id, TOS_Topics::TOPICS topic_t)
 int   
 TOSDB_AddItem(std::string id, std::string item)
 {
+    if( !IsValidBlockID(id.c_str()) || !IsValidItemString(item.c_str()) )
+        return TOSDB_ERROR_BAD_INPUT;
+
     return TOSDB_Add(id, item, topic_set_type());
 }
 
@@ -746,6 +762,9 @@ TOSDB_AddTopic(LPCSTR id, LPCSTR topic_str)
 int 
 TOSDB_AddTopics(std::string id, topic_set_type topics_t)
 {  
+    if( !IsValidBlockID(id.c_str()) )
+        return TOSDB_ERROR_BAD_INPUT;
+
     return TOSDB_Add(id, str_set_type(), topics_t);
 }
 
@@ -766,7 +785,7 @@ TOSDB_AddTopics(LPCSTR id, LPCSTR* topics_str, size_type topics_len)
 int 
 TOSDB_AddItem(LPCSTR id, LPCSTR item)
 {  
-    if( !IsValidBlockID(id) || !CheckStringLength(item) ) 
+    if( !IsValidBlockID(id) || !IsValidItemString(item) ) 
         return TOSDB_ERROR_BAD_INPUT;    
 
     return TOSDB_Add(id, std::string(item), topic_set_type());
@@ -776,6 +795,9 @@ TOSDB_AddItem(LPCSTR id, LPCSTR item)
 int 
 TOSDB_AddItems(std::string id, str_set_type items)
 {
+    if( !IsValidBlockID(id.c_str()) )
+        return TOSDB_ERROR_BAD_INPUT;
+
     return TOSDB_Add(id, items, topic_set_type());
 }
 
@@ -785,7 +807,7 @@ TOSDB_AddItems(LPCSTR id, LPCSTR* items, size_type items_len)
 {  
     if( !IsValidBlockID(id) || !CheckStringLengths(items, items_len) )    
         return TOSDB_ERROR_BAD_INPUT;     
-   
+
     return TOSDB_Add(id, str_set_type(items,items_len), topic_set_type());  
 }
 
