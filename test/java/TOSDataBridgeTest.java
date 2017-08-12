@@ -118,7 +118,7 @@ public class TOSDataBridgeTest {
         }
 
         Set<String> items = new HashSet<>(Arrays.asList("/ES","/ZN"));
-        Set<Topic> topics = new HashSet<>(Arrays.asList(Topic.LASTX, Topic.LAST, Topic.LAST_SIZE));
+        Set<Topic> topics = new HashSet<>(Arrays.asList(Topic.LASTX, Topic.LAST, Topic.LAST_SIZE, Topic.CUSTOM1));
 
         System.out.println("Add items: " + items.toString());
         for( String s : items ) {

@@ -23,7 +23,7 @@ from argparse import ArgumentParser as _ArgumentParser
 from platform import system as _system
 
 T_ITEMS = ['SPY','GOOG','QQQ']
-T_TOPICS = ['LAST','LASTX','VOLUME','LAST_SIZE','PUT_CALL_RATIO']
+T_TOPICS = ['LAST','LASTX','VOLUME','LAST_SIZE','CUSTOM9','PUT_CALL_RATIO']
 
 bsize = 100
 args=None

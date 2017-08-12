@@ -71,7 +71,26 @@ public enum Topic {
     EXCHANGE ("EXCHANGE"),
     EX_MOVE_DIFF ("EX_MOVE_DIFF"),
     HIGH ("HIGH"),
-    OPEN_INT ("OPEN_INT");
+    OPEN_INT ("OPEN_INT"),
+    CUSTOM1 ("CUSTOM1"),
+    CUSTOM2 ("CUSTOM2"),
+    CUSTOM3 ("CUSTOM3"),
+    CUSTOM4 ("CUSTOM4"),
+    CUSTOM5 ("CUSTOM5"),
+    CUSTOM6 ("CUSTOM6"),
+    CUSTOM7 ("CUSTOM7"),
+    CUSTOM8 ("CUSTOM8"),
+    CUSTOM9 ("CUSTOM9"),
+    CUSTOM10 ("CUSTOM10"),
+    CUSTOM11 ("CUSTOM11"),
+    CUSTOM12 ("CUSTOM12"),
+    CUSTOM13 ("CUSTOM13"),
+    CUSTOM14 ("CUSTOM14"),
+    CUSTOM15 ("CUSTOM15"),
+    CUSTOM16 ("CUSTOM16"),
+    CUSTOM17 ("CUSTOM17"),
+    CUSTOM18 ("CUSTOM18"),
+    CUSTOM19 ("CUSTOM19");
 
     public final String val;
     Topic(String t){

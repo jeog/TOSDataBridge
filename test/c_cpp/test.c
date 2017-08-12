@@ -144,6 +144,7 @@ DynamicAdminTests()
     printf("+ TOSDB_AddTopic(): %s, %d \n", "LASTX", TOSDB_AddTopic(block1_id, "LASTX") );
     printf("+ TOSDB_AddTopic(): %s, %d \n", "BIDX", TOSDB_AddTopic(block1_id, "BIDX") );
     printf("+ TOSDB_RemoveTopic(): %s, %d \n", "BIDX", TOSDB_RemoveTopic(block1_id, "BIDX") );
+    printf("+ TOSDB_AddTopic(): %s, %d \n", "BIDX", TOSDB_AddTopic(block1_id, "CUSTOM1") );
 
     tcount = 0;
     TOSDB_GetTopicCount(block1_id, &tcount);
@@ -225,10 +226,17 @@ StreamSnapshotTests()
    
 #ifdef __cplusplus
    auto gvec = TOSDB_GetStreamSnapshot<generic_type,true>(block1_id,"SPY",TOS_Topics::TOPICS::LAST);
-   printf("+ TOSDB_GetStreamSnapshot<generic_type,true>(): %s, %s \n", "SPY", "LAST");
+   std::cout<< "TOSDB_GetStreamSnapshot<generic_type,true>(): SPY, LAST" << std::endl;
    std::cout<< "   ";
    for(auto& i : gvec.first)
        std::cout<< i.as_string() << ' ';
+   std::cout<<std::endl;
+
+   auto gvec2 = TOSDB_GetStreamSnapshot<std::string,false>(block1_id,"SPY",TOS_Topics::TOPICS::CUSTOM1);
+   std::cout<< "TOSDB_GetStreamSnapshot<std::string,false>(): SPY, CUSTOM1" << std::endl;
+   std::cout<< "   ";
+   for(auto& i : gvec2)
+       std::cout<< i << ' ';
    std::cout<<std::endl;
 #endif
 }

@@ -1,6 +1,6 @@
 ## TOSDataBridge  
 - - -
-TOSDataBridge (TOSDB) is an open-source collection of resources for 'scraping' real-time streaming data off of TDAmeritrade's ThinkOrSwim(TOS) platform, providing C, C++, Java*(in development)* and Python interfaces. 
+TOSDataBridge (TOSDB) is an open-source collection of resources for pulling real-time streaming data off of TDAmeritrade's ThinkOrSwim(TOS) platform, providing C, C++, Java and Python interfaces. 
 
 TOSDB uses TOS's antiquated, yet still useful, DDE feature, directly through the Windows API. The C / C++ interfaces are implemented as a shared library that communicates with a backend Windows Service. The Python and Java interfaces wrap this library in a more object-oriented, user-friendly format.
 
@@ -20,6 +20,10 @@ The core implementation is not portable, but the python interface does provides 
 - **v0.7** \[branch 'v0.7'\] - 'stable' version that guarantees up-to-date binaries, signatures, and symbols (use the README from branch 'v0.7')
 
 - **v0.8** \[branch 'master'\] - development version that may lack up-to-date binaries, signatures, and/or symbols
+
+#### Recently Added to v0.8
+
+- 'CUSTOM' Topics - Users can now access the 19 CUSTOM columns/fields exported by TOS to get results from formulas, studies, scans etc. - if you can script it in TOS you can now export it via TOSDataBridge. (note: even if you change the name from say 'CUSTOM3' in TOS to 'MyGreatIndicator' TOSDataBridge still refers to that as 'CUSTOM3' or TOPICS::CUSTOM3)
     
 ### Quick Setup
 - - -
