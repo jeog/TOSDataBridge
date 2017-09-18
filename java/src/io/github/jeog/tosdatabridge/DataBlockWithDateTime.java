@@ -74,7 +74,7 @@ public class DataBlockWithDateTime extends DataBlock {
      * @throws LibraryNotLoaded C lib has not been loaded
      */
     public DataBlockWithDateTime(int size) throws CLibException, LibraryNotLoaded {
-        super(size, DEF_TIMEOUT); // use the public base constructor
+        super(size, true, DEF_TIMEOUT); // use the protected base constructor
     }
 
     /**
