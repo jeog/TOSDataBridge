@@ -1,19 +1,7 @@
 ### Java Wrapper 
 - - -
 
-***WARNING: Still in early development:***
-
-*1. interface is subject to modest change,*
-
-*2. has undergone very little testing,*
-
-*3. bugs and crashes should be expected,*
-
-*4. implementation has not been optimized for speed, safety etc.*
-
-*The Python, C, and C++ interfaces are considerably more stable at this time.*
-
-- - -
+***WARNING: Still in early development***
 
 The java wrapper, like the python wrapper, extends the underlying C/C++ interface. It uses [Java Native Access(JNA)](https://github.com/java-native-access/jna) to load and access the underlying DLL, wrapping these calls in a more user-friendly API. Currently(unlike the python wrapper) there is no virtual layer for use on non-windows systems.
 
@@ -26,9 +14,17 @@ The java wrapper, like the python wrapper, extends the underlying C/C++ interfac
 
 1. Add *java/tosdatabridge.jar* to your project's classpath.
 
-2. Add the requisite API calls and objects found in the *io.github.jeog.tosdatabridge* package(see below).
+2. Find the path of the appropriate DLL(version and build) to pass to TOSDataBridge.init(...)
 
-3. Compile and run.
+3. Add the requisite API calls and objects found in the *io.github.jeog.tosdatabridge* package(see below).
+
+4. Compile and run.
+
+An example using *java/examples/TimeAndSales/TimeAndSales.java*:
+```
+C:\...\TOSDataBridge\java\examples\TimeAndSales\> javac -classpath "../../tosdatabridge.jar" TimeAndSales.java
+C:\...\TOSDataBridge\java\examples\TimeAndSales\> java -classpath "../../tosdatabridge.jar;." TimeAndSales
+```
 
 An example using *test/java/TOSDataBridgeTest.java*:
 ```
