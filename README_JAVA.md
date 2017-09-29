@@ -20,9 +20,9 @@ The java wrapper, like the python wrapper, extends the underlying C/C++ interfac
 
 4. Compile and run.
 
-An example using *java/examples/TimeAndSales/TimeAndSales.java*:
+An example using *java/examples/TimeAndSales*:
 ```
-C:\...\TOSDataBridge\java\examples\TimeAndSales\> javac -classpath "../../tosdatabridge.jar" TimeAndSales.java
+C:\...\TOSDataBridge\java\examples\TimeAndSales\> javac -classpath "../../tosdatabridge.jar" -d "." src/TimeAndSales.java
 C:\...\TOSDataBridge\java\examples\TimeAndSales\> java -classpath "../../tosdatabridge.jar;." TimeAndSales
 ```
 
