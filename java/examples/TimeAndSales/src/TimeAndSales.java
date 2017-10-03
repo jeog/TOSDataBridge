@@ -55,56 +55,62 @@ public class TimeAndSales {
             this.symbol = symbol;
         }
 
+        private void
+        sleep(){
+            try{
+                Thread.sleep(LATENCY);
+            }catch( InterruptedException e ){
+                this.interrupt();
+            }
+        }
+
         @Override
         public void
         run(){
             while( !interrupted() ){
+                final DateTime.DateTimePair<Double> last;
+                final Long volume;
                 try {
-                    final DateTime.DateTimePair<Double> last = myDataBlock.getDoubleWithDateTime(symbol, Topic.LAST);
-                    Long volume = myDataBlock.getLong(symbol, Topic.VOLUME);
-                    if( last != null && volume != null ) {
-                        final long volumeDiff = volume - this.volume;
-                        if (this.volume != 0 && volumeDiff > 0) {
-                            final Color rowColor;
-                            if( this.previousPrice == 0 || this.previousPrice == last.first ){
-                                rowColor = Color.WHITE;
-                            }else {
-                                rowColor = (last.first  > this.previousPrice) ? Color.GREEN : Color.RED;
-                            }
-                            this.previousPrice = last.first;
-                            SwingUtilities.invokeLater(new Runnable() {
-                                @Override
-                                public void run() {
-                                    DefaultTableModel tableModel = (DefaultTableModel) myTable.getModel();
-                                    tableModel.insertRow(0, new Object[]{ last.second.toString(),
-                                            String.valueOf(last.first), String.valueOf(volumeDiff) });
-                                    myRowColors.add(0, rowColor);
-                                    int rowCount = tableModel.getRowCount();
-                                    if( rowCount > TIMESALE_TABLE_MAX_ROWS ){
-                                        tableModel.removeRow(rowCount - 1);
-                                        myRowColors.remove(rowCount - 1);
-                                        rowCount--;
-                                    }
-                                    myFrame.repaint();
-                                }
-                            });
-                        }
-                        this.volume = volume;
-                    }
+                    last = myDataBlock.getDoubleWithDateTime(symbol, Topic.LAST);
+                    volume = myDataBlock.getLong(symbol, Topic.VOLUME);
                 }catch( TOSDataBridge.TOSDataBridgeException e ){
                     displayMessage("Error", "Error retrieving data from block: " + e.getMessage(),
                             JOptionPane.ERROR_MESSAGE);
                     this.interrupt();
                     break;
                 }
-                try{
-                    Thread.sleep(LATENCY);
-                }catch( InterruptedException e ){
-                    this.interrupt();
-                    break;
+                if( last != null && volume != null ) {
+                    final long volumeDiff = volume - this.volume;
+                    if (this.volume != 0 && volumeDiff > 0) {
+                        final Color rowColor;
+                        if (this.previousPrice == 0 || this.previousPrice == last.first) {
+                            rowColor = Color.WHITE;
+                        } else {
+                            rowColor = (last.first > this.previousPrice) ? Color.GREEN : Color.RED;
+                        }
+                        this.previousPrice = last.first;
+                        SwingUtilities.invokeLater(new Runnable() {
+                            @Override
+                            public void run() {
+                                DefaultTableModel tableModel = (DefaultTableModel) myTable.getModel();
+                                tableModel.insertRow(0, new Object[]{last.second.toString(),
+                                        String.valueOf(last.first), String.valueOf(volumeDiff)});
+                                myRowColors.add(0, rowColor);
+                                int rowCount = tableModel.getRowCount();
+                                if (rowCount > TIMESALE_TABLE_MAX_ROWS) {
+                                    tableModel.removeRow(rowCount - 1);
+                                    myRowColors.remove(rowCount - 1);
+                                    rowCount--;
+                                }
+                                myFrame.repaint();
+                            }
+                        });
+                    }
+                    this.volume = volume;
                 }
+                this.sleep();
             }
-            SwingUtilities.invokeLater(new Runnable() {
+            SwingUtilities.invokeLater( new Runnable() {
                 @Override
                 public void run() {
                     DefaultTableModel tableModel = (DefaultTableModel) myTable.getModel();
@@ -147,29 +153,32 @@ public class TimeAndSales {
                         break;
                     }
                 }
-                Runtime.getRuntime().addShutdownHook( new Thread(){
-                    @Override
-                    public void run(){
-                        if( myDataRetrievalThread != null ){
-                            myDataRetrievalThread.interrupt();
-                            try {
-                                myDataRetrievalThread.join();
-                            }catch( InterruptedException e ){
-                                e.printStackTrace();
-                                Thread.currentThread().interrupt();
-                            }
-                        }
-                        if( myDataBlock != null ){
-                            try {
-                                myDataBlock.close();
-                            }catch( TOSDataBridge.TOSDataBridgeException e ){
-                                e.printStackTrace();
-                            }
-                        }
-                    }
-                });
+                Runtime.getRuntime().addShutdownHook( new CloseThread() );
             }
         });
+    }
+
+    private static class CloseThread extends Thread{
+        @Override
+        public void
+        run() {
+            if (myDataRetrievalThread != null) {
+                myDataRetrievalThread.interrupt();
+                try {
+                    myDataRetrievalThread.join(3000);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                    Thread.currentThread().interrupt();
+                }
+            }
+            if (myDataBlock != null) {
+                try {
+                    myDataBlock.close();
+                } catch (TOSDataBridge.TOSDataBridgeException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
     }
 
     private static boolean
