@@ -83,14 +83,16 @@ bool
 _connected(bool log_if_not_connected=false)
 {    
     if(!aware_of_connection.load()){
-        if(log_if_not_connected)
+        if(log_if_not_connected){
             TOSDB_LogH("IPC", "not connected to slave (!aware_of_connection)");
+        }
         return false;
     }
 
     if(!master.connected(TOSDB_DEF_TIMEOUT)){
-        if(log_if_not_connected)        
+        if(log_if_not_connected){        
             TOSDB_LogH("IPC", "not connected to slave (!master.connected)");            
+        }
         return false;
     }
 
@@ -448,16 +450,14 @@ DllMain(HANDLE mod, DWORD why, LPVOID res) /* ENTRY POINT */
     case DLL_THREAD_DETACH: 
         break;
     case DLL_PROCESS_DETACH:  
-        {
-            if( master.connected(TOSDB_DEF_TIMEOUT) ){                        
-                for(const auto & buffer : buffers)
-                {/* signal the service and close the handles */        
-                    _requestStreamOP(buffer.first.first, buffer.first.second, 
-                                    TOSDB_DEF_TIMEOUT, TOSDB_SIG_REMOVE);
-                    UnmapViewOfFile(std::get<3>(buffer.second));
-                    CloseHandle(std::get<4>(buffer.second));
-                }                                  
-            }
+        {                                   
+            for(const auto & buffer : buffers)
+            {/* signal the service and close the handles */        
+                _requestStreamOP(buffer.first.first, buffer.first.second, 
+                                TOSDB_DEF_TIMEOUT, TOSDB_SIG_REMOVE);
+                UnmapViewOfFile(std::get<3>(buffer.second));
+                CloseHandle(std::get<4>(buffer.second));
+            }                                             
             /* needs to come after close ops or _requestStreamOP will fail on _connected() */
             aware_of_connection.store(false);
             StopLogging();

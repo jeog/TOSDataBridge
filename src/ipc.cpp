@@ -64,7 +64,7 @@ IPCBase::recv(std::string *msg) const
     return true;
 }
 
-
+// needs to be non-blocking, called from ::call() which is called from DLLMain
 template<typename T>
 bool 
 IPCBase::_call_pipe( std::string name,
@@ -86,10 +86,12 @@ IPCBase::_call_pipe( std::string name,
 
     e = GetLastError(); 
     if(e == ERROR_FILE_NOT_FOUND){
-        if(handle_file_not_found)
+        if(handle_file_not_found){
             handle_file_not_found();
+        }
     }else{
-        TOSDB_LogEx("IPC", ("CallNamedPipe failed for pipe:" + name).c_str(), e);
+        TOSDB_LogRawH("IPC", ("CallNamedPipe failed for pipe: " + name + 
+                              ", ERROR# " + std::to_string(e)).c_str() );
     }
 
     return false;     
@@ -113,14 +115,14 @@ IPCBase::connected(unsigned long timeout)
     /* check for a single byte that == PROBE_BYTE */
     std::function<bool(uint8_t*,DWORD)> cb = 
         [](uint8_t *out, DWORD r){ 
-            if (r != sizeof(PROBE_BYTE)){
-                TOSDB_LogH("IPC", ("bad probe size returned: " + std::to_string(r)).c_str());
+            if (r != sizeof(PROBE_BYTE) ){
+                TOSDB_LogRawH("IPC", ("bad probe size returned: " + std::to_string(r)).c_str());
                 return false;
             }
-            if (*out != PROBE_BYTE){
-                TOSDB_LogH("IPC", ("bad probe value returned: " + std::to_string(*out)).c_str());
-                if (*out == PROBE_BYTE_WRONG_ARCH){
-                    TOSDB_LogH("IPC", "build mismatch between engine and library(x86 vs x64)");                
+            if( *out != PROBE_BYTE ){
+                TOSDB_LogRawH("IPC", ("bad probe value returned: " + std::to_string(*out)).c_str());
+                if( *out == PROBE_BYTE_WRONG_ARCH ){
+                    TOSDB_LogRawH("IPC", "build mismatch between engine and library(x86 vs x64)");                
                 }           
                 return false;
             }
@@ -131,6 +133,7 @@ IPCBase::connected(unsigned long timeout)
 }
 
 
+// needs to be non-blocking, called from DLLMain
 bool
 IPCMaster::call(std::string *msg, unsigned long timeout)
 {  
@@ -139,7 +142,7 @@ IPCMaster::call(std::string *msg, unsigned long timeout)
 
     /* check buffer length */
     if(msg->length() > MAX_MESSAGE_SZ){
-        TOSDB_LogH("IPC", "IPCMaster::call() :: msg length > MAX_MESSAGE_SZ");
+        TOSDB_LogRawH("IPC", "IPCMaster::call() :: msg length > MAX_MESSAGE_SZ");
         throw std::invalid_argument("IPCMaster::call() :: msg length > MAX_MESSAGE_SZ");
     } 
 
@@ -149,7 +152,7 @@ IPCMaster::call(std::string *msg, unsigned long timeout)
 
     /* if we get here the main pipe *should* be available; log if not */
     std::function<void(void)> cb_no_file = 
-        [](){ TOSDB_LogH("IPC", "main pipe not found (slave not available)"); };
+        [](){ TOSDB_LogRawH("IPC", "main pipe not found (slave not available)"); };
        
     /* size_t to DWORD cast ok because we check msg length above */
     return _call_pipe( _main_channel_pipe_name, 
