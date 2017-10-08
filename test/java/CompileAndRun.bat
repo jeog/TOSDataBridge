@@ -1,6 +1,6 @@
 @echo off
 
-set version=0.8
+set version=0.9
 set bArch=x64
 set bArchDir=x64
 set jarPath=../../java/tosdatabridge.jar

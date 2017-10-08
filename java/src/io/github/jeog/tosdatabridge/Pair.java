@@ -21,7 +21,7 @@ package io.github.jeog.tosdatabridge;
  * Simple object that contains two objects of user-defined type.
  *
  * @author Jonathon Ogden
- * @version 0.8
+ * @version 0.9
  */
 public class Pair<T1,T2>{
     public final T1 first;

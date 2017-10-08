@@ -8,7 +8,7 @@ set "INCLdir=..\..\include"
 set "BINbase=TestBuild"
 set "THISbin=%0%"
 
-set "VERSION=0.8"
+set "VERSION=0.9"
 
 IF [%3] == [] (
     CALL :usage_warn

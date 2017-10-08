@@ -25,7 +25,7 @@ import java.util.Map;
  * Error codes that can be returned by the C Lib.
  * 
  * @author Jonathon Ogden
- * @version 0.8
+ * @version 0.9
  */
 public final class CError {
     public static final int ERROR_BAD_INPUT = -1;

@@ -31,7 +31,7 @@ import java.util.List;
  * <li> microSeconds
  * </ul>
  * @author Jonathon Ogden
- * @version 0.8
+ * @version 0.9
  */
 public class DateTime extends Structure {
     public _CTime cTime;

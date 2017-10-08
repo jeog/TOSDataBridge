@@ -17,13 +17,15 @@ The core implementation is not portable, but the python interface does provides 
 ### Versions
 - - -
 
-- **v0.7** \[branch 'v0.7'\] - 'stable' version that guarantees up-to-date binaries, signatures, and symbols (use the README from branch 'v0.7')
+- **v0.8** \[branch 'v0.8'\] - 'stable' version that guarantees up-to-date binaries, signatures, and symbols (use the README from branch 'v0.8')
 
-- **v0.8** \[branch 'master'\] - development version that may lack up-to-date binaries, signatures, and/or symbols
+- **v0.9** \[branch 'master'\] - development version that may lack up-to-date binaries, signatures, and/or symbols
 
-#### Recently Added to v0.8
-
+### New Features
+- - -
 - 'CUSTOM' Topics - Users can now access the 19 CUSTOM columns/fields exported by TOS to get results from formulas, studies, scans etc. - if you can script it in TOS you can now export it via TOSDataBridge. (note: even if you change the name from say 'CUSTOM3' in TOS to 'MyGreatIndicator' TOSDataBridge still refers to that as 'CUSTOM3' or TOPICS::CUSTOM3)
+- 'GetNFromMarker' - calls added to C API allowing for stateless blocking calls to be built on top.
+- 'StreamingSession' - python Context Manager that provides blocking streaming data for any combination of items/topics  
     
 ### Quick Setup
 - - -
@@ -135,8 +137,6 @@ The core implementation is not portable, but the python interface does provides 
 - **/res** - Miscellaneous resources
 
 - **/log** - All log files and dumps
-
-- **/prov** - Provisional code that is being worked on outside the main build tree
 
 ### Docs
 - - - 

@@ -33,7 +33,7 @@ import java.io.File;
  * <li> use admin calls
  * </ol>
  * @author Jonathon Ogden
- * @version 0.8
+ * @version 0.9
  * @see Topic
  * @see <a href="https://github.com/jeog/TOSDataBridge/blob/master/README.md"> README </a>
  * @see <a href="https://github.com/jeog/TOSDataBridge/blob/master/README_JAVA.md"> README - JAVA API </a>

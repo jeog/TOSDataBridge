@@ -4,7 +4,7 @@ package io.github.jeog.tosdatabridge;
  * Enumerated object containing all the valid 'Topics' the Engine/TOS accepts.
  *
  * @author Jonathon Ogden
- * @version 0.8
+ * @version 0.9
  */
 public enum Topic {
     VOL_DIFF ("VOL_DIFF"),

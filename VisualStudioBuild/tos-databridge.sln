@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Express 2012 for Windows Desktop
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "tos-databridge-0.8", "tos-databridge.vcxproj", "{2C63A7B0-C01A-408F-A51D-1A92EB6786D0}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "tos-databridge-0.9", "tos-databridge.vcxproj", "{2C63A7B0-C01A-408F-A51D-1A92EB6786D0}"
 	ProjectSection(ProjectDependencies) = postProject
 		{ADBF916E-83D6-4FD2-8CF6-306B032E428B} = {ADBF916E-83D6-4FD2-8CF6-306B032E428B}
 	EndProjectSection
