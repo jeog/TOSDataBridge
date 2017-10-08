@@ -165,15 +165,18 @@ echo Running %OURexec%...
 @echo off
 
 IF %ERRORLEVEL% NEQ 0 (
-    echo fatal: error running %OURexec%
+    echo - Fatal: error running %OURexec%
+    echo.
+    echo Clearing Files...
+    del *.exe *.obj *.dll *.lib *.pdb *.suo 2>NUL
     EXIT /B 1
 ) else (
     echo + Success!
+    echo.
+    echo Clearing Files...
+    del *.exe *.obj *.dll *.lib *.pdb *.suo 2>NUL
 )
 
-echo.
-echo Clearing Files...
-del *.exe *.obj *.dll *.lib *.pdb *.suo 2>NUL
 
 EXIT /B %ERRORLEVEL%
 

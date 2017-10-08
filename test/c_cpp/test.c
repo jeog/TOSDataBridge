@@ -20,6 +20,9 @@ main(int argc, char* argv[])
 {
     printf("\n*** BEGIN %s BEGIN ***\n\n", argv[0]);
 
+#ifdef __cplusplus
+    try{
+#endif
     StaticAdminTests();
 
     Sleep(500);
@@ -34,7 +37,20 @@ main(int argc, char* argv[])
 
     Sleep(500);
     CloseTests();
-
+#ifdef __cplusplus
+    }catch(TOSDB_Error & t){
+        printf("\n*** TOSDB ERROR ***\n");
+        printf("- %s\n", t.info_and_what().c_str() );
+        return 1;
+    }catch(std::exception & e){
+        printf("\n*** EXCEPTION ***\n");
+        printf("- %s\n", e.what() );
+        return 1;
+    }catch(...){
+        printf("\n*** UNKNOWN ERROR ***\n");       
+        return 1;
+    }
+#endif
     printf("\n*** END %s END ***\n\n", argv[0]);
     return 0;
 }
