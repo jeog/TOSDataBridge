@@ -17,8 +17,12 @@ static size_type block1_timeout = 3000;
 
 int 
 main(int argc, char* argv[])
-{
-    printf("\n*** BEGIN %s BEGIN ***\n\n", argv[0]);
+{  
+    char lpath[2048];
+        
+    printf("\n*** BEGIN %s BEGIN ***\n\n", argv[0]);             
+    TOSDB_GetClientLogPath(lpath,2048);
+    printf("LOG: %s\n\n", lpath);
 
 #ifdef __cplusplus
     try{
