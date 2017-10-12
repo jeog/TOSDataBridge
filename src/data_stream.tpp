@@ -46,6 +46,27 @@ DATASTREAM_INTERFACE_CLASS::_copy_using_atomic_marker(OutTy *dest,
 }  
 
 DATASTREAM_INTERFACE_TEMPLATE
+template<typename InTy, typename OutTy>
+long long 
+DATASTREAM_INTERFACE_CLASS::_ncopy_using_atomic_marker(OutTy *dest, 
+                                                       size_t sz,                                                              
+                                                       typename DATASTREAM_INTERFACE_CLASS::secondary_ty *sec) const
+{  
+    long long ret;
+
+    if(!dest)
+        throw DataStreamInvalidArgument("NULL dest argument");   
+  
+    std::unique_ptr<InTy,void(*)(InTy*)>  tmp(new InTy[sz], [](InTy *p){ delete[] p; });
+
+    ret = ncopy_from_marker(tmp.get(), sz, sec);
+    for(size_t i = 0; i < sz; ++i)      
+        dest[i] = (OutTy)tmp.get()[i];  
+
+    return ret;
+}  
+
+DATASTREAM_INTERFACE_TEMPLATE
 size_t 
 DATASTREAM_INTERFACE_CLASS::copy(char **dest, 
                                  size_t dest_sz, 
@@ -113,6 +134,36 @@ DATASTREAM_INTERFACE_CLASS::copy_from_marker(std::string *dest,
     return ret;
 }
 
+DATASTREAM_INTERFACE_TEMPLATE
+long long 
+DATASTREAM_INTERFACE_CLASS::ncopy_from_marker(char **dest, 
+                                              size_t dest_sz, 
+                                              size_t str_sz,                                                       
+                                              typename DATASTREAM_INTERFACE_CLASS::secondary_ty *sec = nullptr) const 
+{ 
+    BuildThrowTypeError<std::string*,false>("ncopy_from_marker()");  
+    return 0;
+}
+
+DATASTREAM_INTERFACE_TEMPLATE
+long long 
+DATASTREAM_INTERFACE_CLASS::ncopy_from_marker(std::string *dest, 
+                                              size_t sz,                                                                
+                                              typename DATASTREAM_INTERFACE_CLASS::secondary_ty *sec = nullptr) const
+{
+    long long ret;
+
+    if(!dest)
+        throw DataStreamInvalidArgument("NULL dest argument");
+
+    auto dstr = [sz](char **pptr){ DeleteStrings(pptr, sz); };
+    std::unique_ptr<char*,decltype(dstr)> sptr(NewStrings(sz,STR_DATA_SZ), dstr);
+
+    ret = ncopy_from_marker(sptr.get(), sz, STR_DATA_SZ, sec);        
+    std::copy_n(sptr.get(), sz, dest);   
+
+    return ret;
+}
 
 DATASTREAM_PRIMARY_TEMPLATE
 void 
@@ -276,6 +327,38 @@ DATASTREAM_PRIMARY_CLASS::bound_size(size_t sz)
     /* --- CRITICAL SECTION --- */
 }  
 
+///
+
+DATASTREAM_PRIMARY_TEMPLATE
+long long
+DATASTREAM_PRIMARY_CLASS::ncopy_from_marker(Ty *dest, 
+                                            size_t sz,                                          
+                                            typename DATASTREAM_PRIMARY_CLASS::secondary_ty *sec = nullptr) const 
+{              
+    _yld_to_push();
+    _my_lock_guard_type lock(*_mtx);
+    /* --- CRITICAL SECTION --- */
+    int beg = std::max<int>((int)(*_mark_count - sz + 1), 0);
+    return copy_from_marker(dest, sz, beg, sec);
+    /* --- CRITICAL SECTION --- */
+}
+  
+DATASTREAM_PRIMARY_TEMPLATE
+long long
+DATASTREAM_PRIMARY_CLASS::ncopy_from_marker(char **dest, 
+                                            size_t dest_sz, 
+                                            size_t str_sz,                                                           
+                                            typename DATASTREAM_PRIMARY_CLASS::secondary_ty *sec = nullptr) const 
+{  
+    _yld_to_push();
+    _my_lock_guard_type lock(*_mtx);
+    /* --- CRITICAL SECTION --- */
+    int beg = std::max<int>((int)(*_mark_count - dest_sz + 1), 0);
+    return copy_from_marker(dest, dest_sz, str_sz, beg, sec);
+    /* --- CRITICAL SECTION --- */
+}
+
+///
 
 DATASTREAM_PRIMARY_TEMPLATE
 long long

@@ -584,7 +584,7 @@ The following functions all have DateTimeStamp versions. In order to use them th
 
 ##### Multiple Contiguous Data-Points From an 'Atomic' Marker
 
-It's likely the stream will grow between consecutive calls. These calls guarantee to pick up where the last 'Get', 'GetStreamSnapshot', or 'GetStreamSnapshotFromMarker' call ended (under a few assumptions).  Internally the stream maintains a 'marker' that tracks the position of the last value pulled; the act of retreiving data and moving the marker can be thought of as a single, 'atomic' operation.
+It's likely the stream will grow between consecutive calls. These calls guarantee to pick up where the last 'Get', 'GetStreamSnapshot', 'GetStreamSnapshotFromMarker', or 'GetNFromMarker' call ended (under a few assumptions).  Internally the stream maintains a 'marker' that tracks the position of the last value pulled; the act of retreiving data and moving the marker can be thought of as a single, 'atomic' operation.
 
 **`[C/C++] TOSDB_GetStreamSnapshotDoublesFromMarker(LPCSTR id,LPCSTR item,LPCSTR topic_str,double* dest,size_type array_len, pDateTimeStamp datetime, long beg, long *get_size) -> int`**  
 **`[C/C++] TOSDB_GetStreamSnapshotFloatsFromMarker(LPCSTR id,LPCSTR item,LPCSTR topic_str,float* dest,size_type array_len, pDateTimeStamp datetime, long beg, long *get_size) -> int`**  
@@ -594,7 +594,7 @@ It's likely the stream will grow between consecutive calls. These calls guarante
 - Populates '*dest' with historical data between position 'beg' and the marker, inclusively.
 - Populates '*datetime' with the matching DateTime structs if NOT NULL and block supports date-time(see TOSDB_IsUsingDateTime).
 - 'array_len' is the size of the array(s) and must be big enough to fit the data or it will be truncated.
-- Sets '*get_size' to number of data-points copied. A negative value inidicates buffer is too small or stream is 'dirty'(see below).
+- Sets '*get_size' to number of data-points copied. A negative value inidicates buffer is too small or stream is 'dirty'. (see below)
 - Returns 0 on success, error code on failure.
 
 **`[C/C++] TOSDB_GetStreamSnapshotStringsFromMarker(LPCSTR id, LPCSTR item, LPCSTR topic_str, LPSTR* dest, size_type array_len, size_type str_len, pDateTimeStamp datetime, long beg, long *get_size) -> int`** 
@@ -603,8 +603,34 @@ It's likely the stream will grow between consecutive calls. These calls guarante
 - Populates '*datetime' with the matching DateTime structs if NOT NULL and block supports date-time(see TOSDB_IsUsingDateTime).
 - 'array_len' is the size of the array(s) and must be big enough to fit the data or it will be truncated.
 - 'str_len' is the size of each string buffer in the array and should be >= TOSDB_STR_DATA_SZ.
-- Sets '*get_size' to number of data-points copied. A negative value inidicates buffer is too small or stream is 'dirty'(see below).
+- Sets '*get_size' to number of data-points copied. A negative value inidicates buffer is too small or stream is 'dirty'. (see below)
 - Returns 0 on success, error code on failure.
+
+
+**NEW [Oct 2017]**
+
+**'[C/C++] TOSDB_GetNDoublesFromMarker(LPCSTR id,LPCSTR item,LPCSTR topic_str,double* dest,size_type n, pDateTimeStamp datetime, long *get_size) -> int'**
+**'[C/C++] TOSDB_GetNFloatsFromMarker(LPCSTR id, LPCSTR item, LPCSTR topic_str, float* dest, size_type n, pDateTimeStamp datetime, long *get_size) -> int'**
+**'[C/C++] TOSDB_GetNLongLongsFromMarker(LPCSTR id, LPCSTR item, LPCSTR topic_str, long long* dest, size_type n, pDateTimeStamp datetime, long *get_size) -> int'**
+**'[C/C++] TOSDB_GetNLongsFromMarker(LPCSTR id, LPCSTR item, LPCSTR topic_str, long* dest, size_type n, pDateTimeStamp datetime, long *get_size) -> int'**
+
+- Populates '*dest' with 'n' historical data points in front of the marker.
+- Populates '*datetime' with the matching DateTime structs if NOT NULL and block supports date-time(see TOSDB_IsUsingDateTime).
+- 'n' is the size of the array(s) AND the requested amount of data.
+- Sets '*get_size' to number of data-points copied. A negative value inidicates stream is 'dirty'. (see below)
+- Returns 0 on success, error code on failure.
+
+**'[C/C++] TOSDB_GetNStringsFromMarker(LPCSTR id, LPCSTR item, LPCSTR topic_str, LPSTR* dest, size_type n, size_type str_len, pDateTimeStamp datetime, long *get_size) -> int'**
+
+- Populates '*dest' with 'n' historical data, as strings, in front of the marker.
+- Populates '*datetime' with the matching DateTime structs if NOT NULL and block supports date-time(see TOSDB_IsUsingDateTime).
+- 'n' is the size of the array(s) AND the requested amount of data.
+- 'str_len' is the size of each string buffer in the array and should be >= TOSDB_STR_DATA_SZ.
+- Sets '*get_size' to number of data-points copied. A negative value inidicates stream is 'dirty'. (see below)
+- Returns 0 on success, error code on failure.
+
+**NEW [Oct 2017]**
+
 
 A 'Dirty Stream' results from the marker hiting the back of the stream, indicating all data older than the marker is lost. To avoid this be sure you use a big enough block and/or keep the marker moving foward (by using calls mentioned above).
 

@@ -592,7 +592,15 @@ class VTOSDB_DataBlock(_TOSDB_DataBlock):
 
         return self._call(_vCALL, 'stream_snapshot_from_marker', item, topic,
                           date_time, beg, margin_of_safety, throw_if_data_lost,
-                          data_str_max) 
+                          data_str_max)
+
+
+    @_doxtend(_TOSDB_DataBlock) # __doc__ from ABC _TOSDB_DataBlock
+    def n_from_marker(self, item, topic, date_time=False, n=1, 
+                      throw_if_data_lost=True, data_str_max=STR_DATA_SZ):
+
+        return self._call(_vCALL, 'n_from_marker', item, topic, date_time, n,
+                          throw_if_data_lost, data_str_max)
     
 
     @_doxtend(_TOSDB_DataBlock) # __doc__ from ABC _TOSDB_DataBlock

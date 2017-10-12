@@ -25,12 +25,14 @@ from tosdb.intervalize import ohlc
 Once imported you'll have to initialize it so it can connect to the underlying C/C++ library. This requires the path of tos-databridge-[].dll or the root directory it's going to search in for the latest version. 
 
 ```
-# directly from the top-level package (1)
-tosdb.init(root="C:/TOSDataBridge/bin/Release")
+# the dll path directly from the top-level package (1)
+tosdb.init(dllpath="C:/TOSDataBridge/bin/Release/x64/tos-databridge-0.9-x64.dll")
+
+# the relative root(of the dll path) from the top-level package (1)
+tosdb.init(root="../bin")
 
 # (or) from an individual module (2)
 ohlc.tosdb.init(root="../bin")
-# let's just use a simple relative dir from the /python dir
 ```
 
 Please see [python/tutorial.md](./python/tutorial.md) for a walk-through with screen-shots.

@@ -26,11 +26,13 @@ from .doxtend import doxtend as _doxtend
 from io import StringIO as _StringIO
 from uuid import uuid4 as _uuid4
 from functools import partial as _partial
+from itertools import product as _product
 from math import log as _log, ceil as _ceil
 from sys import maxsize as _maxsize, stderr as _stderr
 from atexit import register as _on_exit
 from collections import namedtuple as _namedtuple
-from time import asctime as _asctime, localtime as _localtime
+from time import asctime as _asctime, localtime as _localtime, sleep as _sleep, \
+                 perf_counter as _perf_counter
 from platform import system as _system
 from contextlib import contextmanager as _contextmanager
 
@@ -365,7 +367,7 @@ def type_string(topic):
 
     return s.value.decode()
 
-        
+    
 class TOSDB_DataBlock(_TOSDB_DataBlock):
     """ The base object for storing TOS data (NOT THREAD SAFE)
 
@@ -775,17 +777,18 @@ class TOSDB_DataBlock(_TOSDB_DataBlock):
         
         if margin_of_safety < MIN_MARGIN_OF_SAFETY:
             raise TOSDB_ValueError("margin_of_safety < MIN_MARGIN_OF_SAFETY")
-        
-        is_dirty = _uint_()
-        _lib_call("TOSDB_IsMarkerDirty", 
-                  self._name,
-                  item.encode("ascii"), 
-                  topic.encode("ascii"),
-                  _pointer(is_dirty), 
-                  arg_types=(_str_, _str_, _str_, _PTR_(_uint_))) 
 
-        if is_dirty and throw_if_data_lost:
-            raise TOSDB_DataError("marker is already dirty")
+        if throw_if_data_lost:
+            # check this first so we don't move marker if dirty
+            is_dirty = _uint_()
+            _lib_call("TOSDB_IsMarkerDirty", 
+                      self._name,
+                      item.encode("ascii"), 
+                      topic.encode("ascii"),
+                      _pointer(is_dirty), 
+                      arg_types=(_str_, _str_, _str_, _PTR_(_uint_))) 
+            if is_dirty:
+                raise TOSDB_DataError("marker is already dirty")
         
         mpos = _longlong_()
         _lib_call("TOSDB_GetMarkerPosition", 
@@ -870,8 +873,99 @@ class TOSDB_DataBlock(_TOSDB_DataBlock):
                 g *= -1
 
         return list(zip(nums[:g], _map_dt(dts[:g])) if date_time else nums[:g])                        
-                                    
+
+
+    @_doxtend(_TOSDB_DataBlock) # __doc__ from ABC _TOSDB_DataBlock
+    def n_from_marker(self, item, topic, date_time=False, n=1, 
+                      throw_if_data_lost=True, data_str_max=STR_DATA_SZ):
+        
+        item = self._handle_raw_item(item)
+        topic = self._handle_raw_topic(topic)  
+        
+        if date_time and not self._date_time:
+            raise TOSDB_DateTimeError("date_time not available for this block")
+
+        if throw_if_data_lost:
+            # check this first so we don't move marker if dirty
+            is_dirty = _uint_()
+            _lib_call("TOSDB_IsMarkerDirty", 
+                      self._name,
+                      item.encode("ascii"), 
+                      topic.encode("ascii"),
+                      _pointer(is_dirty), 
+                      arg_types=(_str_, _str_, _str_, _PTR_(_uint_))) 
+            if is_dirty:
+                raise TOSDB_DataError("marker is already dirty")
+    
+        tytup = _type_switch( type_bits(topic) )       
+        if tytup[0] == "String":
+            return self._n_from_marker_strings(item, topic, date_time, n,
+                                               throw_if_data_lost, data_str_max)
+        else:
+            return self._n_from_marker_numbers(tytup, item, topic, date_time,
+                                               n, throw_if_data_lost)   
+       
+
+    def _n_from_marker_strings(self, item, topic, date_time, n, throw_if_data_lost,
+                               data_str_max):        
+        strs = _gen_str_buffers(data_str_max+1, n)
+        pstrs = _gen_str_buffers_ptrs(strs) 
+        dts = (_DateTimeStamp * n)()
+        g = _long_()
                                  
+        _lib_call("TOSDB_GetNStringsFromMarker", 
+                  self._name,
+                  item.encode("ascii"), 
+                  topic.encode("ascii"),
+                  pstrs, 
+                  n, 
+                  data_str_max + 1,
+                  dts if date_time else _PTR_(_DateTimeStamp)(),                      
+                  _pointer(g),
+                  arg_types=(_str_, _str_, _str_, _ppchar_, _uint32_, _uint32_,
+                             _PTR_(_DateTimeStamp), _PTR_(_long_))) 
+           
+        g = g.value
+        if g == 0:
+            return None
+        elif g < 0:
+            if throw_if_data_lost:
+                raise TOSDB_DataError("data lost behind the 'marker'")
+            else:
+                g *= -1
+
+        return list(_zip_cstr_dt(pstrs[:g],dts[:g]) if date_time else _map_cstr(pstrs[:g]))
+     
+                                 
+    def _n_from_marker_numbers(self, tytup, item, topic, date_time, n,
+                               throw_if_data_lost):        
+        nums = (tytup[1] * n)()
+        dts = (_DateTimeStamp * n)()
+        g = _long_()
+                                 
+        _lib_call("TOSDB_GetN" + tytup[0] + "sFromMarker", 
+                  self._name,
+                  item.encode("ascii"), 
+                  topic.encode("ascii"),
+                  nums, 
+                  n,
+                  dts if date_time else _PTR_(_DateTimeStamp)(),                       
+                  _pointer(g),
+                  arg_types=(_str_, _str_, _str_, _PTR_(tytup[1]), _uint32_, 
+                             _PTR_(_DateTimeStamp), _PTR_(_long_))) 
+      
+        g = g.value
+        if g == 0:
+            return None
+        elif g < 0:
+            if throw_if_data_lost:
+                raise TOSDB_DataError("data lost behind the 'marker'")
+            else:
+                g *= -1
+
+        return list(zip(nums[:g], _map_dt(dts[:g])) if date_time else nums[:g])                                               
+
+        
     @_doxtend(_TOSDB_DataBlock) # __doc__ from ABC _TOSDB_DataBlock
     def item_frame(self, topic, date_time=False, labels=True, 
                    data_str_max=STR_DATA_SZ, label_str_max=MAX_STR_SZ):
@@ -1058,7 +1152,7 @@ class TOSDB_ThreadSafeDataBlock(TOSDB_DataBlock):
     """         
     def __init__(self, size=1000, date_time=False, timeout=DEF_TIMEOUT):        
         super().__init__(size, date_time, timeout)            
-    
+
 
 ### HOW WE ACCESS THE UNDERLYING C CALLS ###
 def _lib_call(f, *fargs, ret_type=_int_, arg_types=None, error_check=True):        

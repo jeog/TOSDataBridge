@@ -348,6 +348,47 @@ class _TOSDB_DataBlock(metaclass=_ABCMeta):
         pass
 
     @_abstractmethod
+    def n_from_marker(): 
+        """ Return n data-points from an 'atomic' marker
+
+        It's likely the stream will grow between consecutive calls. This call
+        guarantees to pick up where the last get(), stream_snapshot(),
+        stream_snapshot_from_marker(), or n_from_marker() call ended. 
+
+        Internally the stream maintains a 'marker' that tracks the position of
+        the last value pulled; the act of retreiving 'n' data-points IN FRONT OF
+        the marker(more recent) and moving the marker can be thought of as a
+        single, 'atomic' operation.
+
+        If the marker doesn't get reset(moved) before it hits the end of stream
+        (block_size) the stream becomes 'dirty' and will raise TOSDB_DataError
+        if throw_if_data_lost == True. As the oldest data is popped off the back
+        of the stream it is lost(the marker can't grow past the end of the stream). 
+
+        * * *
+        
+        n_from_marker(self, item, topic, date_time=False, n=1, 
+                      throw_if_data_lost=True, data_str_max=STR_DATA_SZ)
+
+        item               :: str  :: any item string in the block
+        topic              :: str  :: any topic string in the block
+        date_time          :: bool :: include TOSDB_DateTime objects    
+        n                  :: int  :: number of data-points in front of marker         
+        throw_if_data_loss :: bool :: how to handle error states (see above)
+        data_str_max       :: int  :: maximum length of string data returned
+
+        if beg > internal marker position:  returns -> None    
+        elif date_time == True:             returns -> list of 2-tuple**
+        else:                               returns -> list**
+
+        **data are of type int, float, or str (depending on the topic)
+
+        throws TOSDB_DataTimeError, TOSDB_IndexError, TOSDB_ValueError,
+               TOSDB_DataError, TOSDB_CLibError, TOSDB_TypeError       
+        """
+        pass
+    
+    @_abstractmethod
     def item_frame(): 
         """ Return all the most recent item values for a particular topic.
 
@@ -475,6 +516,11 @@ class TOSDB_TypeError(TOSDB_Error, TypeError):
 
 
 class TOSDB_IndexError(TOSDB_Error, IndexError):
+    def __init__(self, *messages):
+        super().__init__(*messages)
+
+
+class TOSDB_TimeoutError(TOSDB_Error, TimeoutError):
     def __init__(self, *messages):
         super().__init__(*messages)
 
@@ -688,6 +734,9 @@ class TOSDB_DateTime( _namedtuple("DateTime",["micro","sec","min",
     def mktime(self):
         return self._mktime
 
+    @property
+    def mktime_micro(self):
+        return int(self._mktime * 1000000) + self.micro
       
     @staticmethod
     def _to_struct_time(obj):

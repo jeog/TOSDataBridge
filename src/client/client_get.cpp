@@ -1534,6 +1534,173 @@ TOSDB_GetStreamSnapshotStringsFromMarker(LPCSTR id,
     }
 }
 
+
+template<typename T> 
+int 
+TOSDB_GetNFromMarker_(LPCSTR id,
+                      LPCSTR item, 
+                      TOS_Topics::TOPICS topic_t, 
+                      T* dest, 
+                      size_type n, 
+                      pDateTimeStamp datetime,                                                       
+                      long *get_size)
+{
+    const TOSDBlock *db;
+    TOSDB_RawDataBlock::stream_const_ptr_type dat;
+
+    if(!IsValidBlockID(id) || !CheckStringLength(item))
+    {
+        return TOSDB_ERROR_BAD_INPUT;
+    }
+
+    try{
+        GLOBAL_RLOCK_GUARD;
+        /* --- CRITICAL SECTION --- */
+        db = GetBlockOrThrow(id);
+        dat = db->block->raw_stream_ptr(item, topic_t);
+                     /* O.K. as long as data_stream::MAX_BOUND_SIZE == INT_MAX */
+        *get_size = (long)(dat->ncopy_from_marker(dest,n,datetime));
+        return 0;
+        /* --- CRITICAL SECTION --- */
+
+    }catch(const TOSDB_DataBlockDoesntExist& e){
+        TOSDB_LogH("BLOCK", e.what());
+        return TOSDB_ERROR_BLOCK_DOESNT_EXIST;
+
+    }catch(const TOSDB_Error& e){
+        TOSDB_LogH(e.tag().c_str(), e.info_and_what().c_str());
+        return TOSDB_ERROR_GET_DATA;
+
+    }catch(const std::exception& e){
+        TOSDB_LogH("TOSDB_GetNFromMarker<T>", e.what());
+        return TOSDB_ERROR_GET_DATA;
+
+    }catch(...){ 
+        return TOSDB_ERROR_UNKNOWN;
+    }
+}
+
+template<typename T> 
+int 
+TOSDB_GetNFromMarker_(LPCSTR id,
+                      LPCSTR item, 
+                      LPCSTR topic_str, 
+                      T* dest, 
+                      size_type n, 
+                      pDateTimeStamp datetime,                                                       
+                      long *get_size)
+{  
+    if(!CheckStringLength(topic_str)) /* let this go thru std::string ? */
+        return 0;   
+   
+    TOS_Topics::TOPICS t = GetTopicEnum(topic_str);
+    if(t == TOS_Topics::TOPICS::NULL_TOPIC)
+        return TOSDB_ERROR_BAD_TOPIC;
+
+    return TOSDB_GetNFromMarker_(id, item, t, dest, n, datetime, get_size);
+}
+
+int 
+TOSDB_GetNDoublesFromMarker(LPCSTR id,
+                            LPCSTR item, 
+                            LPCSTR topic_str, 
+                            double *dest, 
+                            size_type n, 
+                            pDateTimeStamp datetime,                                                       
+                            long *get_size)
+{
+    return TOSDB_GetNFromMarker_(id, item, topic_str, dest, n, datetime, get_size);
+}
+
+int 
+TOSDB_GetNFloatsFromMarker(LPCSTR id,
+                           LPCSTR item, 
+                           LPCSTR topic_str, 
+                           float *dest, 
+                           size_type n, 
+                           pDateTimeStamp datetime,
+                           long *get_size)
+{
+    return TOSDB_GetNFromMarker_(id, item, topic_str, dest, n, datetime, get_size);
+}
+
+int 
+TOSDB_GetNLongLongsFromMarker(LPCSTR id,
+                              LPCSTR item, 
+                              LPCSTR topic_str, 
+                              long long *dest, 
+                              size_type n, 
+                              pDateTimeStamp datetime,                                                       
+                              long *get_size)
+{
+    return TOSDB_GetNFromMarker_(id, item, topic_str, dest, n, datetime, get_size);  
+}
+
+int 
+TOSDB_GetNLongsFromMarker(LPCSTR id,
+                          LPCSTR item, 
+                          LPCSTR topic_str, 
+                          long *dest, 
+                          size_type n, 
+                          pDateTimeStamp datetime,                                                       
+                          long *get_size)
+{
+    return TOSDB_GetNFromMarker_(id, item, topic_str, dest, n, datetime, get_size);  
+}
+
+int 
+TOSDB_GetNStringsFromMarker(LPCSTR id, 
+                            LPCSTR item, 
+                            LPCSTR topic_str, 
+                            LPSTR* dest, 
+                            size_type n, 
+                            size_type str_len, 
+                            pDateTimeStamp datetime,
+                            long *get_size)
+{
+    const TOSDBlock *db;
+    TOSDB_RawDataBlock::stream_const_ptr_type dat;
+    TOS_Topics::TOPICS topic_t;
+
+    if( !IsValidBlockID(id) 
+        || !CheckStringLength(item)
+        || !CheckStringLength(topic_str) )
+    {
+        return TOSDB_ERROR_BAD_INPUT;
+    }
+
+    topic_t = GetTopicEnum(topic_str); 
+    if(topic_t == TOS_Topics::TOPICS::NULL_TOPIC)
+        return TOSDB_ERROR_BAD_TOPIC;
+
+    try{
+        GLOBAL_RLOCK_GUARD;
+        /* --- CRITICAL SECTION --- */
+        db = GetBlockOrThrow(id);
+        dat = db->block->raw_stream_ptr(item, topic_t);
+                    /* O.K. as long as data_stream::MAX_BOUND_SIZE == INT_MAX */
+        *get_size = (long)(dat->ncopy_from_marker(dest, n, str_len, datetime));   
+        return 0;
+        /* --- CRITICAL SECTION --- */
+
+    }catch(const TOSDB_DataBlockDoesntExist& e){
+        TOSDB_LogH("BLOCK", e.what());
+        return TOSDB_ERROR_BLOCK_DOESNT_EXIST;
+
+    }catch(const TOSDB_Error& e){
+        TOSDB_LogH(e.tag().c_str(), e.info_and_what().c_str());
+        return TOSDB_ERROR_GET_DATA;
+
+    }catch(const std::exception& e){
+        TOSDB_LogH("TOSDB_GetNStringsFromMarker", e.what());
+        return TOSDB_ERROR_GET_DATA;
+
+    }catch(...){ 
+        return TOSDB_ERROR_UNKNOWN;
+    }
+}
+
+
 template<> 
 generic_map_type 
 TOSDB_GetItemFrame<false>(std::string id, TOS_Topics::TOPICS topic_t)

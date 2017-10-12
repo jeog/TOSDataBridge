@@ -98,6 +98,10 @@ private:
     long long 
     _copy_using_atomic_marker(OutTy *dest, size_t sz, int beg, secondary_ty *sec) const;
 
+    template<typename InTy, typename OutTy>
+    long long 
+    _ncopy_using_atomic_marker(OutTy *dest, size_t sz, secondary_ty *sec) const;
+
 protected:
     unsigned int _str_push_count;
 
@@ -197,6 +201,21 @@ copy_from_marker(InTy *dest, size_t sz, int beg = 0, secondary_ty *sec = nullptr
     return 0; \
 }
 
+#define VIRTUAL_VOID_MARKER_N_COPY_2ARG_DROP(InTy, OutTy) \
+virtual long long \
+ncopy_from_marker(InTy *dest, size_t sz, secondary_ty *sec = nullptr) const \
+{ \
+    return this->_ncopy_using_atomic_marker< OutTy >(dest, sz, sec); \
+} 
+    
+#define VIRTUAL_VOID_MARKER_N_COPY_2ARG_BREAK(InTy, DropBool) \
+virtual long long \
+ncopy_from_marker(InTy *dest, size_t sz, secondary_ty *sec = nullptr) const \
+{ \
+    BuildThrowTypeError<InTy*,DropBool>("ncopy_from_marker()"); \
+    return 0; \
+}
+
     VIRTUAL_VOID_PUSH_2ARG_DROP(float, double)
     VIRTUAL_VOID_PUSH_2ARG_BREAK(double)
     VIRTUAL_VOID_PUSH_2ARG_DROP(unsigned char, unsigned short)
@@ -283,6 +302,30 @@ copy_from_marker(InTy *dest, size_t sz, int beg = 0, secondary_ty *sec = nullptr
                      size_t sz,                     
                      int beg = 0, 
                      secondary_ty *sec = nullptr) const;
+
+    VIRTUAL_VOID_MARKER_N_COPY_2ARG_DROP(long long, long)
+    VIRTUAL_VOID_MARKER_N_COPY_2ARG_DROP(long, int)
+    VIRTUAL_VOID_MARKER_N_COPY_2ARG_DROP(int, short)
+    VIRTUAL_VOID_MARKER_N_COPY_2ARG_DROP(short, char)
+    VIRTUAL_VOID_MARKER_N_COPY_2ARG_BREAK(char, true)
+    VIRTUAL_VOID_MARKER_N_COPY_2ARG_DROP(unsigned long long, unsigned long)
+    VIRTUAL_VOID_MARKER_N_COPY_2ARG_DROP(unsigned long, unsigned int)
+    VIRTUAL_VOID_MARKER_N_COPY_2ARG_DROP(unsigned int, unsigned short)
+    VIRTUAL_VOID_MARKER_N_COPY_2ARG_DROP(unsigned short, unsigned char)
+    VIRTUAL_VOID_MARKER_N_COPY_2ARG_BREAK(unsigned char, true)
+    VIRTUAL_VOID_MARKER_N_COPY_2ARG_DROP(double, float)
+    VIRTUAL_VOID_MARKER_N_COPY_2ARG_BREAK(float, false) 
+
+    virtual long long 
+    ncopy_from_marker(char **dest, 
+                      size_t dest_sz,   
+                      size_t str_sz,                                
+                      secondary_ty *sec = nullptr) const;
+
+    virtual long long 
+    ncopy_from_marker(std::string *dest, 
+                      size_t sz,                                        
+                      secondary_ty *sec = nullptr) const;
 
     virtual void /* SHOULD WE THROW? */ 
     secondary(secondary_ty *dest, int indx) const 
@@ -413,6 +456,17 @@ public:
         _str_push_count = 0;
         _push((Ty)gen);    
     }
+
+    long long 
+    ncopy_from_marker(Ty *dest, 
+                      size_t sz,                   
+                      secondary_ty *sec = nullptr) const;
+    
+    long long 
+    ncopy_from_marker(char **dest, 
+                      size_t dest_sz, 
+                      size_t str_sz,                                   
+                      secondary_ty *sec = nullptr) const;
 
     long long 
     copy_from_marker(Ty *dest, 

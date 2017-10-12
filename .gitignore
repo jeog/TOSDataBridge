@@ -5,6 +5,7 @@
 prov/tmp*
 python/tosdb/_tosdb.py
 core
+*.test
 
 README_API2.md
 

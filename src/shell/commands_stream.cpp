@@ -32,6 +32,11 @@ void GetStreamSnapshotFloatsFromMarker(CommandCtx *ctx);
 void GetStreamSnapshotLongLongsFromMarker(CommandCtx *ctx);
 void GetStreamSnapshotLongsFromMarker(CommandCtx *ctx);
 void GetStreamSnapshotStringsFromMarker(CommandCtx *ctx);
+void GetNDoublesFromMarker(CommandCtx *ctx);
+void GetNFloatsFromMarker(CommandCtx *ctx); 
+void GetNLongLongsFromMarker(CommandCtx *ctx);
+void GetNLongsFromMarker(CommandCtx *ctx);
+void GetNStringsFromMarker(CommandCtx *ctx);
 
 }; /* namespace */
 
@@ -47,6 +52,11 @@ CommandsMap commands_stream(
                           ("GetStreamSnapshotLongLongsFromMarker",GetStreamSnapshotLongLongsFromMarker) 
                           ("GetStreamSnapshotLongsFromMarker",GetStreamSnapshotLongsFromMarker) 
                           ("GetStreamSnapshotStringsFromMarker",GetStreamSnapshotStringsFromMarker)
+                          ("GetNDoublesFromMarker",GetNDoublesFromMarker) 
+                          ("GetNFloatsFromMarker",GetNFloatsFromMarker) 
+                          ("GetNLongLongsFromMarker",GetNLongLongsFromMarker) 
+                          ("GetNLongsFromMarker",GetNLongsFromMarker) 
+                          ("GetNStringsFromMarker",GetNStringsFromMarker)
 );
 
 
@@ -66,6 +76,13 @@ void
 _get_stream_snapshot_from_marker( int(*func)(LPCSTR, LPCSTR, LPCSTR, T*,
                                              size_type, pDateTimeStamp, long, long*),
                                   CommandCtx *ctx );
+
+
+template<typename T>
+void 
+_get_n_from_marker( int(*func)(LPCSTR, LPCSTR, LPCSTR, T*,
+                               size_type, pDateTimeStamp, long*),
+                    CommandCtx *ctx );
 
 template<typename T>
 void 
@@ -269,6 +286,82 @@ GetStreamSnapshotStringsFromMarker(CommandCtx *ctx)
 }
 
 
+void
+GetNDoublesFromMarker(CommandCtx *ctx)
+{
+    _get_n_from_marker<double>(TOSDB_GetNDoublesFromMarker, ctx);
+}
+
+
+void
+GetNFloatsFromMarker(CommandCtx *ctx)
+{
+    _get_n_from_marker<float>(TOSDB_GetNFloatsFromMarker, ctx);
+}
+
+
+void
+GetNLongLongsFromMarker(CommandCtx *ctx)
+{
+    _get_n_from_marker<long long>(TOSDB_GetNLongLongsFromMarker, ctx);
+}
+
+
+void
+GetNLongsFromMarker(CommandCtx *ctx)
+{
+    _get_n_from_marker<long>(TOSDB_GetNLongsFromMarker, ctx);
+}
+
+
+void
+GetNStringsFromMarker(CommandCtx *ctx)
+{    
+    long get_size;
+    int ret;
+    std::string block;
+    std::string item;
+    std::string topic;
+    std::string len_s;
+    bool get_dts;
+
+    char **dat = nullptr;
+    pDateTimeStamp dts= nullptr;
+
+    prompt_for_block_item_topic(&block, &item, &topic, ctx);
+    prompt_for("n", &len_s, ctx);            
+      
+    size_type len = 0;     
+    try{
+        len = std::stoul(len_s);         
+    }catch(...){
+        std::cerr<< std::endl << "INVALID INPUT" << std::endl << std::endl;
+        return;
+    }
+
+    get_dts = prompt_for_datetime(block, ctx);
+    try{         
+        dat = NewStrings(len, TOSDB_STR_DATA_SZ - 1);
+
+        if(get_dts)
+            dts = new DateTimeStamp[len];
+
+        ret = TOSDB_GetNStringsFromMarker(block.c_str(), item.c_str(), topic.c_str(), 
+                                                        dat, len, TOSDB_STR_DATA_SZ, 
+                                                        dts, &get_size);
+
+        _check_display_ret(ret, dat, abs(get_size), dts);
+
+        DeleteStrings(dat, len);
+        if(dts)
+            delete dts;
+    }catch(...){
+        DeleteStrings(dat, len);
+        if(dts)
+            delete dts;
+    }       
+}
+
 
 template<typename T>
 void 
@@ -430,6 +523,59 @@ _get_stream_snapshot_from_marker( int(*func)(LPCSTR, LPCSTR, LPCSTR, T*,
     }
 }
 
+
+template<typename T>
+void 
+_get_n_from_marker( int(*func)(LPCSTR, LPCSTR, LPCSTR, T*,
+                               size_type, pDateTimeStamp, long*),
+                    CommandCtx *ctx )
+{   
+    long get_size;
+    int ret;
+    std::string block;
+    std::string item;
+    std::string topic;
+    std::string beg_s;
+    std::string len_s;
+    bool get_dts;
+
+    pDateTimeStamp dts = nullptr;
+    T *dat = nullptr;
+
+    prompt_for_block_item_topic(&block, &item, &topic, ctx);
+    prompt_for("n", &len_s, ctx);                   
+
+    size_type len = 0; 
+    try{
+        len = std::stoul(len_s);               
+    }catch(...){
+        std::cerr<< std::endl << "INVALID INPUT" << std::endl << std::endl;
+        return;
+    }
+
+    get_dts = prompt_for_datetime(block, ctx);
+
+    try{
+        dat = new T[len];
+
+        if(get_dts)
+            dts = new DateTimeStamp[len];
+
+        ret = func(block.c_str(), item.c_str(), topic.c_str(), dat, len, dts, &get_size);
+
+        _check_display_ret(ret, dat, abs(get_size), dts);
+
+        if(dat)
+            delete[] dat;
+        if(dts)
+            delete[] dts;
+    }catch(...){
+        if(dat)
+            delete[] dat;
+        if(dts)
+            delete[] dts;
+    }
+}
 
 template<typename T>
 void 

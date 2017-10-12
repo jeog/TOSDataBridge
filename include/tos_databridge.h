@@ -974,7 +974,6 @@ EXT_C_SPEC DLL_SPEC_IFACE NO_THROW int
 TOSDB_GetStreamSnapshotStrings(LPCSTR id, LPCSTR item, LPCSTR topic_str, LPSTR* dest, size_type array_len, size_type str_len, 
                                pDateTimeStamp datetime, long end, long beg);
 
-
 /* 'guaranteed' to be contiguous between calls (Get, GetStreamSnapshot, GetStreamSnapshot) */
 
 EXT_C_SPEC DLL_SPEC_IFACE NO_THROW int  
@@ -996,6 +995,24 @@ TOSDB_GetStreamSnapshotLongsFromMarker(LPCSTR id, LPCSTR item, LPCSTR topic_str,
 EXT_C_SPEC DLL_SPEC_IFACE NO_THROW int  
 TOSDB_GetStreamSnapshotStringsFromMarker(LPCSTR id, LPCSTR item, LPCSTR topic_str, LPSTR* dest, size_type array_len, size_type str_len, 
                                          pDateTimeStamp datetime, long beg, long *get_size);
+
+/* get n data-points in front of marker ('guaranteed' to be contiguous a la GetStreamSnapshot) */
+
+EXT_C_SPEC DLL_SPEC_IFACE NO_THROW int  
+TOSDB_GetNDoublesFromMarker(LPCSTR id,LPCSTR item,LPCSTR topic_str,double* dest,size_type n, pDateTimeStamp datetime, long *get_size);
+
+EXT_C_SPEC DLL_SPEC_IFACE NO_THROW int  
+TOSDB_GetNFloatsFromMarker(LPCSTR id, LPCSTR item, LPCSTR topic_str, float* dest, size_type n, pDateTimeStamp datetime, long *get_size);
+
+EXT_C_SPEC DLL_SPEC_IFACE NO_THROW int  
+TOSDB_GetNLongLongsFromMarker(LPCSTR id, LPCSTR item, LPCSTR topic_str, long long* dest, size_type n, pDateTimeStamp datetime, long *get_size);
+
+EXT_C_SPEC DLL_SPEC_IFACE NO_THROW int  
+TOSDB_GetNLongsFromMarker(LPCSTR id, LPCSTR item, LPCSTR topic_str, long* dest, size_type n, pDateTimeStamp datetime, long *get_size);
+
+EXT_C_SPEC DLL_SPEC_IFACE NO_THROW int  
+TOSDB_GetNStringsFromMarker(LPCSTR id, LPCSTR item, LPCSTR topic_str, LPSTR* dest, size_type n, size_type str_len, 
+                            pDateTimeStamp datetime, long *get_size);
 
 #ifdef __cplusplus
 
