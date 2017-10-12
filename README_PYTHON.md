@@ -37,21 +37,25 @@ ohlc.tosdb.init(root="../bin")
 
 Please see [python/tutorial.md](./python/tutorial.md) for a walk-through with screen-shots.
 
-#### Virtual Layer
-
-To use TOSDataBridge from a non-windows systems you can use the virtual interface. To do this you'll still need to install the C/C++ modules and the tosdb package on a (physically or virtually) networked windows sytem.
-
-The virtual interface consists of, more-or-less, the same objects/calls, with a prepended 'v' (i.e VTOSDB_DataBlock, vinit()). See the detailed explanation in tosdb/\_\_init\_\_.\_\_doc\_\_ or the [virtual tutorial](./python/virtualization_tutorial.md) for example usage.
-
-> **IMPORTANT:** We recently added a (provisional) authentication mechanism to the virtual layer. ***Unless you know what you're doing and can review the code (tosdb/\_\_init\_\_.py and tosdb/\_auth.py) it's prudent to assume it not secure, possibly exploitable for remote code execution.*** (If anyone out there can give any feedback it would be helpful.) Currently it's recommended for internal networks. To use: 1) install the pycrypto package if you don't have it(pip install pycrypto), 2) pass a password to the enable_virtualization call on the server side and (the same password) to the admin_init call and/or the VTOSDB_DataBlock constructor on the client side.   
-
 #### Thread Safety
 
 TOSDB_ThreadSafeDataBlock and VTOSDB_ThreadSafeDataBlock are thread-safe versions of TOSDB_DataBlock and VTOSDB_DataBlock, respectively. 
 
 #### Intervals
 
-sub-package tosdb/intervalize helps create (fixed) intervals from streaming data; ohlc.py contains objects that create and store open-high-low-close(OHLC), close(C), and user-defined fixed-time interval objects from an underlying data block.
+sub-package tosdb/intervalize helps create (fixed) intervals of data; ohlc.py contains objects that create and store open-high-low-close(OHLC), close(C), and user-defined fixed-time interval objects from an underlying data block.
+
+#### Streaming
+
+sub-package tosdb/streaming helps manage an active stream of data. streaming.py provides StreamingSession and VStreamingSession(virtual) Context Managers that manage a data block internally, allowing the user to iterate over the session instance to retrieve time-sequential data for a combination of items and topics.
+
+#### Virtual Layer
+
+To use TOSDataBridge from a non-windows systems you can use the virtual interface. To do this you'll still need to install the C/C++ modules and the tosdb package on a (physically or virtually) networked windows sytem.
+
+The virtual interface consists of, more-or-less, the same objects/calls, with a prepended 'v' (i.e VTOSDB_DataBlock, vinit()). See the detailed explanation in tosdb/\_\_init\_\_.\_\_doc\_\_ or the [virtual tutorial](./python/virtualization_tutorial.md) for example usage.
+
+> **IMPORTANT:** We recently added a (provisional) authentication mechanism to the virtual layer. ***Unless you know what you're doing and can review the code (tosdb/\_\_init\_\_.py and tosdb/\_auth.py) it's prudent to assume it not secure, possibly exploitable for remote code execution.*** (If anyone out there can give any feedback it would be helpful.) Currently it's recommended for internal networks. To use: 1) install the pycrypto package if you don't have it(pip install pycrypto), 2) pass a password to the enable_virtualization call on the server side and (the same password) to the admin_init call and/or the VTOSDB_DataBlock constructor on the client side. 
 
 #### Cleanup
 
