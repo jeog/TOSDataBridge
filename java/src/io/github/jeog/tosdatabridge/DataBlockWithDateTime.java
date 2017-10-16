@@ -516,6 +516,72 @@ public class DataBlockWithDateTime extends DataBlock {
     }
 
     /**
+     * Returns 'n' contiguous data-points and DateTime(s) in front of atomic marker of a stream,
+     * as List&lt;DateTimePair&lt;Long&gt;&gt;.
+     *
+     * @param item  item string of stream
+     * @param topic topic enum of stream
+     * @param n     number of data-points in front of marker
+     * @return multiple contiguous data-points and DateTime(s) in front of of stream
+     * @throws LibraryNotLoaded     C lib has not been loaded
+     * @throws CLibException        error code returned by C lib
+     * @throws DataIndexException   invalid index/position value
+     * @throws DirtyMarkerException marker is 'dirty' (data lost behind it)
+     * @throws InvalidItemOrTopic invalid item or topic argument
+     * @see Topic
+     */
+    public List<DateTimePair<Long>>
+    getNLongsFromMarkerWithDateTime(String item, Topic topic, int n)
+            throws LibraryNotLoaded, CLibException, DataIndexException, DirtyMarkerException,
+            InvalidItemOrTopic {
+        return getHelper().getNFromMarker(item, topic, n, true, true, Long.class);
+    }
+
+    /**
+     * Returns 'n' contiguous data-points and DateTime(s) in front of atomic marker of a stream,
+     * as List&lt;DateTimePair&lt;Double&gt;&gt;.
+     *
+     * @param item  item string of stream
+     * @param topic topic enum of stream
+     * @param n     number of data-points in front of marker
+     * @return multiple contiguous data-points and DateTime(s) in front of of stream
+     * @throws LibraryNotLoaded     C lib has not been loaded
+     * @throws CLibException        error code returned by C lib
+     * @throws DataIndexException   invalid index/position value
+     * @throws DirtyMarkerException marker is 'dirty' (data lost behind it)
+     * @throws InvalidItemOrTopic invalid item or topic argument
+     * @see Topic
+     */
+    public List<DateTimePair<Double>>
+    getNDoublesFromMarkerWithDateTime(String item, Topic topic, int n)
+            throws LibraryNotLoaded, CLibException, DataIndexException, DirtyMarkerException,
+            InvalidItemOrTopic {
+        return getHelper().getNFromMarker(item, topic, n, true, true, Double.class);
+    }
+
+    /**
+     * Returns 'n' contiguous data-points and DateTime(s) in front of atomic marker of a stream,
+     * as List&lt;DateTimePair&lt;String&gt;&gt;.
+     *
+     * @param item  item string of stream
+     * @param topic topic enum of stream
+     * @param n     number of data-points in front of marker
+     * @return multiple contiguous data-points and DateTime(s) in front of of stream
+     * @throws LibraryNotLoaded     C lib has not been loaded
+     * @throws CLibException        error code returned by C lib
+     * @throws DataIndexException   invalid index/position value
+     * @throws DirtyMarkerException marker is 'dirty' (data lost behind it)
+     * @throws InvalidItemOrTopic invalid item or topic argument
+     * @see Topic
+     */
+    public List<DateTimePair<String>>
+    getNStringsFromMarkerWithDateTime(String item, Topic topic, int n)
+            throws LibraryNotLoaded, CLibException, DataIndexException, DirtyMarkerException,
+            InvalidItemOrTopic {
+        return getHelper().getNFromMarker(item, topic, n, true, true, String.class);
+    }
+
+    /**
      * Returns all data-points and DateTime(s) up to atomic marker of a stream,
      * as List&lt;DateTimePair&lt;Long&gt;&gt;. Ignores 'dirty' marker/stream.
      *
@@ -633,6 +699,66 @@ public class DataBlockWithDateTime extends DataBlock {
             throws LibraryNotLoaded, CLibException, DataIndexException, InvalidItemOrTopic {
         return getHelper().getStreamSnapshotFromMarkerIgnoreDirty(item, topic, beg, true,
                 String.class);
+    }
+
+    /**
+     * Returns 'n' contiguous data-points and DateTime(s) in front of atomic marker of a stream,
+     * as List&lt;DateTimePair&lt;Long&gt;&gt;. Ignores 'dirty' marker/stream.
+     *
+     * @param item  item string of stream
+     * @param topic topic enum of stream
+     * @param n     number of data-points in front of marker
+     * @return multiple contiguous data-points and DateTime(s) in front of of stream
+     * @throws LibraryNotLoaded     C lib has not been loaded
+     * @throws CLibException        error code returned by C lib
+     * @throws DataIndexException   invalid index/position value
+     * @throws InvalidItemOrTopic invalid item or topic argument
+     * @see Topic
+     */
+    public List<DateTimePair<Long>>
+    getNLongsFromMarkerWithDateTimeIgnoreDirty(String item, Topic topic, int n)
+            throws LibraryNotLoaded, CLibException, DataIndexException, InvalidItemOrTopic {
+        return getHelper().getNFromMarkerIgnoreDirty(item, topic, n, true, Long.class);
+    }
+
+    /**
+     * Returns 'n' contiguous data-points and DateTime(s) in front of atomic marker of a stream,
+     * as List&lt;DateTimePair&lt;Double&gt;&gt;. Ignores 'dirty' marker/stream.
+     *
+     * @param item  item string of stream
+     * @param topic topic enum of stream
+     * @param n     number of data-points in front of marker
+     * @return multiple contiguous data-points and DateTime(s) in front of of stream
+     * @throws LibraryNotLoaded     C lib has not been loaded
+     * @throws CLibException        error code returned by C lib
+     * @throws DataIndexException   invalid index/position value
+     * @throws InvalidItemOrTopic invalid item or topic argument
+     * @see Topic
+     */
+    public List<DateTimePair<Double>>
+    getNDoublesFromMarkerWithDateTimeIgnoreDirty(String item, Topic topic, int n)
+            throws LibraryNotLoaded, CLibException, DataIndexException, InvalidItemOrTopic {
+        return getHelper().getNFromMarkerIgnoreDirty(item, topic, n, true, Double.class);
+    }
+
+    /**
+     * Returns 'n' contiguous data-points and DateTime(s) in front of atomic marker of a stream,
+     * as List&lt;DateTimePair&lt;String&gt;&gt;. Ignores 'dirty' marker/stream.
+     *
+     * @param item  item string of stream
+     * @param topic topic enum of stream
+     * @param n     number of data-points in front of marker
+     * @return multiple contiguous data-points and DateTime(s) in front of of stream
+     * @throws LibraryNotLoaded     C lib has not been loaded
+     * @throws CLibException        error code returned by C lib
+     * @throws DataIndexException   invalid index/position value
+     * @throws InvalidItemOrTopic invalid item or topic argument
+     * @see Topic
+     */
+    public List<DateTimePair<String>>
+    getNStringsFromMarkerWithDateTimeIgnoreDirty(String item, Topic topic, int n)
+            throws LibraryNotLoaded, CLibException, DataIndexException, InvalidItemOrTopic {
+        return getHelper().getNFromMarkerIgnoreDirty(item, topic, n, true, String.class);
     }
 
     /**

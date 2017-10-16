@@ -93,6 +93,15 @@ public interface CLib extends Library {
                                                    DateTime[] arrayDateTime, int beg,
                                                    NativeLong[] getSz);
 
+    int TOSDB_GetNStringsFromMarker(String name, String item, String topic, Pointer[] arrayVals,
+                                    int n, int strSz, DateTime[] arrayDateTime, NativeLong[] getSz);
+
+    int TOSDB_GetNDoublesFromMarker(String name, String item, String topic, double[] arrayVals,
+                                    int n, DateTime[] arrayDateTime, NativeLong[] getSz);
+
+    int TOSDB_GetNLongLongsFromMarker(String name, String item, String topic, long[] arrayVals,
+                                      int n, DateTime[] arrayDateTime, NativeLong[] getSz);
+
     int TOSDB_GetItemFrameStrings(String name, String topic, Pointer[] arrayVals, int arraySz,
                                   int strSz, Pointer[] arrayLabels, int strLabelSz,
                                   DateTime[] arrayDateTime);

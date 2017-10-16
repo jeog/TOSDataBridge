@@ -218,6 +218,10 @@ public class TOSDataBridgeTest {
         testStreamSnapshotFromMarkerCalls(block,3,SLEEP_PERIOD,false,false);
         System.out.println();
 
+        System.out.println("TEST N FROM MARKER CALLS, BLOCK: " + block.getName());
+        testNFromMarkerCalls(block,3,SLEEP_PERIOD,false,false);
+        System.out.println();
+
         System.out.println("TEST TOTAL FRAME CALLS: " + block.getName());
         testTotalFrameCalls(block, false);
         System.out.println();
@@ -399,6 +403,14 @@ public class TOSDataBridgeTest {
 
         System.out.println("TEST STREAM SNAPSHOT FROM MARKER (WITH DATETIME) CALLS, BLOCK: " + block.getName());
         testStreamSnapshotFromMarkerCalls(block,3,SLEEP_PERIOD,true,true);
+        System.out.println();
+
+        System.out.println("TEST N FROM MARKER CALLS, BLOCK: " + block.getName());
+        testNFromMarkerCalls(block,3,SLEEP_PERIOD,false,false);
+        System.out.println();
+
+        System.out.println("TEST N FROM MARKER (WITH DATETIME) CALLS, BLOCK: " + block.getName());
+        testNFromMarkerCalls(block,3,SLEEP_PERIOD,true,true);
         System.out.println();
 
         System.out.println("TEST TOTAL FRAME CALLS: " + block.getName());
@@ -706,6 +718,48 @@ public class TOSDataBridgeTest {
                         printGetStreamSnapshotFromMarker(block,item,topic,0,
                                 "getStreamSnapshotStringsFromMarker" + callSuffix);
                         break;
+                    }
+                    try {
+                        Thread.sleep(wait);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        }
+    }
+
+    private static void
+    testNFromMarkerCalls(DataBlock block, int passes, int wait, boolean withDateTime,
+                         boolean ignoreDirty)
+            throws CLibException, LibraryNotLoaded, InvalidItemOrTopic {
+        if(passes < 1) {
+            throw new IllegalArgumentException("passes < 1");
+        }
+        Random rand = new Random(Double.doubleToLongBits(Math.random()));
+        String callSuffix = withDateTime ? "WithDateTime" : "";
+        callSuffix = callSuffix + (ignoreDirty ? "IgnoreDirty" : "");
+        Set<String> items = block.getItems();
+        Set<Topic> topics = block.getTopics();
+        for(Topic topic : topics){
+            int tType = TOSDataBridge.getTopicType(topic);
+            for(String item : items) {
+                for(int i = 0; i < passes; ++i) {
+                    int n = 1 + rand.nextInt(99);
+                    System.out.print("PASS #" + String.valueOf(i+1) + " :: n = " + String.valueOf(n) + " :: ");
+                    switch (tType) {
+                        case TOSDataBridge.TOPIC_IS_LONG:
+                            printGetStreamSnapshotFromMarker(block,item,topic,n,
+                                    "getNLongsFromMarker" + callSuffix);
+                            break;
+                        case TOSDataBridge.TOPIC_IS_DOUBLE:
+                            printGetStreamSnapshotFromMarker(block,item,topic,n,
+                                    "getNDoublesFromMarker" + callSuffix);
+                            break;
+                        case TOSDataBridge.TOPIC_IS_STRING:
+                            printGetStreamSnapshotFromMarker(block,item,topic,n,
+                                    "getNStringsFromMarker" + callSuffix);
+                            break;
                     }
                     try {
                         Thread.sleep(wait);

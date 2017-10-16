@@ -830,6 +830,74 @@ public class DataBlock {
         return _helper.getStreamSnapshotFromMarker(item, topic, beg, true, false, String.class);
     }
 
+
+    /**
+     * Returns 'n' contiguous data-points in front of atomic marker of a stream,
+     * as List&lt;Long&gt;.
+     *
+     * @param item  item string of stream
+     * @param topic topic enum of stream
+     * @param n     number of data-points in front of marker
+     * @return multiple contiguous data-points in front of of stream
+     * @throws LibraryNotLoaded     C lib has not been loaded
+     * @throws CLibException        error code returned by C lib
+     * @throws DataIndexException   invalid index/position value
+     * @throws DirtyMarkerException marker is 'dirty' (data lost behind it)
+     * @throws InvalidItemOrTopic invalid item or topic argument
+     * @see Topic
+     */
+    public List<Long>
+    getNLongsFromMarker(String item, Topic topic, int n)
+            throws LibraryNotLoaded, CLibException, DataIndexException, DirtyMarkerException,
+            InvalidItemOrTopic {
+        return _helper.getNFromMarker(item, topic, n, true, false, Long.class);
+    }
+
+    /**
+     * Returns 'n' contiguous data-points in front of atomic marker of a stream,
+     * as List&lt;Double&gt;.
+     *
+     * @param item  item string of stream
+     * @param topic topic enum of stream
+     * @param n     number of data-points in front of marker
+     * @return multiple contiguous data-points in front of of stream
+     * @throws LibraryNotLoaded     C lib has not been loaded
+     * @throws CLibException        error code returned by C lib
+     * @throws DataIndexException   invalid index/position value
+     * @throws DirtyMarkerException marker is 'dirty' (data lost behind it)
+     * @throws InvalidItemOrTopic invalid item or topic argument
+     * @see Topic
+     */
+    public List<Double>
+    getNDoublesFromMarker(String item, Topic topic, int n)
+            throws LibraryNotLoaded, CLibException, DataIndexException, DirtyMarkerException,
+            InvalidItemOrTopic {
+        return _helper.getNFromMarker(item, topic, n, true, false, Double.class);
+    }
+
+
+    /**
+     * Returns 'n' contiguous data-points in front of atomic marker of a stream,
+     * as List&lt;String&gt;.
+     *
+     * @param item  item string of stream
+     * @param topic topic enum of stream
+     * @param n     number of data-points in front of marker
+     * @return multiple contiguous data-points in front of of stream
+     * @throws LibraryNotLoaded     C lib has not been loaded
+     * @throws CLibException        error code returned by C lib
+     * @throws DataIndexException   invalid index/position value
+     * @throws DirtyMarkerException marker is 'dirty' (data lost behind it)
+     * @throws InvalidItemOrTopic invalid item or topic argument
+     * @see Topic
+     */
+    public List<String>
+    getNStringsFromMarker(String item, Topic topic, int n)
+            throws LibraryNotLoaded, CLibException, DataIndexException, DirtyMarkerException,
+            InvalidItemOrTopic {
+        return _helper.getNFromMarker(item, topic, n, true, false, String.class);
+    }
+
     /**
      * Returns if marker is currently in a 'dirty' state. NOTE: there is no
      * guarantee it won't enter this state before another call is made.
@@ -975,6 +1043,66 @@ public class DataBlock {
             throws LibraryNotLoaded, CLibException, DataIndexException, InvalidItemOrTopic {
         return _helper.getStreamSnapshotFromMarkerIgnoreDirty(item, topic, beg, false, 
                 String.class);
+    }
+
+    /**
+     * Returns 'n' contiguous data-points in front of atomic marker of a stream,
+     * as List&lt;Long&gt;. Ignores 'dirty' marker/stream.
+     *
+     * @param item  item string of stream
+     * @param topic topic enum of stream
+     * @param n     number of data-points in front of marker
+     * @return multiple contiguous data-points in front of of stream
+     * @throws LibraryNotLoaded     C lib has not been loaded
+     * @throws CLibException        error code returned by C lib
+     * @throws DataIndexException   invalid index/position value
+     * @throws InvalidItemOrTopic invalid item or topic argument
+     * @see Topic
+     */
+    public List<Long>
+    getNLongsFromMarkerIgnoreDirty(String item, Topic topic, int n)
+            throws LibraryNotLoaded, CLibException, DataIndexException, InvalidItemOrTopic {
+        return _helper.getNFromMarkerIgnoreDirty(item, topic, n, false, Long.class);
+    }
+
+    /**
+     * Returns 'n' contiguous data-points in front of atomic marker of a stream,
+     * as List&lt;Double&gt;. Ignores 'dirty' marker/stream.
+     *
+     * @param item  item string of stream
+     * @param topic topic enum of stream
+     * @param n     number of data-points in front of marker
+     * @return multiple contiguous data-points in front of of stream
+     * @throws LibraryNotLoaded     C lib has not been loaded
+     * @throws CLibException        error code returned by C lib
+     * @throws DataIndexException   invalid index/position value
+     * @throws InvalidItemOrTopic invalid item or topic argument
+     * @see Topic
+     */
+    public List<Double>
+    getNDoublesFromMarkerIgnoreDirty(String item, Topic topic, int n)
+            throws LibraryNotLoaded, CLibException, DataIndexException, InvalidItemOrTopic {
+        return _helper.getNFromMarkerIgnoreDirty(item, topic, n, false, Double.class);
+    }
+
+    /**
+     * Returns 'n' contiguous data-points in front of atomic marker of a stream,
+     * as List&lt;String&gt;. Ignores 'dirty' marker/stream.
+     *
+     * @param item  item string of stream
+     * @param topic topic enum of stream
+     * @param n     number of data-points in front of marker
+     * @return multiple contiguous data-points in front of of stream
+     * @throws LibraryNotLoaded     C lib has not been loaded
+     * @throws CLibException        error code returned by C lib
+     * @throws DataIndexException   invalid index/position value
+     * @throws InvalidItemOrTopic invalid item or topic argument
+     * @see Topic
+     */
+    public List<String>
+    getNStringsFromMarkerIgnoreDirty(String item, Topic topic, int n)
+            throws LibraryNotLoaded, CLibException, DataIndexException, InvalidItemOrTopic {
+        return _helper.getNFromMarkerIgnoreDirty(item, topic, n, false, String.class);
     }
 
     /**
@@ -1202,6 +1330,41 @@ public class DataBlock {
                     new Class<?>[]{String.class, Topic.class, int.class, boolean.class, 
                             boolean.class, int.class}, item, topic, beg, withDateTime, 
                     throwIfDataLost, (int) szFromMarker + MARKER_MARGIN_OF_SAFETY);
+        }
+
+        /* suppress DirtyMarkerException */
+        public final <T> List<T>
+        getNFromMarkerIgnoreDirty(String item, Topic topic, int n, boolean withDateTime,
+                                  Class<?> valType)
+                throws LibraryNotLoaded, CLibException, DataIndexException,
+                InvalidItemOrTopic {
+            try {
+                return getNFromMarker(item, topic, n, false, withDateTime, valType);
+            } catch (DirtyMarkerException e) {
+                    /* SHOULD NEVER GET HERE */
+                throw new RuntimeException("getNFromMarkerIgnoreDirty " +
+                        "failed to ignore dirty marker");
+            }
+        }
+
+        @SuppressWarnings("unchecked")
+        public final <T> List<T>
+        getNFromMarker(String item, Topic topic, int n, boolean throwIfDataLost,
+                       boolean withDateTime, Class<?> valType)
+                throws LibraryNotLoaded, CLibException, DataIndexException, DirtyMarkerException,
+                InvalidItemOrTopic
+        {
+            item = _handleRawItemTopic(item,topic,true);
+            if (isDirty(item, topic) && throwIfDataLost) {
+                throw new DirtyMarkerException();
+            }
+            if( n < 1 ){
+                throw new DataIndexException("'n' not >= 1");
+            }
+
+            return _nativeAccessByType(valType, "_getN", "sFromMarker",
+                    new Class<?>[]{String.class, Topic.class, int.class, boolean.class,
+                            boolean.class}, item, topic, n, withDateTime, throwIfDataLost);
         }
 
         public final <T, E, X> Map<X, T>
@@ -1600,6 +1763,67 @@ public class DataBlock {
         int szGot = (int) _handleSzGotFromMarker(getSz[0], throwIfDataLost);
         return (List<T>)(withDateTime ? rawArraysToList(vals, dts, szGot)
                                       : rawArraysToList(vals, szGot));
+    }
+
+    @SuppressWarnings("unchecked")
+    private <T> List<T>
+    _getNLongsFromMarker(String item, Topic topic, int n, boolean withDateTime,
+                         boolean throwIfDataLost)
+            throws CLibException, LibraryNotLoaded, DirtyMarkerException {
+        DateTime[] dts = (withDateTime ? new DateTime[n] : null);
+        NativeLong[] getSz = {new NativeLong(0)};
+        long[] vals = new long[n];
+        int err = TOSDataBridge.getCLibrary()
+                .TOSDB_GetNLongLongsFromMarker(_name, item, topic.val, vals, n, dts, getSz);
+        if (err != 0) {
+            throw new CLibException("TOSDB_GetNLongsFromMarker", err);
+        }
+
+        int szGot = (int) _handleSzGotFromMarker(getSz[0], throwIfDataLost);
+        return (List<T>)(withDateTime ? rawArraysToList(vals, dts, szGot)
+                : rawArraysToList(vals, szGot));
+    }
+
+    @SuppressWarnings("unchecked")
+    private <T> List<T>
+    _getNDoublesFromMarker(String item, Topic topic, int n, boolean withDateTime,
+                           boolean throwIfDataLost)
+            throws CLibException, LibraryNotLoaded, DirtyMarkerException {
+        DateTime[] dts = (withDateTime ? new DateTime[n] : null);
+        NativeLong[] getSz = {new NativeLong(0)};
+        double[] vals = new double[n];
+        int err = TOSDataBridge.getCLibrary()
+                .TOSDB_GetNDoublesFromMarker(_name, item, topic.val, vals, n, dts, getSz);
+        if (err != 0) {
+            throw new CLibException("TOSDB_GetNDoublesFromMarker", err);
+        }
+
+        int szGot = (int) _handleSzGotFromMarker(getSz[0], throwIfDataLost);
+        return (List<T>)(withDateTime ? rawArraysToList(vals, dts, szGot)
+                : rawArraysToList(vals, szGot));
+    }
+
+    @SuppressWarnings("unchecked")
+    private <T> List<T>
+    _getNStringsFromMarker(String item, Topic topic, int n, boolean withDateTime,
+                           boolean throwIfDataLost)
+            throws CLibException, LibraryNotLoaded, DirtyMarkerException {
+        Pointer[] vals = new Pointer[n];
+        DateTime[] dts = (withDateTime ? new DateTime[n] : null);
+        NativeLong[] getSz = {new NativeLong(0)};
+        for (int i = 0; i < n; ++i) {
+            vals[i] = new Memory(STR_DATA_SZ + 1);
+        }
+        int err = TOSDataBridge.getCLibrary()
+                .TOSDB_GetNStringsFromMarker(_name, item, topic.val,
+                        vals, n, STR_DATA_SZ + 1, dts, getSz);
+        if (err != 0) {
+            throw new CLibException("TOSDB_GetNStringsFromMarker", err);
+        }
+
+        int szGot = (int) _handleSzGotFromMarker(getSz[0], throwIfDataLost);
+        return (List<T>)(withDateTime ? rawArraysToList(vals, dts, szGot)
+                : rawArraysToList(vals, szGot));
     }
 
     private long
