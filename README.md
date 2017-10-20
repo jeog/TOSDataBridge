@@ -27,9 +27,12 @@ The core implementation is not portable, but the python interface does provides 
 
 ### New Features
 - - -
-- 'CUSTOM' Topics - Users can now access the 19 CUSTOM columns/fields exported by TOS to get results from formulas, studies, scans etc. - if you can script it in TOS you can now export it via TOSDataBridge. (note: even if you change the name from say 'CUSTOM3' in TOS to 'MyGreatIndicator' TOSDataBridge still refers to that as 'CUSTOM3' or TOPICS::CUSTOM3)
-- 'GetNFromMarker' - calls added to C API allowing for stateless blocking calls to be built on top.
-- 'StreamingSession' - python Context Manager that provides blocking streaming data for any combination of items/topics  
+- ***'CUSTOM' Topics*** - access the 19 CUSTOM fields exported by TOS.
+    - get results from formulas, studies, scans etc.  
+    - use ThinkScript(inside a CUSTOM field) and export the result via TOSDataBridge.   
+    - TOS -> MarketWatch -> Quotes -> right-click column headers -> Customize... -> select 'Custom Quotes' from drop-down menu -> click icon to left of name  
+- ***'GetNFromMarker'*** - calls added to C API allowing for stateless blocking calls to be built on top.  
+- ***'StreamingSession'*** - python Context Manager that provides blocking streaming data for any combination of items/topics  
     
 ### Quick Setup
 - - -
