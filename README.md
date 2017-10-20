@@ -2,9 +2,13 @@
 - - -
 TOSDataBridge (TOSDB) is an open-source collection of resources for pulling real-time streaming data off of TDAmeritrade's ThinkOrSwim(TOS) platform, providing C, C++, Java and Python interfaces. 
 
-TOSDB uses TOS's antiquated, yet still useful, DDE feature, directly through the Windows API. The C / C++ interfaces are implemented as a shared library that communicates with a backend Windows Service. The Python and Java interfaces wrap this library in a more object-oriented, user-friendly format.
+TOSDB uses TOS's antiquated, yet still useful, DDE feature, directly through the Windows API. The C / C++ interfaces are implemented as a shared library that communicates with a backend Windows Service. 
 
-The core implementation is not portable, but the python interface does provides a thin virtualization layer over TCP. A user running Windows in a Virtual Machine, for instance, can expose the exact same python interface to a different host system running python3. 
+![](./res/tosdb_diagram2.png)
+
+The Python and Java interfaces wrap this library in a more object-oriented, user-friendly format.
+
+The core implementation is not portable, but the python interface does provides a thin virtualization layer over TCP. A user running Windows in a Virtual Machine, for instance, can expose the same python interface to a different host system running python3. 
 
 ![](./res/main_diagram.png)
 
