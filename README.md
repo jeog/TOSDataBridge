@@ -27,8 +27,8 @@ The core implementation is not portable, but the python interface does provides 
 
 ### New Features
 - - -
-- ***'CUSTOM' Topics*** - access the 19 CUSTOM fields exported by TOS.
-    - get results from formulas, studies, scans etc.  
+- ***'CUSTOM' Topics*** - [access the 19 CUSTOM fields exported by TOS](README_DETAILS.md#custom-topics).
+    - get results from formulas, studiesetc.  
     - use ThinkScript(inside a CUSTOM field) and export the result via TOSDataBridge.   
     - TOS -> MarketWatch -> Quotes -> right-click column headers -> Customize... -> select 'Custom Quotes' from drop-down menu -> click icon to left of name  
 - ***'GetNFromMarker'*** - calls added to C API allowing for stateless blocking calls to be built on top.  

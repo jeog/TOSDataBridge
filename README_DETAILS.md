@@ -1,45 +1,129 @@
-### Troubleshooting
-- - -
-
-##### Connection Problems
-
-TOSDataBridge needs to 1) connect the client program (e.g. python interpreter) to the Service/Engine backend, and 2) connect the Service/Engine backend to the TOS platform. If either of these steps fails you'll generally be alerted by an error code, exception, or error message, depending on the language.
-
-If you have trouble with (1) connecting the client to the Service/Engine be sure:
-
-- you have run the tosdb-setup.bat install script (and it doesn't output any error messages).
-- you have started the service ('SC start TOSDataBridge') and it's running. 'SC query TOSDataBridge' will provide the status.
-- you are using the correct version of the client library (e.g. branch 0.7 with a 64-bit Service/Engine and 64-bit client should be using tos-databridge-0.7-x64.dll)
-
-If you can connect to the Service/Engine but have trouble with (2) connecting to the TOS platform be sure:
-
-- you passed 'admin' to the tosdb-setup.bat script if your TOS runs with elevated privileges
-- you are running the Service/Engine in the appropriate session. 
-     1. open up cmd.exe 
-     2. enter 'tasklist' 
-     3. find thinkorswim and tos-databridge-engine on the list
-     4. if their Session# fields don't match you need to [re-run the tosdb-setup.bat script](README.md#quick-setup) with a custom session arg that matches the Session# of thinkorswim
-
-If none of that solves the problem be sure:
-- your anti-virus isn't sandboxing/quarantining any of the binaries and/or blocking communication between them
-- to check the log files in /log for more information
-
-If you are still having issues please [file a new issue](https://github.com/jeog/TOSDataBridge/issues/new); you may have run into a serious bug that we'd like to fix.
 
 
-### Important Details 
-- - -
-- **Exiting Gracefully** You want to avoid shutting down the TOS platform and/or the Service while your client code is running. As a general rule follow this order: 
+TOSDataBridge consists of three main components: TOS Platform, backend Service, and frontend Library.
 
-    1. Clean up: close blocks, call clean_up etc. 
-    2. Exit your program
-    3. Stop the Service (optional)
-    4. Close TOS platform
+![](./res/tosdb_diagram2.png)
 
-    Once you've done (i) the remaining order is less important. 
+The [Service](README_SERVICE.md) is a background process designed to act as a bridge between the TOS platfrom and (multiple) instances of client code. Generally it's started and left running. It can be setup to start automatically on system startup. ***(Issues can arise if a user closes the TOS platform without releasing resources and then re-opens the TOS platform. In this case errors will be logged/returned and/or an exception thrown, and the Service will need to be restarted.)***
 
-- **DDE Data:** It's important to realize that we (us, you, this code, and yours) are at the mercy of the TOS platform, the DDE technology, and TOS's implementation of it. You may notice the streams of data will not match the Time & Sales perfectly.  If you take a step back and aggregate the data in more usable forms this really shouldn't be an issue.  Another way we are at the mercy of the DDE server is that fields like last price and last size are two different topics. That means they are changing at slightly different times with slightly different time-stamps even if they are the correct pairing. To get around this we can write code like this to simulate a live-stream :
-    ```
+The [Library](README_API.md) is the layer of code used to communicated with the service. If using the C/C++ API the library is linked and loaded directly. If using [Python](README_PYTHON.md) or [Java](README_JAVA.md) you manually load the library via the init(...) calls.
+
+Once the Service and TOS Platform are running, the user runs their code, which uses the API calls to communicate with the Service, which continually pulls data from the Platform and returns it to the user as requested.
+
+
+##### Exiting Gracefully 
+You want to avoid shutting down the TOS platform and/or the Service while your code is running. If you close TOS without cleaning up from the client side you can corrupt the underlying objects the Service uses to communicate. If you close your program without cleaning up you can cause a resource leak in the Service.
+
+As a general rule follow this order:
+1. Clean up: close blocks, call clean_up etc. 
+2. Exit your program (optional)
+3. Close TOS platform (optional)
+4. Stop the Service (optional)
+
+
+##### Objects
+
+TOSDataBridge uses a quasi object-oriented approach (in concept and in code) to store, manage, and return data to the user in multiple languages, in multiple different ways. The main object is the ***block***. A user adds ***items*** and ***topics*** to the block for the data they want. Each item-topic pairing represents a ***stream*** that is managed automatically by the block.
+
+An ***item*** is a string representing the individual instrument(e.g 'SPY', '/ZC', '.SPY180119C250', '$DJT', 'EUR/USD').
+
+> The underlying C/C++ API is **case-sensitive**; it's up to the client to make sure they are passing connsistenly **upper-case** item strings. The Python and Java APIs are **case-insensitive**; on receiving item and topic strings they are converted to upper-case by default.
+
+A ***topic*** is a string or enum (depending on the language) representing a data field(e.g 'LAST', 'VOLUME', 'BID_SIZE'). The complete list of topics can be found in src/topics.cpp.
+
+> The implementation can easily handle bad topics passed to it, returning an error code(C) or throwing an exception(C++). Bad item strings on the other hand can be a problem. The DDE server is *supposed* to respond with a negative ACK if the item is invalid but TOS responds with a positive ACK, inserting 'N/A' strings into the stream. **Currently it's up to the user to deal with passing bad Items.** 
+
+If we create one block, add two topics and three items we have six streams:
+
+&nbsp;     | SPY | QQQ | GOOG
+-----------|-----|-----|-----
+**LAST**   |&nbsp;&nbsp;X | &nbsp;&nbsp;&nbsp;X | &nbsp;&nbsp;&nbsp;&nbsp;X
+**VOLUME** |&nbsp;&nbsp;X | &nbsp;&nbsp;&nbsp;X | &nbsp;&nbsp;&nbsp;&nbsp;X
+
+> **The block requires at least one valid topic AND item**, otherwise it can't hold a data-stream. Because of this, if only items(topics) are added they are held in a pre-cache until a valid topic(item) is added. Likewise, if all topics(items) are removed, the remaining items(topics) are moved into the pre-cache. Use the appropriate API calls to see what's in the pre-cache.
+
+
+##### Getting Data
+
+There are numerous way to get current and historical data from a block/stream. 
+
+- An (indexed) single historical data-point of a stream
+- An (indexed) snapshot of multiple historical data-points of a stream
+- An (indexed) snapshot of multiple historical data-points up to an internal, atomic marker
+- A snapshot of 'n' historical data-points before an internal, atomic marker
+- The most recent value of all streams
+- The most recent value of all streams of a particular item
+- The most recent value of all streams of a particular topic
+
+Many of these calls offer type-specific, generic, and string versions. 
+    
+Review the [C/C++ API](README_API.md#items--topics--streams) for a thorough explanation. Specific information about the Python and Java API calls can be found in the source documentation:
+
+- ***python***: python/tosdb/_common.py
+- ***java***: java/src/io/github/jeog/tosdatabridge/DataBlock.java
+
+
+##### Custom Topics
+
+TOS allows users to create custom quote fields that can be added as a column to various widgets/displays. These can be custom calculations, studies, strategy output etc. and can be created using the 'Condition Wizard' of the ThinkScript editor. Once created, and in use on the platform, the output of that field can then be export via TOSDataBridge, like any other topic.
+
+To create a CUSTOM quote in TOS:
+1. Create a new watch-list or go to MarketWatch->Quotes
+2. Right-click on the column header and click 'customize'
+3. Select 'Custom Quotes' from the drop-down menu in the upper left.
+4. Left-click the little scroll icon to the left of 'CUSTOM' field you want to use.
+5. Select the 'Condition Wizard' tab or the ThinkScript editor tab to code your own.
+6. When done add it to the list of columns, click Apply.
+
+To export this CUSTOM quote via TOSDataBridge:
+1. **Add this custom quote to atleast one widget/window in TOS.**
+2. **Add the symbols you want to export to THAT widget/window.**
+3. Add the appropriate topic to your block, i.e topic 'CUSTOM1' for 'CUSTOM 1'.
+4. Add the symbols/items you added in #2 to your block. (Symbols added to the block but not to TOS, will only return 'loading'.)
+
+***Example 1***: Return a comma delimited string containing Fast, Slow, and Full Stochastic values.
+
+(in the ThinkScript editor for 'CUSTOM 9')
+
+    def sfast = StochasticFast();
+    def sslow = StochasticSlow();
+    def sfull = StochasticFull();
+    AddLabel(Yes, Concat(sfast, Concat(",", Concat(sslow, Concat(",", sfull)))));
+
+(in TOS create a watch-list that looks something like) 
+
+&nbsp;|  LAST  | CUSTOM 9
+------|--------|---------
+SPY   | 260.10 | 14.37,18.23,17.99
+QQQ   | 155.68 | 1.8,1.3,1.29
+
+(in python)
+
+    >> block = tosdb.TOSDB_DataBlock();
+    >> block.add_items("SPY", "QQQ")
+    >> block.add_topics("CUSTOM9")
+    >> val = block.get("SPY", "CUSTOM9", date_time=False)
+    >> stoch_fast, stoch_slow, stoch_full = map(float, val.split(",")) 
+
+
+***Example 2***: Return a boolean value to indicate when the 10 min SMA crosses above the 30.
+
+(in the ThinkScript editor for 'CUSTOM 9')
+
+    plot data;
+    if SimpleMovingAvg(close, 10) crosses above SimpleMovingAvg(close, 30) {
+        data = 1;
+    }else{
+        data = 0;
+    }
+
+Follow the steps from Example 1 and check the stream for a change from '0' to '1'
+
+
+##### DDE Data
+
+It's important to realize that we (us, you, this code, and yours) are at the mercy of the TOS platform, the DDE technology, and TOS's implementation of it. You may notice the streams of data will not match the Time & Sales perfectly.  If you take a step back and aggregate the data in more usable forms this really shouldn't be an issue.  Another way we are at the mercy of the DDE server is that fields like last price and last size are two different topics. That means they are changing at slightly different times with slightly different time-stamps even if they are the correct pairing. To get around this we can write code like this to simulate a live-stream : 
+
     >>> block = tosdb.TOSDB_DataBlock()
     >>> block.add_items('GOOG')
     >>> block.add_topics('LAST','VOLUME')
@@ -55,26 +139,32 @@ If you are still having issues please [file a new issue](https://github.com/jeog
     ...     vol = v
     ...     # the less we sleep the more accurate the stream
     ...     time.sleep(.1)
-    ```
+    
 
-- **Numerical Values for 'Non-Decimal' Instruments:** The TOS DDE server doesn't handle numerical values for 'non-decimal' instruments well. For instance, trying to get a bid/ask/last etc. for a 10-yr note future (/zn) will not return the fractional part of the price. In these cases use the topic versions suffixed with an x (bidx/askx/lastx etc.) which will provide a string you'll need to parse.
+##### Numerical Values for 'Non-Decimal' Instruments
 
-- **Case-Sensitivity:** Case Sensitivity is a minor issues with how Item values are handled. The underlying C/C++ library are case-sensitive; it's up to the client to make sure they are passing case consistent item strings. The Python and Java wrappers are case-insensitive; on receiving item and topic strings they are converted to upper-case by default.
+The TOS DDE server doesn't handle numerical values for 'non-decimal' instruments well. For instance, trying to get a bid/ask/last etc. for a 10-yr note future (/zn) will not return the fractional part of the price. In these cases use the topic versions suffixed with an x (bidx/askx/lastx etc.) which will provide a string you'll need to parse.
 
-- **Closing Large Blocks:** Currently Closing/Destroying large blocks(1,000,000+ combined data-stream elements) involves a large number of internal deallocations/destructions and becomes quite CPU intensive. The process is spun-off into its own thread but this may fail, returning to the main thread when the library is being freed, or block the python interpreter regardless of when or how it's called. Use caution when creating/closing large blocks.
+##### Closing Large Blocks
 
-- **Block Size and Memory:** As mentioned you need to use some sense when creating blocks. As a simple example: let's say you want LAST,BID,ASK for 100 symbols. If you were to create a block of size 1,000,000, WITHOUT DateTime, you would need to allocate over 2.4 GB of memory - not good. As a general rule keep data-streams of similar desired size in the same block, and use new blocks as necessary. In our example if you only need 1,000,000 LAST elems for 10 items and 100 for everything else create 2 blocks: 1) a block of size 1,000,000 with those 10 items and the topic LAST; 2) a block of size 100 with all 100 items and the three topics. Then you would only need a little over 80 MB. (Really you could create three blocks to avoid any overlap but in this case its only a minor performance and space improvement and not worth worth the inconvenience.)
+Currently Closing/Destroying large blocks(1,000,000+ combined data-stream elements) involves a large number of internal deallocations/destructions and becomes quite CPU intensive. The process is spun-off into its own thread but this may fail, returning to the main thread when the library is being freed, or block the python interpreter regardless of when or how it's called. Use caution when creating/closing large blocks.
 
-- **Asymmetric Responsibilities & Leaks:** Connection 'probing' only works one way, from master to slave. If the master disconnects abruptly, without sending the requisite remove signal(s), the slave will continue to maintain the client/master's streams. Internally, all it does is keep a ref-count to the streams it's been asked to create and obviously write the necessary data into the appropriate shared memory segments. To see the status of the service and if there are stranded or dangling streams open up the command shell and use **`DumpBufferStatus`** to dump all the current stream information to /log . 
+##### Block Size and Memory
 
-- **DateTimeStamp:** THESE ARE NOT OFFICIAL STAMPS FROM THE EXCHANGE, they are manually created once the TOS DDE server returns the data. They use the system clock to assure high_resolution( the micro-seconds field) and therefore there is no guarantee that the clock is accurate or won't change between stamps, as is made by the STL's std::steady_clock. 
+As mentioned you need to use some sense when creating blocks. As a simple example: let's say you want LAST,BID,ASK for 100 symbols. If you were to create a block of size 1,000,000, WITHOUT DateTime, you would need to allocate over 2.4 GB of memory - not good. As a general rule keep data-streams of similar desired size in the same block, and use new blocks as necessary. In our example if you only need 1,000,000 LAST elems for 10 items and 100 for everything else create 2 blocks: 1) a block of size 1,000,000 with those 10 items and the topic LAST; 2) a block of size 100 with all 100 items and the three topics. Then you would only need a little over 80 MB. (Really you could create three blocks to avoid any overlap but in this case its only a minor performance and space improvement and not worth worth the inconvenience.)
 
-- **Bad Items & Topics:** The implementation can easily handle bad topics passed to a call since it has a large mapping of the allowed topic strings mapped to enum values for TOS_Topics. If a passed string is mapped to a NULL_TOPIC then it can be rejected, or even if it is passed it won't get a positive ACK from the server and should be rejected. Bad item strings on the other hand are a bit of a problem. The DDE server is supposed to respond with a negative ACK if the item is invalid but TOS responds with a positive ACK and a 'N/A' string. **Currently it's up to the user to deal with passing bad Items.** 
+##### Asymmetric Responsibilities & Leaks
 
-- **Pre-Caching:** As mentioned the block requires at least one valid topic AND item, otherwise it can't hold a data-stream. Because of this, if only items(topics) are added they are held in a pre-cache until a valid topic(item) is added. Likewise, if all topics(items) are removed, the remaining items(topics) are moved into the pre-cache. This has two important consequences: 1) pre-cached entries are assumed to be valid until they come out and are sent to the engine and 2) when using the API calls or python methods to see the items/topics currently in the 'block' you WILL NOT see pre-cached items. Use the appropriate API calls or python methods to see what's in the pre-cache.
+Connection 'probing' only works one way, from master to slave. If the master disconnects abruptly, without sending the requisite remove signal(s), the slave will continue to maintain the client/master's streams. Internally, all it does is keep a ref-count to the streams it's been asked to create and obviously write the necessary data into the appropriate shared memory segments. To see the status of the service and if there are stranded or dangling streams open up the command shell and use **`DumpBufferStatus`** to dump all the current stream information to /log . 
 
-- **SendMessage vs. SendMessageTimeout:** To initiate a topic with the TOS server we should send out a broadcast message via the SendMessage() system call. This call is built to block to insure the client has had a chance to deal with the ACK message. For some reason, it's deadlocking, so we've been forced to use SendMessageTimeout() with an arbitrary 500 millisecond timeout. Therefore, until this gets fixed adding topics will introduce an amount of latency in milliseconds = 500 x # of topics.
+##### DateTimeStamp
 
+***THESE ARE NOT OFFICIAL STAMPS FROM THE EXCHANGE,*** they are manually created once the TOS DDE server returns the data. They use the system clock to assure high_resolution( the micro-seconds field) and therefore there is no guarantee that the clock is accurate or won't change between stamps, as is made by the STL's std::steady_clock. 
+
+
+##### SendMessage vs. SendMessageTimeout
+
+To initiate a topic with the TOS server we should send out a broadcast message via the SendMessage() system call. This call is built to block to insure the client has had a chance to deal with the ACK message. For some reason, it's deadlocking, so we've been forced to use SendMessageTimeout() with an arbitrary 500 millisecond timeout. Therefore, until this gets fixed adding topics will introduce an amount of latency in milliseconds = 500 x # of topics.
 
 
 

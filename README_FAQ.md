@@ -31,7 +31,7 @@ C, C++, Java, and Python interfaces are provided. The Java interface is still in
 
 ##### I'm having trouble connecting to the Service/Engine and/or the TOS platform. What do I do?
 
-[Review the troubleshooting docs](README_DETAILS.md#Connection-Problems). 
+[Review the troubleshooting docs](README_TROUBLESHOOTING.md). 
 
 ##### How do I build/debug TOSDataBridge?
 
