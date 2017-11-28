@@ -36,7 +36,7 @@
     
     ```(Admin) C:\> SC config TOSDataBridge start= auto``` (notice the space between '=' and 'auto')
     
-    [More information about the service.](README_SERVICE.md)
+    [More information about the service.](README_DETAILS.md#the-service)
 
     (note: some of the particulars in these (older) screen-shots may be different for newer versions)    
     ![](./res/SCss1.png)

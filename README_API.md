@@ -294,7 +294,7 @@ Items and Topics are **CASE SENSITIVE** and should be entered as all upper-case.
 
 ##### Pre-Caching
 
-Items\[Topics\] added before any topics\[items\] exist in the block will be pre-cached, i.e they will be visible to the back-end but not to the interface until a topic\[item\] is added; likewise if all the items\[topics\] are removed(thereby leaving only topics\[items\]). See [Important Details and Provisos](README_DETAILS.md). To view the pre-cache use the following calls:
+Items\[Topics\] added before any topics\[items\] exist in the block will be pre-cached, i.e they will be visible to the back-end but not to the interface until a topic\[item\] is added; likewise if all the items\[topics\] are removed(thereby leaving only topics\[items\]). To view the pre-cache use the following calls:
 
 **`[C/C++] TOSDB_GetPreCachedItemCount(LPCSTR id, size_type* count) -> int`**
 

@@ -1,7 +1,7 @@
 ### Java Wrapper 
 - - -
 
-***WARNING: Still in early development***
+***WARNING: in early development; not stable; interface subject to change***
 
 The java wrapper, like the python wrapper, extends the underlying C/C++ interface. It uses [Java Native Access(JNA)](https://github.com/java-native-access/jna) to load and access the underlying DLL, wrapping these calls in a more user-friendly API. Currently(unlike the python wrapper) there is no virtual layer for use on non-windows systems.
 

@@ -43,5 +43,5 @@ It's almost completely different. All TOSDataBridge provides is the ability to (
 
 ##### Why don't the data and associated time-stamps exactly match the Time & Sales data of the platform/exchange?
 
-TOSDataBridge relies on TOS's use of the Window's DDE mechanism. [See the 'DDE Data' section in Details](README_DETAILS.md#important-details). 
+TOSDataBridge relies on [TOS's use of the Window's DDE mechanism.](README_DETAILS.md#dde-data). 
 

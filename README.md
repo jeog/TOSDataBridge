@@ -28,7 +28,7 @@ The core implementation is not portable, but the python interface does provides 
 ### New Features
 - - -
 - ***'CUSTOM' Topics*** - [access the 19 CUSTOM fields exported by TOS](README_DETAILS.md#custom-topics).
-    - get results from formulas, studiesetc.  
+    - get results from formulas, studies etc.  
     - use ThinkScript(inside a CUSTOM field) and export the result via TOSDataBridge.   
     - TOS -> MarketWatch -> Quotes -> right-click column headers -> Customize... -> select 'Custom Quotes' from drop-down menu -> click icon to left of name  
 - ***'GetNFromMarker'*** - calls added to C API allowing for stateless blocking calls to be built on top.  
@@ -61,8 +61,7 @@ The core implementation is not portable, but the python interface does provides 
     - Core C/C++ libs (above) must be installed first to use the (non-virtual) interface
     - tosdb/_tosdb.py is generated automatically by setup.py
 
-    ##### Java Wrapper (optional)
-    - **Warning - in early development; not stable; interface subject to change [(see docs)](README_JAVA.md)**
+    ##### Java Wrapper (optional)    
     - Core C/C++ libs (above) must be installed first
     - *java/tosdatabridge.jar* should be included (source is in java/src if you want/need to build)
     
@@ -148,22 +147,23 @@ The core implementation is not portable, but the python interface does provides 
 ### Docs
 - - - 
 
-#### [Installation Details](README_INSTALL.md)
+#### [Installation](README_INSTALL.md)
+
+
+#### [Details](README_DETAILS.md)
 
 
 #### [C/C++ API](README_API.md)
 
 
-#### [TOSDataBridge Service](README_SERVICE.md)
+#### [Python](README_PYTHON.md)
 
 
-#### [Python Wrapper (tosdb/)](README_PYTHON.md)
+#### [Java](README_JAVA.md)
 
 
-#### [Java Wrapper](README_JAVA.md)
+#### [Troubleshooting](README_TROUBLESHOOTING.md)
 
-
-#### [Details & Troubleshooting](README_DETAILS.md)
 
 #### [FAQ](README_FAQ.md)
 

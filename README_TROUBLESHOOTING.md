@@ -1,7 +1,7 @@
 ### Troubleshooting
 - - -
 
-##### Connection Problems
+#### Connection Problems
 
 TOSDataBridge needs to 1) connect the client program (e.g. python interpreter) to the Service/Engine backend, and 2) connect the Service/Engine backend to the TOS platform. If either of these steps fails you'll generally be alerted by an error code, exception, or error message, depending on the language.
 
@@ -25,3 +25,16 @@ If none of that solves the problem be sure:
 - to check the log files in /log for more information
 
 If you are still having issues please [file a new issue](https://github.com/jeog/TOSDataBridge/issues/new); you may have run into a serious bug that we'd like to fix.
+
+
+#### Error(s) adding Item and/or Topics
+
+*TODO*
+
+
+#### Custom Topic Problems
+
+*TODO*
+
+
+
