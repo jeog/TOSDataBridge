@@ -7,7 +7,7 @@ It provides (programmatic) access to real-time streaming data from the ThinkOrSw
 
 ##### What type of data does it provide?
 
-It attempts to provide all the data that TOS exports via DDE: about 60 fields in total. Some of the more popular are LAST, VOLUME, NET_CHANGE, BID, ASK.
+It attempts to provide all the data that TOS exports via DDE: about 60 fields in total. Some of the more popular are LAST, VOLUME, NET_CHANGE, BID, ASK. It also prvoides [access to the 19 CUSTOM fields exported by TOS](README_DETAILS.md#custom-topics), allowing users to export custom calculations, studies, strategy triggers etc. from the platform.
 
 ##### What type of securities/instruments does it work with ?
 

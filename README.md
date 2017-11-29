@@ -28,9 +28,8 @@ The core implementation is not portable, but the python interface does provides 
 ### New Features
 - - -
 - ***'CUSTOM' Topics*** - [access the 19 CUSTOM fields exported by TOS](README_DETAILS.md#custom-topics).
-    - get results from formulas, studies etc.  
-    - use ThinkScript(inside a CUSTOM field) and export the result via TOSDataBridge.   
-    - TOS -> MarketWatch -> Quotes -> right-click column headers -> Customize... -> select 'Custom Quotes' from drop-down menu -> click icon to left of name  
+    - export calculations, studies, strategy triggers etc.  
+    - use ThinkScript or the Condition Wizard from within TOS to build custom quotes.  
 - ***'GetNFromMarker'*** - calls added to C API allowing for stateless blocking calls to be built on top.  
 - ***'StreamingSession'*** - python Context Manager that provides blocking streaming data for any combination of items/topics  
     
@@ -130,9 +129,11 @@ The core implementation is not portable, but the python interface does provides 
 
     - **tosdb/** : A python package that serves as a wrapper around *tos-databridge-[version]-[x86|x64].dll*. It provides a more object oriented, simplified means of accessing the core functionality.  
     
-    - **tosdb/intervalize/** : Sub-package for creating (fixed) intervals from streaming data.
+    - **tosdb/intervalize/** : Sub-package that provides fixed intervals(e.g OHLC).
+
+    - **tosdb/streaming/** : Sub-package that provides blocking/synchronous mechanisms for accessing streaming data.
     
-    - **tosdb/cli_scripts/** : 'Client' scripts built on top of the python wrapper.
+    - **tosdb/cli_scripts/** : Sub-package for 'client' scripts built on top of the python wrapper.
 
 - **/java** - Files relevant to the Java wrapper.
 
@@ -172,7 +173,7 @@ The core implementation is not portable, but the python interface does provides 
 - - -
 This project grew out of personal need and is maintained by a single developer. Contributions - testing, bug fixes, suggestions, extensions, whatever - are always welcome. If you want to contribute something non-trivial it's recommended you communicate the intention first to avoid unnecessary and/or conflicting work.
 
-Simply reporting bugs or questioning seemingly idiotic or unintuitive interface design can be very helpful.
+Simply reporting bugs or questioning unintuitive interface design can be very helpful.
 
 
 ### License & Terms
