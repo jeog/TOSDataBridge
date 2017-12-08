@@ -200,7 +200,7 @@ DATASTREAM_PRIMARY_CLASS::_check_adj(int& end, int& beg, const std::deque<T,Allo
     if(beg >= sz || end >= sz || beg < 0 || end < 0)  
         throw DataStreamOutOfRange("adj index value out of range", sz, beg, end);    
     else if(beg > end)   
-        throw DataStreamInvalidArgument("adjusted beging index > end index");
+        throw DataStreamInvalidArgument("adjusted beg index > end index");
 
     return true;
 }
@@ -546,6 +546,36 @@ DATASTREAM_PRIMARY_CLASS::both(int indx) const
     /* --- CRITICAL SECTION --- */
 }
 
+// BUG-FIX: allow frame calls not to move marker Dec 8 2017
+DATASTREAM_PRIMARY_TEMPLATE
+typename DATASTREAM_PRIMARY_CLASS::generic_ty
+DATASTREAM_PRIMARY_CLASS::get_leave_marker(int indx) const
+{
+    int dummy = 0;
+
+    _my_lock_guard_type lock(*_mtx);
+    /* --- CRITICAL SECTION --- */
+    if(!indx){         
+        return generic_ty(_deque_primary.front()); 
+    }
+
+    _check_adj(indx, dummy, _deque_primary); 
+
+    return generic_ty(_deque_primary.at(indx));   
+    /* --- CRITICAL SECTION --- */
+}
+
+// BUG-FIX: allow frame calls not to move marker Dec 8 2017
+DATASTREAM_PRIMARY_TEMPLATE
+typename DATASTREAM_PRIMARY_CLASS::both_ty
+DATASTREAM_PRIMARY_CLASS::both_leave_marker(int indx) const            
+{  
+    _my_lock_guard_type lock(*_mtx);
+    /* --- CRITICAL SECTION --- */
+    return both_ty(get_leave_marker(indx), secondary_ty());
+    /* --- CRITICAL SECTION --- */
+}
+
 DATASTREAM_PRIMARY_TEMPLATE
 typename DATASTREAM_PRIMARY_CLASS::generic_vector_ty
 DATASTREAM_PRIMARY_CLASS::vector(int end = -1, int beg = 0) const 
@@ -721,6 +751,25 @@ DATASTREAM_SECONDARY_CLASS::both(int indx) const
     _my_lock_guard_type lock(*_mtx);  
     /* --- CRITICAL SECTION --- */
     generic_ty gen = operator[](indx); /* _mark_count reset by _my_base_ty */
+    if(!indx)
+        return both_ty(gen, _deque_secondary.front());
+
+    _check_adj(indx, dummy, _deque_secondary); 
+     
+    return both_ty(gen, _deque_secondary.at(indx));
+    /* --- CRITICAL SECTION --- */
+}
+
+// BUG-FIX: allow frame calls not to move marker Dec 8 2017
+DATASTREAM_SECONDARY_TEMPLATE
+typename DATASTREAM_SECONDARY_CLASS::both_ty
+DATASTREAM_SECONDARY_CLASS::both_leave_marker(int indx) const            
+{    
+    int dummy = 0;   
+   
+    _my_lock_guard_type lock(*_mtx);  
+    /* --- CRITICAL SECTION --- */
+    generic_ty gen = get_leave_marker(indx); 
     if(!indx)
         return both_ty(gen, _deque_secondary.front());
 

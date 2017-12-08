@@ -332,7 +332,7 @@ RAW_DATA_BLOCK_CLASS::map_of_frame_topics(std::string item) const
             map.insert( 
                 pair_type( 
                     TOS_Topics::map[elem.first],
-                    elem.second->operator[](0)
+                    elem.second->get_leave_marker(0)
                 ) 
             );
         }        
@@ -359,7 +359,7 @@ RAW_DATA_BLOCK_CLASS::map_of_frame_items(TOS_Topics::TOPICS topic) const
         /* --- CRITICAL SECTION --- */
         for(auto & elem : _block){
             map.insert( 
-                pair_type(elem.first, elem.second->at(topic)->operator[](0)) 
+                pair_type(elem.first, elem.second->at(topic)->get_leave_marker(0)) 
             );  
         }
         /* --- CRITICAL SECTION --- */
@@ -391,7 +391,7 @@ RAW_DATA_BLOCK_CLASS::pair_map_of_frame_topics(std::string item) const
             map.insert( 
                 map_datetime_type::value_type(
                     TOS_Topics::map[elem.first],
-                    elem.second->both(0)
+                    elem.second->both_leave_marker(0)
                 ) 
             );
         }        
@@ -420,7 +420,7 @@ RAW_DATA_BLOCK_CLASS::pair_map_of_frame_items(TOS_Topics::TOPICS topic) const
             map.insert( 
                 map_datetime_type::value_type(
                     elem.first, 
-                    elem.second->at(topic)->both(0)
+                    elem.second->at(topic)->both_leave_marker(0)
                 ) 
             );       
         }
@@ -451,7 +451,7 @@ RAW_DATA_BLOCK_CLASS::matrix_of_frame() const
                 map.insert( 
                     map_type::value_type(
                         TOS_Topics::map[tops.first],
-                        tops.second->operator[](0)
+                        tops.second->get_leave_marker(0)
                     ) 
                 ); 
             }
@@ -480,7 +480,7 @@ RAW_DATA_BLOCK_CLASS::pair_matrix_of_frame() const
                 map.insert( 
                     map_datetime_type::value_type(
                         TOS_Topics::map[tops.first],
-                        tops.second->both(0)
+                        tops.second->both_leave_marker(0)
                     ) 
                 ); 
             }

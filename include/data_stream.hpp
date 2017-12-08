@@ -146,6 +146,14 @@ public:
 
     virtual secondary_vector_ty 
     secondary_vector(int end = -1, int beg = 0) const = 0;  
+
+    // BUG-FIX: allow frame calls not to move marker Dec 8 2017
+    virtual generic_ty
+    get_leave_marker(int) const = 0;
+
+    // BUG-FIX: allow frame calls not to move marker Dec 8 2017
+    virtual both_ty
+    both_leave_marker(int) const = 0;
     
     virtual void 
     push(const generic_ty& gen, secondary_ty sec = secondary_ty()) = 0;   
@@ -507,6 +515,14 @@ public:
 
     secondary_vector_ty 
     secondary_vector(int end = -1, int beg = 0) const;
+
+    // BUG-FIX: allow frame calls not to move marker Dec 8 2017
+    generic_ty
+    get_leave_marker(int indx) const;
+
+    // BUG-FIX: allow frame calls not to move marker Dec 8 2017
+    both_ty
+    both_leave_marker(int indx) const;
 };
 
              
@@ -571,6 +587,10 @@ public:
 
     secondary_vector_ty 
     secondary_vector(int end = -1, int beg = 0) const;
+
+    // BUG-FIX: allow frame calls not to move marker Dec 8 2017
+    both_ty
+    both_leave_marker(int indx) const;
 };  
 
 
