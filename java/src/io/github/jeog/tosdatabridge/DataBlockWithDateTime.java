@@ -39,8 +39,8 @@ import java.util.*;
  * <p>
  * DataBlockWithDateTime works much the same as its python cousin
  * (tosdb._win.TOSDB_DataBlock). It's instantiated with a size parameter to indicate
- * how much historical data is saved. Once created 'topics' (data fields found in the
- * Topic enum) and 'items' (symbols) are added to create a matrix of 'streams', each
+ * how many historical data-points are saved. Once created 'topics' (data fields found in
+ * the Topic enum) and 'items' (symbols) are added to create a matrix of 'streams', each
  * the size of the block. The block can be thought of as a 3D object with the following
  * dimensions:
  * <p>
@@ -61,8 +61,7 @@ import java.util.*;
  * @see <a href="https://github.com/jeog/TOSDataBridge/blob/master/README.md"> README </a>
  * @see <a href="https://github.com/jeog/TOSDataBridge/blob/master/README_JAVA.md"> README - JAVA API </a>
  * @see <a href="https://github.com/jeog/TOSDataBridge/blob/master/README_API.md"> README - C API </a>
- * @see <a href="https://github.com/jeog/TOSDataBridge/blob/master/README_PYTHON.md"> README - PYTHON API </a>
- * @see <a href="https://github.com/jeog/TOSDataBridge/blob/master/README_SERVICE.md"> README - SERVICE </a>
+ * @see <a href="https://github.com/jeog/TOSDataBridge/blob/master/README_DETAILS.md"> README - DETAILS </a>
  */
 public class DataBlockWithDateTime extends DataBlock {
 
@@ -236,7 +235,7 @@ public class DataBlockWithDateTime extends DataBlock {
      *
      * @param item  item string of the stream
      * @param topic topic enum of the stream
-     * @param end   least recent index/position from which data is pulled
+     * @param end   least recent index/position from which data are pulled
      * @return multiple contiguous data-points and DateTime(s) of stream
      * @throws LibraryNotLoaded   C lib has not been loaded
      * @throws CLibException      error code returned by C lib
@@ -256,8 +255,8 @@ public class DataBlockWithDateTime extends DataBlock {
      *
      * @param item  item string of stream
      * @param topic topic enum of stream
-     * @param end   least recent index/position from which data is pulled
-     * @param beg   most recent index/position from which data is pulled
+     * @param end   least recent index/position from which data are pulled
+     * @param beg   most recent index/position from which data are pulled
      * @return multiple contiguous data-points and DateTime(s) of stream
      * @throws LibraryNotLoaded   C lib has not been loaded
      * @throws CLibException      error code returned by C lib
@@ -295,7 +294,7 @@ public class DataBlockWithDateTime extends DataBlock {
      *
      * @param item  item string of the stream
      * @param topic topic enum of the stream
-     * @param end   least recent index/position from which data is pulled
+     * @param end   least recent index/position from which data are pulled
      * @return multiple contiguous data-points and DateTime(s) of stream
      * @throws LibraryNotLoaded   C lib has not been loaded
      * @throws CLibException      error code returned by C lib
@@ -315,8 +314,8 @@ public class DataBlockWithDateTime extends DataBlock {
      *
      * @param item  item string of stream
      * @param topic topic enum of stream
-     * @param end   least recent index/position from which data is pulled
-     * @param beg   most recent index/position from which data is pulled
+     * @param end   least recent index/position from which data are pulled
+     * @param beg   most recent index/position from which data are pulled
      * @return multiple contiguous data-points and DateTime(s) of stream
      * @throws LibraryNotLoaded   C lib has not been loaded
      * @throws CLibException      error code returned by C lib
@@ -354,7 +353,7 @@ public class DataBlockWithDateTime extends DataBlock {
      *
      * @param item  item string of the stream
      * @param topic topic enum of the stream
-     * @param end   least recent index/position from which data is pulled
+     * @param end   least recent index/position from which data are pulled
      * @return multiple contiguous data-points and DateTime(s) of stream
      * @throws LibraryNotLoaded   C lib has not been loaded
      * @throws CLibException      error code returned by C lib
@@ -374,8 +373,8 @@ public class DataBlockWithDateTime extends DataBlock {
      *
      * @param item  item string of stream
      * @param topic topic enum of stream
-     * @param end   least recent index/position from which data is pulled
-     * @param beg   most recent index/position from which data is pulled
+     * @param end   least recent index/position from which data are pulled
+     * @param beg   most recent index/position from which data are pulled
      * @return multiple contiguous data-points and DateTime(s) of stream
      * @throws LibraryNotLoaded   C lib has not been loaded
      * @throws CLibException      error code returned by C lib
@@ -415,7 +414,7 @@ public class DataBlockWithDateTime extends DataBlock {
      *
      * @param item  item string of stream
      * @param topic topic enum of stream
-     * @param beg   most recent index/position from which data is pulled
+     * @param beg   most recent index/position from which data are pulled
      * @return multiple contiguous data-points and DateTime(s) up to atomic marker of stream
      * @throws LibraryNotLoaded     C lib has not been loaded
      * @throws CLibException        error code returned by C lib
@@ -457,7 +456,7 @@ public class DataBlockWithDateTime extends DataBlock {
      *
      * @param item  item string of stream
      * @param topic topic enum of stream
-     * @param beg   most recent index/position from which data is pulled
+     * @param beg   most recent index/position from which data are pulled
      * @return multiple contiguous data-points and DateTime(s) up to atomic marker of stream
      * @throws LibraryNotLoaded     C lib has not been loaded
      * @throws CLibException        error code returned by C lib
@@ -499,7 +498,7 @@ public class DataBlockWithDateTime extends DataBlock {
      *
      * @param item  item string of stream
      * @param topic topic enum of stream
-     * @param beg   most recent index/position from which data is pulled
+     * @param beg   most recent index/position from which data are pulled
      * @return multiple contiguous data-points and DateTime(s) up to atomic marker of stream
      * @throws LibraryNotLoaded     C lib has not been loaded
      * @throws CLibException        error code returned by C lib
@@ -606,7 +605,7 @@ public class DataBlockWithDateTime extends DataBlock {
      *
      * @param item  item string of stream
      * @param topic topic enum of stream
-     * @param beg   most recent index/position from which data is pulled
+     * @param beg   most recent index/position from which data are pulled
      * @return multiple contiguous data-points and DateTime(s) up to atomic marker of stream
      * @throws LibraryNotLoaded     C lib has not been loaded
      * @throws CLibException        error code returned by C lib
@@ -646,7 +645,7 @@ public class DataBlockWithDateTime extends DataBlock {
      *
      * @param item  item string of stream
      * @param topic topic enum of stream
-     * @param beg   most recent index/position from which data is pulled
+     * @param beg   most recent index/position from which data are pulled
      * @return multiple contiguous data-points and DateTime(s) up to atomic marker of stream
      * @throws LibraryNotLoaded     C lib has not been loaded
      * @throws CLibException        error code returned by C lib
@@ -686,7 +685,7 @@ public class DataBlockWithDateTime extends DataBlock {
      *
      * @param item  item string of stream
      * @param topic topic enum of stream
-     * @param beg   most recent index/position from which data is pulled
+     * @param beg   most recent index/position from which data are pulled
      * @return multiple contiguous data-points and DateTime(s) up to atomic marker of stream
      * @throws LibraryNotLoaded     C lib has not been loaded
      * @throws CLibException        error code returned by C lib

@@ -38,6 +38,7 @@ import java.io.File;
  * @see <a href="https://github.com/jeog/TOSDataBridge/blob/master/README.md"> README </a>
  * @see <a href="https://github.com/jeog/TOSDataBridge/blob/master/README_JAVA.md"> README - JAVA API </a>
  * @see <a href="https://github.com/jeog/TOSDataBridge/blob/master/README_API.md"> README - C API </a>
+ * @see <a href="https://github.com/jeog/TOSDataBridge/blob/master/README_DETAILS.md"> README - DETAILS </a>
  */
 public final class TOSDataBridge{
     /* hardcode for time being */
@@ -119,7 +120,7 @@ public final class TOSDataBridge{
      * @param path path of the the tos-databridge DLL.
      * @return if library was loaded AND connected to engine
      * @throws LibraryNotLoaded if library was not loaded
-     * @see <a href="https://github.com/jeog/TOSDataBridge/blob/master/README.md">README</a>
+     * @see <a href="https://github.com/jeog/TOSDataBridge/blob/master/README_JAVA.md"> README - JAVA API </a>
      */
     public static boolean 
     init(String path) throws LibraryNotLoaded {
@@ -155,7 +156,8 @@ public final class TOSDataBridge{
      *
      * @return if library is connected to engine (not necessarily to TOS)
      * @throws LibraryNotLoaded if library is not loaded
-     * @see <a href="https://github.com/jeog/TOSDataBridge/blob/master/README.md">README</a>
+     * @see <a href="https://github.com/jeog/TOSDataBridge/blob/master/README_JAVA.md"> README - JAVA API </a>
+     * @see <a href="https://github.com/jeog/TOSDataBridge/blob/master/README_API.md"> README - C API </a>
      */
     public static boolean
     connect() throws LibraryNotLoaded {
@@ -166,7 +168,8 @@ public final class TOSDataBridge{
      * @return  if library is connected to engine and TOS platform
      *
      * @throws LibraryNotLoaded if library is not loaded
-     * @see <a href="https://github.com/jeog/TOSDataBridge/blob/master/README.md">README</a>
+     * @see <a href="https://github.com/jeog/TOSDataBridge/blob/master/README_JAVA.md"> README - JAVA API </a>
+     * @see <a href="https://github.com/jeog/TOSDataBridge/blob/master/README_API.md"> README - C API </a>
      */
     public static boolean
     connected() throws LibraryNotLoaded {
@@ -182,7 +185,8 @@ public final class TOSDataBridge{
      * </ul>
      *
      * @throws LibraryNotLoaded if library is not loaded
-     * @see <a href="https://github.com/jeog/TOSDataBridge/blob/master/README.md">README</a>
+     * @see <a href="https://github.com/jeog/TOSDataBridge/blob/master/README_JAVA.md"> README - JAVA API </a>
+     * @see <a href="https://github.com/jeog/TOSDataBridge/blob/master/README_API.md"> README - C API </a>
      */
     public static int
     connectionState() throws LibraryNotLoaded {
@@ -193,7 +197,8 @@ public final class TOSDataBridge{
      * @return block limit imposed by the C library.
      *
      * @throws LibraryNotLoaded if library is not loaded
-     * @see <a href="https://github.com/jeog/TOSDataBridge/blob/master/README.md">README</a>
+     * @see <a href="https://github.com/jeog/TOSDataBridge/blob/master/README_JAVA.md"> README - JAVA API </a>
+     * @see <a href="https://github.com/jeog/TOSDataBridge/blob/master/README_API.md"> README - C API </a>
      */
     public static int 
     getBlockLimit() throws LibraryNotLoaded {
@@ -206,7 +211,8 @@ public final class TOSDataBridge{
      * @param limit new block limit
      * @return new block limit
      * @throws LibraryNotLoaded if library is not loaded
-     * @see <a href="https://github.com/jeog/TOSDataBridge/blob/master/README.md">README</a>
+     * @see <a href="https://github.com/jeog/TOSDataBridge/blob/master/README_JAVA.md"> README - JAVA API </a>
+     * @see <a href="https://github.com/jeog/TOSDataBridge/blob/master/README_API.md"> README - C API </a>
      */
     public static int
     setBlockLimit(int limit) throws LibraryNotLoaded {
@@ -217,7 +223,8 @@ public final class TOSDataBridge{
      * @return current block count(according to C lib, not necessarily JRE).
      *
      * @throws LibraryNotLoaded if library is not loaded
-     * @see <a href="https://github.com/jeog/TOSDataBridge/blob/master/README.md">README</a>
+     * @see <a href="https://github.com/jeog/TOSDataBridge/blob/master/README_JAVA.md"> README - JAVA API </a>
+     * @see <a href="https://github.com/jeog/TOSDataBridge/blob/master/README_API.md"> README - C API </a>
      */
     public static int
     getBlockCount() throws LibraryNotLoaded {
@@ -230,7 +237,8 @@ public final class TOSDataBridge{
      * @param topic topic enum to get type bits of
      * @throws LibraryNotLoaded if library is not loaded
      * @throws CLibException if the C lib call returns an error
-     * @see <a href="https://github.com/jeog/TOSDataBridge/blob/master/README.md">README</a>
+     * @see <a href="https://github.com/jeog/TOSDataBridge/blob/master/README_JAVA.md"> README - JAVA API </a>
+     * @see <a href="https://github.com/jeog/TOSDataBridge/blob/master/README_API.md"> README - C API </a>
      */
     public static int
     getTypeBits(Topic topic) throws LibraryNotLoaded, CLibException {

@@ -29,7 +29,7 @@ A Window's Service is managed differently than a typical program. It can be cont
 - ```(Admin) C:\> SC pause TOSDataBridge``` - Pause the service. All the data collected so far will still exist but the engine will stop recording new data in the buffers. **Pausing the service is not recommended.**
 - ```(Admin) C:\> SC continue TOSDataBridge``` - Continue a paused service. All the data collected so far will still exist, the engine will start recording new data into the buffers, but it will have missed any new data while paused.
 - ```(Admin) C:\> SC config TOSDataBridge ...``` - Adjust the service's configuration/properties.
-- ```(Admin) C:\> SC /?``` - Display help for the SC command.
+- ```        C:\> SC /?``` - Display help for the SC command.
 
 
 ##### The Engine
@@ -66,7 +66,7 @@ An ***item*** is a string representing the individual instrument(e.g 'SPY', '/ZC
 
 > The underlying C/C++ API is **case-sensitive**; it's up to the client to make sure they are passing connsistenly **upper-case** item strings. The Python and Java APIs are **case-insensitive**; on receiving item and topic strings they are converted to upper-case by default.
 
-A ***topic*** is a string or enum (depending on the language) representing a data field(e.g 'LAST', 'VOLUME', 'BID_SIZE'). The complete list of topics can be found in src/topics.cpp.
+A ***topic*** is a string and/or enum (depending on the language) representing a data field(e.g 'LAST', 'VOLUME', 'BID_SIZE'). The complete list of topics can be found in src/topics.cpp.
 
 > The implementation can easily handle bad topics passed to it, returning an error code(C) or throwing an exception(C++). Bad item strings on the other hand can be a problem. The DDE server is *supposed* to respond with a negative ACK if the item is invalid but TOS responds with a positive ACK, inserting 'N/A' strings into the stream. **Currently it's up to the user to deal with passing bad Items.** 
 

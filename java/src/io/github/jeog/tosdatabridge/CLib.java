@@ -26,6 +26,7 @@ import com.sun.jna.Pointer;
  *
  * @author Jonathon Ogden
  * @version 0.9
+ * @see <a href="https://github.com/jeog/TOSDataBridge/blob/master/README_API.md"> README - C API </a>
  */
 public interface CLib extends Library {
     int TOSDB_Connect();

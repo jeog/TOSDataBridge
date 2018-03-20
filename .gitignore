@@ -43,6 +43,7 @@ java/examples/TimeAndSales/out/*
 *.suo
 *.user
 *.sln.docstates
+*/.vs/
 
 # Build results
 
