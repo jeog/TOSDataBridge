@@ -18,6 +18,7 @@ test/java/.idea/*
 java/out/*
 java/examples/TimeAndSales/.idea/*
 java/examples/TimeAndSales/out/*
+.idea/*
 
 #################
 ## Java

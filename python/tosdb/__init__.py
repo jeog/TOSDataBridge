@@ -423,9 +423,15 @@ def _admin_call(method, *arg_buffer):
     a = (method,)
     if arg_buffer:
         a += (_pickle.dumps(arg_buffer),) 
-    ret_b = _vcall(_pack_msg(*a), _virtual_admin_sock, _virtual_hub_addr) 
-    if ret_b[1]:
-        return _pickle.loads(ret_b[1])
+    try:
+        ret_b = _vcall(_pack_msg(*a), _virtual_admin_sock, _virtual_hub_addr) 
+        if ret_b[1]:
+            return _pickle.loads(ret_b[1])
+    except TOSDB_VirtualizationError:
+        admin_close()
+        raise
+
+
 
 
 def _handle_req_from_server(sock,password):
