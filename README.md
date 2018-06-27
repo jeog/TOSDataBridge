@@ -12,6 +12,13 @@ The core implementation is not portable, but the python interface does provides 
 
 ![](./res/main_diagram.png)
 
+<br>
+ 
+> #### **Accessing the TDAmeritrade API Directly (NEW)**  
+> Ameritrade recently expanded and opened up their API for streaming/historical data, account access,
+> and trade execution. [Take a look at a new front-end library for it that's currently in development.](https://github.com/jeog/TDAmeritradeAPI) If you're simply looking for light-weight access to real-time market data and/or custom TOS studies/strategies data TOSDataBridge is probably a better approach.
+
+
 ### Requirements
 - - -
 - Windows for the core implementation. (The python interface is available to any system running python3.)
