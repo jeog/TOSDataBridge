@@ -26,6 +26,9 @@ If none of that solves the problem be sure:
 
 If you are still having issues please [file a new issue](https://github.com/jeog/TOSDataBridge/issues/new); you may have run into a serious bug that we'd like to fix.
 
+#### Bad Futures Data
+
+Ameritrade has changed the symbols for futures contracts. [The new symbols.](README.md#new-symbols-for-futures-contracts)
 
 #### Error(s) adding Item and/or Topics
 

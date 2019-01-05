@@ -62,7 +62,7 @@ As a general rule follow this order:
 
 TOSDataBridge uses a mostly object-oriented approach (in concept and in code) to store, manage, and return data to the user. The main object is the ***block***. A user adds ***items*** and ***topics*** to the block for the data they want. Each item-topic pairing represents a ***stream*** that is managed automatically by the block.
 
-An ***item*** is a string representing the individual instrument(e.g 'SPY', '/ZC', '.SPY180119C250', '$DJT', 'EUR/USD').
+An ***item*** is a string representing the individual instrument(e.g 'SPY', '/ZC:XCBT', '.SPY180119C250', '$DJT', 'EUR/USD').
 
 > The underlying C/C++ API is **case-sensitive**; it's up to the client to make sure they are passing connsistenly **upper-case** item strings. The Python and Java APIs are **case-insensitive**; on receiving item and topic strings they are converted to upper-case by default.
 

@@ -11,7 +11,7 @@ It attempts to provide all the data that TOS exports via DDE: about 60 fields in
 
 ##### What type of securities/instruments does it work with ?
 
-Generally any symbol that the TOS platform recognizes: equities('AAPL'), ETFs('SPY'), futures('/ZC'), options('.SPY180119C250'), indices('$DJT'), forex('EUR/USD'), mutual-funds(VFIAX), and certain indicators($TRIN). If you find an exception please let us know. Different securities are more suited to certain data fields than others. For instance, GAMMA is relevant to options but not much else. 
+Generally any symbol that the TOS platform recognizes: equities('AAPL'), ETFs('SPY'), futures('/ZC:XCBT'), options('.SPY180119C250'), indices('$DJT'), forex('EUR/USD'), mutual-funds(VFIAX), and certain indicators($TRIN). If you find an exception please let us know. Different securities are more suited to certain data fields than others. For instance, GAMMA is relevant to options but not much else. 
 
 ##### Do I need Windows?
 

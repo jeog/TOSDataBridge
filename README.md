@@ -13,10 +13,88 @@ The core implementation is not portable, but the python interface does provides 
 ![](./res/main_diagram.png)
 
 <br>
+
+### Updates
+- - -
  
-> #### **Accessing the TDAmeritrade API Directly (NEW)**  
-> Ameritrade recently expanded and opened up their API for streaming/historical data, account access,
-> and trade execution. [Take a look at a new front-end library for it that's currently in development.](https://github.com/jeog/TDAmeritradeAPI) If you're simply looking for light-weight access to real-time market data and/or custom TOS studies/strategies data TOSDataBridge is probably a better approach.
+#### Accessing the TDAmeritrade API Directly 
+
+Ameritrade recently expanded and opened up their API for streaming/historical data, account access,
+and trade execution. [Take a look at a new front-end library for it that's currently in development.](https://github.com/jeog/TDAmeritradeAPI) If you're simply looking for light-weight access to real-time market data and/or custom TOS studies/strategies data TOSDataBridge is probably a better approach.
+
+#### New Symbols for Futures Contracts
+
+Ameritrade recently changed the symbols needed for futures contracts. For example, "/ES" is now "/ES:XCME". 
+
+/ES:XCME   
+/NQ:XCME   
+/YM:XCBT   
+/RTY:XCME   
+/NKD:XCME   
+/EMD:XCME   
+/VX:XCBF   
+/BTC:XCME   
+/XBT:XCBF   
+/CL:XNYM   
+/QM:XNYM   
+/NG:XNYM   
+/QG:XNYM   
+/RB:XNYM   
+/HO:XNYM   
+/BZ:XNYM   
+/GC:XCEC   
+/MGC:XCEC   
+/SI:XCEC   
+/SIL:XCEC   
+/HG:XCEC   
+/PL:XNYM   
+/PA:XNYM   
+/ZB:XCBT   
+/ZN:XCBT   
+/ZF:XCBT   
+/ZT:XCBT   
+/UB:XCBT   
+/TN:XCBT   
+/GE:XCME   
+/ZQ:XCBT   
+/GLB:XCME   
+/6A:XCME   
+/M6A:XCME   
+/6B:XCME   
+/M6B:XCME   
+/6C:XCME   
+/6E:XCME   
+/E7:XCME   
+/M6E:XCME   
+/6J:XCME   
+/J7:XCME   
+/6M:XCME   
+/6N:XCME   
+/6S:XCME   
+/ZC:XCBT   
+/XC:XCBT   
+/ZS:XCBT   
+/XK:XCBT   
+/ZW:XCBT   
+/XW:XCBT   
+/KE:XCBT   
+/ZM:XCBT   
+/ZL:XCBT   
+/ZO:XCBT   
+/HE:XCME   
+/GF:XCME   
+/LE:XCME   
+/LBS:XCME   
+/FNG:IFUS   
+/MME:IFUS   
+/DX:IFUS   
+/YG:IFUS   
+/YI:IFUS   
+/CT:IFUS   
+/CC:IFUS   
+/KC:IFUS   
+/SB:IFUS   
+/OJ:IFUS   
 
 
 ### Requirements
