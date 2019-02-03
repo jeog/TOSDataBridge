@@ -25,7 +25,7 @@ from platform import system as _system
 N=1000
 MAX_SEC_PER_TEST=30
 TOPICS=['LAST','VOLUME','LAST_SIZE','LASTX']
-ITEMS=['SPY','/ES']
+ITEMS=['SPY','/ES:XCME']
 
 
 def test(func_name, block, args, passes, wait):

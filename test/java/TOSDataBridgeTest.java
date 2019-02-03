@@ -117,7 +117,7 @@ public class TOSDataBridgeTest {
             System.out.println("Successfully created block: " + block.getName());
         }
 
-        Set<String> items = new HashSet<>(Arrays.asList("/ES","/ZN"));
+        Set<String> items = new HashSet<>(Arrays.asList("/ES:XCME","/ZN:XCBT"));
         Set<Topic> topics = new HashSet<>(Arrays.asList(Topic.LASTX, Topic.LAST, Topic.LAST_SIZE, Topic.CUSTOM1));
 
         System.out.println("Add items: " + items.toString());
