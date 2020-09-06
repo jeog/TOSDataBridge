@@ -86,6 +86,7 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 #include <chrono>
 #include <thread>
 #include <memory>
+#include <iterator>
 
 #include "containers.hpp"/*custom client-facing containers */
 #include "generic.hpp" /* our 'generic' type */
@@ -606,7 +607,7 @@ public:
   
     struct top_less{ /* back-end should use 'map' but attempts to #define 
                         special versions of top_less won't link w/ client code */      
-        bool operator()(const enum_type& left, const enum_type& right){ 
+        bool operator()(const enum_type& left, const enum_type& right) const { // 2020-09-06 add const 
             return (MAP()[left] < MAP()[right]); 
         }
     };
@@ -616,7 +617,7 @@ public:
 typedef Topic_Enum_Wrapper<unsigned short>  TOS_Topics;
 
 typedef ILSet<std::string> str_set_type;
-typedef ILSet<const typename TOS_Topics::TOPICS, typename TOS_Topics::top_less> topic_set_type;
+typedef ILSet<typename TOS_Topics::TOPICS, typename TOS_Topics::top_less> topic_set_type; // 2020-09-06 drop const
 
 #endif
 

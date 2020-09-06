@@ -98,11 +98,12 @@ class DLL_SPEC_IFACE TOSDB_Generic{
             default: throw;
             }
         }catch(...){
+#if defined(__GNUC__) || (_MSC_VER > 1900) // 2020-09-06 somewhere along the way they changed std::bad_cast
+                                           //   not sure on what version, so change accordingly
+            throw std::bad_cast();
+#else 
             std::ostringstream s;
             s << "error casting generic to < " << typeid(T).name() << " >";
-#ifdef __GNUC__
-            throw std::bad_cast();
-#else /* GNU doesn't like */
             throw std::bad_cast(s.str().c_str());
 #endif
        }

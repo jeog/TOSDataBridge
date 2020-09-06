@@ -29,8 +29,8 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 
 namespace{
 
-const std::set<const char> ITEM_VALID_START_CHARS = 
-    InitializerChain<std::set<const char>>
+const std::set<char> ITEM_VALID_START_CHARS = // 2020-09-06 'const char' -> 'char'
+    InitializerChain<std::set<char>>
         ('-')
         ('+')
         ('.')
@@ -38,8 +38,8 @@ const std::set<const char> ITEM_VALID_START_CHARS =
         ('/')
         ('#');
 
-const std::set<const char> ITEM_VALID_MID_CHARS = 
-    InitializerChain<std::set<const char>>
+const std::set<char> ITEM_VALID_MID_CHARS = // 2020-09-06 'const char' -> 'char'
+    InitializerChain<std::set<char>>
         ('-')
         ('.')
         ('*')
@@ -49,8 +49,8 @@ const std::set<const char> ITEM_VALID_MID_CHARS =
         ('/')
         ('#');
 
-const std::set<const char> ITEM_VALID_END_CHARS = 
-    InitializerChain<std::set<const char>>
+const std::set<char> ITEM_VALID_END_CHARS = // 2020-09-06 'const char' -> 'char'
+    InitializerChain<std::set<char>>
         ('.')
         ('$') 
         ('#');
@@ -67,7 +67,7 @@ const std::unordered_map<char, std::string> ITEM_SYMBOL_BUFFER_MAP =
         (':', "(8)");
 
 bool
-_isValidItemChar(const char c, const std::set<const char>& valid_other_chars=std::set<const char>())
+_isValidItemChar(const char c, const std::set<char>& valid_other_chars=std::set<char>()) // 2020-09-06 'const char' -> 'char'
 {
     return (isalnum(c) || (valid_other_chars.find(c) != valid_other_chars.end())); 
 }

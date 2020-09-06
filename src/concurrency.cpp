@@ -17,6 +17,7 @@ along with this program.  If not, see http://www.gnu.org/licenses.
 
 #include "tos_databridge.h"
 #include "concurrency.hpp"
+#include <functional> // 2020-09-06
 
 #ifdef CPP_COND_VAR
 

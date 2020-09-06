@@ -56,6 +56,13 @@ public:
         {      
         }
 
+    // 2020-09-06 make copy construct explicit
+    ILSet( const _my_ty& set )
+        :
+            _my_base_ty( (const _my_base_ty&)set )
+        {
+        }
+
     /* move-construct from same 
       (explicit derived type to avoid partial destruction) */
     ILSet(_my_ty&& set)
@@ -160,6 +167,13 @@ public:
             return *this;
         _my_base_ty::operator=(set);
         return *this;
+    }
+
+    // 2020-09-06 make assignment explicit
+    _my_ty& 
+    operator=(const _my_ty& set)
+    {
+        return operator=((const _my_base_ty&)set);
     }
 
     /*attempt to assign from like base*/
